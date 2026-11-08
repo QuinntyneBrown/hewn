@@ -1,0 +1,50 @@
+name: Bug report
+description: Something in Hewn does not work as described
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not report security vulnerabilities here. Follow SECURITY.md instead. Remove secrets from logs before pasting.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the direction you submitted, if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Stage, run ID or page
+  - type: dropdown
+    id: worker
+    attributes:
+      label: Worker location
+      options: [Local, Cloud, Not applicable]
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, browser, .NET SDK, Node.js, npm and Docker versions.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, screenshots or traces

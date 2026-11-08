@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest a change to Hewn or Mission Control
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem does this solve, and for whom?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+    validations:
+      required: true
+  - type: input
+    id: area
+    attributes:
+      label: Pipeline stage or Mission Control page affected
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Changes
+      options:
+        - label: REST API
+        - label: SignalR events
+        - label: Worker protocol
+        - label: Database schema
+        - label: Skills
+  - type: input
+    id: requirements
+    attributes:
+      label: Related requirements
+      description: For example L1-013, L2-025.
