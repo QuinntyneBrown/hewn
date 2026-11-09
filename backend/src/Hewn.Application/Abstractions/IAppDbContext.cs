@@ -13,5 +13,9 @@ public interface IAppDbContext
 
     DbSet<StoredEvent> Events { get; }
 
+    DbSet<Run> Runs { get; }
+
+    DbSet<Worker> Workers { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

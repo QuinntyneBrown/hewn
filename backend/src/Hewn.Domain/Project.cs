@@ -56,6 +56,9 @@ public sealed class Project
 
     public string? Repository => RepositoryOwner is null ? null : $"{RepositoryOwner}/{RepositoryName}";
 
+    /// <summary>Running while a direction is active; Idle once none is; Blocked when a stage fails.</summary>
+    public void ChangeStatus(ProjectStatus status) => Status = status;
+
     public static string Normalize(string name) => name.Trim().ToUpperInvariant();
 
     /// <summary>Creates a project with its first product direction queued and stage 0 Pending.</summary>

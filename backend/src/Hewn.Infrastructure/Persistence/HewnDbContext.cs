@@ -14,6 +14,10 @@ public sealed class HewnDbContext(DbContextOptions<HewnDbContext> options) : DbC
 
     public DbSet<StoredEvent> Events => Set<StoredEvent>();
 
+    public DbSet<Run> Runs => Set<Run>();
+
+    public DbSet<Worker> Workers => Set<Worker>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(HewnDbContext).Assembly);

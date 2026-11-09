@@ -70,3 +70,35 @@ internal sealed class StoredEventConfiguration : IEntityTypeConfiguration<Stored
         b.HasIndex(e => new { e.ProjectId, e.Sequence }).IsUnique();
     }
 }
+
+internal sealed class RunConfiguration : IEntityTypeConfiguration<Run>
+{
+    public void Configure(EntityTypeBuilder<Run> b)
+    {
+        b.ToTable("runs");
+        b.HasKey(r => r.Id);
+        b.Property(r => r.Status).HasConversion<string>().HasMaxLength(16);
+        b.Property(r => r.WorkerId).HasMaxLength(32);
+        b.Property(r => r.CheckpointSha).HasMaxLength(64);
+        b.Property(r => r.Error).HasMaxLength(2000);
+        b.Property(r => r.LeaseEpoch).IsConcurrencyToken();
+        b.HasIndex(r => new { r.Status, r.CreatedAt });
+        b.HasIndex(r => new { r.ProjectId, r.Status });
+        b.HasIndex(r => new { r.DirectionId, r.Stage });
+    }
+}
+
+internal sealed class WorkerConfiguration : IEntityTypeConfiguration<Worker>
+{
+    public void Configure(EntityTypeBuilder<Worker> b)
+    {
+        b.ToTable("workers");
+        b.HasKey(w => w.Id);
+        b.Property(w => w.Id).HasMaxLength(32);
+        b.Property(w => w.Name).HasMaxLength(100);
+        b.Property(w => w.Host).HasMaxLength(255);
+        b.Property(w => w.Version).HasMaxLength(64);
+        b.Property(w => w.Location).HasConversion<string>().HasMaxLength(16);
+        b.Property(w => w.Status).HasConversion<string>().HasMaxLength(16);
+    }
+}

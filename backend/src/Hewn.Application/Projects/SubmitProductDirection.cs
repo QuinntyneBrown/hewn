@@ -3,6 +3,7 @@ using FluentValidation;
 using Hewn.Application.Abstractions;
 using Hewn.Application.Common;
 using Hewn.Application.Events;
+using Hewn.Application.Pipeline;
 using Hewn.Domain;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -100,6 +101,7 @@ public sealed class SubmitProductDirectionHandler(
     IGitHubRepositoryProbe gitHub,
     ICurrentUser user,
     EventAppender events,
+    PipelineOrchestrator pipeline,
     TimeProvider clock) : IRequestHandler<SubmitProductDirectionCommand, SubmitProductDirectionResult>
 {
     public async Task<SubmitProductDirectionResult> Handle(SubmitProductDirectionCommand command, CancellationToken cancellationToken)
@@ -128,6 +130,7 @@ public sealed class SubmitProductDirectionHandler(
             "DirectionQueued",
             new { directionId = direction.Id, kind = direction.Kind.ToString(), stage = 0, stageStatus = StageStatus.Pending.ToString() },
             cancellationToken);
+        pipeline.QueueFirstRun(direction);
 
         try
         {
@@ -148,6 +151,7 @@ public sealed class SubmitProductDirectionHandler(
             ]);
         }
 
+        await events.PublishAsync(cancellationToken);
         return new SubmitProductDirectionResult(project.Id, direction.Id);
     }
 

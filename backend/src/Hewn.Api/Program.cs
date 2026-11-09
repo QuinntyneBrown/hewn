@@ -1,6 +1,8 @@
 using System.Text.Json.Serialization;
 using Hewn.Api.Auth;
 using Hewn.Api.Errors;
+using Hewn.Api.Hubs;
+using Hewn.Api.Pipeline;
 using Hewn.Application;
 using Hewn.Application.Abstractions;
 using Hewn.Infrastructure;
@@ -15,6 +17,13 @@ builder.Services.AddHewnAuth();
 builder.Services.AddAntiforgery(o => o.HeaderName = "X-XSRF-TOKEN");
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApplicationExceptionHandler>();
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IProjectEventPublisher, SignalRProjectEventPublisher>();
+if (builder.Configuration.GetValue("Hewn:Leases:ReaperEnabled", true))
+{
+    builder.Services.AddHostedService<LeaseReaper>();
+}
+
 builder.Services
     .AddControllers(o => o.Filters.Add<ValidateAntiforgeryFilter>())
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -26,6 +35,7 @@ app.UseStatusCodePages();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<MissionControlHub>(MissionControlHub.Path);
 app.MapGet("/health/live", () => Results.Ok(new { status = "Healthy" })).AllowAnonymous();
 
 app.Run();

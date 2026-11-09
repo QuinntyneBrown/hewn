@@ -31,4 +31,8 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
     [HttpGet("{projectId:guid}")]
     public Task<ProjectDto> Get(Guid projectId, CancellationToken cancellationToken) =>
         mediator.Send(new GetProjectQuery(projectId), cancellationToken);
+
+    [HttpGet("{projectId:guid}/events")]
+    public Task<IReadOnlyList<ProjectEventDto>> Events(Guid projectId, [FromQuery] long after, CancellationToken cancellationToken) =>
+        mediator.Send(new GetProjectEventsQuery(projectId, after), cancellationToken);
 }

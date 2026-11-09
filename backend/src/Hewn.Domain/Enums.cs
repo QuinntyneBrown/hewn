@@ -41,3 +41,25 @@ public enum ProjectStatus
     Cancelled,
     Complete,
 }
+
+public enum WorkerLocation
+{
+    Local,
+    Cloud,
+}
+
+public enum WorkerStatus
+{
+    Idle,
+    Busy,
+    Offline,
+}
+
+public enum RunStatus
+{
+    Queued,
+    Leased,
+    Succeeded,
+    Failed,
+    Cancelled,
+}

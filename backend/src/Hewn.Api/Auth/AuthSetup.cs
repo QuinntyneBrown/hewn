@@ -24,7 +24,8 @@ public static class AuthSetup
                 o.LoginPath = "/sign-in";
                 o.Events.OnRedirectToLogin = ctx => Challenge(ctx, StatusCodes.Status401Unauthorized);
                 o.Events.OnRedirectToAccessDenied = ctx => Challenge(ctx, StatusCodes.Status403Forbidden);
-            });
+            })
+            .AddScheme<AuthenticationSchemeOptions, WorkerTokenAuthenticationHandler>(WorkerTokenAuthenticationHandler.SchemeName, null);
 
         services.AddAuthorizationBuilder()
             .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build())
