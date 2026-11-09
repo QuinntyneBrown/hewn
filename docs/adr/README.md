@@ -16,3 +16,4 @@ Read the ADRs that cover an area before changing it. New ADRs take the next numb
 | [0010](0010-spend-is-metered-per-call-against-a-configured-price-table.md) | Spend is metered per model call against a configured price table, and the budget stops the run after the call that reaches it | Accepted |
 | [0011](0011-pause-takes-effect-at-the-next-checkpoint.md) | Pause takes effect at the next checkpoint, answered on the checkpoint call | Accepted |
 | [0012](0012-cancel-reaches-the-worker-on-a-held-control-poll.md) | Cancel reaches the worker on a held control poll | Accepted |
+| [0013](0013-stop-all-workers-halts-runs-on-the-control-poll.md) | Stop all workers halts runs on the control poll and a stored leasing switch | Accepted |

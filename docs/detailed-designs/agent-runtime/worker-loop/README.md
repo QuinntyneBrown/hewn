@@ -125,6 +125,11 @@ Journey 1, part 2 built the loop, leases and fencing that L2-004 needs.
   `GET /api/worker/runs/{id}/control?workerId&epoch&waitSeconds=20` open. It answers 204 to poll again, or
   `{control: "Cancel"}` the moment an Owner cancels the direction; the worker then aborts the step in progress and
   reports no further step, checkpoint or result ([ADR 0012](../../../adr/0012-cancel-reaches-the-worker-on-a-held-control-poll.md)).
+  Since journey 8 it can also answer `{control: "Halt"}` when an Owner stops all workers: the worker aborts the same
+  way, and after Start workers it leases the halted run again and carries on after its checkpoint. While leasing is
+  off, `POST /api/worker/lease` answers 204 ([ADR 0013](../../../adr/0013-stop-all-workers-halts-runs-on-the-control-poll.md)).
 - **Failure text is redacted** before it is stored (`SecretRedactor`).
-- **Not built yet:** the Workers page and issued tokens, `WorkerChanged`, the git sidecar, the container
+- **The Workers page (journey 8)** lists each worker's host, location, version, status, what it works on and its
+  last heartbeat, from `GET /api/workers`.
+- **Not built yet:** issued tokens, Revoke, `WorkerChanged`, the git sidecar, the container
   image, `CheckpointReconciler` and the `RunWriteLock`.

@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Stop and restart all workers (journey 8, L2-029 AC4, AC5): an Owner presses Stop all workers in the sidebar and
+  confirms in a dialog listing the online workers. Leasing is switched off and stored, every active run halts at its
+  checkpoint within 10 seconds (the worker hears `Halt` on its control poll), and nothing is leased, even after a
+  restart, until the Owner presses Start workers; each halted run then resumes from its checkpoint
+  (`POST /api/workers/stop`, `POST /api/workers/start`, `GET /api/workers`; ADR 0013). A banner shows on every page
+  while workers are stopped, and a new Workers page lists each worker. A worker that does not answer is named in
+  the dialog. Viewers see the banner but no control, and get 403.
+
 - Cancel a direction (journey 7, L2-029 AC3, AC5, L2-004 AC4): an Owner presses Cancel on a queued, running or
   paused direction and confirms in a dialog. The direction, its run and its stage are Cancelled at once, the worker
   hears it on its held control poll (`GET /api/worker/runs/{id}/control`) and stops within 10 seconds, open pull
