@@ -1,0 +1,43 @@
+@startuml
+title UML sequence behaviour — Write the tests and record red
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker stage execution" #ECFDF3
+  participant "IncrementRunner" as runner
+  participant "TestFirstStep" as step
+  participant "TestCommitGuard" as guard
+  participant "RedRunRecorder" as red
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "IncrementsController" as ctrl
+end box
+box "External systems" #F2F4F7
+  participant "Target repository (via write broker)" as gh
+end box
+runner -> step : RunAsync(increment 7)
+step -> gh : git fetch; checkout -b feature/reconcile-card-statement origin/main (L2-021 AC1)
+step -> step : Agent writes acceptance tests with "Traces to:" headers
+step -> guard : Check(diff, [L2-018, L2-019])
+guard --> step : Only tests; headers valid (L2-021 AC2)
+step -> gh : Commit and push tests
+runner -> red : Run the new tests
+alt at least one fails
+  red -> ctrl : RedRecorded(4 failing, 0 passing) (L2-021 AC3)
+else all pass
+  red -> ctrl : TestsPassedEarly - flag for PR Notes (L2-021 AC3)
+end
+runner -> runner : Checkpoint "tests"
+@enduml

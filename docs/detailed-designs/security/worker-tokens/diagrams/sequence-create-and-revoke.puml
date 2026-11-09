@@ -1,0 +1,49 @@
+@startuml
+title UML sequence behaviour — Create and revoke a worker token
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Owner" as owner
+box "Frontend — Mission Control application" #E0F2FE
+  participant "NewWorkerTokenDialog" as dlg
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "WorkerTokensController" as ctrl
+end box
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "WorkerTokenService" as svc
+  participant "WorkerDisconnector" as disc
+  participant "LeaseService" as lease
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+box "Backend — Worker application" #D1FADF
+  participant "WorkerHost" as worker
+end box
+owner -> dlg : Name "studio-mac", expiry 90 days
+dlg -> ctrl : POST /api/worker-tokens
+ctrl -> svc : CreateAsync
+svc -> db : Store SHA-256 hash, ExpiresAt = now + 90 d (L2-041 AC1, AC3)
+svc --> dlg : hwk_... shown once
+== later ==
+owner -> ctrl : DELETE /api/worker-tokens/{id}
+ctrl -> svc : RevokeAsync -> RevokedAt = now
+ctrl -> disc : DisconnectAsync(token)
+disc -> worker : Abort connection
+disc -> lease : Release leases of that worker (L2-041 AC2)
+worker -> ctrl : Reconnect attempt
+ctrl --> worker : 401
+@enduml

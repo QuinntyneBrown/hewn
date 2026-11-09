@@ -1,0 +1,23 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Write the tests first
+
+Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+Container_Boundary(worker_b, "Worker") {
+  Component(runner, "IncrementRunner", "Run executor", "Drives increment steps")
+  Component(step, "TestFirstStep", "Step", "Branch, write tests, commit")
+  Component(guard, "TestCommitGuard", "Validator", "Tests only; traces headers")
+  Component(red, "RedRunRecorder", "Step", "Runs new tests; records red or early green")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+System_Ext(claude, "Claude model API", "Anthropic models, called through the Claude Agent SDK")
+
+Rel(api, runner, "Leases increment run", "HTTPS")
+Rel(runner, step, "Runs")
+Rel(step, claude, "Agent calls", "HTTPS")
+Rel(step, guard, "Checks commit")
+Rel(step, github, "Pushes test commit", "Git/HTTPS")
+Rel(runner, red, "Runs")
+Rel(red, api, "RedRecorded / TestsPassedEarly", "HTTPS")
+@enduml

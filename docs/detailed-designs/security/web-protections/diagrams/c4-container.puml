@@ -1,0 +1,18 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Input validation and web protections
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+Person(viewer, "Viewer", "Watches every project read-only")
+System_Boundary(hewn, "Hewn") {
+  Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  Container(preview, "Mock preview host", "Static file host on a separate origin", "Serves exported mocks and design-system pages")
+}
+
+Rel(owner, spa, "Uses", "HTTPS")
+Rel(spa, api, "Requests with anti-forgery header", "JSON/HTTPS")
+Rel(api, spa, "Pages with CSP and security headers", "HTTPS")
+Rel(spa, preview, "Frames previews (allowed by frame-src)", "HTTPS")
+@enduml

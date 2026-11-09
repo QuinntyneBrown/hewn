@@ -1,0 +1,62 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Real-time events and reconnection
+
+abstract class HewnEvent {
+  +ProjectId ProjectId
+  +long Sequence
+  +DateTimeOffset At
+  +DateTimeOffset? PublishedAt
+  +string? ClaimedBy
+  +DateTimeOffset? ClaimedUntil
+}
+class OutboxDispatcher {
+  +TimeSpan Interval = 250 ms
+  +TimeSpan ClaimTtl = 5 s
+  +int BatchSize = 100
+  +ClaimBatchAsync(instance: string): Task<HewnEvent[]>
+  +PublishAsync(batch: HewnEvent[]): Task
+  +OnNudge(): void
+}
+class CommitNudge
+class StageStatusChanged
+class LogLineAppended
+class ArtifactRecorded
+class PullRequestOpened
+class CheckChanged
+class SpendUpdated
+class WorkerChanged
+class EventStore {
+  +AppendAsync(e: HewnEvent, tx): Task<long>
+  +AfterAsync(p: ProjectId, seq: long): Task<HewnEvent[]>
+}
+class LiveEventsService <<Angular>> {
+  +retryDelaysMs = [0, 2000, 10000, 30000]
+  -lastSeq: Map<ProjectId, long>
+  +onReconnected(): Promise<void>
+  +onEvent(e: HewnEvent): Promise<void>
+  -catchUp(p: ProjectId): Promise<void>
+  +apply(e: HewnEvent): void
+}
+OutboxDispatcher ..> HewnEvent : claims, publishes, marks
+EventStore ..> CommitNudge : raises after commit
+OutboxDispatcher ..> CommitNudge : wakes on
+HewnEvent <|-- StageStatusChanged
+HewnEvent <|-- LogLineAppended
+HewnEvent <|-- ArtifactRecorded
+HewnEvent <|-- PullRequestOpened
+HewnEvent <|-- CheckChanged
+HewnEvent <|-- SpendUpdated
+HewnEvent <|-- WorkerChanged
+EventStore o-- HewnEvent
+LiveEventsService ..> HewnEvent : applies once
+@enduml

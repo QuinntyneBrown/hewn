@@ -1,0 +1,23 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Sign-in and access control
+
+Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+Container_Boundary(api_b, "Hewn API") {
+  Component(oauth, "GitHubOAuthHandler", "ASP.NET Core auth handler", "GitHub sign-in")
+  Component(allow, "AllowListSignInValidator", "Auth event handler", "Refuses logins not on the list")
+  Component(pol, "Authorization policies", "ASP.NET Core authorization", "Fallback, Owner, project access")
+  Component(ctrl, "AllowListController", "ASP.NET Core controller", "Manage allow list")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(spa, oauth, "Sign in with GitHub", "HTTPS")
+Rel(oauth, github, "Code exchange", "HTTPS")
+Rel(oauth, allow, "OnTicketReceived")
+Rel(allow, db, "Look up login", "SQL")
+Rel(spa, pol, "Every request", "HTTPS")
+Rel(spa, ctrl, "Owner edits", "JSON/HTTPS")
+Rel(ctrl, db, "Writes", "SQL")
+@enduml

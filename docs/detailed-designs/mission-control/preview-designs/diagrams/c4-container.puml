@@ -1,0 +1,19 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Preview designs and the design system
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+Person(viewer, "Viewer", "Watches every project read-only")
+System_Boundary(hewn, "Hewn") {
+  Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  Container(preview, "Mock preview host", "Static file host on a separate origin", "Serves exported mocks and design-system pages")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(owner, spa, "Opens Designs or Design system", "HTTPS")
+Rel(spa, api, "Manifest, page list, signed preview URL", "JSON/HTTPS")
+Rel(spa, preview, "Loads page in sandboxed iframe", "HTTPS, separate origin")
+Rel(preview, github, "Fetches file at SHA", "HTTPS")
+@enduml

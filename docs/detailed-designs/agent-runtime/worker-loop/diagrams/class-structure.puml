@@ -1,0 +1,96 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Worker loop, packaging and recovery
+
+class Worker {
+  +WorkerId Id
+  +Location Location
+  +string Host
+  +string Version
+  +WorkerStatus Status
+  +DateTimeOffset LastHeartbeat
+}
+enum Location {
+  Local
+  Cloud
+}
+class Lease {
+  +RunId RunId
+  +ProjectId ProjectId
+  +WorkerId WorkerId
+  +long Epoch
+  +DateTimeOffset ExpiresAt
+  +Renew(now): void
+}
+class LeaseService {
+  +TimeSpan Expiry = 60 s
+  +TryLeaseAsync(w: WorkerId): Task<Lease?>
+  +HeartbeatAsync(w: WorkerId, run: RunId, epoch: long): Task
+  +RecordCheckpointAsync(run: RunId, epoch: long, c: Checkpoint): Task
+  +ExpireStaleAsync(now): Task<int>
+}
+class LeaseFence {
+  +OnActionExecutionAsync(ctx, next): Task
+}
+class RunWriteLock {
+  +TimeSpan Ceiling = 30 s
+  +AcquireAsync(run: RunId): Task<IDisposable>
+}
+class GitHubWriteBroker {
+  +PushAsync(run: RunId, epoch: long, pack: Stream): Task<PushResult>
+  +MutateAsync(run: RunId, epoch: long, m: Mutation): Task<MutationResult>
+}
+class Run {
+  +RunId Id
+  +long LeaseEpoch
+  +string? BranchHead
+  +Checkpoint? Checkpoint
+}
+class Checkpoint {
+  +string Step
+  +string Sha
+  +DateTimeOffset RecordedAt
+}
+class WorkerHost <<worker>> {
+  +RunAsync(): Task
+}
+class LeaseClient <<worker>> {
+  +TimeSpan Heartbeat = 10 s
+  +TimeSpan MaxPoll = 15 s
+  +long Epoch
+}
+class CheckpointWriter <<worker>> {
+  +CommitAndReportAsync(step: string): Task<Checkpoint>
+}
+class CheckpointReconciler <<worker>> {
+  +ReconcileAsync(run: Run, branch: string): Task<ReconcileOutcome>
+}
+enum ReconcileOutcome {
+  Resume
+  AdoptAndResume
+  ResetAndResume
+  Diverged
+}
+Worker --> Location
+LeaseService --> Lease : grants
+LeaseService ..> RunWriteLock : holds on grant and expiry
+GitHubWriteBroker ..> RunWriteLock : holds per write
+GitHubWriteBroker ..> LeaseFence : checks inside lock
+LeaseFence ..> Run : checks LeaseEpoch
+Lease --> Run
+Run o-- Checkpoint
+WorkerHost ..> LeaseClient
+WorkerHost ..> CheckpointWriter
+WorkerHost ..> CheckpointReconciler
+CheckpointReconciler ..> ReconcileOutcome
+Lease "*" --> "1" Worker
+@enduml

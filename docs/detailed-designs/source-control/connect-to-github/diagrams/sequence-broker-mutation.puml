@@ -1,0 +1,61 @@
+@startuml
+title UML sequence behaviour — Broker a pull request mutation
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker application" #D1FADF
+  participant "WorkerHost" as worker
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "GitHubWriteBroker" as broker
+  participant "LeaseFence" as fence
+end box
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "RunWriteLock" as lock
+  participant "MutationQueue" as queue
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+box "External systems" #F2F4F7
+  participant "GitHub" as gh
+end box
+worker -> broker : POST /api/runs/{id}/github/mutations {epoch 3, OpenPullRequest, key {run}/pull-request/open, title, body}
+broker -> lock : AcquireAsync(run)
+broker -> fence : Epoch 3 current for this worker?
+alt stale
+  fence --> worker : 409 LeaseLost; nothing done
+else current
+  broker -> db : MutationRecord for key?
+  alt stored result exists
+    broker --> worker : Stored result (idempotent replay)
+  else first time
+    broker -> gh : Open PR exists for feature/x?
+    alt exists
+      broker -> broker : Adopt PR number
+    else
+      broker -> gh : Create PR with repository-scoped token (L2-036 AC3)
+      alt GitHub unreachable or rate-limited
+        broker -> db : Record pending
+        broker -> queue : Retry with backoff; result pushed to worker later
+        broker --> worker : 202 Pending
+      end
+    end
+    broker -> db : Record result
+    broker --> worker : 200 {pullRequest: 42}
+  end
+end
+broker -> lock : Release
+@enduml

@@ -1,0 +1,76 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Submit a product direction
+
+enum DirectionKind {
+  Product
+  Feature
+}
+enum ProjectStatus {
+  Running
+  Idle
+  Paused
+  Blocked
+  Cancelled
+  Complete
+}
+enum RepositoryAccess {
+  Writable
+  NotFound
+  NoAccess
+}
+class SubmitProductDirectionCommand {
+  +string Name
+  +string Idea
+  +string? StackPreference
+  +string? RepositoryUrl
+  +decimal BudgetUsd
+}
+class SubmitProductDirectionValidator {
+  +Validate(cmd: SubmitProductDirectionCommand, ownerId: UserId): ValidationResult
+}
+class SubmitProductDirectionHandler {
+  +Handle(cmd: SubmitProductDirectionCommand): Task<Result<ProjectId>>
+}
+interface IGitHubRepositoryProbe {
+  +CheckAsync(owner: string, repo: string): Task<RepositoryAccess>
+}
+class Project {
+  +ProjectId Id
+  +string Name
+  +string Idea
+  +string? Repository
+  +ProjectStatus Status
+  +bool Archived
+  +Enqueue(direction: Direction): void
+}
+class Direction {
+  +DirectionId Id
+  +DirectionKind Kind
+  +decimal BudgetUsd
+  +DirectionStatus Status
+  +DateTimeOffset SubmittedAt
+}
+class StageState {
+  +int Stage
+  +StageStatus Status
+}
+SubmitProductDirectionHandler ..> SubmitProductDirectionCommand : handles
+SubmitProductDirectionHandler ..> SubmitProductDirectionValidator : uses
+SubmitProductDirectionHandler ..> IGitHubRepositoryProbe : uses
+SubmitProductDirectionHandler --> Project : creates
+Project "1" *-- "*" Direction : queue
+Direction "1" *-- "11" StageState
+Direction --> DirectionKind
+Project --> ProjectStatus
+IGitHubRepositoryProbe ..> RepositoryAccess
+@enduml

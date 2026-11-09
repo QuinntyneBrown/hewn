@@ -1,0 +1,16 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Record agent decisions
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+Person(viewer, "Viewer", "Watches every project read-only")
+System(hewn, "Hewn", "Software factory: carries a direction to merged code through a fixed pipeline")
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+System_Ext(claude, "Claude model API", "Anthropic models, called through the Claude Agent SDK")
+
+Rel(owner, hewn, "Reviews decisions after the fact in")
+Rel(viewer, hewn, "Reviews decisions in")
+Rel(hewn, claude, "Answers skill questions with", "Claude Agent SDK")
+Rel(hewn, github, "Commits docs/decisions.md and ADRs to", "Git")
+@enduml

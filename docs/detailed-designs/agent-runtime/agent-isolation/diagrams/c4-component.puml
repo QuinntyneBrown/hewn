@@ -1,0 +1,26 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Agent isolation
+
+Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+Container_Boundary(worker_b, "Worker") {
+  Component(sandbox, "RunSandbox", "Container manager", "One container and workspace per run")
+  Component(agent, "StageAgent", "Claude Agent SDK session", "Runs inside the run container")
+  Component(gate, "ToolGate", "Tool dispatcher wrapper", "Stage tool allow list")
+  Component(proxy, "EgressProxy", "Forward proxy", "Host allow list; block and log; no GitHub")
+  Component(side, "WorkerGitSidecar", "Worker host endpoint", "Adds worker token and epoch; forwards git to the API")
+  Component(scrub, "WorkspaceCredentialScrubber", "Worker service", "Deletes agent-written credentials at run end")
+}
+System_Ext(claude, "Claude model API", "Anthropic models, called through the Claude Agent SDK")
+
+Rel(sandbox, agent, "Starts in container")
+Rel(agent, gate, "Every tool call")
+Rel(agent, proxy, "All network traffic")
+Rel(proxy, side, "git fetch / push (allowed)", "HTTP")
+Rel(side, api, "Forwards to GitPushProxy", "HTTPS")
+Rel(proxy, claude, "Allowed", "HTTPS")
+Rel(gate, api, "SecurityEvent", "HTTPS")
+Rel(proxy, api, "Blocked request events", "HTTPS")
+Rel(sandbox, scrub, "On run end")
+@enduml

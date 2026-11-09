@@ -1,0 +1,23 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Estimate, descope and order the backlog
+
+Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+Container_Boundary(worker_b, "Worker") {
+  Component(exec, "EstimateStageExecutor", "Stage executor", "Stage 9")
+  Component(agent, "StageAgent", "Claude Agent SDK session", "estimating-designs skill")
+  Component(desc, "Descoper", "Planner", "Split or defer; annotate L2s")
+  Component(plan, "BacklogPlanner", "Planner", "Journey order, dependency-safe")
+}
+System_Ext(claude, "Claude model API", "Anthropic models, called through the Claude Agent SDK")
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(api, exec, "Leases run", "HTTPS")
+Rel(exec, agent, "Runs")
+Rel(agent, claude, "Calls", "HTTPS")
+Rel(exec, desc, "Descopes")
+Rel(exec, plan, "Plans")
+Rel(exec, github, "Commits", "Git/HTTPS")
+Rel(exec, api, "Reports backlog", "HTTPS")
+@enduml

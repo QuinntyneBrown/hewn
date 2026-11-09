@@ -1,0 +1,49 @@
+@startuml
+title UML sequence behaviour — Recover from a crash before publish
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "Command handler (instance 1)" as handler
+  participant "OutboxDispatcher (instance 1)" as disp1
+  participant "OutboxDispatcher (instance 2)" as disp2
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+  queue "SignalR backplane" as bp
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "MissionControlHub" as hub
+end box
+box "Frontend — Mission Control application" #E0F2FE
+  participant "LiveEventsService" as live
+end box
+handler -> db : Commit change and event seq 42 (published_at NULL)
+handler -> disp1 : CommitNudge
+disp1 -> db : Claim seq 42 (claimed_until = now + 5 s)
+disp1 -> disp1 : Instance 1 crashes before publishing
+...5 s pass; claim on seq 42 expires...
+loop every 250 ms
+  disp2 -> db : Claim unpublished rows with no live claim
+end
+db --> disp2 : seq 42
+disp2 -> bp : Publish seq 42
+bp -> hub : Deliver
+hub -> live : seq 42
+disp2 -> db : Set published_at on seq 42
+opt both instances published seq 42 (claim expired during a slow publish)
+  live -> live : Second copy has seq <= lastSeq -> dropped
+end
+@enduml

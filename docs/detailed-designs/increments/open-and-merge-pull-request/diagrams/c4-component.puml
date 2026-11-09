@@ -1,0 +1,29 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Open and merge the pull request
+
+Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+Container_Boundary(api_b, "Hewn API") {
+  Component(broker, "GitHubWriteBroker", "Application service", "Fenced, idempotent open / merge / label / delete-branch")
+  Component(hook, "GitHubWebhookController", "ASP.NET Core controller", "Verifies signature; 401 otherwise")
+  Component(poll, "CheckPoller", "Background service", "Polls every 60 s when no webhook")
+  Component(proj, "CheckStatusProjector", "Event projector", "Emits CheckChanged")
+  Component(hub, "MissionControlHub", "SignalR hub", "Pushes to Mission Control and workers")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(worker, broker, "Mutation requests + epoch", "JSON/HTTPS")
+Rel(broker, github, "PR writes", "HTTPS")
+Rel(broker, db, "github_mutations", "SQL")
+Rel(github, hook, "check_run / check_suite", "HTTPS")
+Rel(poll, github, "GET checks", "HTTPS")
+Rel(hook, proj, "Check change")
+Rel(poll, proj, "Check change")
+Rel(proj, db, "Stores", "SQL")
+Rel(proj, hub, "CheckChanged")
+Rel(hub, spa, "Pushes", "SignalR")
+Rel(hub, worker, "Relays", "SignalR")
+@enduml

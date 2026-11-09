@@ -1,0 +1,10 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Observability and health checks
+
+System(hewn, "Hewn", "Software factory: carries a direction to merged code through a fixed pipeline")
+System_Ext(telemetry, "Telemetry backend", "Receives OpenTelemetry traces and metrics; product <TO SUPPLY>")
+
+Rel(hewn, telemetry, "Exports logs, traces and metrics to", "OTLP, Prometheus scrape")
+@enduml

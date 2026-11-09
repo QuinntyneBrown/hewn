@@ -1,0 +1,18 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Connect to GitHub
+
+System_Boundary(hewn, "Hewn") {
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+  Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+System_Ext(vault, "Secret store", "Cloud key vault in the cloud, OS key store locally")
+
+Rel(api, vault, "Reads App private key", "HTTPS")
+Rel(api, github, "Every write, with repository-scoped tokens", "Git/HTTPS, GitHub API")
+Rel(worker, api, "git fetch and push via the proxy; mutation requests", "Git smart HTTP, JSON/HTTPS (outbound)")
+Rel(api, db, "Repository per project; mutation log; run write locks", "SQL")
+@enduml

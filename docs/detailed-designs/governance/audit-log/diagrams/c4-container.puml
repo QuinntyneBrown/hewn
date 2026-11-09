@@ -1,0 +1,16 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Audit log
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+System_Boundary(hewn, "Hewn") {
+  Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+}
+
+Rel(owner, spa, "Opens Audit", "HTTPS")
+Rel(spa, api, "GET audit", "JSON/HTTPS")
+Rel(api, db, "Inserts and reads entries (no update or delete)", "SQL")
+@enduml

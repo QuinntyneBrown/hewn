@@ -1,0 +1,20 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Secrets and redaction
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+System_Boundary(hewn, "Hewn") {
+  Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+  Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+}
+System_Ext(vault, "Secret store", "Cloud key vault in the cloud, OS key store locally")
+
+Rel(owner, spa, "Enters a credential", "HTTPS")
+Rel(spa, api, "Write-only secret value", "JSON/HTTPS")
+Rel(api, vault, "Stores and reads secrets", "HTTPS")
+Rel(api, db, "Redacted logs and events", "SQL")
+Rel(worker, api, "Redacted logs", "HTTPS (outbound)")
+@enduml

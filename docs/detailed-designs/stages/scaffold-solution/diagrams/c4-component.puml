@@ -1,0 +1,26 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Scaffold the solution
+
+Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+Container_Boundary(worker_b, "Worker") {
+  Component(exec, "ScaffoldStageExecutor", "Stage executor", "Stage 6")
+  Component(tpl, "StackTemplate", "Template", "Generators, layout, CI for the chosen stack")
+  Component(ci, "CiWorkflowWriter", "Worker service", "Writes .github/workflows/ci.yml")
+  Component(wait, "CheckWaiter", "Worker service", "Waits for required checks")
+  Component(bp, "BranchProtectionConfigurer", "GitHub App client", "Requires CI checks on default branch")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+System_Ext(registries, "Package registries", "NuGet, npm and the stack's other registries")
+
+Rel(api, exec, "Leases run", "HTTPS")
+Rel(exec, tpl, "Generates with")
+Rel(tpl, registries, "Restores", "HTTPS")
+Rel(exec, ci, "Writes CI")
+Rel(exec, github, "Opens PR, merges", "HTTPS")
+Rel(exec, wait, "Waits")
+Rel(wait, api, "Receives check events", "SignalR")
+Rel(exec, bp, "After merge")
+Rel(bp, github, "Sets protection", "HTTPS")
+@enduml

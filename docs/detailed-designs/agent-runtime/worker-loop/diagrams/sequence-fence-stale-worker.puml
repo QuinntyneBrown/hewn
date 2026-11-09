@@ -1,0 +1,50 @@
+@startuml
+title UML sequence behaviour — Fence a stale worker
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker application" #D1FADF
+  participant "WorkerHost (stale worker)" as w1
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "WorkerHub" as hub
+  participant "GitHubWriteBroker" as broker
+  participant "LeaseFence" as fence
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+box "External systems" #F2F4F7
+  participant "GitHub" as gh
+end box
+w1 -> w1 : Partition: heartbeats fail for 60 s; lease expires; run re-leased with epoch 4
+w1 -> w1 : Partition heals; agent still running step "implement"
+w1 -> hub : Heartbeat(run, epoch 3)
+hub -> fence : Check epoch and lease holder
+fence -> db : Run.LeaseEpoch = 4, lease held by another worker
+fence --> w1 : 409 LeaseLost
+w1 -> w1 : Kill run container within 10 s; report nothing further
+opt push already in flight through the sidecar
+  w1 -> broker : git-receive-pack, X-Hewn-Epoch: 3
+  broker -> fence : Check inside RunWriteLock
+  fence --> w1 : 409 LeaseLost; nothing forwarded to GitHub
+end
+opt pull request mutation already in flight
+  w1 -> broker : MutateAsync(OpenPullRequest, epoch 3)
+  broker -> fence : Check inside RunWriteLock
+  fence --> w1 : 409 LeaseLost; nothing forwarded to GitHub
+end
+note over gh : GitHub receives nothing from the stale worker; no token to revoke
+@enduml

@@ -1,0 +1,79 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Run a direction through the pipeline
+
+enum StageStatus {
+  Pending
+  Running
+  Paused
+  Succeeded
+  Failed
+  Skipped
+  Cancelled
+}
+enum DirectionStatus {
+  Queued
+  Running
+  Paused
+  Blocked
+  Cancelled
+  Complete
+}
+class Direction {
+  +DirectionId Id
+  +DirectionKind Kind
+  +DirectionStatus Status
+  +ScopeSnapshot? Scope
+  +StageState[] Stages
+  +Advance(next: int): Run
+  +Skip(stage: int, reason: string): void
+  +Complete(): void
+}
+class StageState {
+  +int Stage
+  +StageStatus Status
+  +TimeSpan? Duration
+}
+class Run {
+  +RunId Id
+  +DirectionId DirectionId
+  +int Stage
+  +int Attempt
+  +RunStatus Status
+  +string? Checkpoint
+}
+class StagePlan {
+  +For(d: Direction, hasUiChange: bool?): int[]
+}
+class PipelineOrchestrator {
+  +On(e: DirectionQueued): Task
+  +On(e: RunSucceeded): Task
+  +On(e: DirectionEnded): Task
+}
+class DirectionQueue {
+  +ActiveFor(p: ProjectId): Direction?
+  +PromoteNext(p: ProjectId): Direction?
+}
+class ScopeSnapshot {
+  +string FeatureText
+  +string[] ExistingRequirementIds
+  +int[] ExistingJourneyNumbers
+}
+Direction "1" *-- "11" StageState
+Direction "1" *-- "*" Run
+Direction --> DirectionStatus
+StageState --> StageStatus
+Direction o-- ScopeSnapshot
+PipelineOrchestrator ..> StagePlan
+PipelineOrchestrator --> Direction
+PipelineOrchestrator ..> DirectionQueue
+@enduml

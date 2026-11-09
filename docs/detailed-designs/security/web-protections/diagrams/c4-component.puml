@@ -1,0 +1,20 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Input validation and web protections
+
+Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+Container_Boundary(api_b, "Hewn API") {
+  Component(hdr, "SecurityHeadersMiddleware", "Middleware", "CSP, nosniff, frame-ancestors")
+  Component(rate, "DirectionSubmissionRateLimiter", "Rate limiter", "10 per minute per Owner")
+  Component(xsrf, "AntiforgeryValidation", "Global filter", "400 without valid token")
+  Component(val, "ValidationFilter", "Action filter", "400 with field errors")
+  Component(h, "Handlers", "Controllers and handlers", "Run only after the checks")
+}
+
+Rel(spa, hdr, "Request", "HTTPS")
+Rel(hdr, rate, "Next")
+Rel(rate, xsrf, "Next")
+Rel(xsrf, val, "Next")
+Rel(val, h, "Next")
+@enduml

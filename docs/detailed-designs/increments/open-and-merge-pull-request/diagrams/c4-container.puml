@@ -1,0 +1,24 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Open and merge the pull request
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+Person(viewer, "Viewer", "Watches every project read-only")
+System_Boundary(hewn, "Hewn") {
+  Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+  Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(worker, api, "Requests open, merge, delete-branch mutations; pushes rebases via the git proxy", "JSON/HTTPS, Git smart HTTP (outbound)")
+Rel(api, github, "Fenced PR mutations and pushes", "HTTPS, GitHub App")
+Rel(github, api, "Check webhooks", "HTTPS, HMAC")
+Rel(api, github, "Polls checks every 60 s when silent", "HTTPS")
+Rel(api, db, "Stores check states and mutation log", "SQL")
+Rel(api, spa, "Pushes CheckChanged", "SignalR")
+Rel(api, worker, "Relays check results and mutation results", "SignalR")
+Rel(owner, spa, "Opens increment page", "HTTPS")
+@enduml

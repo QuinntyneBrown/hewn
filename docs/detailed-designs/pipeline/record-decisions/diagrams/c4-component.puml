@@ -1,0 +1,23 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Record agent decisions
+
+Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+Container_Boundary(worker_b, "Worker") {
+  Component(agent, "StageAgent", "Claude Agent SDK session", "Runs the stage's skill")
+  Component(icpt, "UserQuestionInterceptor", "SDK tool hook", "Catches questions meant for the user")
+  Component(decide, "DecisionAgent", "Claude Agent SDK session", "Answers from direction, brief and artifacts")
+  Component(rec, "DecisionRecorder", "Worker service", "Writes decisions.md and ADRs, commits")
+}
+System_Ext(claude, "Claude model API", "Anthropic models, called through the Claude Agent SDK")
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(agent, icpt, "Asks user question")
+Rel(icpt, decide, "Delegates")
+Rel(decide, claude, "Calls", "HTTPS")
+Rel(icpt, rec, "Records answer")
+Rel(rec, github, "Commits", "Git/HTTPS")
+Rel(rec, api, "DecisionRecorded", "HTTPS")
+Rel(icpt, agent, "Returns answer; stage continues")
+@enduml

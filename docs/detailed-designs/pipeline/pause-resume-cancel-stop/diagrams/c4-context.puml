@@ -1,0 +1,14 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Pause, resume, cancel and stop all
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+Person(viewer, "Viewer", "Watches every project read-only")
+System(hewn, "Hewn", "Software factory: carries a direction to merged code through a fixed pipeline")
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(owner, hewn, "Pauses, resumes, cancels and stops work in")
+Rel(viewer, hewn, "Sees state but no controls in")
+Rel(hewn, github, "Labels open pull requests hewn:cancelled in", "GitHub App")
+@enduml

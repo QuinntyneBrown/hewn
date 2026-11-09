@@ -1,0 +1,23 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Observability and health checks
+
+ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+ContainerQueue(backplane, "SignalR backplane", "<TO SUPPLY>", "Fans hub messages out across API instances")
+Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+Container_Boundary(api_b, "Hewn API") {
+  Component(log, "Structured logging", "Serilog", "JSON with correlation IDs")
+  Component(trace, "OpenTelemetry tracing", "OTel SDK", "Spans across API, queue, worker")
+  Component(metrics, "HewnMetrics", "OTel meter", "Stage, queue, worker, event, tokens, spend")
+  Component(health, "Health checks", "ASP.NET Core health checks", "/health/live, /health/ready")
+}
+System_Ext(telemetry, "Telemetry backend", "Receives OpenTelemetry traces and metrics; product <TO SUPPLY>")
+
+Rel(log, telemetry, "Exports", "OTLP")
+Rel(trace, telemetry, "Exports", "OTLP")
+Rel(metrics, telemetry, "Scraped", "HTTP")
+Rel(health, db, "Ping", "SQL")
+Rel(health, backplane, "Ping")
+Rel(trace, worker, "Context on lease", "HTTPS")
+@enduml

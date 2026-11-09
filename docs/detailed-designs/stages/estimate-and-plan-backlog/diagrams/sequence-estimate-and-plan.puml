@@ -1,0 +1,46 @@
+@startuml
+title UML sequence behaviour — Estimate, descope and plan the backlog
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker stage execution" #ECFDF3
+  participant "EstimateStageExecutor" as exec
+  participant "StageAgent" as agent
+  participant "Descoper" as desc
+  participant "BacklogPlanner" as plan
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "RunsController" as ctrl
+end box
+box "External systems" #F2F4F7
+  participant "Target repository (via write broker)" as gh
+end box
+exec -> agent : Run estimating-designs over docs/detailed-designs/
+agent --> exec : Ideal days per design (L2-018 AC1)
+exec -> desc : Apply(estimates, journeys, brief)
+loop each design over threshold
+  desc -> agent : Try to split into designs <= threshold
+  alt split fails
+    desc -> desc : Defer: "Estimated n days; could not be split below threshold" (L2-019 AC1)
+  end
+end
+desc -> desc : Defer off-main-path and out-of-scope designs (L2-019 AC2)
+desc --> exec : Active and Deferred
+exec -> exec : Write docs/estimates/README.md with Deferred and reasons; annotate L2.md (L2-019 AC3)
+exec -> plan : Plan(active, journeys)
+plan --> exec : Increments in journey order, dependencies first (L2-020 AC1)
+exec -> gh : Commit docs/estimates/ and docs/specs/L2.md
+exec -> ctrl : RunSucceeded(commit, backlog)
+@enduml

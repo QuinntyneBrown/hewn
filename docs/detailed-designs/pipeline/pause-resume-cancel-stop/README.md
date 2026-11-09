@@ -1,0 +1,78 @@
+# Pause, resume, cancel and stop all
+
+## Overview
+
+Hewn runs without approval steps, so humans need safety controls. An Owner can pause a running direction, resume a paused one, cancel a running or paused one, and stop every worker at once. These are safety controls only; they never gate progress (L1-015).
+
+*Pause* lets the current step finish, checkpoints it, and starts nothing new until Resume. *Resume* continues from the next step. *Cancel* stops the active run within 10 seconds, marks the direction Cancelled, and leaves open pull requests open with the label `hewn:cancelled`. *Stop all workers* makes every worker halt its active run within 10 seconds and lease nothing new until the Owner presses Start workers; each halted run resumes from its last checkpoint afterwards. Viewers never see these controls, and the API refuses them with 403.
+
+Terms used in this design:
+
+- **step** — smallest checkpointed unit of work inside a run
+- **checkpoint** — end of the last completed step, committed to the branch (L2-050)
+- **leasing switch** — global flag that allows or forbids workers to lease new runs
+
+## Description
+
+The slice adds control commands to the API and control messages to the worker connection.
+
+- **`DirectionControlsComponent`** — Angular header controls on the project page: Pause or Resume, and Cancel (opens `CancelDirectionDialog`). Rendered only for Owners; a Blocked direction shows Retry stage instead of Resume.
+- **`StopWorkersDialog`** — confirmation listing online workers and what each is running; offers Stop all workers, then the sidebar shows Start workers.
+- **`DirectionControlsController`** — `POST /api/directions/{id}/pause|resume|cancel`, Owner policy.
+- **`WorkersControlController`** — `POST /api/workers/stop-all` and `POST /api/workers/start`, Owner policy. Both write audit entries (L2-044).
+- **`WorkerControlChannel`** — server side of the worker's outbound SignalR connection. It sends `PauseAfterStep`, `CancelRun` and `HaltRun` messages and tracks acknowledgements with a 10-second deadline.
+- **`RunSupervisor (worker)`** — receives control messages. `PauseAfterStep` sets a flag checked between steps; `CancelRun` and `HaltRun` cancel the agent's cancellation token and kill the run container if it has not stopped within 10 seconds.
+- **`PullRequestLabeler`** — on cancel, adds `hewn:cancelled` to each open pull request of the direction through the GitHub App.
+- **`LeasingSwitch`** — persisted flag consulted by `RunQueue` before every lease.
+
+## Requirements
+
+The feature realizes the following level-2 (L2) requirements. Each L2 requirement refines the level-1 (L1) requirement cited beside it. The text is copied from `docs/specs/L2.md`.
+
+| L2 ID | Refines (L1) | Requirement |
+|-------|--------------|-------------|
+| `L2-029` | `L1-015` | **Pause, resume, cancel and stop all.**<br>1. Given a running direction, when the Owner presses Pause, then the current step finishes, the direction becomes Paused, and nothing new starts until Resume.<br>2. Given a paused direction, when the Owner presses Resume, then work continues from the next step.<br>3. Given a running or paused direction, when the Owner presses Cancel and confirms, then the active run stops within 10 seconds, the direction is Cancelled, and open PRs are left open and labelled `hewn:cancelled`.<br>4. Given the Owner presses Stop all workers and confirms, when the command is sent, then every worker halts its active run within 10 seconds and leases no new work until the Owner presses Start workers.<br>5. Given a Viewer, when they try any of these actions, then the controls are hidden and the API returns 403. |
+
+## Diagrams
+
+### System context
+
+Owners use the controls; Viewers see state only. Cancel touches GitHub only to label open pull requests.
+
+![C4 system context for pausing, resuming, cancelling and stopping work](diagrams/c4-context.png)
+
+### Containers
+
+Control commands enter the Hewn API and travel to workers over the worker's existing outbound SignalR connection, so no inbound port is needed on a Local worker (L2-027 AC3).
+
+![C4 container view for pausing, resuming, cancelling and stopping work](diagrams/c4-container.png)
+
+### Components
+
+Both controllers send typed control messages through one channel that enforces the 10-second acknowledgement deadline.
+
+![C4 component view for pausing, resuming, cancelling and stopping work](diagrams/c4-component.png)
+
+### Class structure
+
+`ControlMessage` has three subtypes. The worker's `RunSupervisor` maps them to a between-steps flag or to cancellation of the running agent.
+
+![Class diagram for pausing, resuming, cancelling and stopping work](diagrams/class-structure.png)
+
+### Behaviour — pause and resume
+
+Pause waits for the current step to finish and checkpoint (L2-029 AC1); Resume continues from the next step (AC2).
+
+![Sequence diagram: pause and resume](diagrams/sequence-pause-resume.png)
+
+### Behaviour — cancel a direction
+
+The run stops within 10 seconds, the direction is Cancelled, and open pull requests stay open with `hewn:cancelled` (L2-029 AC3).
+
+![Sequence diagram: cancel a direction](diagrams/sequence-cancel.png)
+
+### Behaviour — stop and start all workers
+
+Every worker halts its active run within 10 seconds and leases nothing until Start workers (L2-029 AC4).
+
+![Sequence diagram: stop and start all workers](diagrams/sequence-stop-all.png)

@@ -1,0 +1,49 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Retry a failed stage
+
+class RetryPolicy {
+  +int MaxRetries = 3
+  +TimeSpan[] Backoff = [30 s, 2 min, 10 min]
+  +NextDelay(attempt: int): TimeSpan?
+}
+class RunFailed {
+  +RunId RunId
+  +int Attempt
+  +string Reason
+}
+class RunFailureHandler {
+  +Handle(e: RunFailed): Task
+}
+class Run {
+  +RunId Id
+  +int Stage
+  +int Attempt
+  +DateTimeOffset NotBefore
+  +RunStatus Status
+}
+class StageBlocked {
+  +ProjectId ProjectId
+  +DirectionId DirectionId
+  +int Stage
+  +string Reason
+  +string[] LastLogLines
+}
+class RetryStageCommand {
+  +DirectionId DirectionId
+}
+RunFailureHandler ..> RunFailed : handles
+RunFailureHandler ..> RetryPolicy : uses
+RunFailureHandler --> Run : schedules
+RunFailureHandler ..> StageBlocked : publishes
+RetryStageCommand ..> Run : creates attempt 1
+@enduml

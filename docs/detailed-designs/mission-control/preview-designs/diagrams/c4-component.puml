@@ -1,0 +1,20 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Preview designs and the design system
+
+Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+Container(preview, "Mock preview host", "Static file host on a separate origin", "Serves exported mocks and design-system pages")
+Container_Boundary(spa_b, "Mission Control") {
+  Component(designs, "DesignsPage", "Angular route component", "Screens and states with thumbnails and MP links")
+  Component(ds, "DesignSystemPage", "Angular route component", "Token and component pages")
+  Component(prev, "SandboxedPreview", "Angular component", "Iframe, width and theme controls")
+}
+
+Rel(designs, prev, "Uses")
+Rel(ds, prev, "Uses")
+Rel(designs, api, "GET manifest", "JSON/HTTPS")
+Rel(ds, api, "GET design-system pages", "JSON/HTTPS")
+Rel(prev, api, "GET signed URL", "JSON/HTTPS")
+Rel(prev, preview, "iframe src", "HTTPS")
+@enduml

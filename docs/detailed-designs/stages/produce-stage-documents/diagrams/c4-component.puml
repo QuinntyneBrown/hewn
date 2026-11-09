@@ -1,0 +1,25 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Produce and validate stage documents
+
+Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+Container_Boundary(worker_b, "Worker") {
+  Component(exec, "DocumentStageExecutor", "Stage executor", "Skill, then validate, then commit")
+  Component(def, "StageDefinition", "Configuration", "Skill, outputs and validator per stage")
+  Component(agent, "StageAgent", "Claude Agent SDK session", "Writes the documents")
+  Component(val, "IStageValidator", "Validator set", "Brief, stack, requirements, design coverage, journeys")
+  Component(ids, "IdAllocator", "Worker service", "Keeps existing IDs; allocates next free")
+}
+System_Ext(claude, "Claude model API", "Anthropic models, called through the Claude Agent SDK")
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(api, exec, "Leases run", "HTTPS")
+Rel(exec, def, "Reads")
+Rel(exec, agent, "Runs")
+Rel(agent, claude, "Calls", "HTTPS")
+Rel(agent, ids, "Gets IDs from")
+Rel(exec, val, "Validates with")
+Rel(exec, github, "Commits", "Git/HTTPS")
+Rel(exec, api, "Reports result", "HTTPS")
+@enduml

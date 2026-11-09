@@ -1,0 +1,49 @@
+@startuml
+title UML sequence behaviour — Design, export and validate the screens
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker stage execution" #ECFDF3
+  participant "DesignStageExecutor" as exec
+  participant "StageAgent" as agent
+  participant "MockExporter" as export
+  participant "MockExportValidator" as val
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "RunsController" as ctrl
+end box
+box "External systems" #F2F4F7
+  participant "Magic Patterns MCP" as mp
+  participant "Target repository (via write broker)" as gh
+end box
+exec -> mp : Connect with stored credential
+alt unreachable or credential rejected
+  exec -> ctrl : RunFailed("Magic Patterns unavailable: {reason}") (L2-010 AC5)
+else connected
+  exec -> agent : Run writing-html-mocks with brief and screen inventory
+  agent -> mp : Create and edit screens and states (L2-010 AC1, AC6)
+  agent --> exec : Designs cover every core feature (L2-010 AC2)
+  exec -> export : ExportAsync(designs)
+  export -> mp : Export HTML per screen and state
+  export --> exec : docs/mocks/ files and manifest with URLs (L2-010 AC2, AC3)
+  exec -> val : Parse, render at 375/768/1280, check states (L2-010 AC4)
+  alt failure
+    exec -> ctrl : RunFailed(report)
+  else ok
+    exec -> gh : Commit docs/mocks/
+    exec -> ctrl : RunSucceeded(commit SHA)
+  end
+end
+@enduml

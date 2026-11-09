@@ -1,0 +1,50 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Artifacts and traceability
+
+class Artifact {
+  +ProjectId ProjectId
+  +int Stage
+  +string Path
+  +string Sha
+  +DateTimeOffset At
+  +Uri GitHubUrl
+}
+class TraceLink {
+  +string L2Id
+  +TraceKind Kind
+  +string Target
+}
+enum TraceKind {
+  L1
+  Design
+  Journey
+  Test
+  PullRequest
+}
+class Requirement {
+  +string L2Id
+  +string Title
+  +bool Deferred
+  +bool NoAcceptanceTest
+}
+class TraceIndexer {
+  +RebuildAsync(p: ProjectId, sha: string): Task
+}
+class ArtifactRecorder {
+  +On(e: RunSucceeded): Task
+}
+ArtifactRecorder ..> Artifact : records
+TraceIndexer ..> TraceLink : rebuilds
+TraceLink --> TraceKind
+Requirement "1" o-- "*" TraceLink
+@enduml

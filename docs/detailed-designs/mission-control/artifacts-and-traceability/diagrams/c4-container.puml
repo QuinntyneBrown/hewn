@@ -1,0 +1,21 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Artifacts and traceability
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+Person(viewer, "Viewer", "Watches every project read-only")
+System_Boundary(hewn, "Hewn") {
+  Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+  Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(worker, api, "RunSucceeded with commit SHA", "HTTPS (outbound)")
+Rel(api, github, "Reads files at SHA for indexing", "HTTPS")
+Rel(api, db, "Stores artifacts and trace links", "SQL")
+Rel(spa, api, "GET artifacts, trace", "JSON/HTTPS")
+Rel(owner, spa, "Opens Artifacts or Traceability", "HTTPS")
+@enduml

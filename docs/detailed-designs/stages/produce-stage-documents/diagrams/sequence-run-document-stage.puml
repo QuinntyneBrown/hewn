@@ -1,0 +1,44 @@
+@startuml
+title UML sequence behaviour — Run a document stage
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker stage execution" #ECFDF3
+  participant "DocumentStageExecutor" as exec
+  participant "StageAgent" as agent
+  participant "RequirementsValidator" as val
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "RunsController" as ctrl
+end box
+box "External systems" #F2F4F7
+  participant "Claude model API" as claude
+  participant "Target repository (via write broker)" as gh
+end box
+exec -> agent : Run engineering-requirements with brief, mocks and stack
+agent -> claude : Model calls (questions answered per L2-054)
+agent --> exec : docs/specs/L1.md, docs/specs/L2.md (L2-014 AC1)
+exec -> val : ValidateAsync(workspace)
+val -> val : Trace L2->L1, L1 has L2, Given/When/Then, unique IDs (L2-014 AC2)
+val -> val : No should/may/might outside quotes (L2-014 AC3)
+alt rule broken
+  val --> exec : Ok=false, offending IDs
+  exec -> ctrl : RunFailed(message + IDs)
+else ok
+  val --> exec : Ok
+  exec -> gh : Commit and push
+  exec -> ctrl : RunSucceeded(commit SHA)
+end
+@enduml

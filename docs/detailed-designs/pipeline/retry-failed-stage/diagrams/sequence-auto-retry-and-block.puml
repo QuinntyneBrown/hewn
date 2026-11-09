@@ -1,0 +1,47 @@
+@startuml
+title UML sequence behaviour — Retry automatically, then block
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker application" #D1FADF
+  participant "WorkerHost" as worker
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "MissionControlHub" as hub
+end box
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "RunFailureHandler" as fail
+  participant "RetryPolicy" as policy
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+box "Frontend — Mission Control application" #E0F2FE
+  participant "StageDetail" as detail
+end box
+worker -> fail : RunFailed(attempt k, reason)
+fail -> policy : NextDelay(k)
+alt k <= 3
+  policy --> fail : 30 s | 2 min | 10 min (L2-006 AC1)
+  fail -> db : Insert attempt k+1 with NotBefore = now + delay
+else k = 4 (third retry failed)
+  policy --> fail : none
+  fail -> db : Stage Failed; direction Blocked (L2-006 AC2)
+  fail -> db : Read last 200 redacted log lines
+  fail -> hub : Publish StageBlocked(reason, lines)
+  hub -> detail : Show failure callout and log
+  note over worker : Other projects' runs continue
+end
+@enduml

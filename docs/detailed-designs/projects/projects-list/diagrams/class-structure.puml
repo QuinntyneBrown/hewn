@@ -1,0 +1,53 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Projects list
+
+class ProjectSummaryDto {
+  +ProjectId Id
+  +string Name
+  +string Idea
+  +int Stage
+  +ProjectStatus Status
+  +int PercentComplete
+  +decimal SpendUsd
+  +DateTimeOffset LastActivityAt
+  +string? Note
+}
+class ProjectsQuery {
+  +ProjectStatus? Status
+  +bool Archived
+}
+class ProjectSummaryQuery {
+  +Handle(q: ProjectsQuery, user: UserId): Task<ProjectSummaryDto[]>
+}
+class ProjectSummaryProjector {
+  +On(e: StageStatusChanged): Task
+  +On(e: SpendUpdated): Task
+  +On(e: DirectionStatusChanged): Task
+}
+class ProjectsStore <<Angular>> {
+  +rows: Signal<ProjectSummaryDto[]>
+  +filter: Signal<ProjectStatus | 'All' | 'Archived'>
+  +load(filter): void
+  +apply(e: ProjectChanged): void
+}
+class ProjectChanged {
+  +ProjectId ProjectId
+  +long Sequence
+  +ProjectSummaryDto Summary
+}
+ProjectSummaryQuery ..> ProjectsQuery : handles
+ProjectSummaryQuery ..> ProjectSummaryDto : returns
+ProjectSummaryProjector ..> ProjectChanged : publishes
+ProjectsStore "1" o-- "*" ProjectSummaryDto
+ProjectsStore ..> ProjectChanged : applies
+@enduml

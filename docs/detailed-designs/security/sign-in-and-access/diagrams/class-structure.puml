@@ -1,0 +1,49 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Sign-in and access control
+
+enum Role {
+  Owner
+  Viewer
+}
+class AllowListEntry {
+  +string GitHubLogin
+  +Role Role
+  +UserId AddedBy
+  +DateTimeOffset AddedAt
+}
+class AllowListSignInValidator {
+  +OnTicketReceived(ctx): Task
+}
+class SessionOptions {
+  +HttpOnly = true
+  +Secure = true
+  +SameSite = Lax
+  +AbsoluteExpiry = 8 h
+}
+class OwnerPolicy {
+  +Requirement: Role == Owner
+}
+class ProjectAccessFilter {
+  +OnActionExecutionAsync(ctx, next): Task
+  +CanJoin(user, p: ProjectId): bool
+}
+class AllowListController {
+  +Get(): AllowListEntry[]
+  +Add(login: string, role: Role): IActionResult
+  +Remove(login: string): IActionResult
+}
+AllowListEntry --> Role
+AllowListSignInValidator ..> AllowListEntry
+AllowListController ..> AllowListEntry
+AllowListController ..> OwnerPolicy : Add/Remove
+@enduml

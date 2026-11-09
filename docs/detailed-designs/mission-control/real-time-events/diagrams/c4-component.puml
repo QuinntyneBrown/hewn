@@ -1,0 +1,24 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Real-time events and reconnection
+
+Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+ContainerQueue(backplane, "SignalR backplane", "<TO SUPPLY>", "Fans hub messages out across API instances")
+Container_Boundary(api_b, "Hewn API") {
+  Component(store, "EventStore", "Repository", "Append with next sequence; outbox columns")
+  Component(disp, "OutboxDispatcher", "Background service", "Claims unpublished rows, publishes, marks published")
+  Component(hub, "MissionControlHub", "SignalR hub", "Project groups with access check")
+  Component(ctrl, "EventsController", "ASP.NET Core controller", "Events after a sequence")
+}
+
+Rel(store, db, "Inserts in the change's transaction", "SQL")
+Rel(store, disp, "CommitNudge after commit")
+Rel(disp, db, "Claim batch; set published_at", "SQL")
+Rel(disp, backplane, "Publishes")
+Rel(backplane, hub, "Delivers")
+Rel(hub, spa, "Pushes", "SignalR")
+Rel(spa, ctrl, "GET events?after=", "JSON/HTTPS")
+Rel(ctrl, store, "Reads")
+@enduml

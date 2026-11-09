@@ -1,0 +1,37 @@
+@startuml
+title UML sequence behaviour — Follow and pause the live log
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Owner or Viewer" as user
+box "Frontend — Mission Control application" #E0F2FE
+  participant "LiveLogComponent" as log
+  participant "LiveEventsService" as live
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "MissionControlHub" as hub
+end box
+hub -> live : LogLine
+live -> log : append(line)
+alt following
+  log -> log : Scroll to newest (L2-033 AC1)
+else user scrolled up
+  log -> log : Keep position; pendingCount += 1
+  log --> user : "12 new lines — Jump to latest" (L2-033 AC2)
+end
+user -> log : Jump to latest
+log -> log : following = true; scroll to end
+note over log : Virtual scroller renders <= 500 rows for logs over 5,000 lines (L2-033 AC3)
+@enduml

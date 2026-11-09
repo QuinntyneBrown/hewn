@@ -1,0 +1,51 @@
+@startuml
+title UML sequence behaviour — Advance a direction to the next stage
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker application" #D1FADF
+  participant "WorkerHost" as worker
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "RunsController" as ctrl
+end box
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "PipelineOrchestrator" as orch
+  participant "StagePlan" as plan
+  participant "Direction" as dir
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+worker -> ctrl : POST /api/runs/{id}/succeeded (artifact SHA)
+ctrl -> orch : RunSucceeded(run)
+orch -> db : Load direction (idempotent by run id)
+orch -> dir : Mark stage n Succeeded with duration
+orch -> plan : For(direction, hasUiChange)
+plan --> orch : Remaining ordered stages
+loop each stage before the next runnable one
+  orch -> dir : Skip(stage) -> Skipped (L2-005 AC1, AC2)
+end
+alt stage 10 merged its last non-deferred increment
+  orch -> dir : Complete(); project becomes Idle (L2-004 AC3)
+  orch -> orch : Raise DirectionEnded
+else next stage exists
+  orch -> dir : Advance(next) only if predecessor Succeeded (L2-004 AC1)
+  dir --> orch : Run(next, attempt 1)
+  orch -> db : Insert run into RunQueue; commit
+end
+orch --> ctrl : Done
+ctrl --> worker : 204
+@enduml

@@ -1,0 +1,46 @@
+@startuml
+title UML sequence behaviour — Create the repository and protect it
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "PipelineOrchestrator" as orch
+  participant "RepositoryProvisioner" as prov
+  participant "RepositoryTokenBroker" as tokens
+  participant "BranchProtectionConfigurer" as bp
+end box
+box "External systems" #F2F4F7
+  participant "GitHub" as gh
+end box
+orch -> prov : EnsureAsync(project) before stage 0
+alt project has no repository
+  prov -> prov : "Kiln Scheduler" -> kiln-scheduler
+  prov -> gh : Look up {owner}/kiln-scheduler
+  alt absent
+    prov -> gh : Create private repo (L2-036 AC1)
+  else empty repo with topic hewn (earlier attempt crashed before recording)
+    prov -> prov : Adopt
+  else anything else
+    prov -> orch : Fail run with GitHub's message
+  end
+  prov -> prov : Record repository on the project
+end
+prov -> tokens : GetTokenAsync(project)
+tokens -> gh : Installation token, repositories=[kiln-scheduler] (L2-036 AC3)
+gh --> tokens : Token (1 h), cached inside the API
+== stage 6 succeeded ==
+orch -> bp : RequireAsync(project, checks)
+bp -> gh : Require CI checks on default branch (L2-036 AC2)
+@enduml

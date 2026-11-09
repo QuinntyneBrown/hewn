@@ -1,0 +1,22 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Spend and budgets
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+Person(viewer, "Viewer", "Watches every project read-only")
+System_Boundary(hewn, "Hewn") {
+  Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+  Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+}
+System_Ext(claude, "Claude model API", "Anthropic models, called through the Claude Agent SDK")
+
+Rel(worker, claude, "Model calls", "HTTPS")
+Rel(worker, api, "ModelCallRecorded; receives budget verdict", "HTTPS (outbound)")
+Rel(api, db, "Spend ledger and budgets", "SQL")
+Rel(api, spa, "SpendUpdated, BudgetWarning", "SignalR")
+Rel(owner, spa, "Raise and resume", "HTTPS")
+Rel(spa, api, "POST raise-and-resume", "JSON/HTTPS")
+@enduml

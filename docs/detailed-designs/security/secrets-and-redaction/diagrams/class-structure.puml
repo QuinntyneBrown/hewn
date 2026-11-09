@@ -1,0 +1,36 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Secrets and redaction
+
+interface ISecretStore {
+  +GetAsync(name: string): Task<string>
+  +SetAsync(name: string, value: string): Task
+}
+class KeyVaultSecretStore
+class OsKeyStoreSecretStore
+class SecretRef {
+  +string Name
+  +DateTimeOffset UpdatedAt
+}
+class Redactor {
+  -knownValues: HashSet<string>
+  -patterns: Regex[]
+  +Redact(text: string): string
+  +Refresh(): Task
+}
+class WorkspaceCredentialScrubber <<worker>> {
+  +ScrubAsync(ws: Workspace): Task
+}
+ISecretStore <|.. KeyVaultSecretStore
+ISecretStore <|.. OsKeyStoreSecretStore
+Redactor ..> ISecretStore : loads values
+@enduml

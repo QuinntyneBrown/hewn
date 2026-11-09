@@ -1,0 +1,24 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Archive and delete a project
+
+Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+Container_Boundary(api_b, "Hewn API") {
+  Component(ctrl, "ProjectsController", "ASP.NET Core controller", "Archive, restore, delete endpoints")
+  Component(arch, "ArchiveProjectHandler", "Command handler", "Archive and restore")
+  Component(del, "DeleteProjectHandler", "Command handler", "Guards, checks typed name, enqueues purge")
+  Component(guard, "Project", "Domain aggregate", "EnsureNoActiveDirection guard")
+  Component(purge, "PurgeProjectJob", "Background job", "Removes Hewn records, logs and artifacts")
+}
+
+Rel(spa, ctrl, "Calls", "JSON/HTTPS")
+Rel(ctrl, arch, "Dispatches")
+Rel(ctrl, del, "Dispatches")
+Rel(arch, guard, "Checks")
+Rel(del, guard, "Checks")
+Rel(del, purge, "Enqueues")
+Rel(arch, db, "Saves", "SQL")
+Rel(purge, db, "Deletes project data", "SQL")
+@enduml

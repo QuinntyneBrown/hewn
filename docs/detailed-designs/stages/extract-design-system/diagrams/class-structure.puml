@@ -1,0 +1,41 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Extract the design system
+
+class DesignSystemStageExecutor <<worker>> {
+  +ExecuteAsync(ctx: StageContext): Task<StageResult>
+}
+class TokenCoverageValidator {
+  +ValidateAsync(mocks: string, tokens: string): Task<ValidationReport>
+}
+class DesignSystemOutputValidator {
+  +string[] RequiredGroups = [colour-light, colour-dark, typography, spacing, radius, elevation, motion]
+  +ValidateAsync(root: string): Task<ValidationReport>
+}
+class MagicPatternsTokenComparer {
+  +CompareAsync(tokens: TokenSet): Task<TokenMismatch[]>
+}
+class TokenMismatch {
+  +string Token
+  +string Extracted
+  +string MagicPatterns
+}
+class TokenSet {
+  +Map<string,string> Light
+  +Map<string,string> Dark
+}
+DesignSystemStageExecutor ..> TokenCoverageValidator
+DesignSystemStageExecutor ..> DesignSystemOutputValidator
+DesignSystemStageExecutor ..> MagicPatternsTokenComparer
+MagicPatternsTokenComparer ..> TokenMismatch
+TokenCoverageValidator ..> TokenSet
+@enduml

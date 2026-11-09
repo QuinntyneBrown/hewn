@@ -1,0 +1,39 @@
+@startuml
+title UML sequence behaviour — Write and read audit entries
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Owner" as owner
+box "Frontend — Mission Control application" #E0F2FE
+  participant "AuditPage" as page
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "DirectionControlsController" as dc
+  participant "AuditController" as ctrl
+end box
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "AuditWriter" as writer
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+owner -> dc : POST /api/directions/{id}/pause
+dc -> writer : WriteAsync(Pause, quinn, ledgerline, "Paused direction 3")
+writer -> db : INSERT with time and IP in same transaction (L2-044 AC1)
+owner -> page : Open Audit; filter Ledgerline, Pause
+page -> ctrl : GET /api/audit?project=ledgerline&action=Pause
+ctrl -> db : SELECT ... ORDER BY at DESC
+ctrl --> page : Entries newest first (L2-044 AC2)
+@enduml

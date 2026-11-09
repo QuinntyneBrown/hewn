@@ -1,0 +1,21 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Projects list
+
+Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+Container_Boundary(api_b, "Hewn API") {
+  Component(ctrl, "ProjectsController", "ASP.NET Core controller", "GET /api/projects")
+  Component(query, "ProjectSummaryQuery", "Query handler", "Filters and sorts summaries")
+  Component(proj, "ProjectSummaryProjector", "Event projector", "Keeps summaries current")
+  Component(hub, "MissionControlHub", "SignalR hub", "Pushes ProjectChanged to subscribers")
+}
+
+Rel(spa, ctrl, "Loads list", "JSON/HTTPS")
+Rel(ctrl, query, "Runs")
+Rel(query, db, "Reads project_summaries", "SQL")
+Rel(proj, db, "Updates project_summaries", "SQL")
+Rel(proj, hub, "Publishes ProjectChanged")
+Rel(hub, spa, "Pushes row update", "SignalR")
+@enduml

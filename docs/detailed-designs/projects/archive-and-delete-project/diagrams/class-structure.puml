@@ -1,0 +1,51 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Archive and delete a project
+
+class Project {
+  +ProjectId Id
+  +string Name
+  +bool Archived
+  +ProjectLifecycle Lifecycle
+  +EnsureNoActiveDirection(): void
+  +Archive(): void
+  +Restore(): void
+  +MarkDeleting(): void
+}
+enum ProjectLifecycle {
+  Active
+  Deleting
+}
+class ActiveDirectionException {
+  +string Message = "Cancel the running direction first"
+}
+class DeleteProjectCommand {
+  +ProjectId ProjectId
+  +string ConfirmName
+}
+class DeleteProjectHandler {
+  +Handle(cmd: DeleteProjectCommand): Task<Result>
+}
+class ArchiveProjectHandler {
+  +Handle(cmd: ArchiveProjectCommand): Task<Result>
+}
+class PurgeProjectJob {
+  +ProjectId ProjectId
+  +RunAsync(): Task
+}
+DeleteProjectHandler ..> DeleteProjectCommand : handles
+DeleteProjectHandler --> Project : guards / marks
+DeleteProjectHandler ..> PurgeProjectJob : enqueues
+ArchiveProjectHandler --> Project : archives
+Project ..> ActiveDirectionException : throws
+Project --> ProjectLifecycle
+@enduml

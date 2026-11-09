@@ -1,0 +1,39 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Scaffold the solution
+
+class ScaffoldStageExecutor <<worker>> {
+  +ExecuteAsync(ctx: StageContext): Task<StageResult>
+}
+abstract class StackTemplate {
+  +string Id
+  +GenerateAsync(ws: Workspace): Task
+  +string[] RequiredChecks
+}
+class DotnetAngularTemplate {
+  +RequiredChecks = [backend, frontend, e2e]
+}
+class CiWorkflowWriter {
+  +Write(ws: Workspace, t: StackTemplate): void
+}
+class CheckWaiter {
+  +WaitAsync(pr: int, checks: string[]): Task<CheckOutcome>
+}
+class BranchProtectionConfigurer {
+  +RequireAsync(repo: string, checks: string[]): Task
+}
+StackTemplate <|-- DotnetAngularTemplate
+ScaffoldStageExecutor --> StackTemplate
+ScaffoldStageExecutor ..> CiWorkflowWriter
+ScaffoldStageExecutor ..> CheckWaiter
+ScaffoldStageExecutor ..> BranchProtectionConfigurer
+@enduml

@@ -1,0 +1,48 @@
+@startuml
+title UML sequence behaviour — Pass the request pipeline
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Owner" as owner
+box "Frontend — Mission Control application" #E0F2FE
+  participant "Mission Control" as spa
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "SecurityHeadersMiddleware" as hdr
+  participant "RateLimiter" as rate
+  participant "AntiforgeryValidation" as xsrf
+  participant "ValidationFilter" as val
+  participant "DirectionsController" as h
+end box
+owner -> spa : Submit a direction
+spa -> hdr : POST /api/directions
+hdr -> rate : Next (responses get CSP, nosniff, frame-ancestors 'self') (L2-043 AC2)
+alt 11th submission this minute
+  rate --> spa : 429 (L2-043 AC4)
+else within limit
+  rate -> xsrf : Next
+  alt missing or invalid X-XSRF-TOKEN
+    xsrf --> spa : 400 (L2-043 AC3)
+  else valid
+    xsrf -> val : Next
+    alt validation fails
+      val --> spa : 400 {errors: {text: ["Required"]}} - no change (L2-043 AC1)
+    else valid
+      val -> h : Handle
+      h --> spa : 201
+    end
+  end
+end
+@enduml

@@ -1,0 +1,25 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Spend and budgets
+
+Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+Container_Boundary(api_b, "Hewn API") {
+  Component(ledger, "SpendLedger", "Application service", "Records cost; running totals")
+  Component(price, "PriceTable", "Configuration", "Price per model")
+  Component(guard, "BudgetGuard", "Domain service", "Warn at 80%, pause at 100%")
+  Component(ctrl, "DirectionsController", "ASP.NET Core controller", "Raise and resume")
+  Component(hub, "MissionControlHub", "SignalR hub", "Pushes spend events")
+}
+
+Rel(worker, ledger, "ModelCallRecorded", "HTTPS")
+Rel(ledger, price, "Cost")
+Rel(ledger, guard, "Check")
+Rel(ledger, db, "Stores", "SQL")
+Rel(guard, hub, "BudgetWarning / Paused")
+Rel(ledger, hub, "SpendUpdated")
+Rel(hub, spa, "Pushes", "SignalR")
+Rel(spa, ctrl, "Raise and resume", "JSON/HTTPS")
+@enduml

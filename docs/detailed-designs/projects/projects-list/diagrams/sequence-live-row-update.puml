@@ -1,0 +1,37 @@
+@startuml
+title UML sequence behaviour — Update a projects row in place
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Frontend — Mission Control application" #E0F2FE
+  participant "ProjectsPage" as page
+  participant "ProjectsStore" as store
+  participant "LiveEventsService" as live
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "MissionControlHub" as hub
+end box
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "ProjectSummaryProjector" as proj
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+proj -> db : Update project_summaries for DirectionStatusChanged
+proj -> hub : Publish ProjectChanged(seq n) to project group
+hub -> live : ProjectChanged (p95 <= 1 s, L2-031 AC1)
+live -> store : apply(event) once by sequence (L2-032)
+store -> page : Re-render the one row in place (L2-002 AC4)
+@enduml

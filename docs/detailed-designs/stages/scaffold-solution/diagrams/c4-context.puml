@@ -1,0 +1,14 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Scaffold the solution
+
+System(hewn, "Hewn", "Software factory: carries a direction to merged code through a fixed pipeline")
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+System_Ext(registries, "Package registries", "NuGet, npm and the stack's other registries")
+System_Ext(claude, "Claude model API", "Anthropic models, called through the Claude Agent SDK")
+
+Rel(hewn, github, "Opens scaffold PR, reads checks, merges in", "GitHub App")
+Rel(hewn, registries, "Restores packages from", "HTTPS")
+Rel(hewn, claude, "Runs scaffold agent with", "Claude Agent SDK")
+@enduml

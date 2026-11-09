@@ -1,0 +1,54 @@
+@startuml
+title UML sequence behaviour — Contain a run
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker stage execution" #ECFDF3
+  participant "RunSandbox" as sandbox
+  participant "StageAgent" as agent
+  participant "ToolGate" as gate
+  participant "EgressProxy" as proxy
+end box
+box "Backend — Worker application" #D1FADF
+  participant "WorkerGitSidecar" as side
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "RunsController" as ctrl
+  participant "GitPushProxy" as gpp
+end box
+box "External systems" #F2F4F7
+  participant "GitHub" as gh
+end box
+sandbox -> sandbox : Create container; mount only this run's workspace (L2-042 AC1)
+sandbox -> agent : Start stage agent
+agent -> gate : Call tool "write_file docs/brief.md"
+gate --> agent : Allowed
+agent -> gate : Call tool not on stage allow list
+gate -> ctrl : SecurityEvent(ToolDenied) (L2-042 AC3)
+gate --> agent : Denied
+agent -> proxy : git push http://sidecar/git/{run} feature/x
+proxy -> side : Allowed host
+side -> gpp : Forward + worker token + epoch
+gpp -> gh : Fenced; refs/heads/feature/x only; installation token stays in the API
+agent -> proxy : git push http://sidecar/git/{run} main
+proxy -> side : Allowed host
+side -> gpp : Forward
+gpp --> agent : Rejected: ref not owned by this run (L2-042 AC4)
+agent -> proxy : GET https://github.com/... (direct)
+proxy -> ctrl : SecurityEvent(EgressBlocked) (L2-042 AC2)
+proxy --> agent : Blocked
+note over agent, gate : Instructions in read content find no tool for config, budgets, secrets, other projects or other branches (L2-042 AC4)
+sandbox -> sandbox : On run end: scrub agent-written credentials; destroy container
+@enduml

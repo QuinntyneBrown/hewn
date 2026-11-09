@@ -1,0 +1,46 @@
+@startuml
+title UML sequence behaviour — Iterate to green or block
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker stage execution" #ECFDF3
+  participant "ImplementStep" as impl
+  participant "TestGate" as gate
+  participant "IncrementBlocker" as block
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "IncrementsController" as ctrl
+  participant "BacklogCursor" as cursor
+end box
+box "External systems" #F2F4F7
+  participant "Target repository (via write broker)" as gh
+end box
+loop iteration i = 1..10
+  impl -> impl : Agent changes code using last failures
+  impl -> gh : Commit iteration i
+  impl -> ctrl : IterationProgress(i of 10)
+  impl -> gate : Backend, frontend lint + unit, acceptance, full e2e (L2-022 AC1)
+  gate --> impl : GateResult
+  break all green
+    impl -> impl : Checkpoint "green"; continue to Video
+  end
+end
+opt iteration 10 not green
+  impl -> block : BlockAsync(failing tests)
+  block -> ctrl : IncrementBlocked(failing tests) (L2-022 AC2)
+  block -> cursor : NextRunnable(direction)
+  cursor --> block : Increment 8 (no dependency on 7)
+end
+@enduml

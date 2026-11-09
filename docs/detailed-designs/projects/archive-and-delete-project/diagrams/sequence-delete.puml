@@ -1,0 +1,56 @@
+@startuml
+title UML sequence behaviour — Delete a project
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Owner" as owner
+box "Frontend — Mission Control application" #E0F2FE
+  participant "ProjectsPage" as page
+  participant "DeleteProjectDialog" as dlg
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "ProjectsController" as ctrl
+end box
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "DeleteProjectHandler" as del
+  participant "Project" as proj
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  participant "PurgeProjectJob" as purge
+  database "Hewn database" as db
+end box
+owner -> page : Press Delete on a project row
+page -> dlg : Open; state that the GitHub repository is kept (L2-003 AC3)
+owner -> dlg : Type the project name; press Delete project
+dlg -> ctrl : DELETE /api/projects/{id} { confirmName }
+ctrl -> del : DeleteProjectCommand
+del -> db : Load project with directions
+del -> proj : EnsureNoActiveDirection()
+alt active direction
+  proj --> del : ActiveDirectionException
+  del --> ctrl : 409 "Cancel the running direction first" (L2-003 AC2)
+  ctrl --> dlg : Show refusal
+else confirmName differs
+  del --> ctrl : 400 field error
+  ctrl --> dlg : Invalid state: type the name exactly
+else allowed
+  del -> proj : MarkDeleting()
+  del -> db : Save; enqueue PurgeProjectJob
+  del --> ctrl : 202 Accepted
+  ctrl --> dlg : Close; row leaves the list
+  purge -> db : Delete directions, runs, events, logs, spend, stored artifacts
+  note right of purge : No GitHub call; the repository is kept
+end
+@enduml

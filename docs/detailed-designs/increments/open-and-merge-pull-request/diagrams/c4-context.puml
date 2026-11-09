@@ -1,0 +1,15 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Open and merge the pull request
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+Person(viewer, "Viewer", "Watches every project read-only")
+System(hewn, "Hewn", "Software factory: carries a direction to merged code through a fixed pipeline")
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(owner, hewn, "Watches PRs and checks in")
+Rel(viewer, hewn, "Watches PRs and checks in")
+Rel(hewn, github, "Opens, rebases and squash-merges PRs in", "GitHub App")
+Rel(github, hewn, "Sends signed check webhooks to", "HTTPS")
+@enduml

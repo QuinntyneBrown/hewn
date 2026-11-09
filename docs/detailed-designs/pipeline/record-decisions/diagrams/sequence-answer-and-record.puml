@@ -1,0 +1,45 @@
+@startuml
+title UML sequence behaviour — Answer and record a skill question
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker stage execution" #ECFDF3
+  participant "StageAgent" as agent
+  participant "UserQuestionInterceptor" as icpt
+  participant "DecisionAgent" as decide
+  participant "DecisionRecorder" as rec
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "RunsController" as ctrl
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+box "External systems" #F2F4F7
+  participant "GitHub (via write broker)" as gh
+end box
+agent -> icpt : Ask user: "Who approves a reconciled period?"
+icpt -> decide : AnswerAsync(question, direction, brief, artifacts)
+decide --> icpt : Answer, rationale, architectural=false
+icpt -> rec : RecordAsync(draft)
+rec -> rec : Append date, stage, question, answer, rationale to docs/decisions.md (L2-054 AC2)
+opt architectural
+  rec -> rec : Write docs/adr/NNNN-title.md
+end
+rec -> gh : Commit and push
+rec -> ctrl : DecisionRecorded(commit SHA)
+ctrl -> db : Insert into DecisionIndex
+icpt --> agent : Answer; no wait (L2-054 AC1)
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Worker tokens
+
+Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+Container_Boundary(api_b, "Hewn API") {
+  Component(ctrl, "WorkerTokensController", "ASP.NET Core controller", "Create, revoke")
+  Component(svc, "WorkerTokenService", "Application service", "Generate, hash, expire")
+  Component(auth, "WorkerTokenAuthHandler", "Auth handler", "Hash and verify bearer token")
+  Component(disc, "WorkerDisconnector", "Application service", "Abort connections, release leases")
+}
+
+Rel(spa, ctrl, "Calls", "JSON/HTTPS")
+Rel(ctrl, svc, "Uses")
+Rel(svc, db, "Hashes", "SQL")
+Rel(worker, auth, "Bearer token", "SignalR")
+Rel(auth, db, "Lookup by hash", "SQL")
+Rel(ctrl, disc, "On revoke")
+Rel(disc, worker, "Abort connection", "SignalR")
+@enduml

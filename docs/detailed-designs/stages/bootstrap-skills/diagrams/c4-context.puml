@@ -1,0 +1,14 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Bootstrap and update skills
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+System(hewn, "Hewn", "Software factory: carries a direction to merged code through a fixed pipeline")
+System_Ext(greenlit, "Greenlit repository", "github.com/QuinntyneBrown/greenlit, the skill source")
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(owner, hewn, "Updates a project's skills in")
+Rel(hewn, greenlit, "Copies skills from", "Git/HTTPS")
+Rel(hewn, github, "Commits skills and opens update PRs in", "GitHub App")
+@enduml

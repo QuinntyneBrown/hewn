@@ -1,0 +1,20 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Submit a product direction
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+Person(viewer, "Viewer", "Watches every project read-only")
+System_Boundary(hewn, "Hewn") {
+  Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(owner, spa, "Submits a product direction in", "HTTPS")
+Rel(viewer, spa, "Is refused the form in", "HTTPS")
+Rel(spa, api, "POST /api/projects", "JSON/HTTPS")
+Rel(api, db, "Creates project and direction", "SQL")
+Rel(api, github, "Probes repository write access", "GitHub App, HTTPS")
+@enduml

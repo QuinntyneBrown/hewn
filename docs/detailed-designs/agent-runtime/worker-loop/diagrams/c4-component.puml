@@ -1,0 +1,33 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Worker loop, packaging and recovery
+
+Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+Container_Boundary(api_b, "Hewn API") {
+  Component(reg, "WorkerRegistry", "Application service", "Registration and status")
+  Component(lease, "LeaseService", "Application service", "Atomic grant with epoch under the run write lock; renew; expire at 60 s")
+  Component(fence, "LeaseFence", "Action filter", "Rejects stale epochs with 409 LeaseLost")
+  Component(lock, "RunWriteLock", "Domain service", "Per-run lock shared by writes and reassignment")
+  Component(broker, "GitHubWriteBroker", "Application service", "Only holder of GitHub write credentials; fenced git proxy and mutations")
+  Component(reaper, "LeaseReaper", "Background service", "Expiry sweep every 10 s and at start-up")
+  Component(hub, "WorkerHub", "SignalR hub", "Worker connection: pushes, heartbeats, reports")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(worker, hub, "Connects out", "SignalR")
+Rel(worker, broker, "git push via sidecar; PR mutations", "HTTPS")
+Rel(hub, reg, "Register")
+Rel(hub, fence, "Every call naming a run")
+Rel(broker, fence, "Check epoch inside the lock")
+Rel(broker, lock, "Holds per write")
+Rel(lease, lock, "Holds per grant or expiry")
+Rel(broker, github, "Forwards", "Git/HTTPS")
+Rel(fence, lease, "Epoch current: pass through")
+Rel(reaper, lease, "Expire stale")
+Rel(lease, db, "Leases, epochs, checkpoints", "SQL")
+Rel(reg, db, "Workers", "SQL")
+Rel(reg, spa, "WorkerChanged", "SignalR")
+@enduml

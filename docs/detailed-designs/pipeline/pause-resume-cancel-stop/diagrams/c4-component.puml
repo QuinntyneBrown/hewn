@@ -1,0 +1,27 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Pause, resume, cancel and stop all
+
+Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+Container_Boundary(api_b, "Hewn API") {
+  Component(dc, "DirectionControlsController", "ASP.NET Core controller", "Pause, resume, cancel")
+  Component(wc, "WorkersControlController", "ASP.NET Core controller", "Stop all, start workers")
+  Component(chan, "WorkerControlChannel", "SignalR hub", "Control messages with 10 s acknowledgement")
+  Component(switch, "LeasingSwitch", "Domain service", "Allows or forbids new leases")
+  Component(labeler, "PullRequestLabeler", "GitHub App client", "Labels PRs hewn:cancelled")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(spa, dc, "Calls", "JSON/HTTPS")
+Rel(spa, wc, "Calls", "JSON/HTTPS")
+Rel(dc, chan, "PauseAfterStep / CancelRun")
+Rel(wc, chan, "HaltRun to all")
+Rel(wc, switch, "Off / On")
+Rel(chan, worker, "Sends", "SignalR")
+Rel(dc, labeler, "On cancel")
+Rel(labeler, github, "Adds label", "HTTPS")
+Rel(switch, db, "Persists", "SQL")
+@enduml

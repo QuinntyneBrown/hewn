@@ -1,0 +1,10 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Retry a failed stage
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+System(hewn, "Hewn", "Software factory: carries a direction to merged code through a fixed pipeline")
+
+Rel(owner, hewn, "Sees blocked stages and retries them in")
+@enduml

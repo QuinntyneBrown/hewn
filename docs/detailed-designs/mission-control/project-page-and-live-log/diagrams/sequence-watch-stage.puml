@@ -1,0 +1,40 @@
+@startuml
+title UML sequence behaviour — Watch the running stage
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Owner or Viewer" as user
+box "Frontend — Mission Control application" #E0F2FE
+  participant "ProjectPipelinePage" as page
+  participant "StageList" as list
+  participant "StageDetail" as detail
+  participant "LiveEventsService" as live
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "PipelineController" as ctrl
+  participant "MissionControlHub" as hub
+end box
+user -> page : Open /projects/ledgerline
+page -> ctrl : GET /api/projects/{id}/pipeline
+ctrl --> page : Stages with status, duration, step, latest line
+page -> list : Render icon + text label per stage (L2-030 AC1)
+page -> live : Join project group
+hub -> live : StageStatusChanged / LogLine
+live -> list : Update current step and latest line (L2-030 AC2)
+user -> list : Select stage 5
+list -> detail : Show stage 5
+detail -> ctrl : GET runs, logs, artifacts, decisions for stage 5 (L2-030 AC3)
+ctrl --> detail : Data
+@enduml

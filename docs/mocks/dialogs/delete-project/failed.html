@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delete project · failed — Hewn Mission Control mocks</title>
+<meta name="mock:kind" content="dialog">
+<meta name="mock:screen" content="delete-project">
+<meta name="mock:state" content="failed">
+<meta name="mock:requirements" content="L2-003">
+<meta name="description" content="Delete failed; nothing removed.">
+<link rel="stylesheet" href="../../../design-system/tokens/tokens.css">
+<link rel="stylesheet" href="../../../design-system/assets/components.css">
+<link rel="stylesheet" href="../../assets/mock.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<div inert aria-hidden="true"><div class="shell">
+<aside class="shell__sidebar" aria-label="Sidebar"><div class="sidebar">
+  <div class="sidebar__brand"><a class="wordmark" href="../../pages/dashboard/default.html" aria-label="Hewn, go to dashboard"><svg class="" viewBox="0 0 32 32" aria-hidden="true"><rect class="mark__body" x="0" y="0" width="10" height="32"/><rect class="mark__body" x="10" y="13" width="12" height="6"/><polygon class="mark__body" points="22,10 32,0 32,32 22,32"/><polygon class="mark__chip" points="22,0 29,0 22,7"/></svg><span class="wordmark__text" aria-hidden="true">hewn</span></a></div>
+  <div class="sidebar__cta"><a class="btn btn--primary" href="../../pages/new-direction/default.html" style="width:100%"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg>New direction</a></div>
+  <nav class="sidebar__nav" aria-label="Primary"><a class="nav-link" href="../../pages/dashboard/default.html"><svg class="icon icon--lg" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a><a class="nav-link" href="../../pages/projects/default.html" aria-current="page"><svg class="icon icon--lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2ZM8 10v4M12 10v2M16 10v6"/></svg>Projects</a><a class="nav-link" href="../../pages/workers/default.html"><svg class="icon icon--lg" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>Workers</a><a class="nav-link" href="../../pages/audit/default.html"><svg class="icon icon--lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 12h-5M15 8h-5M19 17V5a2 2 0 0 0-2-2H4M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></svg>Audit</a><a class="nav-link" href="../../pages/settings/default.html"><svg class="icon icon--lg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</a></nav>
+  <p class="sidebar__section" id="active-directions-s">Active directions</p>
+  <ul class="sidebar__projects" aria-labelledby="active-directions-s"><li><a class="side-project" href="../../pages/project-pipeline/default.html"><svg class="icon s-icon--run icon--spin icon--sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span class="side-project__name">Ledgerline</span><span class="visually-hidden">, Running,</span><span class="side-project__pct">62%</span></a></li><li><a class="side-project" href="../../pages/project-pipeline/past-stage.html"><svg class="icon s-icon--run icon--spin icon--sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span class="side-project__name">Tidewater</span><span class="visually-hidden">, Running,</span><span class="side-project__pct">18%</span></a></li><li><a class="side-project" href="../../pages/project-pipeline/blocked.html"><svg class="icon s-icon--fail  icon--sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg><span class="side-project__name">Parcel Post</span><span class="visually-hidden">, Blocked,</span><span class="side-project__pct">24%</span></a></li><li><a class="side-project" href="../../pages/project-pipeline/budget-reached.html"><svg class="icon s-icon--warn  icon--sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M10 15V9M14 15V9"/></svg><span class="side-project__name">Kiln Booking</span><span class="visually-hidden">, Paused,</span><span class="side-project__pct">81%</span></a></li></ul>
+  <div class="sidebar__foot">
+    <div class="conn"><span class="conn__state"><span class="dot"></span>Live</span><span class="tabular text-subtle">3 of 4 workers</span></div>
+    <a class="btn btn--danger btn--sm" href="../../dialogs/stop-workers/default.html" style="width:100%; margin-top: var(--space-3);"><svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><path d="m15 9-6 6M9 9l6 6"/></svg>Stop all workers</a>
+    <div class="user"><span class="avatar" aria-hidden="true">QB</span><div class="truncate"><div class="user__name truncate">quinntynebrown</div><div class="user__role">Owner</div></div></div>
+  </div>
+</div></aside>
+<div class="shell__body">
+<header class="topbar">
+  <a class="btn btn--ghost btn--icon btn--touch" href="../../dialogs/mobile-nav/default.html" aria-label="Open menu"><svg class="icon icon--lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></a>
+  <a class="wordmark wordmark--sm" href="../../pages/dashboard/default.html" aria-label="Hewn, go to dashboard"><svg class="" viewBox="0 0 32 32" aria-hidden="true"><rect class="mark__body" x="0" y="0" width="10" height="32"/><rect class="mark__body" x="10" y="13" width="12" height="6"/><polygon class="mark__body" points="22,10 32,0 32,32 22,32"/><polygon class="mark__chip" points="22,0 29,0 22,7"/></svg><span class="wordmark__text" aria-hidden="true">hewn</span></a>
+  <span class="topbar__slot" role="img" aria-label="Connection: Live"><span class="dot"></span></span>
+</header>
+
+<main id="main" class="shell__main">
+<div class="page-header"><div class="truncate"><h1>Projects</h1><p class="page-header__desc">7 projects · sorted by last activity</p></div><div class="cluster"><a class="btn btn--primary btn--sm" href="../../pages/new-direction/default.html"><svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg>New product</a></div></div><div class="pad"><nav aria-label="Filter by status"><div class="tabs"><a class="tab" href="../../pages/projects/default.html" aria-current="page">All</a><a class="tab" href="../../pages/projects/default.html">Running<span class="count">2</span></a><a class="tab" href="../../pages/projects/default.html">Paused<span class="count">1</span></a><a class="tab" href="../../pages/projects/filtered.html">Blocked<span class="count">1</span></a><a class="tab" href="../../pages/projects/default.html">Idle<span class="count">1</span></a><a class="tab" href="../../pages/projects/default.html">Complete<span class="count">1</span></a><a class="tab" href="../../pages/projects/default.html">Cancelled<span class="count">1</span></a><a class="tab" href="../../pages/projects/archived.html">Archived</a></div></nav></div><div class="pad" style="padding-bottom: var(--space-10)"><div class="rows rows--projects"><div class="rows__head" aria-hidden="true"><span>Project</span><span>Stage</span><span>Status</span><span>Complete</span><span class="row__end">Spend</span><span class="row__end">Activity</span><span class="visually-hidden">Actions</span></div><ul><li class="row">
+  <span class="truncate"><a class="row__title" href="../../pages/project-pipeline/default.html">Ledgerline</a><span class="row__sub">Expense reconciliation for small accounting teams</span></span>
+  <span class="row__end lg-hide"><span class="status status--run"><svg class="icon icon--spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Running</span></span>
+  <span class="row__span truncate"><span>10 · Increments</span><span class="row__note">Increment 7 of 12 · implementing, iteration 3</span></span>
+  <span class="lg-only"><span class="status status--run"><svg class="icon icon--spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Running</span></span>
+  <span class="pct"><span class="meter meter--muted meter--inline" role="meter" aria-label="Ledgerline complete" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100"><span class="meter__bar" style="--value: 62%"></span></span>62%</span>
+  <span class="row__end tabular">$184.20</span>
+  <span class="row__end text-subtle lg-only">4s ago</span>
+  <span class="row__actions"><span class="icon-action" role="button" aria-disabled="true" tabindex="0" aria-label="Archive Ledgerline: cancel the running direction first" title="Cancel the running direction first"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/></svg></span><span class="icon-action" role="button" aria-disabled="true" tabindex="0" aria-label="Delete Ledgerline: cancel the running direction first" title="Cancel the running direction first"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span></span>
+</li><li class="row">
+  <span class="truncate"><a class="row__title" href="../../pages/project-pipeline/past-stage.html">Tidewater</a><span class="row__sub">Tide and swell planner for small-boat charters</span></span>
+  <span class="row__end lg-hide"><span class="status status--run"><svg class="icon icon--spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Running</span></span>
+  <span class="row__span truncate"><span>3 · Design system</span><span class="row__note">Extracting tokens from 46 mocks</span></span>
+  <span class="lg-only"><span class="status status--run"><svg class="icon icon--spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Running</span></span>
+  <span class="pct"><span class="meter meter--muted meter--inline" role="meter" aria-label="Tidewater complete" aria-valuenow="18" aria-valuemin="0" aria-valuemax="100"><span class="meter__bar" style="--value: 18%"></span></span>18%</span>
+  <span class="row__end tabular">$41.80</span>
+  <span class="row__end text-subtle lg-only">11s ago</span>
+  <span class="row__actions"><span class="icon-action" role="button" aria-disabled="true" tabindex="0" aria-label="Archive Tidewater: cancel the running direction first" title="Cancel the running direction first"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/></svg></span><span class="icon-action" role="button" aria-disabled="true" tabindex="0" aria-label="Delete Tidewater: cancel the running direction first" title="Cancel the running direction first"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span></span>
+</li><li class="row">
+  <span class="truncate"><a class="row__title" href="../../pages/project-pipeline/blocked.html">Parcel Post</a><span class="row__sub">Shared mailroom log for coworking spaces</span></span>
+  <span class="row__end lg-hide"><span class="status status--fail"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>Blocked</span></span>
+  <span class="row__span truncate"><span>5 · Requirements</span><span class="row__note">Requirements failed after 3 retries</span></span>
+  <span class="lg-only"><span class="status status--fail"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>Blocked</span></span>
+  <span class="pct"><span class="meter meter--muted meter--inline" role="meter" aria-label="Parcel Post complete" aria-valuenow="24" aria-valuemin="0" aria-valuemax="100"><span class="meter__bar" style="--value: 24%"></span></span>24%</span>
+  <span class="row__end tabular">$58.10</span>
+  <span class="row__end text-subtle lg-only">18m ago</span>
+  <span class="row__actions"><span class="icon-action" role="button" aria-disabled="true" tabindex="0" aria-label="Archive Parcel Post: cancel the running direction first" title="Cancel the running direction first"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/></svg></span><span class="icon-action" role="button" aria-disabled="true" tabindex="0" aria-label="Delete Parcel Post: cancel the running direction first" title="Cancel the running direction first"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span></span>
+</li><li class="row">
+  <span class="truncate"><a class="row__title" href="../../pages/project-pipeline/budget-reached.html">Kiln Booking</a><span class="row__sub">Studio time booking for shared ceramics kilns</span></span>
+  <span class="row__end lg-hide"><span class="status status--warn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M10 15V9M14 15V9"/></svg>Paused</span></span>
+  <span class="row__span truncate"><span>10 · Increments</span><span class="row__note">Budget reached</span></span>
+  <span class="lg-only"><span class="status status--warn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M10 15V9M14 15V9"/></svg>Paused</span></span>
+  <span class="pct"><span class="meter meter--muted meter--inline" role="meter" aria-label="Kiln Booking complete" aria-valuenow="81" aria-valuemin="0" aria-valuemax="100"><span class="meter__bar" style="--value: 81%"></span></span>81%</span>
+  <span class="row__end tabular">$250.00</span>
+  <span class="row__end text-subtle lg-only">42m ago</span>
+  <span class="row__actions"><span class="icon-action" role="button" aria-disabled="true" tabindex="0" aria-label="Archive Kiln Booking: cancel the running direction first" title="Cancel the running direction first"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/></svg></span><span class="icon-action" role="button" aria-disabled="true" tabindex="0" aria-label="Delete Kiln Booking: cancel the running direction first" title="Cancel the running direction first"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span></span>
+</li><li class="row">
+  <span class="truncate"><a class="row__title" href="../../pages/project-pipeline/feature-direction.html">Northwind Ops</a><span class="row__sub">Feature: CSV export for the shift report</span></span>
+  <span class="row__end lg-hide"><span class="status status--idle"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="1"/></svg>Idle</span></span>
+  <span class="row__span truncate"><span>10 · Increments</span></span>
+  <span class="lg-only"><span class="status status--idle"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="1"/></svg>Idle</span></span>
+  <span class="pct"><span class="meter meter--muted meter--inline" role="meter" aria-label="Northwind Ops complete" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"><span class="meter__bar" style="--value: 100%"></span></span>100%</span>
+  <span class="row__end tabular">$612.45</span>
+  <span class="row__end text-subtle lg-only">2h ago</span>
+  <span class="row__actions"><button class="icon-action" type="button" aria-label="Archive Northwind Ops" title="Archive"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/></svg></button><a class="icon-action" href="../../dialogs/delete-project/default.html" aria-label="Delete Northwind Ops" title="Delete"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></a></span>
+</li><li class="row">
+  <span class="truncate"><a class="row__title" href="../../pages/project-pipeline/complete.html">Field Notes</a><span class="row__sub">Offline survey capture for ecology field teams</span></span>
+  <span class="row__end lg-hide"><span class="status status--ok"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>Complete</span></span>
+  <span class="row__span truncate"><span>10 · Increments</span></span>
+  <span class="lg-only"><span class="status status--ok"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>Complete</span></span>
+  <span class="pct"><span class="meter meter--muted meter--inline" role="meter" aria-label="Field Notes complete" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"><span class="meter__bar" style="--value: 100%"></span></span>100%</span>
+  <span class="row__end tabular">$341.90</span>
+  <span class="row__end text-subtle lg-only">Yesterday</span>
+  <span class="row__actions"><button class="icon-action" type="button" aria-label="Archive Field Notes" title="Archive"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/></svg></button><a class="icon-action" href="../../dialogs/delete-project/default.html" aria-label="Delete Field Notes" title="Delete"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></a></span>
+</li><li class="row">
+  <span class="truncate"><a class="row__title" href="../../pages/project-pipeline/cancelled.html">Harbor CRM</a><span class="row__sub">Lightweight CRM for marina slip rentals</span></span>
+  <span class="row__end lg-hide"><span class="status status--muted"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>Cancelled</span></span>
+  <span class="row__span truncate"><span>7 · Detailed designs</span></span>
+  <span class="lg-only"><span class="status status--muted"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>Cancelled</span></span>
+  <span class="pct"><span class="meter meter--muted meter--inline" role="meter" aria-label="Harbor CRM complete" aria-valuenow="38" aria-valuemin="0" aria-valuemax="100"><span class="meter__bar" style="--value: 38%"></span></span>38%</span>
+  <span class="row__end tabular">$96.30</span>
+  <span class="row__end text-subtle lg-only">3 days ago</span>
+  <span class="row__actions"><button class="icon-action" type="button" aria-label="Archive Harbor CRM" title="Archive"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/></svg></button><a class="icon-action" href="../../dialogs/delete-project/default.html" aria-label="Delete Harbor CRM" title="Delete"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></a></span>
+</li></ul></div></div>
+</main>
+</div>
+</div></div><div class="backdrop"></div>
+<div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlg-title" aria-describedby="dlg-desc" data-dismiss-on-escape>
+  <div class="dialog__panel">
+    <h2 class="dialog__title" id="dlg-title">Delete Harbor CRM?</h2>
+    <p class="dialog__text" id="dlg-desc">Its directions, runs, decisions, events and spend history are deleted from Hewn. This can’t be undone.</p>
+    <div class="callout callout--danger" role="alert"><svg class="icon icon--lg" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3ZM12 9v4M12 17h.01"/></svg><div><p class="callout__title">Harbor CRM wasn’t deleted</p><p class="callout__body">The API returned 503. Nothing was removed; try again.</p></div></div><div class="dialog__body"><div class="field"><label class="field__label" for="confirm-name">Type <strong>Harbor CRM</strong> to confirm</label><div class="field__control"><input class="input" id="confirm-name" autocomplete="off" value="" aria-describedby="confirm-name-hint"></div><span class="field__hint" id="confirm-name-hint">The GitHub repository is kept; only Hewn’s record is deleted.</span></div></div>
+    <div class="dialog__footer"><a class="btn btn--ghost" href="../../pages/projects/default.html">Cancel</a><a class="btn btn--danger" href="../../pages/projects/default.html"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Try again</a></div>
+  </div>
+</div>
+<nav class="mock-bar" aria-label="Mock navigation">
+  <a class="mock-bar__home" href="../../index.html" aria-label="All mocks">⌂</a>
+  <span class="mock-bar__screen">Delete project</span>
+  <ul class="mock-bar__states"><li><a href="default.html">default</a></li><li><a href="confirm.html">confirm</a></li><li><a href="busy.html">busy</a></li><li><a href="invalid.html">invalid</a></li><li><a href="failed.html" aria-current="page">failed</a></li></ul>
+  <button type="button" data-theme-toggle aria-pressed="false">☾ Dark</button>
+  <button type="button" data-chrome-toggle aria-label="Hide mock chrome">×</button>
+</nav>
+<script src="../../assets/mock.js"></script>
+</body>
+</html>

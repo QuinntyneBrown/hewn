@@ -1,0 +1,20 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Record the increment video
+
+Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+Container_Boundary(worker_b, "Worker") {
+  Component(step, "VideoStep", "Step", "Script, record, validate; one retry")
+  Component(rec, "BrowserRecorder", "Worker service", "1080p capture with captions")
+  Component(val, "VideoValidator", "Validator", "1080p, captions, <= 3 min")
+}
+System_Ext(browser, "Headless browser", "Drives the running app for the increment video")
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(step, rec, "Records")
+Rel(rec, browser, "Drives", "CDP")
+Rel(step, val, "Validates")
+Rel(step, github, "Commits MP4 and script", "Git/HTTPS")
+Rel(step, api, "VideoRecorded / VideoFailed", "HTTPS")
+@enduml

@@ -1,0 +1,12 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Input validation and web protections
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+Person(viewer, "Viewer", "Watches every project read-only")
+System(hewn, "Hewn", "Software factory: carries a direction to merged code through a fixed pipeline")
+
+Rel(owner, hewn, "Sends requests to")
+Rel(viewer, hewn, "Sends requests to")
+@enduml

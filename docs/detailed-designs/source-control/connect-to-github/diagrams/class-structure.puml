@@ -1,0 +1,80 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Connect to GitHub
+
+class GitHubAppClient {
+  +CreateInstallationTokenAsync(repos: string[], perms: Permissions): Task<InstallationToken>
+}
+class InstallationToken {
+  +string Value
+  +DateTimeOffset ExpiresAt
+  +string[] Repositories
+}
+class RepositoryTokenBroker {
+  +GetTokenAsync(p: ProjectId, perms: Permissions): Task<InstallationToken>
+}
+class GitHubWriteBroker {
+  +MutateAsync(run: RunId, epoch: long, m: Mutation): Task<MutationResult>
+}
+class Mutation {
+  +MutationKind Kind
+  +string IdempotencyKey
+  +object Args
+}
+enum MutationKind {
+  OpenPullRequest
+  MergePullRequest
+  LabelPullRequest
+  DeleteBranch
+}
+class MutationRecord {
+  +string IdempotencyKey
+  +MutationStatus Status
+  +string? Result
+  +int Attempts
+}
+class MutationQueue {
+  +TimeSpan[] Backoff = [1 s, 5 s, 30 s, 1 min...]
+  +RetryPendingAsync(): Task
+}
+class GitPushProxy {
+  +InfoRefs(run: RunId): Task
+  +UploadPack(run: RunId): Task
+  +ReceivePack(run: RunId, epoch: long): Task
+  -AllowedRefs(run: Run): string[]
+}
+class RunWriteLock {
+  +AcquireAsync(run: RunId): Task<IDisposable>
+}
+class RepositoryProvisioner {
+  +EnsureAsync(p: Project): Task<string>
+}
+class RepoNameFormatter {
+  +Format(projectName: string): string
+}
+class BranchProtectionConfigurer {
+  +RequireAsync(p: ProjectId, checks: string[]): Task
+}
+RepositoryTokenBroker ..> GitHubAppClient
+GitHubAppClient ..> InstallationToken
+GitHubWriteBroker ..> RepositoryTokenBroker
+GitHubWriteBroker ..> RunWriteLock
+GitHubWriteBroker ..> Mutation
+GitHubWriteBroker ..> MutationRecord : stores
+Mutation --> MutationKind
+MutationQueue ..> MutationRecord : retries pending
+GitPushProxy ..> RepositoryTokenBroker
+GitPushProxy ..> RunWriteLock
+RepositoryProvisioner ..> RepoNameFormatter
+RepositoryProvisioner ..> RepositoryTokenBroker
+BranchProtectionConfigurer ..> RepositoryTokenBroker
+@enduml

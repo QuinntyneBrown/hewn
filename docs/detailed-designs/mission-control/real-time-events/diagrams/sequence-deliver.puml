@@ -1,0 +1,50 @@
+@startuml
+title UML sequence behaviour — Deliver an event through the outbox
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "Any command handler" as handler
+  participant "EventStore" as store
+  participant "OutboxDispatcher" as disp
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+  queue "SignalR backplane" as bp
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "MissionControlHub" as hub
+end box
+box "Frontend — Mission Control application" #E0F2FE
+  participant "LiveEventsService" as live
+end box
+handler -> store : Append(event) in the state-change transaction
+store -> db : INSERT (project, seq = last + 1, published_at NULL) (L2-031 AC2)
+db --> store : Committed
+store -> disp : CommitNudge
+disp -> db : Claim unpublished rows with no live claim: claimed_by = me, claimed_until = now + 5 s
+db --> disp : Batch, oldest first
+disp -> bp : Publish each to group project-{id} in sequence order
+bp -> hub : Deliver on every API instance
+hub -> live : Event (p95 <= 1 s, L2-031 AC1)
+disp -> db : Set published_at
+alt seq == lastSeq + 1
+  live -> live : Apply; lastSeq = seq
+else seq <= lastSeq
+  live -> live : Drop duplicate
+else seq > lastSeq + 1
+  live -> live : Gap: catch up from lastSeq, then apply
+end
+@enduml

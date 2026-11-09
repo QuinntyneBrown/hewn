@@ -1,0 +1,19 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Observability and health checks
+
+System_Boundary(hewn, "Hewn") {
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+  ContainerQueue(backplane, "SignalR backplane", "<TO SUPPLY>", "Fans hub messages out across API instances")
+  Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+}
+System_Ext(telemetry, "Telemetry backend", "Receives OpenTelemetry traces and metrics; product <TO SUPPLY>")
+
+Rel(api, telemetry, "Logs, traces, metrics", "OTLP")
+Rel(worker, telemetry, "Logs, traces", "OTLP")
+Rel(worker, api, "Lease carries trace context", "HTTPS (outbound)")
+Rel(api, db, "Readiness check", "SQL")
+Rel(api, backplane, "Readiness check")
+@enduml

@@ -1,0 +1,46 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Bootstrap and update skills
+
+class SkillsLock {
+  +string Source
+  +string Sha
+  +string[] Skills
+}
+class SkillCopier <<worker>> {
+  +CopyAsync(src: Checkout, dst: Workspace): CopyReport
+}
+class CopyReport {
+  +string[] Copied
+  +string[] KeptExisting
+}
+class BootstrapStageExecutor <<worker>> {
+  +ExecuteAsync(ctx: StageContext): Task<StageResult>
+}
+class UpdateSkillsExecutor <<worker>> {
+  +ExecuteAsync(ctx: RunContext): Task<StageResult>
+}
+class SkillsUpdateChecker {
+  +GetAsync(p: ProjectId): Task<SkillsUpdateStatus>
+}
+class SkillsUpdateStatus {
+  +int CommitsAhead
+  +string[] Messages
+}
+BootstrapStageExecutor ..> SkillCopier
+BootstrapStageExecutor ..> SkillsLock : writes
+UpdateSkillsExecutor ..> SkillCopier
+UpdateSkillsExecutor ..> SkillsLock : rewrites
+SkillCopier ..> CopyReport
+SkillsUpdateChecker ..> SkillsLock : reads SHA
+SkillsUpdateChecker ..> SkillsUpdateStatus
+@enduml

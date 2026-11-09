@@ -1,0 +1,42 @@
+@startuml
+title UML sequence behaviour — Set a budget, then raise and resume
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Owner" as owner
+box "Frontend — Mission Control application" #E0F2FE
+  participant "NewDirectionPage" as form
+  participant "RaiseBudgetDialog" as dlg
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "DirectionsController" as ctrl
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+form -> ctrl : GET /api/settings (default budget $40)
+owner -> form : Submit with budget $60
+form -> ctrl : POST direction {budget: 60}
+ctrl -> db : Direction with Budget 60 (L2-053 AC1)
+== budget reached ==
+owner -> dlg : Raise to $90 and resume
+dlg -> ctrl : POST /api/directions/{id}/raise-and-resume {budget: 90}
+alt 90 <= spend so far
+  ctrl --> dlg : 400 "Enter a budget above the spend so far"
+else
+  ctrl -> db : Budget 90; direction Running; next run from checkpoint (one transaction) (L2-053 AC3)
+  ctrl --> dlg : 200
+end
+@enduml

@@ -1,0 +1,39 @@
+@startuml
+title UML sequence behaviour — View artifacts and a trace
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Owner or Viewer" as user
+box "Frontend — Mission Control application" #E0F2FE
+  participant "ArtifactsPage" as apage
+  participant "TraceabilityPage" as tpage
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "ArtifactsController" as actrl
+  participant "TraceabilityController" as tctrl
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+user -> apage : Open Artifacts
+apage -> actrl : GET /api/projects/{id}/artifacts
+actrl -> db : Artifacts grouped by stage
+actrl --> apage : Path, short SHA, time, GitHub URL (L2-034 AC2)
+user -> tpage : Open Traceability; select L2-020
+tpage -> tctrl : GET /api/projects/{id}/trace?l2=L2-020
+tctrl -> db : Requirement and trace links
+tctrl --> tpage : L1, designs, journeys, tests, PRs (L2-035 AC1)
+tpage --> user : "No acceptance test" (not Deferred) (L2-035 AC2)
+@enduml

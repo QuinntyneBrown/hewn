@@ -1,0 +1,39 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Connect to GitHub
+
+Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+Container_Boundary(api_b, "Hewn API") {
+  Component(app, "GitHubAppClient", "GitHub App client", "JWT and cached installation tokens")
+  Component(tokens, "RepositoryTokenBroker", "Application service", "One-repository tokens, API-internal")
+  Component(broker, "GitHubWriteBroker", "Application service", "Fenced, locked, idempotent mutations")
+  Component(queue, "MutationQueue", "Background service", "Retries pending mutations")
+  Component(proxy, "GitPushProxy", "Reverse proxy", "Fenced git smart HTTP; run's branch only")
+  Component(lock, "RunWriteLock", "Domain service", "Per-run lock shared with LeaseService")
+  Component(prov, "RepositoryProvisioner", "Application service", "Creates private kebab-case repo")
+  Component(bp, "BranchProtectionConfigurer", "Application service", "Requires CI checks")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+System_Ext(vault, "Secret store", "Cloud key vault in the cloud, OS key store locally")
+
+Rel(app, vault, "Private key", "HTTPS")
+Rel(app, github, "Token exchange", "HTTPS")
+Rel(tokens, app, "Uses")
+Rel(worker, proxy, "git fetch / push + worker token + epoch", "Git smart HTTP")
+Rel(worker, broker, "POST mutations + epoch", "JSON/HTTPS")
+Rel(proxy, lock, "Holds during receive-pack")
+Rel(broker, lock, "Holds per mutation")
+Rel(broker, queue, "Pending when GitHub is down")
+Rel(proxy, tokens, "Token for the run's repo")
+Rel(broker, tokens, "Token for the run's repo")
+Rel(prov, tokens, "Uses")
+Rel(bp, tokens, "Uses")
+Rel(proxy, github, "Streams pack to the run's branch", "Git/HTTPS")
+Rel(broker, github, "PR, merge, label, delete branch", "HTTPS")
+Rel(prov, github, "POST /orgs/{owner}/repos", "HTTPS")
+Rel(bp, github, "PUT branch protection", "HTTPS")
+Rel(broker, db, "github_mutations", "SQL")
+Rel(prov, db, "Saves repo", "SQL")
+@enduml

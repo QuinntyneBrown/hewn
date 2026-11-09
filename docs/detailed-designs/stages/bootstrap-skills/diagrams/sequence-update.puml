@@ -1,0 +1,42 @@
+@startuml
+title UML sequence behaviour — Update a project's skills
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Owner" as owner
+box "Frontend — Mission Control application" #E0F2FE
+  participant "SkillsUpdateBanner" as banner
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "ProjectsController" as ctrl
+  participant "SkillsUpdateChecker" as chk
+end box
+box "Backend — Worker stage execution" #ECFDF3
+  participant "UpdateSkillsExecutor" as upd
+end box
+box "External systems" #F2F4F7
+  participant "GitHub (via write broker)" as gh
+end box
+banner -> ctrl : GET /api/projects/{id}/skills-update
+ctrl -> chk : GetAsync(project)
+chk -> gh : Compare locked SHA...greenlit default branch
+gh --> chk : ahead_by = 4
+chk --> banner : "Skills update available (4 commits)" for Owners (L2-008 AC1)
+owner -> banner : Update skills; confirm
+banner -> ctrl : POST /api/projects/{id}/update-skills
+ctrl -> ctrl : Queue UpdateSkills run
+upd -> gh : Push branch with refreshed skills and lock; open PR
+note over upd, gh : Merges automatically when checks pass (L2-008 AC2, L2-025)
+@enduml

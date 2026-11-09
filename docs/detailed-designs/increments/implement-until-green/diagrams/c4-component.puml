@@ -1,0 +1,21 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Implement until green
+
+Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+Container_Boundary(worker_b, "Worker") {
+  Component(impl, "ImplementStep", "Step", "Up to 10 implement-and-test iterations")
+  Component(gate, "TestGate", "Worker service", "Backend, frontend, acceptance, full e2e")
+  Component(block, "IncrementBlocker", "Worker service", "Blocks and moves on")
+}
+System_Ext(claude, "Claude model API", "Anthropic models, called through the Claude Agent SDK")
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(impl, claude, "Agent calls", "HTTPS")
+Rel(impl, github, "Pushes iteration commits", "Git/HTTPS")
+Rel(impl, gate, "Runs after each iteration")
+Rel(impl, block, "After iteration 10 fails")
+Rel(block, api, "IncrementBlocked; asks next runnable increment", "HTTPS")
+Rel(impl, api, "IterationProgress", "SignalR")
+@enduml

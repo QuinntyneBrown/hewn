@@ -1,0 +1,12 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Secrets and redaction
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+System(hewn, "Hewn", "Software factory: carries a direction to merged code through a fixed pipeline")
+System_Ext(vault, "Secret store", "Cloud key vault in the cloud, OS key store locally")
+
+Rel(owner, hewn, "Enters model and Magic Patterns credentials in")
+Rel(hewn, vault, "Stores and reads encrypted secrets in")
+@enduml

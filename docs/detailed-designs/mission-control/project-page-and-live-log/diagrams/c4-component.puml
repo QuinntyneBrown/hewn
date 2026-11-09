@@ -1,0 +1,22 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Project page and live log
+
+Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+Container_Boundary(spa_b, "Mission Control") {
+  Component(page, "ProjectPipelinePage", "Angular route component", "Composes header, stages and detail")
+  Component(list, "StageList", "Angular component", "Status with icon and text; live step")
+  Component(detail, "StageDetail", "Angular component", "Runs, logs, artifacts, decisions")
+  Component(log, "LiveLogComponent", "Angular component", "Follow mode; virtualized at 500 rows")
+  Component(live, "LiveEventsService", "Angular service", "SignalR client with sequence tracking")
+}
+
+Rel(page, list, "Renders")
+Rel(page, detail, "Renders")
+Rel(detail, log, "Renders")
+Rel(page, api, "GET pipeline", "JSON/HTTPS")
+Rel(live, api, "Subscribes to project group", "SignalR")
+Rel(live, list, "Stage events")
+Rel(live, log, "LogLine events")
+@enduml

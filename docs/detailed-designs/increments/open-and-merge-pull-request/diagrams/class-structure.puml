@@ -1,0 +1,55 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Open and merge the pull request
+
+class PullRequestTemplate {
+  +Title(journey: string, n: int, l2: string[]): string
+  +Body(ctx: IncrementContext, gate: GateResult, video: VideoOutcome, red: RedResult): string
+}
+class PullRequestStep <<worker>> {
+  +RunAsync(ctx: IncrementContext): Task<int>
+}
+class MergeStep <<worker>> {
+  +int MaxRebaseAttempts = 3
+  +RunAsync(pr: int): Task<MergeOutcome>
+}
+enum MergeOutcome {
+  Merged
+  FailedCheck
+  Blocked
+}
+class GitHubWebhookController {
+  +Receive(signature: string, body: byte[]): IActionResult
+}
+class WebhookSignatureVerifier {
+  +Verify(body: byte[], signature: string): bool
+}
+class CheckPoller {
+  +Interval: TimeSpan = 60 s
+}
+class CheckChanged {
+  +ProjectId ProjectId
+  +int PullRequest
+  +string Check
+  +CheckState State
+  +long Sequence
+}
+class ProgressUpdater <<worker>> {
+  +UpdateAsync(d: DirectionId): Task
+}
+PullRequestStep ..> PullRequestTemplate
+MergeStep --> MergeOutcome
+GitHubWebhookController ..> WebhookSignatureVerifier
+GitHubWebhookController ..> CheckChanged : emits
+CheckPoller ..> CheckChanged : emits
+MergeStep ..> ProgressUpdater : after merge
+@enduml

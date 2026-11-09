@@ -1,0 +1,47 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Record agent decisions
+
+class Decision {
+  +DateOnly Date
+  +int Stage
+  +string Question
+  +string Answer
+  +string Rationale
+  +bool Architectural
+  +string CommitSha
+  +string? AdrPath
+}
+class UserQuestionInterceptor <<worker>> {
+  +OnUserQuestion(q: string, ctx: StageContext): Task<string>
+}
+class DecisionAgent <<worker>> {
+  +AnswerAsync(q: string, ctx: StageContext): Task<DecisionDraft>
+}
+class DecisionRecorder <<worker>> {
+  +RecordAsync(d: DecisionDraft): Task<Decision>
+  -AppendDecisionsMd(d): void
+  -WriteAdr(d): string
+}
+class DecisionIndex {
+  +Add(p: ProjectId, d: Decision): void
+  +List(p: ProjectId, stage: int?): Decision[]
+}
+class DecisionsController {
+  +Get(id: ProjectId, stage: int?): Task<DecisionDto[]>
+}
+UserQuestionInterceptor ..> DecisionAgent : delegates
+UserQuestionInterceptor ..> DecisionRecorder : records
+DecisionRecorder ..> Decision : produces
+DecisionIndex "1" o-- "*" Decision
+DecisionsController ..> DecisionIndex
+@enduml

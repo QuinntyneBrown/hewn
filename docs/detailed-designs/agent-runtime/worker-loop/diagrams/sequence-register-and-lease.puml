@@ -1,0 +1,55 @@
+@startuml
+title UML sequence behaviour — Register, lease and heartbeat
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker application" #D1FADF
+  participant "WorkerHost" as host
+  participant "LeaseClient" as lc
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "WorkerHub" as hub
+end box
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "WorkerRegistry" as reg
+  participant "LeaseService" as lease
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+box "Frontend — Mission Control application" #E0F2FE
+  participant "WorkersPage" as page
+end box
+host -> hub : Connect out with worker token (L2-027 AC3)
+host -> hub : Register(id, Local, quinn-mbp.local, 0.9.2)
+hub -> reg : Register
+reg -> db : Upsert worker
+reg -> page : WorkerChanged within 2 s (L2-026 AC1)
+loop
+  lc -> hub : TryLease
+  hub -> lease : TryLeaseAsync(worker)
+  lease -> db : Oldest leasable run whose project has no lease (L2-026 AC4)
+  alt run available
+    lease --> lc : Lease(run, expires in 60 s)
+    loop while running
+      lc -> hub : Heartbeat every 10 s (L2-026 AC2)
+      hub -> lease : Renew
+    end
+  else none
+    lease --> lc : Nothing
+    lc -> lc : Wait for WorkAvailable push; poll at most every 15 s (L2-026 AC5)
+  end
+end
+@enduml

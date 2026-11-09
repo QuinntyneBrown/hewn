@@ -1,0 +1,25 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Retry a failed stage
+
+Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+Container_Boundary(api_b, "Hewn API") {
+  Component(fail, "RunFailureHandler", "Event handler", "Schedules retry or blocks")
+  Component(policy, "RetryPolicy", "Value object", "3 retries: 30 s, 2 min, 10 min")
+  Component(runs, "RunQueue", "Repository", "Leases runs whose NotBefore has passed")
+  Component(hub, "MissionControlHub", "SignalR hub", "Pushes StageBlocked")
+  Component(ctrl, "DirectionsController", "ASP.NET Core controller", "POST retry-stage")
+}
+
+Rel(worker, fail, "RunFailed", "HTTPS")
+Rel(fail, policy, "Reads")
+Rel(fail, runs, "Inserts delayed attempt")
+Rel(fail, hub, "Publishes StageBlocked")
+Rel(hub, spa, "Pushes", "SignalR")
+Rel(spa, ctrl, "Retry stage", "JSON/HTTPS")
+Rel(ctrl, runs, "Inserts attempt 1")
+Rel(runs, db, "Stores", "SQL")
+@enduml

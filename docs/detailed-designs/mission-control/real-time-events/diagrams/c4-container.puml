@@ -1,0 +1,21 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Real-time events and reconnection
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+Person(viewer, "Viewer", "Watches every project read-only")
+System_Boundary(hewn, "Hewn") {
+  Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+  ContainerQueue(backplane, "SignalR backplane", "<TO SUPPLY>", "Fans hub messages out across API instances")
+}
+
+Rel(api, db, "Appends events in the change's transaction; claims and marks outbox rows", "SQL")
+Rel(api, backplane, "Publishes claimed events to project groups")
+Rel(backplane, api, "Fans out to all API instances")
+Rel(api, spa, "Pushes events", "SignalR, WebSockets")
+Rel(spa, api, "Catch-up after reconnect or gap", "JSON/HTTPS")
+Rel(owner, spa, "Watches", "HTTPS")
+@enduml

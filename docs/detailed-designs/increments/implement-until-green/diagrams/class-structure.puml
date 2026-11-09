@@ -1,0 +1,42 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Implement until green
+
+class ImplementStep <<worker>> {
+  +int MaxIterations = 10
+  +RunAsync(ctx: IncrementContext): Task<ImplementOutcome>
+}
+class TestGate {
+  +RunAsync(ws: Workspace): Task<GateResult>
+}
+class GateResult {
+  +SuiteResult[] Suites
+  +bool AllGreen
+  +string[] FailingTests
+}
+class SuiteResult {
+  +string Name
+  +int Passed
+  +int Failed
+}
+class IncrementBlocker {
+  +BlockAsync(ctx: IncrementContext, failing: string[]): Task<int?>
+}
+class BacklogCursor {
+  +NextRunnable(d: DirectionId): Increment?
+}
+ImplementStep ..> TestGate
+TestGate ..> GateResult
+GateResult *-- SuiteResult
+ImplementStep ..> IncrementBlocker
+IncrementBlocker ..> BacklogCursor : asks
+@enduml

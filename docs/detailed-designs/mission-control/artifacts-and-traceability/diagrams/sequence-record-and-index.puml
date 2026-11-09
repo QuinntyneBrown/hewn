@@ -1,0 +1,37 @@
+@startuml
+title UML sequence behaviour — Record artifacts and index traces
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker application" #D1FADF
+  participant "WorkerHost" as worker
+end box
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "ArtifactRecorder" as rec
+  participant "TraceIndexer" as idx
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+box "External systems" #F2F4F7
+  participant "GitHub" as gh
+end box
+worker -> rec : RunSucceeded(stage 5, sha f61a2d8, outputs)
+rec -> db : Insert artifacts (path, sha, time) (L2-034 AC1)
+rec -> rec : Emit ArtifactRecorded
+rec -> idx : RebuildAsync(project, f61a2d8)
+idx -> gh : Read specs, designs, journeys, test headers, PR titles at SHA
+idx -> db : Replace trace_links for project
+@enduml

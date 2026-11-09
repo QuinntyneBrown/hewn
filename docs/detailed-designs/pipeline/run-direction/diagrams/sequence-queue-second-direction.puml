@@ -1,0 +1,48 @@
+@startuml
+title UML sequence behaviour — Queue a second direction behind the active one
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Owner" as owner
+box "Frontend — Mission Control application" #E0F2FE
+  participant "NewDirectionPage" as page
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "DirectionsController" as ctrl
+end box
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "PipelineOrchestrator" as orch
+  participant "DirectionQueue" as queue
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+owner -> page : Submit feature direction for Ledgerline
+page -> ctrl : POST /api/projects/{id}/directions
+ctrl -> db : Insert direction, status Queued
+ctrl -> orch : DirectionQueued
+orch -> queue : ActiveFor(project)
+alt another direction is active
+  queue --> orch : Active direction
+  orch --> ctrl : Stay Queued; pipeline page shows "1 direction queued"
+else none active
+  orch -> db : Insert stage run for first planned stage
+end
+== later ==
+orch -> orch : On DirectionEnded (Complete or Cancelled)
+orch -> queue : PromoteNext(project) by SubmittedAt
+queue --> orch : Oldest queued direction
+orch -> db : Insert its first run (L2-004 AC4)
+@enduml

@@ -1,0 +1,39 @@
+@startuml
+title UML sequence behaviour — Trace a run across API, queue and worker
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Hewn API application" #D1FADF
+  participant "Hewn API" as api
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "RunQueue" as db
+end box
+box "Backend — Worker application" #D1FADF
+  participant "WorkerHost" as worker
+end box
+box "External systems" #F2F4F7
+  participant "Claude model API" as claude
+  participant "Telemetry backend" as tel
+end box
+api -> api : Span "advance direction" (trace T)
+api -> db : Insert run with traceparent T
+worker -> db : Lease run (via API)
+db --> worker : Run with traceparent T
+worker -> worker : Restore context; span "stage 5" under T
+worker -> claude : Span "model call" under T
+worker -> tel : Spans and JSON logs with traceId T (L2-049 AC1, AC2)
+api -> tel : Spans and metrics (L2-049 AC3)
+@enduml

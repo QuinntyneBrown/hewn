@@ -1,0 +1,42 @@
+@startuml
+title UML sequence behaviour — Record the video, or continue without it
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker stage execution" #ECFDF3
+  participant "VideoStep" as step
+  participant "BrowserRecorder" as rec
+  participant "VideoValidator" as val
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "IncrementsController" as ctrl
+end box
+box "External systems" #F2F4F7
+  participant "Target repository (via write broker)" as gh
+end box
+loop attempt 1..2
+  step -> step : Write script; start the app
+  step -> rec : RecordAsync(script)
+  rec --> step : MP4
+  step -> val : 1080p, captions, <= 3 min (L2-023 AC1)
+  break valid
+    step -> gh : Commit docs/videos/{slug}/ (MP4 and script)
+    step -> ctrl : VideoRecorded(path) - linked from PR body (L2-023 AC2)
+  end
+end
+opt both attempts failed
+  step -> ctrl : VideoFailed(reason) - "Video failed: {reason}" in PR Notes (L2-023 AC3)
+end
+@enduml

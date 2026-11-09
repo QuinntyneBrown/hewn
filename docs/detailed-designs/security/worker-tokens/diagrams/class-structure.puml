@@ -1,0 +1,42 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Worker tokens
+
+class WorkerToken {
+  +WorkerTokenId Id
+  +string Name
+  +byte[] Hash
+  +DateTimeOffset CreatedAt
+  +DateTimeOffset ExpiresAt
+  +DateTimeOffset? RevokedAt
+  +bool IsValid(now): bool
+}
+enum TokenExpiry {
+  Days30
+  Days90
+  Year1
+}
+class WorkerTokenService {
+  +CreateAsync(name: string, e: TokenExpiry): Task<(WorkerToken, string)>
+  +RevokeAsync(id: WorkerTokenId): Task
+}
+class WorkerTokenAuthHandler {
+  +HandleAuthenticateAsync(): Task<AuthenticateResult>
+}
+class WorkerDisconnector {
+  +DisconnectAsync(id: WorkerTokenId): Task
+}
+WorkerTokenService ..> WorkerToken
+WorkerTokenService ..> TokenExpiry
+WorkerTokenAuthHandler ..> WorkerToken : verifies hash
+WorkerDisconnector ..> WorkerToken
+@enduml

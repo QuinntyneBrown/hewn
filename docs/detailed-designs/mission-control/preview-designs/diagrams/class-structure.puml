@@ -1,0 +1,42 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Preview designs and the design system
+
+class SandboxedPreview <<Angular>> {
+  +widths = [375, 576, 768, 992, 1200]
+  +width: Signal<int>
+  +theme: Signal<'light' | 'dark'>
+  +src: Signal<SafeResourceUrl>
+}
+class PreviewTokenService {
+  +SignAsync(p: ProjectId, sha: string, path: string): Task<Uri>
+  +TimeSpan Lifetime
+}
+class MockPreviewHost {
+  +ServeAsync(token: string): Task<HttpResponse>
+  -allowedRoots = [docs/mocks/, docs/design-system/]
+}
+class ScreenStateVm {
+  +string Screen
+  +string State
+  +Uri Thumbnail
+  +Uri? MagicPatternsUrl
+  +string Path
+}
+class DesignsPage <<Angular>>
+class DesignSystemPage <<Angular>>
+DesignsPage *-- SandboxedPreview
+DesignSystemPage *-- SandboxedPreview
+DesignsPage o-- ScreenStateVm
+SandboxedPreview ..> PreviewTokenService : gets URL
+PreviewTokenService ..> MockPreviewHost : signs for
+@enduml

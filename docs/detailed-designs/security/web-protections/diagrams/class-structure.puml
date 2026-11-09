@@ -1,0 +1,37 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Input validation and web protections
+
+class SecurityHeadersMiddleware {
+  +InvokeAsync(ctx: HttpContext): Task
+  -csp: string
+}
+class ValidationFilter {
+  +OnActionExecutionAsync(ctx, next): Task
+}
+abstract class AbstractValidator~T~
+class SubmitDirectionValidator
+class AddAllowListEntryValidator
+class DirectionSubmissionRateLimiter {
+  +PermitLimit = 10
+  +Window = 1 min
+  +Partition = user id
+}
+class ValidationProblem {
+  +int Status = 400
+  +Map<string,string[]> Errors
+}
+AbstractValidator <|-- SubmitDirectionValidator
+AbstractValidator <|-- AddAllowListEntryValidator
+ValidationFilter ..> AbstractValidator : runs
+ValidationFilter ..> ValidationProblem : returns
+@enduml

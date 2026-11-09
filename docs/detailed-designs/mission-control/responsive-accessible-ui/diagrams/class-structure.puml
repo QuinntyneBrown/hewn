@@ -1,0 +1,45 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Responsive, accessible and themed UI
+
+enum Band {
+  XS
+  SM
+  LXL
+}
+class BreakpointService <<Angular>> {
+  +band: Signal<Band>
+}
+class StatusAnnouncer <<Angular>> {
+  +intervalMs = 5000
+  +announce(p: ProjectId, msg: string): void
+  -lastAt: Map<ProjectId, number>
+  -pending: Map<ProjectId, string>
+}
+enum ThemeChoice {
+  light
+  dark
+  system
+}
+class ThemeService <<Angular>> {
+  +choice: Signal<ThemeChoice>
+  +set(c: ThemeChoice): void
+  -storageKey = "hewn.theme"
+}
+class AppShell <<Angular>>
+class MobileNavDrawer <<Angular>>
+BreakpointService --> Band
+ThemeService --> ThemeChoice
+AppShell ..> BreakpointService
+AppShell *-- MobileNavDrawer
+AppShell ..> ThemeService
+@enduml

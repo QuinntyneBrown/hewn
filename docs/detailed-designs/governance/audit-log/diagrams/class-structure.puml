@@ -1,0 +1,44 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Audit log
+
+enum AuditAction {
+  SignIn
+  SubmitDirection
+  Pause
+  Resume
+  Cancel
+  StopAll
+  StartWorkers
+  CreateWorkerToken
+  RevokeWorkerToken
+  Merge
+}
+class AuditEntry {
+  +long Id
+  +DateTimeOffset At
+  +string Actor
+  +AuditAction Action
+  +ProjectId? ProjectId
+  +string Detail
+  +string? Ip
+}
+class AuditWriter {
+  +WriteAsync(a: AuditAction, actor: string, p: ProjectId?, detail: string): Task
+}
+class AuditController {
+  +Get(project: ProjectId?, action: AuditAction?, before: long?): Task<AuditEntry[]>
+}
+AuditEntry --> AuditAction
+AuditWriter ..> AuditEntry : inserts
+AuditController ..> AuditEntry : reads
+@enduml

@@ -1,0 +1,560 @@
+{
+  "$comment": "Foreground/background token pairs checked by check_contrast.py in both themes. 4.5:1 = WCAG 2.2 AA text (1.4.3); 3:1 = UI component edges, meaningful graphics and focus (1.4.11, 2.4.11). Generated from _build/tokens.py.",
+  "pairs": [
+    {
+      "fg": "--color-fg-default",
+      "bg": "--color-bg-canvas",
+      "min": 4.5,
+      "note": "body text on canvas"
+    },
+    {
+      "fg": "--color-fg-default",
+      "bg": "--color-bg-surface",
+      "min": 4.5,
+      "note": "body text on surface"
+    },
+    {
+      "fg": "--color-fg-default",
+      "bg": "--color-bg-surface-raised",
+      "min": 4.5,
+      "note": "body text on surface-raised"
+    },
+    {
+      "fg": "--color-fg-default",
+      "bg": "--color-bg-surface-sunken",
+      "min": 4.5,
+      "note": "body text on surface-sunken"
+    },
+    {
+      "fg": "--color-fg-default",
+      "bg": "--color-bg-subtle",
+      "min": 4.5,
+      "note": "body text on subtle"
+    },
+    {
+      "fg": "--color-fg-default",
+      "bg": "--color-bg-subtle-hover",
+      "min": 4.5,
+      "note": "body text on subtle-hover"
+    },
+    {
+      "fg": "--color-fg-muted",
+      "bg": "--color-bg-canvas",
+      "min": 4.5,
+      "note": "secondary text on canvas"
+    },
+    {
+      "fg": "--color-fg-muted",
+      "bg": "--color-bg-surface",
+      "min": 4.5,
+      "note": "secondary text on surface"
+    },
+    {
+      "fg": "--color-fg-muted",
+      "bg": "--color-bg-surface-raised",
+      "min": 4.5,
+      "note": "secondary text on surface-raised"
+    },
+    {
+      "fg": "--color-fg-muted",
+      "bg": "--color-bg-subtle",
+      "min": 4.5,
+      "note": "secondary text on subtle"
+    },
+    {
+      "fg": "--color-fg-muted",
+      "bg": "--color-bg-subtle-hover",
+      "min": 4.5,
+      "note": "secondary text on subtle-hover"
+    },
+    {
+      "fg": "--color-fg-subtle",
+      "bg": "--color-bg-canvas",
+      "min": 4.5,
+      "note": "metadata and placeholders on canvas"
+    },
+    {
+      "fg": "--color-fg-subtle",
+      "bg": "--color-bg-surface",
+      "min": 4.5,
+      "note": "metadata and placeholders on surface"
+    },
+    {
+      "fg": "--color-fg-subtle",
+      "bg": "--color-bg-surface-raised",
+      "min": 4.5,
+      "note": "metadata and placeholders on surface-raised"
+    },
+    {
+      "fg": "--color-fg-subtle",
+      "bg": "--color-bg-subtle",
+      "min": 4.5,
+      "note": "metadata and placeholders on subtle"
+    },
+    {
+      "fg": "--color-fg-subtle",
+      "bg": "--color-bg-subtle-hover",
+      "min": 4.5,
+      "note": "metadata on hovered rows (log line hover, PR hover)"
+    },
+    {
+      "fg": "--color-fg-default",
+      "bg": "--color-bg-log",
+      "min": 4.5,
+      "note": "log text"
+    },
+    {
+      "fg": "--color-fg-muted",
+      "bg": "--color-bg-surface-sunken",
+      "min": 4.5,
+      "note": "preformatted text in .pre and run lines"
+    },
+    {
+      "fg": "--color-danger-strong",
+      "bg": "--color-bg-surface-raised",
+      "min": 4.5,
+      "note": "field errors in dialogs, danger menu items"
+    },
+    {
+      "fg": "--color-fg-subtle",
+      "bg": "--color-bg-log",
+      "min": 4.5,
+      "note": "log timestamps"
+    },
+    {
+      "fg": "--color-fg-inverse",
+      "bg": "--color-bg-inverse",
+      "min": 4.5,
+      "note": "skip link, tooltip, stone button"
+    },
+    {
+      "fg": "--color-fg-link",
+      "bg": "--color-bg-canvas",
+      "min": 4.5,
+      "note": "links on canvas"
+    },
+    {
+      "fg": "--color-fg-link",
+      "bg": "--color-bg-surface",
+      "min": 4.5,
+      "note": "links on surface"
+    },
+    {
+      "fg": "--color-fg-link",
+      "bg": "--color-bg-surface-raised",
+      "min": 4.5,
+      "note": "links on surface-raised"
+    },
+    {
+      "fg": "--color-fg-link-hover",
+      "bg": "--color-bg-surface",
+      "min": 4.5,
+      "note": "hovered links"
+    },
+    {
+      "fg": "--color-fg-accent",
+      "bg": "--color-bg-canvas",
+      "min": 4.5,
+      "note": "accent text (Running, current step) on canvas"
+    },
+    {
+      "fg": "--color-fg-accent",
+      "bg": "--color-bg-surface",
+      "min": 4.5,
+      "note": "accent text (Running, current step) on surface"
+    },
+    {
+      "fg": "--color-fg-accent",
+      "bg": "--color-bg-surface-raised",
+      "min": 4.5,
+      "note": "accent text (Running, current step) on surface-raised"
+    },
+    {
+      "fg": "--color-fg-accent",
+      "bg": "--color-bg-subtle",
+      "min": 4.5,
+      "note": "accent text (Running, current step) on subtle"
+    },
+    {
+      "fg": "--color-fg-accent",
+      "bg": "--color-accent-subtle",
+      "min": 4.5,
+      "note": "accent text (Running, current step) on accent-subtle"
+    },
+    {
+      "fg": "--color-fg-default",
+      "bg": "--color-accent-subtle",
+      "min": 4.5,
+      "note": "text on selected item"
+    },
+    {
+      "fg": "--color-fg-default",
+      "bg": "--color-accent-subtle-hover",
+      "min": 4.5,
+      "note": "text on hovered selected item"
+    },
+    {
+      "fg": "--color-fg-muted",
+      "bg": "--color-accent-subtle",
+      "min": 4.5,
+      "note": "muted text on current row"
+    },
+    {
+      "fg": "--color-fg-on-accent",
+      "bg": "--color-accent",
+      "min": 4.5,
+      "note": "primary label on accent"
+    },
+    {
+      "fg": "--color-fg-on-accent",
+      "bg": "--color-accent-hover",
+      "min": 4.5,
+      "note": "primary label on accent-hover"
+    },
+    {
+      "fg": "--color-fg-on-accent",
+      "bg": "--color-accent-active",
+      "min": 4.5,
+      "note": "primary label on accent-active"
+    },
+    {
+      "fg": "--color-accent",
+      "bg": "--color-bg-surface",
+      "min": 3,
+      "note": "primary button, selected tab underline, meter fill vs surface"
+    },
+    {
+      "fg": "--color-accent",
+      "bg": "--color-bg-canvas",
+      "min": 3,
+      "note": "primary button vs page"
+    },
+    {
+      "fg": "--color-accent",
+      "bg": "--color-border-default",
+      "min": 3,
+      "note": "meter fill vs meter track"
+    },
+    {
+      "fg": "--color-border-strong",
+      "bg": "--color-bg-surface",
+      "min": 3,
+      "note": "input and radio edges on surface"
+    },
+    {
+      "fg": "--color-border-strong",
+      "bg": "--color-bg-canvas",
+      "min": 3,
+      "note": "input and radio edges on canvas"
+    },
+    {
+      "fg": "--color-border-strong",
+      "bg": "--color-bg-surface-raised",
+      "min": 3,
+      "note": "input and radio edges on surface-raised"
+    },
+    {
+      "fg": "--color-focus-ring",
+      "bg": "--color-bg-surface",
+      "min": 3,
+      "note": "focus ring vs surface"
+    },
+    {
+      "fg": "--color-focus-ring",
+      "bg": "--color-bg-canvas",
+      "min": 3,
+      "note": "focus ring vs canvas"
+    },
+    {
+      "fg": "--color-focus-ring",
+      "bg": "--color-bg-surface-raised",
+      "min": 3,
+      "note": "focus ring vs surface-raised"
+    },
+    {
+      "fg": "--color-focus-ring",
+      "bg": "--color-bg-subtle",
+      "min": 3,
+      "note": "focus ring vs subtle"
+    },
+    {
+      "fg": "--color-focus-ring",
+      "bg": "--color-accent-subtle",
+      "min": 3,
+      "note": "focus ring on selected item"
+    },
+    {
+      "fg": "--color-fg-on-danger",
+      "bg": "--color-danger-solid",
+      "min": 4.5,
+      "note": "danger button label"
+    },
+    {
+      "fg": "--color-fg-on-danger",
+      "bg": "--color-danger-solid-hover",
+      "min": 4.5,
+      "note": "danger button label, hover"
+    },
+    {
+      "fg": "--color-danger-solid",
+      "bg": "--color-bg-surface",
+      "min": 3,
+      "note": "danger button vs surface",
+      "themes": [
+        "light"
+      ]
+    },
+    {
+      "fg": "--color-danger-border",
+      "bg": "--color-bg-surface-raised",
+      "min": 3,
+      "note": "danger button ring vs dialog",
+      "themes": [
+        "dark"
+      ]
+    },
+    {
+      "fg": "--color-danger-border",
+      "bg": "--color-bg-surface",
+      "min": 3,
+      "note": "danger button ring vs surface",
+      "themes": [
+        "dark"
+      ]
+    },
+    {
+      "fg": "--color-info-fg",
+      "bg": "--color-info-bg",
+      "min": 4.5,
+      "note": "info callout and strip text"
+    },
+    {
+      "fg": "--color-info-icon",
+      "bg": "--color-info-bg",
+      "min": 3,
+      "note": "info callout icon"
+    },
+    {
+      "fg": "--color-info-icon",
+      "bg": "--color-bg-surface",
+      "min": 3,
+      "note": "info status icon on surface"
+    },
+    {
+      "fg": "--color-info-icon",
+      "bg": "--color-bg-canvas",
+      "min": 3,
+      "note": "info status icon on page"
+    },
+    {
+      "fg": "--color-info-solid",
+      "bg": "--color-bg-surface",
+      "min": 3,
+      "note": "info fill (segment, dot, bar) vs surface"
+    },
+    {
+      "fg": "--color-success-fg",
+      "bg": "--color-success-bg",
+      "min": 4.5,
+      "note": "success callout and strip text"
+    },
+    {
+      "fg": "--color-success-icon",
+      "bg": "--color-success-bg",
+      "min": 3,
+      "note": "success callout icon"
+    },
+    {
+      "fg": "--color-success-icon",
+      "bg": "--color-bg-surface",
+      "min": 3,
+      "note": "success status icon on surface"
+    },
+    {
+      "fg": "--color-success-icon",
+      "bg": "--color-bg-canvas",
+      "min": 3,
+      "note": "success status icon on page"
+    },
+    {
+      "fg": "--color-success-solid",
+      "bg": "--color-bg-surface",
+      "min": 3,
+      "note": "success fill (segment, dot, bar) vs surface"
+    },
+    {
+      "fg": "--color-success-solid",
+      "bg": "--color-border-default",
+      "min": 3,
+      "note": "success fill vs meter/strip track"
+    },
+    {
+      "fg": "--color-warning-fg",
+      "bg": "--color-warning-bg",
+      "min": 4.5,
+      "note": "warning callout and strip text"
+    },
+    {
+      "fg": "--color-warning-icon",
+      "bg": "--color-warning-bg",
+      "min": 3,
+      "note": "warning callout icon"
+    },
+    {
+      "fg": "--color-warning-icon",
+      "bg": "--color-bg-surface",
+      "min": 3,
+      "note": "warning status icon on surface"
+    },
+    {
+      "fg": "--color-warning-icon",
+      "bg": "--color-bg-canvas",
+      "min": 3,
+      "note": "warning status icon on page"
+    },
+    {
+      "fg": "--color-warning-solid",
+      "bg": "--color-bg-surface",
+      "min": 3,
+      "note": "warning fill (segment, dot, bar) vs surface"
+    },
+    {
+      "fg": "--color-warning-solid",
+      "bg": "--color-border-default",
+      "min": 3,
+      "note": "warning fill vs meter/strip track"
+    },
+    {
+      "fg": "--color-danger-fg",
+      "bg": "--color-danger-bg",
+      "min": 4.5,
+      "note": "danger callout and strip text"
+    },
+    {
+      "fg": "--color-danger-icon",
+      "bg": "--color-danger-bg",
+      "min": 3,
+      "note": "danger callout icon"
+    },
+    {
+      "fg": "--color-danger-icon",
+      "bg": "--color-bg-surface",
+      "min": 3,
+      "note": "danger status icon on surface"
+    },
+    {
+      "fg": "--color-danger-icon",
+      "bg": "--color-bg-canvas",
+      "min": 3,
+      "note": "danger status icon on page"
+    },
+    {
+      "fg": "--color-danger-icon",
+      "bg": "--color-bg-surface",
+      "min": 3,
+      "note": "invalid input ring"
+    },
+    {
+      "fg": "--color-danger-strong",
+      "bg": "--color-bg-surface",
+      "min": 4.5,
+      "note": "failed status, field error on surface"
+    },
+    {
+      "fg": "--color-danger-strong",
+      "bg": "--color-bg-canvas",
+      "min": 4.5,
+      "note": "field error on page"
+    },
+    {
+      "fg": "--color-danger-strong",
+      "bg": "--color-danger-bg",
+      "min": 4.5,
+      "note": "callout title in danger callout"
+    },
+    {
+      "fg": "--color-success-fg",
+      "bg": "--color-bg-surface",
+      "min": 4.5,
+      "note": "Passed / Complete on surface"
+    },
+    {
+      "fg": "--color-success-fg",
+      "bg": "--color-bg-canvas",
+      "min": 4.5,
+      "note": "Complete on page"
+    },
+    {
+      "fg": "--color-warning-fg",
+      "bg": "--color-bg-surface",
+      "min": 4.5,
+      "note": "Paused / Budget reached on surface"
+    },
+    {
+      "fg": "--color-warning-fg",
+      "bg": "--color-bg-canvas",
+      "min": 4.5,
+      "note": "Paused on page"
+    },
+    {
+      "fg": "--color-info-fg",
+      "bg": "--color-bg-surface",
+      "min": 4.5,
+      "note": "info text on surface"
+    },
+    {
+      "fg": "--color-brand-body",
+      "bg": "--color-bg-surface",
+      "min": 4.5,
+      "note": "wordmark on sidebar"
+    },
+    {
+      "fg": "--color-brand-chip",
+      "bg": "--color-bg-surface",
+      "min": 3,
+      "note": "mark chip on sidebar"
+    },
+    {
+      "fg": "--color-fg-on-accent",
+      "bg": "--color-accent",
+      "min": 4.5,
+      "note": "log jump pill label"
+    },
+    {
+      "fg": "--color-preview-ink",
+      "bg": "--color-preview-canvas",
+      "min": 4.5,
+      "note": "preview text"
+    },
+    {
+      "fg": "--color-preview-ink-muted",
+      "bg": "--color-preview-surface",
+      "min": 4.5,
+      "note": "preview secondary text"
+    },
+    {
+      "fg": "--color-preview-accent",
+      "bg": "--color-preview-highlight",
+      "min": 4.5,
+      "note": "preview suggestion on narrated row"
+    },
+    {
+      "fg": "--color-preview-ok",
+      "bg": "--color-preview-surface",
+      "min": 4.5,
+      "note": "preview success text"
+    },
+    {
+      "fg": "--color-preview-dark-ink",
+      "bg": "--color-preview-dark-canvas",
+      "min": 4.5,
+      "note": "dark preview text"
+    },
+    {
+      "fg": "--color-fg-on-scrim",
+      "bg": "--color-bg-scrim",
+      "min": 4.5,
+      "note": "captions and controls on scrim"
+    }
+  ]
+}

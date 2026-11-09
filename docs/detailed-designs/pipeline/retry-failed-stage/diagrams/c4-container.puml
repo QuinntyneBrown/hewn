@@ -1,0 +1,19 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Retry a failed stage
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+System_Boundary(hewn, "Hewn") {
+  Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+  Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+}
+
+Rel(worker, api, "Reports RunFailed with reason", "HTTPS (outbound)")
+Rel(api, db, "Schedules attempts, blocks direction", "SQL")
+Rel(api, spa, "Pushes StageBlocked", "SignalR")
+Rel(owner, spa, "Presses Retry stage", "HTTPS")
+Rel(spa, api, "POST retry-stage", "JSON/HTTPS")
+@enduml

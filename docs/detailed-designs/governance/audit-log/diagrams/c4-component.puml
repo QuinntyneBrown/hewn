@@ -1,0 +1,18 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Audit log
+
+Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+Container_Boundary(api_b, "Hewn API") {
+  Component(handlers, "Audited handlers", "Controllers and handlers", "Sign-in, directions, controls, tokens, merge")
+  Component(writer, "AuditWriter", "Application service", "Inserts entry in the same transaction")
+  Component(ctrl, "AuditController", "ASP.NET Core controller", "Read-only, Owner policy")
+}
+
+Rel(handlers, writer, "WriteAsync")
+Rel(writer, db, "INSERT only", "SQL")
+Rel(spa, ctrl, "GET", "JSON/HTTPS")
+Rel(ctrl, db, "SELECT", "SQL")
+@enduml

@@ -1,0 +1,47 @@
+@startuml
+title UML sequence behaviour — Extract and validate the design system
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker stage execution" #ECFDF3
+  participant "DesignSystemStageExecutor" as exec
+  participant "StageAgent" as agent
+  participant "TokenCoverageValidator" as cov
+  participant "MagicPatternsTokenComparer" as cmp
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "RunsController" as ctrl
+end box
+box "External systems" #F2F4F7
+  participant "Magic Patterns MCP" as mp
+  participant "Target repository (via write broker)" as gh
+end box
+exec -> agent : Run extracting-design-systems on docs/mocks/
+agent --> exec : docs/design-system/ tokens and component pages (L2-012 AC1)
+exec -> cov : Every colour in docs/mocks/ matches a token? (L2-012 AC2)
+alt unmatched colours
+  cov --> exec : List of values
+  exec -> ctrl : RunFailed(list)
+else all matched
+  opt project has Magic Patterns design-system settings
+    exec -> cmp : CompareAsync(tokens)
+    cmp -> mp : Read theme and tokens
+    cmp --> exec : Mismatches
+    exec -> ctrl : Log each mismatch (L2-012 AC3)
+  end
+  exec -> gh : Commit docs/design-system/
+  exec -> ctrl : RunSucceeded(commit SHA)
+end
+@enduml

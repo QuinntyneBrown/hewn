@@ -1,0 +1,39 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Record the increment video
+
+class VideoStep <<worker>> {
+  +int MaxRetries = 1
+  +RunAsync(ctx: IncrementContext): Task<VideoOutcome>
+}
+class BrowserRecorder {
+  +RecordAsync(script: VideoScript, app: Uri): Task<string>
+}
+class VideoScript {
+  +string[] Steps
+  +string[] Captions
+}
+class VideoValidator {
+  +int Height = 1080
+  +TimeSpan MaxDuration = 3 min
+  +Validate(mp4: string): ValidationReport
+}
+class VideoOutcome {
+  +bool Ok
+  +string? Path
+  +string? FailureReason
+}
+VideoStep ..> BrowserRecorder
+VideoStep ..> VideoValidator
+BrowserRecorder ..> VideoScript
+VideoStep ..> VideoOutcome
+@enduml

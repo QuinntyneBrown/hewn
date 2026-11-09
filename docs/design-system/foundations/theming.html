@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Theming — Hewn design system</title>
+<meta name="description" content="Hewn theming: data-theme, prefers-color-scheme, color-scheme, light islands, the three token tiers, adding a theme and consuming tokens.json from Angular.">
+<link rel="stylesheet" href="../tokens/tokens.css">
+<link rel="stylesheet" href="../assets/components.css">
+<link rel="stylesheet" href="../assets/ds.css">
+</head>
+<body id="top">
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="ds-shell">
+  <nav class="ds-nav" aria-label="Design system"><div class="ds-nav__brand"><a href="../index.html">Hewn DS</a><button class="ds-theme-toggle" type="button" aria-pressed="false">☾ Dark</button></div><details open><summary>Foundations</summary><ul><li><a href="../foundations/color.html">Color</a></li><li><a href="../foundations/typography.html">Typography</a></li><li><a href="../foundations/spacing.html">Spacing</a></li><li><a href="../foundations/layout.html">Layout</a></li><li><a href="../foundations/elevation.html">Elevation</a></li><li><a href="../foundations/shape.html">Shape</a></li><li><a href="../foundations/motion.html">Motion</a></li><li><a href="../foundations/iconography.html">Iconography</a></li><li><a href="../foundations/theming.html">Theming</a></li><li><a href="../foundations/responsive.html">Responsive</a></li><li><a href="../foundations/accessibility.html">Accessibility</a></li><li><a href="../foundations/content.html">Content</a></li></ul></details><details open><summary>Components</summary><ul><li><a href="../components/button.html">Button</a></li><li><a href="../components/button-group.html">Button group</a></li><li><a href="../components/link.html">Link</a></li><li><a href="../components/menu.html">Menu</a></li><li><a href="../components/text-field.html">Text field</a></li><li><a href="../components/textarea.html">Textarea</a></li><li><a href="../components/select.html">Select</a></li><li><a href="../components/checkbox.html">Checkbox</a></li><li><a href="../components/radio-group.html">Radio group</a></li><li><a href="../components/switch.html">Switch</a></li><li><a href="../components/form-field.html">Form field</a></li><li><a href="../components/form-layout.html">Form layout</a></li><li><a href="../components/top-bar.html">Top bar</a></li><li><a href="../components/sidebar-nav.html">Sidebar navigation</a></li><li><a href="../components/tabs.html">Tabs</a></li><li><a href="../components/breadcrumb.html">Breadcrumb</a></li><li><a href="../components/pagination.html">Pagination</a></li><li><a href="../components/stepper.html">Stepper</a></li><li><a href="../components/skip-link.html">Skip link</a></li><li><a href="../components/page-header.html">Page header</a></li><li><a href="../components/card.html">Card</a></li><li><a href="../components/tile.html">Dashboard tile</a></li><li><a href="../components/dialog.html">Dialog</a></li><li><a href="../components/drawer.html">Drawer</a></li><li><a href="../components/tooltip.html">Tooltip</a></li><li><a href="../components/divider.html">Divider</a></li><li><a href="../components/layout.html">Layout primitives</a></li><li><a href="../components/table.html">Table</a></li><li><a href="../components/row-list.html">Row list</a></li><li><a href="../components/list.html">List</a></li><li><a href="../components/description-list.html">Description list</a></li><li><a href="../components/avatar.html">Avatar</a></li><li><a href="../components/badge.html">Status and badge</a></li><li><a href="../components/chip.html">Chip</a></li><li><a href="../components/stat.html">Stat</a></li><li><a href="../components/code-block.html">Code block</a></li><li><a href="../components/timeline.html">Timeline</a></li><li><a href="../components/log-viewer.html">Log viewer</a></li><li><a href="../components/pipeline-strip.html">Pipeline strip</a></li><li><a href="../components/project-header.html">Project header</a></li><li><a href="../components/preview.html">Preview</a></li><li><a href="../components/logo.html">Logo</a></li><li><a href="../components/toast.html">Toast</a></li><li><a href="../components/alert.html">Alert</a></li><li><a href="../components/inline-message.html">Inline message</a></li><li><a href="../components/progress-bar.html">Progress bar</a></li><li><a href="../components/spinner.html">Spinner</a></li><li><a href="../components/skeleton.html">Skeleton</a></li><li><a href="../components/empty-state.html">Empty state</a></li><li><a href="../components/error-page.html">Error page</a></li></ul></details><details open><summary>Patterns</summary><ul><li><a href="../patterns/forms.html">Forms</a></li><li><a href="../patterns/feedback.html">Feedback and loading</a></li><li><a href="../patterns/empty-and-error-states.html">Empty and error states</a></li><li><a href="../patterns/navigation.html">Navigation and page structure</a></li><li><a href="../patterns/dialogs-and-overlays.html">Dialogs and overlays</a></li><li><a href="../patterns/data-tables-and-lists.html">Data tables and lists</a></li><li><a href="../patterns/notifications.html">Notifications</a></li><li><a href="../patterns/content-and-tone.html">Content and tone</a></li></ul></details></nav>
+  <main id="main" class="ds-main">
+    <header class="ds-header"><p class="ds-kicker">Foundation</p><h1>Theming</h1><p class="ds-lead">Light and dark are two values for the same semantic tokens. The OS decides until the person chooses; components never know which theme they are in.</p><div class="ds-meta"><span class="ds-pill ds-pill--ok">WCAG 2.2 AA</span></div><ul class="ds-toc"><li><a href="#overview">Overview</a></li><li><a href="#how-it-works">How it works</a></li><li><a href="#islands">Islands</a></li><li><a href="#tiers">Token tiers</a></li><li><a href="#adding-a-theme">Adding a theme</a></li><li><a href="#media">Contrast and forced colours</a></li><li><a href="#angular">Using tokens in Angular</a></li><li><a href="#usage">Usage</a></li><li><a href="#accessibility">Accessibility</a></li><li><a href="#tokens">Tokens</a></li></ul></header>
+    <section class="ds-section" id="overview"><h2><a href="#overview">Overview</a></h2>
+<ul><li>A theme overrides <b>colour and shadow tokens only</b> (82 tokens). Type, space, layout, shape, motion and z-order are the same in every theme.</li><li>Light is <code>:root</code>. Dark is <code>[data-theme="dark"]</code> and, with no attribute, the OS preference. Light is restated under <code>[data-theme="light"]</code> so it can be forced, and so a light island inside a dark page works.</li><li>Each theme sets <code>color-scheme</code>, so native scrollbars, form controls and the date picker follow.</li><li>Dark carries the prototype's palette; light is derived from the same roles and verified separately. Neither is an inversion of the other.</li></ul>
+</section>
+<section class="ds-section" id="how-it-works"><h2><a href="#how-it-works">How it works</a></h2>
+<pre><code>/* tokens.css (generated from _build/tokens.py) */
+:root {                                   /* light is the default */
+  --color-bg-canvas: var(--palette-stone-100);
+  …
+  color-scheme: light;
+}
+[data-theme="light"] { …same light values… }   /* restated, so a light island works inside a dark page */
+[data-theme="dark"]  { --color-bg-canvas: var(--palette-slate-950); … color-scheme: dark; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { …identical to [data-theme="dark"]… }
+}</code></pre>
+<div class="ds-table-wrap"><table class="ds-table"><thead><tr><th scope="col">Person&#x27;s choice</th><th scope="col">Attribute on &lt;html&gt;</th><th scope="col">Result</th></tr></thead><tbody><tr><td>Nothing saved (first visit)</td><td>none</td><td>Follows the OS via <code>prefers-color-scheme</code> (L2-048 AC1).</td></tr><tr><td>System</td><td>none</td><td>Same as first visit; changes live when the OS switches.</td></tr><tr><td>Light</td><td><code>data-theme=&quot;light&quot;</code></td><td>Light, even when the OS is dark.</td></tr><tr><td>Dark</td><td><code>data-theme=&quot;dark&quot;</code></td><td>Dark, even when the OS is light.</td></tr></tbody></table></div>
+<p>The choice is made in Settings → Appearance (<a href="../../mocks/pages/settings/default.html">pages/settings/default</a> (Light, Dark, System)), applies immediately, is kept in <code>localStorage['hewn.theme']</code> on this device, and survives reloads (L2-048 AC2). Viewers can change their own theme and nothing else. Keep the two dark blocks identical: the generator writes both from the same data, and <code>check_contrast.py</code> reads both.</p>
+</section>
+<section class="ds-section" id="islands"><h2><a href="#islands">Islands</a></h2>
+<p>Any element can set <code>data-theme</code> to render its subtree in another theme: these docs use it for the side-by-side examples. In the product the increment video and design preview do not need an island: they use the fixed <code>--color-preview-*</code> tokens instead, because they draw the customer's app, not Mission Control.</p>
+<div class="ds-example"><div class="ds-example__canvas "><div data-theme="dark" style="width: 100%; padding: var(--space-4); border-radius: var(--radius-md); background: var(--color-bg-canvas); color: var(--color-fg-default);"><p class="text-sm">Dark page · Ledgerline <span class="status status--run"><svg class="icon icon--spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Running</span></p><div data-theme="light" class="card" style="margin-top: var(--space-3); color: var(--color-fg-default);"><p class="text-sm">Light island: tokens resolve light again inside <code>[data-theme="light"]</code>.</p><div class="cluster" style="margin-top: var(--space-2);"><button class="btn btn--primary btn--sm" type="button">Start direction</button><span class="status status--warn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M10 15V9M14 15V9"/></svg>Paused</span></div></div></div></div><div class="ds-example__caption"><span>A light card inside a dark panel. The light block restates every colour and shadow token; the card sets its own <code>color</code> and background.</span></div><details class="ds-example__code"><summary>HTML</summary><pre><code>&lt;div data-theme=&quot;dark&quot; style=&quot;width: 100%; padding: var(--space-4); border-radius: var(--radius-md); background: var(--color-bg-canvas); color: var(--color-fg-default);&quot;&gt;&lt;p class=&quot;text-sm&quot;&gt;Dark page · Ledgerline &lt;span class=&quot;status status--run&quot;&gt;&lt;svg class=&quot;icon icon--spin&quot; viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;M21 12a9 9 0 1 1-6.219-8.56&quot;/&gt;&lt;/svg&gt;Running&lt;/span&gt;&lt;/p&gt;&lt;div data-theme=&quot;light&quot; class=&quot;card&quot; style=&quot;margin-top: var(--space-3); color: var(--color-fg-default);&quot;&gt;&lt;p class=&quot;text-sm&quot;&gt;Light island: tokens resolve light again inside &lt;code&gt;[data-theme=&quot;light&quot;]&lt;/code&gt;.&lt;/p&gt;&lt;div class=&quot;cluster&quot; style=&quot;margin-top: var(--space-2);&quot;&gt;&lt;button class=&quot;btn btn--primary btn--sm&quot; type=&quot;button&quot;&gt;Start direction&lt;/button&gt;&lt;span class=&quot;status status--warn&quot;&gt;&lt;svg class=&quot;icon&quot; viewBox=&quot;0 0 24 24&quot; aria-hidden=&quot;true&quot;&gt;&lt;circle cx=&quot;12&quot; cy=&quot;12&quot; r=&quot;10&quot;/&gt;&lt;path d=&quot;M10 15V9M14 15V9&quot;/&gt;&lt;/svg&gt;Paused&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;</code></pre></details></div>
+<p><b>An island must set <code>color</code> and <code>background</code> itself.</b> Tokens re-resolve inside the island, but properties the parent already computed (its text colour) inherit as finished values. Without <code>color: var(--color-fg-default)</code> on the island, its text keeps the dark page's light ink on a light card. Components that set their own text colour are unaffected.</p>
+</section>
+<section class="ds-section" id="tiers"><h2><a href="#tiers">Token tiers</a></h2>
+<div class="ds-table-wrap"><table class="ds-table"><thead><tr><th scope="col">Tier</th><th scope="col">Prefix</th><th scope="col">Count</th><th scope="col">Who reads it</th><th scope="col">Themes override it?</th></tr></thead><tbody><tr><td>1 · Primitive</td><td><code>--palette-*</code>, <code>--font-*</code>, <code>--line-height-*</code>, <code>--letter-spacing-*</code></td><td>69</td><td>Semantic tokens only.</td><td>No: a theme points roles at different primitives.</td></tr><tr><td>2 · Semantic</td><td><code>--color-*</code>, <code>--text-*</code>, <code>--space-*</code>, <code>--layout-*</code>, <code>--radius-*</code>, <code>--border-width-*</code>, <code>--shadow-*</code>, <code>--duration-*</code>, <code>--delay-*</code>, <code>--ease-*</code>, <code>--z-*</code>, <code>--target-*</code>, <code>--focus-ring-*</code>, <code>--control-height-*</code>, <code>--size-icon-*</code></td><td>174</td><td>Components and pages.</td><td>Colour and shadow only.</td></tr><tr><td>3 · Component</td><td><code>--btn-*</code>, <code>--field-*</code>, <code>--callout-*</code>, <code>--card-*</code>, <code>--tile-*</code>, <code>--dialog-*</code>, <code>--nav-*</code> …</td><td>per component</td><td>One component, declared in <code>components.css</code>; always aliases a semantic token.</td><td>No; re-skin a component by overriding these in a scope.</td></tr></tbody></table></div><p>A brand change touches primitives; changing what accent means touches semantic tokens; changing how buttons look touches component tokens. Each change lives in exactly one tier.</p>
+</section>
+<section class="ds-section" id="adding-a-theme"><h2><a href="#adding-a-theme">Adding a theme</a></h2>
+<ul><li>Add primitives for any new hue to <code>PALETTE</code> in <code>_build/tokens.py</code>.</li><li>Add a theme block that sets every <code>--color-*</code> role and the five shadow tokens, plus <code>color-scheme</code>. Start by copying the light or dark column; change roles, never names.</li><li>Add the theme to the contrast checks and run <code>check_contrast.py</code> until every pair passes.</li><li>Add the option to Settings → Appearance and to <code>ThemeChoice</code>; the service only sets the attribute.</li><li>Screenshot the mocks and these docs with <code>?theme=&lt;name&gt;</code>.</li><li>See <a href="../foundations/color.html#brand-theme">Color → Adding a brand theme</a> for the accent set to override.</li></ul>
+</section>
+<section class="ds-section" id="media"><h2><a href="#media">Contrast and forced colours</a></h2>
+<ul><li><code>prefers-contrast: more</code> applies in every theme: hairlines take <code>--color-border-strong</code> and subtle text takes <code>--color-fg-muted</code>.</li><li><code>forced-colors: active</code>: the focus ring becomes <code>Highlight</code> and borders <code>CanvasText</code>; everything else is left to the system palette. Edges drawn as inset box shadows disappear in forced colours, so controls whose edge matters also keep a transparent <code>outline</code> or <code>border</code>.</li><li>Print uses light regardless of the theme.</li></ul>
+</section>
+<section class="ds-section" id="angular"><h2><a href="#angular">Using tokens in Angular</a></h2>
+<p>Mission Control is Angular. It ships the two stylesheets as global styles and reads tokens in component styles as plain <code>var(--…)</code>; it never redeclares a token value.</p>
+<pre><code>// angular.json → projects.mission-control.architect.build.options
+"styles": [
+  "src/styles/tokens.css",        // copied from docs/design-system/tokens/tokens.css
+  "src/styles/components.css",    // copied from docs/design-system/assets/components.css
+  "src/styles.css"
+]</code></pre>
+<pre><code>// mission-control/src/app/core/theme.service.ts
+@Injectable({ providedIn: 'root' })
+export class ThemeService {
+  private readonly key = 'hewn.theme';               // 'light' | 'dark' | 'system'
+  readonly choice = signal&lt;ThemeChoice>(this.read());
+
+  constructor() {
+    effect(() => {
+      const c = this.choice();
+      const root = document.documentElement;
+      if (c === 'system') root.removeAttribute('data-theme');   // CSS follows prefers-color-scheme
+      else root.setAttribute('data-theme', c);
+      try { localStorage.setItem(this.key, c); } catch { /* private mode: keep in memory */ }
+    });
+  }
+  private read(): ThemeChoice {
+    try { return (localStorage.getItem(this.key) as ThemeChoice) ?? 'system'; } catch { return 'system'; }
+  }
+}</code></pre>
+<p>For values TypeScript needs (breakpoints for <code>BreakpointService</code>'s <code>matchMedia</code> queries, durations for timers, chart colours), generate constants from <a href="../tokens/tokens.json">tokens/tokens.json</a>, the W3C DTCG export. Aliases are <code>{group.token}</code>; each token carries its CSS name and its dark value under <code>$extensions</code>:</p>
+<pre><code>{
+  "color": { "bg": { "canvas": {
+    "$type": "color",
+    "$value": "{palette.stone.100}",
+    "$extensions": { "com.agent-toolkit": {
+      "css": "--color-bg-canvas",
+      "themes": { "dark": { "$value": "{palette.slate.950}" } }
+    } }
+  } } }
+}</code></pre>
+<ul><li>Generate at build time (a small Node script or Style Dictionary) into <code>src/app/core/tokens.ts</code>; do not hand-copy values.</li><li>Read colours at runtime with <code>getComputedStyle(root)</code> + <code>.getPropertyValue('--color-accent')</code> when a canvas or chart needs them, and re-read on theme change; generated constants hold only the light value.</li><li>Never put a token value in a component's <code>styles</code>; if a component needs a new value, it is a new token in <code>tokens.py</code>.</li></ul>
+</section>
+<section class="ds-section" id="usage"><h2><a href="#usage">Usage</a></h2>
+<ul><li>Write components against roles and test them in both themes; a component that looks right in only one is using the wrong role.</li><li>Do not branch on theme in code (<code>if (dark)</code>). If something must differ, it is a token with two values.</li><li>Do not use <code>prefers-color-scheme</code> in component CSS; only <code>tokens.css</code> reads it.</li><li>Islands are for documentation and genuine embeds. Product surfaces that must look fixed use fixed tokens (<code>--color-preview-*</code>, <code>--color-bg-scrim</code>).</li><li>Images and screenshots of the product being built are shown as they are; do not invert or dim them in dark.</li></ul>
+</section>
+<section class="ds-section" id="accessibility"><h2><a href="#accessibility">Accessibility</a></h2>
+<ul><li>Both themes meet WCAG 2.2 AA on every declared pair (L2-048 AC2 asks for 4.5:1 text in both); see <a href="../foundations/color.html#contrast">Color → Contrast pairs</a>.</li><li>The theme follows the OS by default, which respects people who set dark mode for light sensitivity, and the choice is per device.</li><li>The theme toggle in Settings is a radio group with visible labels and descriptions (<i>Follow your operating system</i>), not an icon-only switch.</li><li>Changing theme moves nothing and announces nothing; focus stays where it was.</li></ul>
+</section>
+<section class="ds-section" id="tokens"><h2><a href="#tokens">Tokens</a></h2>
+<p>Theming owns no tokens of its own. Each theme block overrides these groups, documented on their own pages:</p>
+<div class="ds-table-wrap"><table class="ds-table"><thead><tr><th scope="col">Group</th><th scope="col">Tokens per theme</th><th scope="col">Page</th></tr></thead><tbody><tr><td>Semantic colour roles</td><td>75</td><td><a href="../foundations/color.html#roles">Color</a></td></tr><tr><td>Derived focus tokens (<code>--color-focus-ring-offset</code>, <code>--shadow-focus</code>)</td><td>2</td><td><a href="../foundations/color.html#roles">Color</a>, <a href="../foundations/elevation.html#focus-shadow">Elevation</a></td></tr><tr><td>Shadows and <code>--shadow-color</code></td><td>5</td><td><a href="../foundations/elevation.html#shadows">Elevation</a></td></tr><tr><td><code>color-scheme</code> (a property, not a token)</td><td>1</td><td>–</td></tr></tbody></table></div>
+</section>
+
+    <footer class="ds-footer"><span>Hewn design system · extracted from <a href="../../mocks/index.html">docs/mocks</a> on 8 November 2026</span><a href="#top">Back to top</a></footer>
+  </main>
+</div>
+<script src="../assets/ds.js"></script>
+</body>
+</html>

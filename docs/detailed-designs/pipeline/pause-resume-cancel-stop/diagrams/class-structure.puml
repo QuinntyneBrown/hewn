@@ -1,0 +1,55 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Pause, resume, cancel and stop all
+
+class DirectionControlsController {
+  +Pause(id: DirectionId): Task<IActionResult>
+  +Resume(id: DirectionId): Task<IActionResult>
+  +Cancel(id: DirectionId): Task<IActionResult>
+}
+class WorkersControlController {
+  +StopAll(): Task<IActionResult>
+  +Start(): Task<IActionResult>
+}
+class WorkerControlChannel {
+  +SendAsync(worker: WorkerId, msg: ControlMessage): Task<Ack>
+  +AckDeadline: TimeSpan = 10 s
+}
+abstract class ControlMessage {
+  +RunId RunId
+}
+class PauseAfterStep
+class CancelRun
+class HaltRun
+class LeasingSwitch {
+  +bool Enabled
+  +Disable(by: UserId): void
+  +Enable(by: UserId): void
+}
+class RunSupervisor <<worker>> {
+  +OnControl(msg: ControlMessage): void
+  -pauseRequested: bool
+  -cts: CancellationTokenSource
+}
+class PullRequestLabeler {
+  +LabelOpenAsync(d: DirectionId, label: string): Task
+}
+ControlMessage <|-- PauseAfterStep
+ControlMessage <|-- CancelRun
+ControlMessage <|-- HaltRun
+DirectionControlsController ..> WorkerControlChannel
+DirectionControlsController ..> PullRequestLabeler
+WorkersControlController ..> WorkerControlChannel
+WorkersControlController --> LeasingSwitch
+WorkerControlChannel ..> ControlMessage : sends
+RunSupervisor ..> ControlMessage : handles
+@enduml

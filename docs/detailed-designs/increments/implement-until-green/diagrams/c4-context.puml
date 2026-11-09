@@ -1,0 +1,16 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Implement until green
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+Person(viewer, "Viewer", "Watches every project read-only")
+System(hewn, "Hewn", "Software factory: carries a direction to merged code through a fixed pipeline")
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+System_Ext(claude, "Claude model API", "Anthropic models, called through the Claude Agent SDK")
+
+Rel(owner, hewn, "Watches increments in")
+Rel(viewer, hewn, "Watches increments in")
+Rel(hewn, claude, "Runs implementation agents with", "Claude Agent SDK")
+Rel(hewn, github, "Pushes branches, opens and merges PRs in", "GitHub App")
+@enduml

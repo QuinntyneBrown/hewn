@@ -1,0 +1,60 @@
+@startuml
+title UML sequence behaviour — Open the PR, watch checks and merge
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker stage execution" #ECFDF3
+  participant "PullRequestStep" as pr
+  participant "MergeStep" as merge
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "GitHubWriteBroker" as broker
+  participant "GitPushProxy" as proxy
+  participant "GitHubWebhookController" as hook
+  participant "MissionControlHub" as hub
+end box
+box "Frontend — Mission Control application" #E0F2FE
+  participant "IncrementPrPanel" as panel
+end box
+box "External systems" #F2F4F7
+  participant "GitHub" as gh
+end box
+pr -> broker : OpenPullRequest(epoch, key {run}/pull-request/open, title, body)
+broker -> gh : Fenced; adopt existing open PR or create "Reconcile a card statement (journey 4, L2-018, L2-019)" (L2-024 AC1)
+note right of pr : Body: What, Design and decisions, API, Tests (commands + counts), Deferred, Notes, attribution (L2-024 AC2)
+broker --> pr : PR 42
+gh -> hook : check_run webhook (signed)
+hook -> hook : Verify signature; else 401 and log (L2-037 AC2)
+hook -> hub : CheckChanged
+hub -> panel : Live check status within 1 s (L2-024 AC3, L2-037 AC1)
+hub -> merge : Check results
+alt a required check failed
+  merge --> pr : FailedCheck -> back to ImplementStep (L2-025 AC3)
+else default branch moved
+  loop up to 3 attempts
+    merge -> merge : Rebase locally; resolve conflicts
+    merge -> proxy : git push via sidecar (fenced; run's branch only); checks re-run
+  end
+  opt still not mergeable
+    merge -> merge : Increment Blocked (L2-025 AC2)
+  end
+else all required checks passed
+  merge -> broker : MergePullRequest(epoch, key {run}/merge/merge, squash)
+  broker -> gh : Fenced; merge unless already merged (L2-025 AC1)
+  merge -> broker : DeleteBranch(epoch, key {run}/merge/delete-branch)
+  broker -> gh : Delete feature branch
+  merge -> merge : Update percent complete and docs/estimates/ before next increment (L2-025 AC4)
+end
+@enduml

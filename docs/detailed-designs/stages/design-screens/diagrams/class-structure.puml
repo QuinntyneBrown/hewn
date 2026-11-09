@@ -1,0 +1,48 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Design the screens in Magic Patterns
+
+class DesignStageExecutor <<worker>> {
+  +ExecuteAsync(ctx: StageContext): Task<StageResult>
+}
+class MagicPatternsMcpClient {
+  +ConnectAsync(credential: SecretRef): Task
+  +CallAsync(tool: string, args: object): Task<object>
+}
+class MagicPatternsUnavailable {
+  +string Reason
+}
+class MockExporter {
+  +ExportAsync(designs: Design[]): Task<Manifest>
+}
+class Manifest {
+  +ManifestScreen[] Screens
+}
+class ManifestScreen {
+  +string Id
+  +string Kind
+  +string[] States
+  +string MagicPatternsUrl
+  +Map<string,string> NotApplicable
+}
+class MockExportValidator {
+  +int[] Widths = [375, 768, 1280]
+  +string[] RequiredStates = [default, loading, empty, error]
+  +ValidateAsync(root: string): Task<ValidationReport>
+}
+DesignStageExecutor ..> MagicPatternsMcpClient
+DesignStageExecutor ..> MockExporter
+DesignStageExecutor ..> MockExportValidator
+MagicPatternsMcpClient ..> MagicPatternsUnavailable : throws
+MockExporter ..> Manifest : writes
+Manifest "1" *-- "*" ManifestScreen
+@enduml

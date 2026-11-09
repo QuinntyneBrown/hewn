@@ -1,0 +1,22 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Worker loop, packaging and recovery
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+System_Boundary(hewn, "Hewn") {
+  Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+  Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(worker, api, "Registers, leases, heartbeats, reports", "HTTPS, SignalR (outbound only)")
+Rel(worker, api, "Pushes checkpoints through the git proxy", "Git smart HTTP (outbound only)")
+Rel(api, worker, "Pushes WorkAvailable over the worker's connection", "SignalR")
+Rel(api, db, "Persists workers, leases, runs before acknowledging", "SQL")
+Rel(api, github, "Forwards fenced pushes and mutations", "Git/HTTPS, GitHub App")
+Rel(api, spa, "Pushes WorkerChanged", "SignalR")
+Rel(owner, spa, "Opens Workers", "HTTPS")
+@enduml

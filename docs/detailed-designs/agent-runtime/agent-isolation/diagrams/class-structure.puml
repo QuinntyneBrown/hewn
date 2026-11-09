@@ -1,0 +1,53 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Agent isolation
+
+class RunSandbox {
+  +CreateAsync(run: RunId, image: string): Task<RunContainer>
+  +DestroyAsync(c: RunContainer): Task
+}
+class RunContainer {
+  +string Id
+  +string WorkspaceVolume
+  +NetworkPolicy Network
+}
+class NetworkPolicy {
+  +string[] AllowedHosts = [model API, Magic Patterns MCP, registries, sidecar]
+}
+class WorkerGitSidecar {
+  +ForwardAsync(run: RunId, service: string, body: Stream): Task<Stream>
+  -workerToken: string
+  -epoch: long
+}
+class ToolGate {
+  +string[] AllowedTools
+  +InvokeAsync(call: ToolCall): Task<ToolResult>
+}
+class SecurityEvent {
+  +SecurityEventKind Kind
+  +RunId RunId
+  +string Detail
+}
+enum SecurityEventKind {
+  ToolDenied
+  EgressBlocked
+}
+class ToolCatalog {
+  +ToolDescriptor[] All
+}
+RunSandbox ..> RunContainer : creates
+RunContainer *-- NetworkPolicy
+RunContainer ..> WorkerGitSidecar : git remote
+ToolGate ..> SecurityEvent : emits
+SecurityEvent --> SecurityEventKind
+ToolGate ..> ToolCatalog : resolves from
+@enduml

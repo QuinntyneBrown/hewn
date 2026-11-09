@@ -1,0 +1,51 @@
+@startuml
+title UML sequence behaviour — Meter a model call and stop at the budget
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker stage execution" #ECFDF3
+  participant "ModelCallMeter" as meter
+end box
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "SpendLedger" as ledger
+  participant "BudgetGuard" as guard
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "MissionControlHub" as hub
+end box
+box "External systems" #F2F4F7
+  participant "Claude model API" as claude
+end box
+meter -> claude : Model call
+claude --> meter : Response with usage
+meter -> ledger : ModelCallRecorded(run, model, in, out)
+ledger -> ledger : Cost from PriceTable
+ledger -> db : Insert model call; update totals (L2-052 AC1)
+ledger -> hub : SpendUpdated (L2-052 AC2)
+ledger -> guard : Evaluate(spend, budget)
+alt spend >= 100%
+  guard -> db : Direction Paused, reason "Budget reached"
+  guard -> hub : DirectionPaused
+  guard --> meter : Stop - end at checkpoint after this call (L2-053 AC3)
+else spend >= 80% and not yet warned
+  guard -> hub : BudgetWarning (L2-053 AC2)
+  guard --> meter : Continue
+else
+  guard --> meter : Continue
+end
+@enduml

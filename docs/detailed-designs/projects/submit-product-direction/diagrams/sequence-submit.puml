@@ -1,0 +1,63 @@
+@startuml
+title UML sequence behaviour — Submit a product direction
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Owner" as owner
+box "Frontend — Mission Control application" #E0F2FE
+  participant "NewDirectionPage" as page
+  participant "DirectionsApi" as client
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "ProjectsController" as ctrl
+end box
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "SubmitProductDirectionHandler" as handler
+  participant "SubmitProductDirectionValidator" as val
+  participant "Project" as domain
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  participant "GitHubRepositoryProbe" as probe
+  database "Hewn database" as db
+end box
+owner -> page : Fill name, idea, stack, repository, budget; press Start direction
+page -> client : submit(request)
+client -> ctrl : POST /api/projects (anti-forgery token)
+ctrl -> ctrl : Authenticate; require Owner policy
+alt caller is a Viewer
+  ctrl --> client : 403 (L2-001 AC5)
+  client --> page : Show "You don't have permission"
+else caller is an Owner
+  ctrl -> handler : SubmitProductDirectionCommand
+  handler -> val : Validate name, idea, URL shape (L2-001 AC2, AC3, AC4)
+  val --> handler : ValidationResult
+  opt repository URL given
+    handler -> probe : CheckAsync(owner, repo)
+    probe --> handler : Writable | NotFound | NoAccess (L2-001 AC4)
+  end
+  alt any rule broken
+    handler --> ctrl : Field errors; nothing created
+    ctrl --> client : 400 ProblemDetails with field errors
+    client --> page : Inline errors and linked error summary
+  else valid
+    handler -> domain : Create project; enqueue product direction, stage 0 Pending
+    handler -> db : Save project and direction in one unit of work
+    db --> handler : Committed
+    handler --> ctrl : ProjectId
+    ctrl --> client : 201 Created
+    client --> page : Navigate to /projects/{id} within 2 s (L2-001 AC1)
+  end
+end
+@enduml

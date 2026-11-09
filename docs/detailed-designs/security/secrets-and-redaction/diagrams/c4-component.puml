@@ -1,0 +1,23 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Secrets and redaction
+
+Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+Container_Boundary(api_b, "Hewn API") {
+  Component(store, "ISecretStore", "Abstraction", "Key vault or OS key store")
+  Component(red, "Redactor", "Domain service", "Secret values and token patterns -> ***")
+  Component(logs, "LogLineSink", "Ingest", "Redacts before storing")
+  Component(events, "EventStore", "Repository", "Redacts before appending")
+}
+System_Ext(vault, "Secret store", "Cloud key vault in the cloud, OS key store locally")
+
+Rel(store, vault, "Encrypted at rest", "HTTPS")
+Rel(red, store, "Loads values to match")
+Rel(worker, logs, "Log lines", "HTTPS")
+Rel(logs, red, "Redact")
+Rel(events, red, "Redact")
+Rel(logs, db, "Stores", "SQL")
+Rel(events, db, "Stores", "SQL")
+@enduml

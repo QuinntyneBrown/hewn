@@ -1,0 +1,44 @@
+@startuml
+title UML sequence behaviour — Archive and restore a project
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Owner" as owner
+box "Frontend — Mission Control application" #E0F2FE
+  participant "ProjectsPage" as page
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "ProjectsController" as ctrl
+end box
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "ArchiveProjectHandler" as arch
+  participant "Project" as proj
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+owner -> page : Press Archive
+page -> ctrl : POST /api/projects/{id}/archive
+ctrl -> arch : ArchiveProjectCommand
+arch -> proj : EnsureNoActiveDirection(); Archive()
+arch -> db : Save
+ctrl --> page : 204; row moves under Archived (L2-003 AC1)
+owner -> page : Open Archived filter; press Restore
+page -> ctrl : POST /api/projects/{id}/restore
+ctrl -> arch : RestoreProjectCommand
+arch -> proj : Restore()
+arch -> db : Save
+ctrl --> page : 204; row returns to the default list
+@enduml

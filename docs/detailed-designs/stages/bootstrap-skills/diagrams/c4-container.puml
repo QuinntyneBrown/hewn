@@ -1,0 +1,24 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Bootstrap and update skills
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+System_Boundary(hewn, "Hewn") {
+  Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+  Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+}
+System_Ext(greenlit, "Greenlit repository", "github.com/QuinntyneBrown/greenlit, the skill source")
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(worker, greenlit, "Fetches default branch", "Git/HTTPS")
+Rel(worker, api, "Commits to target repository via the git proxy", "Git smart HTTP (outbound)")
+Rel(api, github, "Forwards fenced pushes and PR mutations", "Git/HTTPS, GitHub App")
+Rel(api, greenlit, "Compares locked SHA with default branch", "GitHub API")
+Rel(spa, api, "Reads update status; requests update", "JSON/HTTPS")
+Rel(worker, api, "Leases runs, reports results", "HTTPS (outbound)")
+Rel(api, db, "Stores runs and cache", "SQL")
+Rel(owner, spa, "Presses Update skills", "HTTPS")
+@enduml

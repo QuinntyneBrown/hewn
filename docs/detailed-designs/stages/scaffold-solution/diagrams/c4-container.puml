@@ -1,0 +1,21 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Scaffold the solution
+
+System_Boundary(hewn, "Hewn") {
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+  Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+System_Ext(registries, "Package registries", "NuGet, npm and the stack's other registries")
+System_Ext(claude, "Claude model API", "Anthropic models, called through the Claude Agent SDK")
+
+Rel(worker, api, "Leases the run, reports progress and result", "HTTPS, SignalR (outbound)")
+Rel(api, db, "Stores run, logs and artifact versions", "SQL")
+Rel(worker, api, "Pushes branch, opens PR, merges via the git proxy", "Git smart HTTP (outbound)")
+Rel(api, github, "Forwards fenced pushes and PR mutations", "Git/HTTPS, GitHub App")
+Rel(worker, registries, "Restores packages", "HTTPS")
+Rel(worker, claude, "Runs agent", "HTTPS")
+@enduml

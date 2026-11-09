@@ -1,0 +1,36 @@
+@startuml
+title UML sequence behaviour — Answer health probes
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Load balancer" as lb
+box "Backend — Hewn API application" #D1FADF
+  participant "Health checks" as health
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+  queue "SignalR backplane" as bp
+end box
+lb -> health : GET /health/live
+health --> lb : 200 (L2-051 AC1)
+lb -> health : GET /health/ready
+health -> db : Ping
+health -> bp : Ping
+alt both reachable
+  health --> lb : 200
+else either unreachable
+  health --> lb : 503 (L2-051 AC2)
+end
+@enduml

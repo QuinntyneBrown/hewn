@@ -1,0 +1,58 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Estimate, descope and order the backlog
+
+class DesignEstimate {
+  +string DesignPath
+  +decimal IdealDays
+  +string[] L2Ids
+}
+class Descoper {
+  +decimal Threshold
+  +Apply(estimates: DesignEstimate[], journeys: Journey[], brief: Brief): DescopeResult
+}
+class DescopeResult {
+  +DesignEstimate[] Active
+  +DeferredItem[] Deferred
+}
+class DeferredItem {
+  +string Title
+  +string[] L2Ids
+  +decimal IdealDays
+  +string Reason
+}
+class BacklogPlanner {
+  +Plan(active: DesignEstimate[], journeys: Journey[]): Increment[]
+}
+class Increment {
+  +int Number
+  +string Title
+  +int Journey
+  +string[] L2Ids
+  +decimal Estimate
+  +IncrementStatus Status
+  +int? PullRequest
+  +int[] DependsOn
+}
+enum IncrementStatus {
+  Queued
+  InProgress
+  Blocked
+  Merged
+  Deferred
+}
+Descoper ..> DesignEstimate
+Descoper ..> DescopeResult
+DescopeResult *-- DeferredItem
+BacklogPlanner ..> Increment
+Increment --> IncrementStatus
+@enduml

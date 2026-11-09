@@ -1,0 +1,26 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Artifacts and traceability
+
+Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+Container_Boundary(api_b, "Hewn API") {
+  Component(rec, "ArtifactRecorder", "Event handler", "Artifact = path + commit SHA")
+  Component(idx, "TraceIndexer", "Background job", "Builds trace links at a SHA")
+  Component(actrl, "ArtifactsController", "ASP.NET Core controller", "Artifacts by stage")
+  Component(tctrl, "TraceabilityController", "ASP.NET Core controller", "Trace for an L2")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(worker, rec, "RunSucceeded", "HTTPS")
+Rel(rec, db, "Inserts artifacts", "SQL")
+Rel(rec, idx, "Triggers after stages 5, 7, 8, merges")
+Rel(idx, github, "Reads files at SHA", "HTTPS")
+Rel(idx, db, "Rebuilds trace_links", "SQL")
+Rel(spa, actrl, "GET", "JSON/HTTPS")
+Rel(spa, tctrl, "GET", "JSON/HTTPS")
+Rel(actrl, db, "Reads", "SQL")
+Rel(tctrl, db, "Reads", "SQL")
+@enduml

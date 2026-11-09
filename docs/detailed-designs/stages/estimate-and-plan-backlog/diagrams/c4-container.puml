@@ -1,0 +1,24 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Estimate, descope and order the backlog
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+Person(viewer, "Viewer", "Watches every project read-only")
+System_Boundary(hewn, "Hewn") {
+  Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+  Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+System_Ext(claude, "Claude model API", "Anthropic models, called through the Claude Agent SDK")
+
+Rel(worker, claude, "Runs agent", "HTTPS")
+Rel(worker, api, "Commits estimates and L2 annotations via the git proxy", "Git smart HTTP (outbound)")
+Rel(api, github, "Forwards fenced pushes and PR mutations", "Git/HTTPS, GitHub App")
+Rel(worker, api, "Reports backlog", "HTTPS (outbound)")
+Rel(api, db, "Stores BacklogIndex", "SQL")
+Rel(spa, api, "GET backlog", "JSON/HTTPS")
+Rel(owner, spa, "Opens Backlog", "HTTPS")
+@enduml

@@ -1,0 +1,53 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Spend and budgets
+
+class ModelCall {
+  +RunId RunId
+  +int Stage
+  +DirectionId DirectionId
+  +ProjectId ProjectId
+  +string Model
+  +int InputTokens
+  +int OutputTokens
+  +decimal CostUsd
+}
+class PriceTable {
+  +Cost(model: string, inTok: int, outTok: int): decimal
+}
+class SpendLedger {
+  +RecordAsync(c: ModelCall): Task<BudgetVerdict>
+  +TotalFor(d: DirectionId): decimal
+}
+class Budget {
+  +decimal LimitUsd
+  +bool WarningSent
+}
+enum BudgetVerdict {
+  Continue
+  Warn
+  Stop
+}
+class BudgetGuard {
+  +Evaluate(spend: decimal, b: Budget): BudgetVerdict
+}
+class RaiseAndResumeCommand {
+  +DirectionId DirectionId
+  +decimal NewLimitUsd
+}
+SpendLedger ..> PriceTable
+SpendLedger ..> BudgetGuard
+SpendLedger o-- ModelCall
+BudgetGuard ..> Budget
+BudgetGuard ..> BudgetVerdict
+RaiseAndResumeCommand ..> Budget : raises
+@enduml

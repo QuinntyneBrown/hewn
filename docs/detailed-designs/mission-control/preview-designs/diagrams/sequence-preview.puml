@@ -1,0 +1,45 @@
+@startuml
+title UML sequence behaviour — Preview a screen state
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Owner or Viewer" as user
+box "Frontend — Mission Control application" #E0F2FE
+  participant "DesignsPage" as page
+  participant "SandboxedPreview" as prev
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "DesignsController" as ctrl
+  participant "PreviewTokenService" as tok
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  participant "MockPreviewHost" as host
+end box
+box "External systems" #F2F4F7
+  participant "GitHub" as gh
+end box
+user -> page : Open Designs
+page -> ctrl : GET /api/projects/{id}/designs
+ctrl --> page : Screens, states, thumbnails, Magic Patterns URLs (L2-011 AC1)
+user -> page : Select Reconcile statement · Review
+page -> prev : show(path)
+prev -> tok : Sign(project, sha, path)
+tok --> prev : https://mocks.hewn.dev/...?t=...
+prev -> host : iframe sandbox="allow-scripts" (no allow-same-origin) (L2-011 AC2)
+host -> gh : Fetch file at SHA (cached)
+host --> prev : HTML, CSP sandbox, no cookies
+user -> prev : Choose XS and Dark
+prev -> prev : Width 375 px; src ?theme=dark (L2-011 AC3)
+@enduml

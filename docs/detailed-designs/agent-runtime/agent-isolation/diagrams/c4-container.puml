@@ -1,0 +1,21 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Agent isolation
+
+System_Boundary(hewn, "Hewn") {
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+System_Ext(claude, "Claude model API", "Anthropic models, called through the Claude Agent SDK")
+System_Ext(magic, "Magic Patterns", "Design tool reached through its MCP server")
+System_Ext(registries, "Package registries", "NuGet, npm and the stack's other registries")
+
+Rel(worker, api, "Reports security events", "HTTPS (outbound)")
+Rel(worker, api, "Git traffic via sidecar and proxy", "Git smart HTTP (outbound)")
+Rel(api, github, "Fenced pushes and mutations", "Git/HTTPS")
+Rel(worker, claude, "Via egress proxy", "HTTPS")
+Rel(worker, magic, "Via egress proxy", "HTTPS")
+Rel(worker, registries, "Via egress proxy", "HTTPS")
+@enduml

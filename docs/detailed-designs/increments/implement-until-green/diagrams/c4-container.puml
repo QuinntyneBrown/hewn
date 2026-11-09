@@ -1,0 +1,26 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Implement until green
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+Person(viewer, "Viewer", "Watches every project read-only")
+System_Boundary(hewn, "Hewn") {
+  Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+  Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+System_Ext(claude, "Claude model API", "Anthropic models, called through the Claude Agent SDK")
+System_Ext(registries, "Package registries", "NuGet, npm and the stack's other registries")
+
+Rel(worker, api, "Leases increment runs; reports steps", "HTTPS, SignalR (outbound)")
+Rel(worker, api, "Pushes commits via the git proxy", "Git smart HTTP (outbound)")
+Rel(api, github, "Forwards fenced pushes and PR mutations", "Git/HTTPS, GitHub App")
+Rel(worker, claude, "Runs agent", "HTTPS")
+Rel(api, db, "Stores increment state", "SQL")
+Rel(api, spa, "Pushes increment events", "SignalR")
+Rel(owner, spa, "Opens the increment page", "HTTPS")
+Rel(worker, registries, "Restores packages", "HTTPS")
+@enduml

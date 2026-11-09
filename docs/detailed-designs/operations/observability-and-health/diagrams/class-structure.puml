@@ -1,0 +1,41 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Observability and health checks
+
+class LogContextEnricher {
+  +Enrich(e: LogEvent): void
+}
+class RunTraceContext {
+  +string TraceParent
+  +string? TraceState
+}
+class Run {
+  +RunId Id
+  +RunTraceContext Trace
+}
+class HewnMetrics {
+  +StageDuration: Histogram
+  +StageRuns: Counter
+  +QueueDepth: ObservableGauge
+  +ActiveWorkers: ObservableGauge
+  +EventLatency: Histogram
+  +Tokens: Counter
+  +SpendUsd: Counter
+}
+class DatabaseHealthCheck {
+  +CheckHealthAsync(): Task<HealthCheckResult>
+}
+class BackplaneHealthCheck {
+  +CheckHealthAsync(): Task<HealthCheckResult>
+}
+Run *-- RunTraceContext
+@enduml

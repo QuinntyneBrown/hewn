@@ -1,0 +1,39 @@
+@startuml
+title UML sequence behaviour — Authorize a request
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Viewer" as viewer
+box "Frontend — Mission Control application" #E0F2FE
+  participant "Mission Control" as spa
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "Authorization policies" as pol
+  participant "ProjectAccessFilter" as filter
+  participant "MissionControlHub" as hub
+end box
+viewer -> spa : (crafted) POST /api/directions/{id}/pause
+spa -> pol : OwnerPolicy
+pol --> spa : 403 (L2-039 AC1)
+viewer -> spa : GET /api/projects/{other}
+spa -> filter : Access to project?
+filter --> spa : 404, existence not revealed (L2-039 AC2)
+spa -> hub : JoinProject(other)
+hub -> filter : CanJoin?
+filter --> hub : No
+hub --> spa : Group refused
+viewer -> spa : Open Settings > Access
+spa --> viewer : Allow list read-only (L2-038 AC5)
+@enduml

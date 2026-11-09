@@ -1,0 +1,46 @@
+@startuml
+title UML sequence behaviour — Sign in with GitHub
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "User" as user
+box "Frontend — Mission Control application" #E0F2FE
+  participant "Mission Control" as spa
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "GitHubOAuthHandler" as oauth
+  participant "AllowListSignInValidator" as allow
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+box "External systems" #F2F4F7
+  participant "GitHub" as gh
+end box
+user -> spa : Open /projects
+spa -> oauth : GET /projects (no session)
+oauth --> spa : 302 /sign-in (APIs and hubs: 401) (L2-038 AC1)
+user -> spa : Sign in with GitHub
+spa -> gh : Authorize
+gh -> oauth : Callback with code
+oauth -> gh : Exchange code; read login
+oauth -> allow : OnTicketReceived(login)
+allow -> db : Find allow-list entry
+alt not on list
+  allow --> spa : "This account doesn't have access" (L2-038 AC2)
+else Owner or Viewer
+  oauth --> spa : Set-Cookie HttpOnly; Secure; SameSite=Lax; 8 h absolute (L2-038 AC3, AC4)
+end
+@enduml

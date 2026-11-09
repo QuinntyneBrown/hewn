@@ -1,0 +1,42 @@
+@startuml
+title UML sequence behaviour — Scaffold, wait for CI and merge
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker stage execution" #ECFDF3
+  participant "ScaffoldStageExecutor" as exec
+  participant "CheckWaiter" as wait
+  participant "BranchProtectionConfigurer" as bp
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "RunsController" as ctrl
+end box
+box "External systems" #F2F4F7
+  participant "GitHub (via write broker)" as gh
+end box
+exec -> exec : Generate backend, frontend, e2e project; write ci.yml and README.md (L2-015 AC1, AC3)
+exec -> gh : Push hewn/scaffold; open PR
+exec -> wait : WaitAsync(pr, [backend, frontend, e2e])
+gh --> wait : Check results via webhook or polling (L2-037)
+alt any check failed
+  wait --> exec : Failed
+  exec -> ctrl : RunFailed("CI failed on scaffold") (L2-015 AC4)
+else all passed (L2-015 AC2)
+  exec -> gh : Squash-merge PR
+  exec -> bp : RequireAsync(default branch, checks) (L2-036 AC2)
+  bp -> gh : Update branch protection
+  exec -> ctrl : RunSucceeded(merge SHA)
+end
+@enduml

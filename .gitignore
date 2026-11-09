@@ -1,0 +1,7 @@
+
+# Mock screenshots (regenerate with screenshot_mocks.py)
+docs/mocks/.cache/
+__pycache__/
+
+# Design-system harvest and screenshots
+docs/design-system/.cache/

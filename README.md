@@ -1,4 +1,10 @@
-<h1 align="center">Hewn</h1>
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/design-system/assets/logo/hewn-wordmark-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/design-system/assets/logo/hewn-wordmark-light.svg">
+    <img src="docs/design-system/assets/logo/hewn-wordmark-light.svg" alt="Hewn" width="320">
+  </picture>
+</h1>
 
 <p align="center">
   <strong>A software factory. Give it a direction; get back merged, tested code.</strong>

@@ -1,0 +1,24 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Submit a product direction
+
+Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+Container_Boundary(api_b, "Hewn API") {
+  Component(ctrl, "ProjectsController", "ASP.NET Core controller", "POST /api/projects, Owner policy")
+  Component(val, "SubmitProductDirectionValidator", "Validator", "Name, idea and repository rules")
+  Component(handler, "SubmitProductDirectionHandler", "Command handler", "Creates the project and queues the direction")
+  Component(probe, "GitHubRepositoryProbe", "GitHub App client", "Checks write access to a named repository")
+  Component(domain, "Project / Direction", "Domain model", "Project with its queued product direction")
+}
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(spa, ctrl, "Submits", "JSON/HTTPS")
+Rel(ctrl, handler, "Sends SubmitProductDirectionCommand")
+Rel(handler, val, "Validates with")
+Rel(handler, probe, "Checks repository with")
+Rel(probe, github, "GET /repos/{owner}/{repo}", "HTTPS")
+Rel(handler, domain, "Creates")
+Rel(handler, db, "Saves in one unit of work", "SQL")
+@enduml

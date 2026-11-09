@@ -1,0 +1,53 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Produce and validate stage documents
+
+interface IStageValidator {
+  +ValidateAsync(ws: Workspace): Task<ValidationReport>
+}
+class ValidationReport {
+  +bool Ok
+  +string Message
+  +string[] OffendingIds
+}
+class BriefValidator
+class StackDecisionValidator
+class RequirementsValidator {
+  -forbiddenWords = [should, may, might]
+}
+class DesignCoverageValidator
+class JourneysValidator
+class StageDefinition {
+  +int Stage
+  +string? Skill
+  +string[] Outputs
+  +IStageValidator Validator
+  +string[] AllowedTools
+}
+class DocumentStageExecutor <<worker>> {
+  +ExecuteAsync(ctx: StageContext): Task<StageResult>
+}
+class IdAllocator {
+  +NextL1(): string
+  +NextL2(): string
+  +NextJourney(): int
+}
+IStageValidator <|.. BriefValidator
+IStageValidator <|.. StackDecisionValidator
+IStageValidator <|.. RequirementsValidator
+IStageValidator <|.. DesignCoverageValidator
+IStageValidator <|.. JourneysValidator
+IStageValidator ..> ValidationReport
+DocumentStageExecutor --> StageDefinition
+StageDefinition --> IStageValidator
+DocumentStageExecutor ..> IdAllocator
+@enduml

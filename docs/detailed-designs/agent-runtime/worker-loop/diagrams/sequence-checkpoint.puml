@@ -1,0 +1,57 @@
+@startuml
+title UML sequence behaviour — Commit and record a checkpoint through the broker
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker stage execution" #ECFDF3
+  participant "CheckpointWriter" as cw
+end box
+box "Backend — Worker application" #D1FADF
+  participant "WorkerGitSidecar" as side
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "GitPushProxy" as proxy
+  participant "LeaseFence" as fence
+end box
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "RunWriteLock" as lock
+  participant "LeaseService" as lease
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+box "External systems" #F2F4F7
+  participant "GitHub" as gh
+end box
+cw -> cw : Commit with trailer Hewn-Checkpoint: {run}/tests
+cw -> side : git push http://sidecar/git/{run} --force-with-lease=feature/x:{lastKnownHead}
+side -> proxy : git-receive-pack + worker token + X-Hewn-Epoch: 3
+proxy -> lock : AcquireAsync(run)
+proxy -> fence : Epoch 3 == Run.LeaseEpoch and lease held by this worker?
+alt stale
+  fence --> side : 409 LeaseLost; nothing forwarded
+  side --> cw : Push refused; stop run
+else current
+  proxy -> proxy : Ref update targets refs/heads/feature/x only (else reject)
+  proxy -> gh : Forward with installation token (never leaves the API)
+  gh --> proxy : ok; new head a1b2c3
+  proxy -> db : Run.BranchHead = a1b2c3
+  proxy -> lock : Release
+  proxy --> cw : ok
+  cw -> lease : ReportCheckpoint(run, epoch 3, step tests, sha a1b2c3)
+  lease -> db : Run.Checkpoint = {tests, a1b2c3}; commit (L2-050 AC1)
+  lease --> cw : Recorded; start next step
+end
+@enduml

@@ -1,0 +1,12 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title System Context — Connect to GitHub
+
+System(hewn, "Hewn", "Software factory: carries a direction to merged code through a fixed pipeline")
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+System_Ext(vault, "Secret store", "Cloud key vault in the cloud, OS key store locally")
+
+Rel(hewn, github, "Creates repositories, pushes, opens and merges PRs, sets protection", "GitHub App")
+Rel(hewn, vault, "Reads the GitHub App private key from")
+@enduml

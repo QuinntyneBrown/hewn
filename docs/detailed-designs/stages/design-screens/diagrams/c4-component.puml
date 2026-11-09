@@ -1,0 +1,27 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Components — Design the screens in Magic Patterns
+
+Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+Container_Boundary(worker_b, "Worker") {
+  Component(exec, "DesignStageExecutor", "Stage executor", "Stage 2")
+  Component(agent, "StageAgent", "Claude Agent SDK session", "writing-html-mocks skill")
+  Component(mcp, "MagicPatternsMcpClient", "MCP client", "Magic Patterns tools")
+  Component(export, "MockExporter", "Worker service", "HTML export and manifest")
+  Component(val, "MockExportValidator", "Validator", "Parse, render at 3 widths, state coverage")
+}
+System_Ext(magic, "Magic Patterns", "Design tool reached through its MCP server")
+System_Ext(claude, "Claude model API", "Anthropic models, called through the Claude Agent SDK")
+System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
+
+Rel(api, exec, "Leases run", "HTTPS")
+Rel(exec, agent, "Runs")
+Rel(agent, mcp, "Calls tools")
+Rel(agent, claude, "Calls", "HTTPS")
+Rel(mcp, magic, "MCP", "HTTPS")
+Rel(exec, export, "Exports")
+Rel(export, mcp, "Reads designs")
+Rel(exec, val, "Validates")
+Rel(exec, github, "Commits", "Git/HTTPS")
+@enduml

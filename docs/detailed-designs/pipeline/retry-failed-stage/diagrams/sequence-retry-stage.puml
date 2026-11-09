@@ -1,0 +1,38 @@
+@startuml
+title UML sequence behaviour — Owner presses Retry stage
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Owner" as owner
+box "Frontend — Mission Control application" #E0F2FE
+  participant "StageDetail" as detail
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "DirectionsController" as ctrl
+end box
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "Direction" as dir
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+owner -> detail : Press Retry stage
+detail -> ctrl : POST /api/directions/{id}/retry-stage
+ctrl -> ctrl : Require Owner policy (L2-039)
+ctrl -> dir : RetryFailedStage()
+dir --> ctrl : Run(stage, attempt 1), direction Running (L2-006 AC3)
+ctrl -> db : Commit
+ctrl --> detail : 202; stage shows Running
+@enduml

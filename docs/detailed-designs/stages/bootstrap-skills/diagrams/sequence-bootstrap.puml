@@ -1,0 +1,40 @@
+@startuml
+title UML sequence behaviour — Run stage 0, Bootstrap
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Backend — Worker stage execution" #ECFDF3
+  participant "BootstrapStageExecutor" as boot
+  participant "SkillCopier" as copier
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "RunsController" as ctrl
+end box
+box "External systems" #F2F4F7
+  participant "Greenlit" as gl
+  participant "Target repository (via write broker)" as gh
+end box
+boot -> gl : Fetch default branch
+alt unreachable
+  boot -> ctrl : RunFailed("Greenlit unreachable") (L2-007 AC4, L2-006)
+else reachable
+  boot -> copier : Copy .claude/skills/ and .agents/skills/ to same paths (L2-007 AC1)
+  copier --> boot : Copied, KeptExisting
+  boot -> ctrl : Log "kept existing: {name}" for each (L2-007 AC3)
+  boot -> boot : Write .hewn/skills.lock {source, sha, skills} (L2-007 AC2)
+  boot -> gh : Commit "Bootstrap skills from greenlit@{short-sha}"; push
+  boot -> ctrl : RunSucceeded(commit SHA)
+end
+@enduml

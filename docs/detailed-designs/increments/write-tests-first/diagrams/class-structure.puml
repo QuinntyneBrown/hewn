@@ -1,0 +1,42 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Write the tests first
+
+class IncrementRunner <<worker>> {
+  +ExecuteAsync(ctx: IncrementContext): Task<StageResult>
+}
+class IncrementContext {
+  +int Number
+  +string Slug
+  +string[] L2Ids
+  +string DefaultBranch
+}
+class TestFirstStep {
+  +RunAsync(ctx: IncrementContext): Task<string>
+}
+class TestCommitGuard {
+  +Check(diff: Diff, l2Ids: string[]): ValidationReport
+}
+class RedRunRecorder {
+  +RunAsync(ctx: IncrementContext): Task<RedResult>
+}
+class RedResult {
+  +int Failing
+  +int Passing
+  +bool PassedBeforeImplementation
+}
+IncrementRunner --> IncrementContext
+IncrementRunner ..> TestFirstStep
+IncrementRunner ..> RedRunRecorder
+TestFirstStep ..> TestCommitGuard
+RedRunRecorder ..> RedResult
+@enduml

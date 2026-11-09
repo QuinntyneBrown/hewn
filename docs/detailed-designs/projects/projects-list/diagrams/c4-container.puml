@@ -1,0 +1,21 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Containers — Projects list
+
+Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
+Person(viewer, "Viewer", "Watches every project read-only")
+System_Boundary(hewn, "Hewn") {
+  Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
+  Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+  ContainerQueue(backplane, "SignalR backplane", "<TO SUPPLY>", "Fans hub messages out across API instances")
+}
+
+Rel(owner, spa, "Opens Projects", "HTTPS")
+Rel(viewer, spa, "Opens Projects", "HTTPS")
+Rel(spa, api, "GET /api/projects", "JSON/HTTPS")
+Rel(api, spa, "Pushes ProjectChanged", "SignalR")
+Rel(api, db, "Reads project summaries", "SQL")
+Rel(api, backplane, "Publishes hub messages")
+@enduml

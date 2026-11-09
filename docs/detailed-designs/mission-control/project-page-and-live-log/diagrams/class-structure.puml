@@ -1,0 +1,49 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam class {
+  BorderColor #344054
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+title Class structure — Project page and live log
+
+class StageRowVm {
+  +int Stage
+  +string Name
+  +StageStatus Status
+  +string StatusLabel
+  +string Icon
+  +TimeSpan? Duration
+  +string? CurrentStep
+  +string? LatestLogLine
+}
+class LiveLogComponent <<Angular>> {
+  +MaxRenderedRows = 500
+  +following: Signal<bool>
+  +pendingCount: Signal<int>
+  +onScroll(): void
+  +jumpToLatest(): void
+  +append(line: LogLine): void
+}
+class LogLine {
+  +RunId RunId
+  +long LineNo
+  +DateTimeOffset At
+  +string Level
+  +string Text
+}
+class StageDetail <<Angular>> {
+  +tab: 'log' | 'runs' | 'artifacts' | 'decisions'
+}
+class PipelineReadModel {
+  +DirectionId DirectionId
+  +StageRowVm[] Stages
+}
+PipelineReadModel *-- StageRowVm
+StageDetail *-- LiveLogComponent
+LiveLogComponent o-- LogLine
+@enduml

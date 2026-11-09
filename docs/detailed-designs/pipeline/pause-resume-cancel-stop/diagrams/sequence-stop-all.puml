@@ -1,0 +1,43 @@
+@startuml
+title UML sequence behaviour — Stop and start all workers
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Owner" as owner
+box "Frontend — Mission Control application" #E0F2FE
+  participant "StopWorkersDialog" as dlg
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "WorkersControlController" as wc
+  participant "WorkerControlChannel" as chan
+end box
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "LeasingSwitch" as switch
+end box
+box "Backend — Worker application" #D1FADF
+  participant "RunSupervisor" as sup
+end box
+owner -> dlg : Confirm Stop all workers
+dlg -> wc : POST /api/workers/stop-all
+wc -> switch : Disable() - no new leases
+wc -> chan : HaltRun to every connected worker
+chan -> sup : HaltRun
+sup -> sup : Stop at once; last checkpoint is kept
+sup --> chan : Halted (deadline 10 s, L2-029 AC4)
+wc --> dlg : Banner "All workers stopped"; sidebar shows Start workers
+owner -> wc : POST /api/workers/start
+wc -> switch : Enable()
+note over sup : Halted runs are leased again and resume from their checkpoints
+@enduml

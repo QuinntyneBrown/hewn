@@ -1,0 +1,37 @@
+@startuml
+title UML sequence behaviour — Reconnect and catch up
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+box "Frontend — Mission Control application" #E0F2FE
+  participant "LiveEventsService" as live
+  participant "ConnectionBanner" as banner
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "MissionControlHub" as hub
+  participant "EventsController" as ctrl
+end box
+live -> live : Connection closed
+live -> banner : Show "Reconnecting…" (L2-032 AC1)
+loop retry after 0, 2, 10, 30 s, then every 30 s
+  live -> hub : Start connection
+end
+hub --> live : Connected
+live -> hub : JoinProject(id)
+live -> ctrl : GET /api/projects/{id}/events?after=lastSeq
+ctrl --> live : Missed events in order
+live -> live : Apply each once; skip seq <= lastSeq (L2-032 AC2)
+live -> banner : Hide after catch-up (L2-032 AC3)
+@enduml
