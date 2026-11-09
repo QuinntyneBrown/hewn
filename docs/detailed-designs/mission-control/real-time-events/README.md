@@ -83,3 +83,21 @@ An API instance commits an event and crashes before publishing it. The row stays
 The banner appears and retries follow 0, 2, 10, 30 s then every 30 s (L2-032 AC1). After reconnecting, missed events are applied once (AC2) and the banner clears (AC3).
 
 ![Sequence diagram: reconnect and catch up](diagrams/sequence-reconnect.png)
+
+## Decisions made while building the slice
+
+Journey 3 built L2-031 for stage, step, log and decision events. See
+[ADR 0009](../../../adr/0009-live-progress-from-the-worker.md).
+
+- **Event types so far:** `DirectionQueued`, `DirectionChanged`, `DirectionScoped`, `StageChanged`,
+  `StepStarted`, `LogLines` (one per batch of up to 500 lines), `DecisionRecorded`, `ProjectChanged` and
+  `IncrementChanged`. Each carries `directionId` and `stage` where it concerns one, so a page can route it.
+- **Sequence.** `EventAppender` gives each event the next per-project sequence inside the same unit of work as the
+  change, and the unique `(project, sequence)` index rejects a concurrent writer. A pipeline e2e test checks that a
+  project's events number 1, 2, 3, … with no gap.
+- **Publishing.** Events are broadcast to the project's hub group right after the commit. The outbox dispatcher,
+  claim columns and `CommitNudge` are not built yet: a crash between commit and broadcast is covered by the client,
+  which catches up from `GET /api/projects/{id}/events?after=` whenever it joins or reconnects.
+- **Not built yet:** the reconnect banner, the retry schedule and the catch-up count (journey 27), the outbox
+  dispatcher and its metrics, and the p95 latency load test (L2-045).
+

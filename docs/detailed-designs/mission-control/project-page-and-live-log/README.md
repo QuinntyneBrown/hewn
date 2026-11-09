@@ -68,3 +68,34 @@ Each stage shows status, duration, icon and text (L2-030 AC1); the running stage
 New lines follow the newest (L2-033 AC1). Scrolled up, the view stays and counts new lines (AC2). Long logs keep at most 500 rows in the DOM (AC3).
 
 ![Sequence diagram: follow and pause the log](diagrams/sequence-follow-log.png)
+
+## Decisions made while building the slice
+
+Journey 3 built L2-030, L2-033 and L2-047 AC3. See [ADR 0009](../../../adr/0009-live-progress-from-the-worker.md).
+
+- **One page component.** `ProjectPage` holds the stage list and the stage detail; `StageList` and `StageDetail`
+  stayed template sections rather than components. `LiveLogComponent` (`hw-live-log`) is its own component.
+- **Selection.** A stage row is a link to `?stage={n}` (replacing the history entry). With no `?stage=`, the detail
+  follows the running stage, else the first pending one, else the last. The selected row carries
+  `aria-current="step"`, as in the mocks.
+- **Live step and line.** `StepStarted` and `LogLines` set the stage's `step` and `latestLine`; `StageChanged`
+  clears them. The running row shows them in `.stage__live`.
+- **Detail.** `GET /api/projects/{id}/directions/{d}/stages/{n}` loads the runs, artifacts and decisions, and is
+  reloaded (at most every 250 ms) when an event touches the stage. Meta shows the stage's skill and output, its
+  duration and the newest run's worker, or "Not leased yet". The tabs follow the WAI-ARIA tabs pattern (arrow keys,
+  Home, End). Artifacts use the `files` list and decisions the `decision` list from the Artifacts and Decisions
+  page mocks.
+- **The log.** `RunLogsController` became `GET /api/projects/{id}/runs/{r}/logs?after=&limit=`, scoped to the
+  project. The page loads every stored line in pages of 5,000 and merges `LogLines` events by line number, so a
+  live line that arrives before its page is neither lost nor repeated. Above 500 lines the log renders a window of
+  at most 500 rows; windowed lines keep to one row so the row height is exact. Following, the window ends at the
+  newest line; scrolled up, new lines add to "{n} new lines — Jump to latest".
+- **Notices.** A pending stage with no started run says "Waiting for a worker" (the direction's first stage) or
+  "Not started"; a skipped stage says so.
+- **States.** Loading shows the mock's skeleton; a failed load other than 404 shows "The pipeline couldn’t load"
+  with Try again; 404 keeps "Project not found".
+- **Announcements (L2-047 AC3).** Stage changes go to a polite live region, throttled to one every 5 seconds per
+  page (leading and trailing; the latest change wins).
+- **Not built yet:** the increment card on stage 10 (with journey 13, Follow an increment to merge) and the stepper layout
+  at 576–991 px (L2-046).
+
