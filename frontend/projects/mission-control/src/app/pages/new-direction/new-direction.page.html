@@ -39,6 +39,14 @@
           >
         </div>
         <div class="stack mt-8" style="gap: var(--space-6)">
+          @if (rateLimited(); as message) {
+            <div class="callout callout--warn" role="alert">
+              <div>
+                <p class="callout__title">Too many directions in a minute</p>
+                <p class="callout__body">{{ message }}</p>
+              </div>
+            </div>
+          }
           @if (failure(); as message) {
             <div class="callout callout--danger" role="alert">
               <svg hw-icon name="warning" class="icon--lg"></svg>
