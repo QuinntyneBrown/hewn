@@ -193,7 +193,7 @@ public sealed class RunDirectionTests : IAsyncLifetime
 
         (await worker.FailAsync(run!, "git push failed: remote rejected ghp_abcdefghijklmnopqrstuvwxyz0123456789 token=hunter2-secret")).EnsureSuccessStatusCode();
 
-        var stored = await _factory.QueryAsync(db => db.Runs.SingleAsync(r => r.Id == run.RunId));
+        var stored = await _factory.QueryAsync(db => db.Runs.SingleAsync(r => r.Id == run!.RunId));
         Assert.Equal("git push failed: remote rejected [redacted] [redacted]", stored.Error);
     }
 

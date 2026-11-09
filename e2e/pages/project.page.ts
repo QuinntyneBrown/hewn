@@ -6,6 +6,8 @@ export class ProjectPage {
   readonly pipeline: Locator;
   readonly projectStatus: Locator;
   readonly repository: Locator;
+  readonly completeCallout: Locator;
+  readonly announcer: Locator;
 
   private readonly page: Page;
 
@@ -15,6 +17,8 @@ export class ProjectPage {
     this.pipeline = page.getByRole('list', { name: 'Pipeline' });
     this.projectStatus = page.locator('.phead .status');
     this.repository = page.locator('.phead__repo');
+    this.completeCallout = page.locator('.callout--ok', { hasText: 'Direction complete' });
+    this.announcer = page.locator('[data-testid="pipeline-announcer"]');
   }
 
   async open(projectId: string): Promise<void> {
@@ -29,6 +33,16 @@ export class ProjectPage {
   /** A stage row; its accessible text holds the number, name and status label. */
   stage(name: string): Locator {
     return this.stages().filter({ has: this.page.locator('.stage__name', { hasText: new RegExp(`^${name}$`) }) });
+  }
+
+  /** The current stage, marked aria-current="step". */
+  currentStage(): Locator {
+    return this.pipeline.locator('[aria-current="step"]');
+  }
+
+  /** Each stage's status label, in pipeline order. */
+  async stageStatuses(): Promise<string[]> {
+    return this.pipeline.locator('.stage .visually-hidden').allTextContents();
   }
 
   projectIdFromUrl(): string {

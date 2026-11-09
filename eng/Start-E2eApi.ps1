@@ -18,6 +18,7 @@ $env:Hewn__Fakes__GitHub__NotFound = 'northwind/missing'
 $env:HEWN_ALLOWED_GITHUB_USERS = 'quinntynebrown:Owner,ada:Viewer'
 $env:HEWN_GITHUB_OWNER = 'hewn-builds'
 $env:HEWN_DEFAULT_BUDGET_USD = '300'
+$env:HEWN_WORKER_TOKEN = 'e2e-worker-token-not-a-secret'
 
 $cli = Join-Path $root 'backend/src/Hewn.Cli'
 dotnet run --project $cli -- reset --yes
