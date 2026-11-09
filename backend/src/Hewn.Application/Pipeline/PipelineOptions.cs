@@ -16,4 +16,10 @@ public sealed class PipelineOptions
 
     /// <summary>How long Cancel waits for the worker to stop its run (Hewn:Control:StopDeadlineSeconds; L2-029 AC3).</summary>
     public int StopDeadlineSeconds { get; set; } = 10;
+
+    /// <summary>
+    /// Backoff before each automatic retry of a failed run, in seconds (Hewn:Retry:BackoffSeconds, comma-separated;
+    /// L2-006 AC1). Its length is the number of retries.
+    /// </summary>
+    public IReadOnlyList<int> RetryBackoffSeconds { get; set; } = [30, 120, 600];
 }

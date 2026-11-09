@@ -58,6 +58,16 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.Property<long?>("CompletedAt")
                         .HasColumnType("INTEGER");
 
+                    b.Property<long?>("FailedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("FailedStage")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
                     b.Property<bool?>("HasUiChange")
                         .HasColumnType("INTEGER");
 
@@ -379,6 +389,9 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("Attempt")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("CheckpointSha")
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
@@ -411,6 +424,9 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<long?>("LeaseExpiresAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("NotBefore")
                         .HasColumnType("INTEGER");
 
                     b.Property<Guid>("ProjectId")

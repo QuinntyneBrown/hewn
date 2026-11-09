@@ -18,8 +18,11 @@ public sealed class LeaseService(IAppDbContext db, TimeProvider clock)
     {
         for (var attempt = 0; attempt < Attempts; attempt++)
         {
+            var due = clock.GetUtcNow();
             var candidate = await db.Runs.AsNoTracking()
                 .Where(r => r.Status == RunStatus.Queued)
+                // A retry waits out its backoff (L2-006 AC1).
+                .Where(r => r.NotBefore == null || r.NotBefore <= due)
                 .Where(r => !db.Runs.Any(o => o.ProjectId == r.ProjectId && o.Status == RunStatus.Leased))
                 .Where(r => !db.LeasingSwitches.Any(s => s.Stopped))
                 .OrderBy(r => r.CreatedAt)

@@ -43,6 +43,23 @@ describe('ScriptedStageExecutor', () => {
     await expect(main!.execute(new AbortController().signal)).rejects.toThrow('Scripted failure in stage 3');
   });
 
+  it('fails the configured stage only its first few times per project, with the given reason, so a retry can succeed', async () => {
+    const executor = new ScriptedStageExecutor({
+      stepMs: 0,
+      failStage: 3,
+      failTimes: 2,
+      failReason: 'Validation failed',
+    });
+    const attempt = () => executor.plan(run(3), context)[1]!.execute(new AbortController().signal);
+
+    await expect(attempt()).rejects.toThrow('Validation failed');
+    await expect(attempt()).rejects.toThrow('Validation failed');
+    await expect(attempt()).resolves.toBeUndefined();
+    await expect(
+      executor.plan({ ...run(3), projectId: 'other' }, context)[1]!.execute(new AbortController().signal),
+    ).rejects.toThrow('Validation failed');
+  });
+
   it('opens a pull request in the configured stage, as Scaffold does, before its log lines', async () => {
     const calls: string[] = [];
     const prContext = {

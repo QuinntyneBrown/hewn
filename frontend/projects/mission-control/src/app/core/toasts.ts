@@ -1,11 +1,20 @@
 import { Injectable, signal } from '@angular/core';
 
-export type ToastTone = 'info' | 'ok' | 'warn';
+export type ToastTone = 'info' | 'ok' | 'warn' | 'danger';
+
+/** A link (router commands) or a button (run) under the toast's text. */
+export interface ToastAction {
+  label: string;
+  link?: unknown[];
+  queryParams?: Record<string, unknown>;
+  run?: () => void;
+}
 
 export interface ToastMessage {
   tone: ToastTone;
   title: string;
   text: string;
+  actions?: ToastAction[];
 }
 
 export interface Toast extends ToastMessage {
@@ -13,7 +22,12 @@ export interface Toast extends ToastMessage {
 }
 
 /** How long each tone stays, per the design system's toast page. Danger toasts stay until dismissed. */
-export const TOAST_MS: Record<ToastTone, number> = { info: 6_000, ok: 6_000, warn: 10_000 };
+export const TOAST_MS: Record<ToastTone, number> = {
+  info: 6_000,
+  ok: 6_000,
+  warn: 10_000,
+  danger: Number.POSITIVE_INFINITY,
+};
 
 interface Timer {
   left: number;
@@ -49,7 +63,7 @@ export class Toasts {
 
   resume(id: number): void {
     const timer = this.timers.get(id);
-    if (!timer || timer.handle) return;
+    if (!timer || timer.handle || timer.left === Number.POSITIVE_INFINITY) return;
     timer.startedAt = Date.now();
     timer.handle = setTimeout(() => this.dismiss(id), Math.max(0, timer.left));
   }

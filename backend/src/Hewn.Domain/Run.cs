@@ -9,6 +9,14 @@ public sealed class Run
     {
     }
 
+    /// <summary>A retry of a failed run (L2-006 AC1): attempt 2 to 4 of the stage, leasable from <paramref name="notBefore"/>.</summary>
+    public Run(Guid projectId, Guid directionId, int stage, DateTimeOffset now, int attempt, DateTimeOffset notBefore)
+        : this(projectId, directionId, stage, now)
+    {
+        Attempt = attempt;
+        NotBefore = notBefore;
+    }
+
     public Run(Guid projectId, Guid directionId, int stage, DateTimeOffset now)
     {
         Id = Guid.NewGuid();
@@ -17,7 +25,14 @@ public sealed class Run
         Stage = stage;
         Status = RunStatus.Queued;
         CreatedAt = now;
+        Attempt = 1;
     }
+
+    /// <summary>1 for the first try of a stage, 2 to 4 for its automatic retries (L2-006 AC1).</summary>
+    public int Attempt { get; private set; }
+
+    /// <summary>A retry waits out its backoff: it is not leased before this time.</summary>
+    public DateTimeOffset? NotBefore { get; private set; }
 
     public Guid Id { get; private set; }
 

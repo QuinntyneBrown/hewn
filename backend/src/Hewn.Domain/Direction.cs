@@ -100,7 +100,8 @@ public sealed class Direction
     /// <summary>Designs and Design system, skipped when a feature has no user interface change (L2-005 AC2).</summary>
     public static readonly IReadOnlyList<int> UiStages = [2, 3];
 
-    public bool IsActive => Status is DirectionStatus.Queued or DirectionStatus.Running or DirectionStatus.Paused;
+    /// <summary>Holds the project's turn: queued, running, paused or Blocked (a Blocked direction waits for Retry stage).</summary>
+    public bool IsActive => Status is DirectionStatus.Queued or DirectionStatus.Running or DirectionStatus.Paused or DirectionStatus.Blocked;
 
     /// <summary>The first stage of the plan: a product direction runs all eleven; a feature direction starts at Idea.</summary>
     public int FirstStage => _stages.First(s => s.Status == StageStatus.Pending).Number;
@@ -339,6 +340,43 @@ public sealed class Direction
     {
         Stage(number).End(StageStatus.Failed, now);
         PauseRequestedBy = null;
+    }
+
+    /// <summary>Why the failed stage's last attempt failed, while the direction is Blocked (redacted).</summary>
+    public string? FailureReason { get; private set; }
+
+    public int? FailedStage { get; private set; }
+
+    public DateTimeOffset? FailedAt { get; private set; }
+
+    public const int MaxFailureReasonLength = 2000;
+
+    /// <summary>L2-006 AC2: the stage's retries are exhausted, so it is Failed and the direction Blocked.</summary>
+    public StageState Block(int number, string reason, DateTimeOffset now)
+    {
+        FailStage(number, now);
+        Status = DirectionStatus.Blocked;
+        FailureReason = reason.Length > MaxFailureReasonLength ? reason[..MaxFailureReasonLength] : reason;
+        FailedStage = number;
+        FailedAt = now;
+        return Stage(number);
+    }
+
+    /// <summary>L2-006 AC3: Retry stage runs the failed stage again from its start; the direction runs again.</summary>
+    public StageState RetryStage(DateTimeOffset now)
+    {
+        if (Status != DirectionStatus.Blocked || FailedStage is not { } number)
+        {
+            throw new InvalidOperationException($"Direction {Id} is {Status}; only a Blocked direction retries a stage.");
+        }
+
+        var stage = Stage(number);
+        stage.Restart(now);
+        Status = DirectionStatus.Running;
+        FailureReason = null;
+        FailedStage = null;
+        FailedAt = null;
+        return stage;
     }
 
     public StageState Stage(int number) => _stages.Single(s => s.Number == number);

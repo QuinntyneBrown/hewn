@@ -81,6 +81,15 @@ describe('selectedStage', () => {
       (status, number) => ({ number, status }) as { number: number; status: StageStatus },
     );
 
+  it('opens on the Failed stage of a Blocked direction (L2-006 AC2)', () => {
+    const stages = [
+      { number: 0, status: 'Succeeded' as const },
+      { number: 1, status: 'Failed' as const },
+      { number: 2, status: 'Pending' as const },
+    ];
+    expect(selectedStage(stages, undefined)).toBe(1);
+  });
+
   it('opens on the stage a cancel stopped, not the next pending one (L2-029 AC3)', () => {
     expect(selectedStage(stages(['Succeeded', 'Cancelled', 'Pending']), undefined)).toBe(1);
   });

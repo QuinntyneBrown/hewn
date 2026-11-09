@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Recover a failed stage (journey 9, L2-006): a failed run is retried automatically up to 3 times, after 30 s, 2 min
+  and 10 min (`Hewn:Retry:BackoffSeconds`); each retry is a new run that is not leased before its time, and the
+  project page counts down to it. When the third retry fails, the stage is Failed, the direction and project
+  Blocked, and `StageBlocked` carries the reason and the last 200 log lines; other projects keep running. The page
+  shows the failure callout and a danger toast with Open log and Retry stage. An Owner's Retry stage
+  (`POST /api/projects/{id}/directions/{d}/retry-stage`) runs the stage again from its start with the counter reset
+  (ADR 0014). Viewers see no control and get 403. A Blocked direction can be cancelled.
+
 - Stop and restart all workers (journey 8, L2-029 AC4, AC5): an Owner presses Stop all workers in the sidebar and
   confirms in a dialog listing the online workers. Leasing is switched off and stored, every active run halts at its
   checkpoint within 10 seconds (the worker hears `Halt` on its control poll), and nothing is leased, even after a

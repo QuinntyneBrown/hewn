@@ -176,7 +176,15 @@ public sealed class RunDirectionTests : IAsyncLifetime
         var worker = await _factory.RegisterWorkerAsync();
         var run = await worker.LeaseAsync();
 
+        // The run and its three automatic retries (L2-006 AC1) all fail.
         (await worker.FailAsync(run!, "Greenlit could not be cloned")).EnsureSuccessStatusCode();
+        foreach (var wait in new[] { 30, 120, 600 })
+        {
+            _factory.Clock.Advance(TimeSpan.FromSeconds(wait));
+            run = await worker.LeaseAsync();
+            Assert.Equal(0, run!.Stage);
+            (await worker.FailAsync(run, "Greenlit could not be cloned")).EnsureSuccessStatusCode();
+        }
 
         var project = await HewnClient.ReadJsonAsync(await owner.GetAsync($"/api/projects/{projectId}"));
         Assert.Equal("Blocked", project.GetProperty("status").GetString());

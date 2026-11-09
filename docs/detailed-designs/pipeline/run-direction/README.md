@@ -89,8 +89,9 @@ Journey 1, part 2 built L2-004 AC1-AC3. These choices refine the design above.
 - **Events.** `StageChanged {directionId, stage, name, status, startedAt, endedAt}`,
   `DirectionChanged {directionId, status, completedAt}` and `ProjectChanged {status}`. A full product
   direction emits 22 `StageChanged`, then `DirectionChanged` Complete and `ProjectChanged` Idle.
-- **Failure.** A failed run marks the stage Failed and the project Blocked; no further run is queued. Retry
-  and the Blocked view come with L2-006.
+- **Failure.** A failed run marks the stage Failed and the project Blocked; no further run is queued. Journey 9
+  replaced this with automatic retries, a Blocked direction and Retry stage (L2-006; see
+  [Retry a failed stage](../retry-failed-stage/README.md)).
 - **Header pill.** The pill beside the project name follows the current direction, as the mocks do: Running
   while queued or running, Complete when done; a Blocked project always reads Blocked.
 - **Not built yet then:** the direction queue and feature directions came with journey 2 (below); the

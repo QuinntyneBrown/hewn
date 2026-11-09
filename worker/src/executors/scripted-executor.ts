@@ -13,6 +13,10 @@ export interface ScriptedExecutorOptions {
   callTokens?: number;
   /** Stage whose main step fails, for failure paths in tests and demos. */
   failStage?: number;
+  /** How many times that stage fails per project before it succeeds (every time when unset), so a retry can pass. */
+  failTimes?: number;
+  /** The failure's message. */
+  failReason?: string;
   /** Stage whose main step opens a pull request on hewn/scaffold first, so Cancel has one to label (L2-029 AC3). */
   pullRequestStage?: number;
 }
@@ -23,6 +27,8 @@ export interface ScriptedExecutorOptions {
  */
 export class ScriptedStageExecutor implements StageExecutor {
   private readonly options: ScriptedExecutorOptions;
+  /** Failures so far of the fail stage, per project. */
+  private readonly failures = new Map<string, number>();
 
   constructor(options: ScriptedExecutorOptions) {
     this.options = options;
@@ -33,7 +39,7 @@ export class ScriptedStageExecutor implements StageExecutor {
       this.step('Prepare workspace'),
       this.step(
         `Run ${run.stageName}`,
-        run.stage === this.options.failStage ? `Scripted failure in stage ${run.stage}` : undefined,
+        this.failure(run),
         context && (this.options.logLines || this.options.modelCalls || run.stage === this.options.pullRequestStage)
           ? { context, label: run.stageName, pullRequest: run.stage === this.options.pullRequestStage }
           : undefined,
@@ -42,9 +48,20 @@ export class ScriptedStageExecutor implements StageExecutor {
     ];
   }
 
+  /** The main step's failure for this run, if it should fail; counts it against `failTimes`. */
+  private failure(run: LeasedRun): (() => string | undefined) | undefined {
+    if (run.stage !== this.options.failStage) return undefined;
+    return () => {
+      const failed = this.failures.get(run.projectId) ?? 0;
+      if (this.options.failTimes !== undefined && failed >= this.options.failTimes) return undefined;
+      this.failures.set(run.projectId, failed + 1);
+      return this.options.failReason ?? `Scripted failure in stage ${run.stage}`;
+    };
+  }
+
   private step(
     name: string,
-    failure?: string,
+    failure?: () => string | undefined,
     work?: { context: RunContext; label: string; pullRequest: boolean },
   ): StageStep {
     return {
@@ -64,7 +81,8 @@ export class ScriptedStageExecutor implements StageExecutor {
           await sleep(this.options.stepMs, signal);
         }
         if (signal.aborted) throw signal.reason;
-        if (failure) throw new Error(failure);
+        const message = failure?.();
+        if (message) throw new Error(message);
       },
     };
   }

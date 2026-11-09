@@ -1,0 +1,31 @@
+@startuml backoff-schedule
+' L2-006: a failed run is retried after 30 s, 2 min and 10 min; the fourth failure blocks the stage until Retry stage.
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 15
+skinparam shadowing false
+skinparam roundCorner 10
+skinparam ArrowColor #55606B
+skinparam rectangle {
+  BorderColor #55606B
+  BackgroundColor #FFFFFF
+}
+
+rectangle "Attempt 1\nthe first run" as A1
+rectangle "Attempt 2\nretry 1 of 3" as A2
+rectangle "Attempt 3\nretry 2 of 3" as A3
+rectangle "Attempt 4\nretry 3 of 3" as A4
+rectangle "Stage Failed · Direction Blocked\nStageBlocked: reason + last 200 log lines\nother projects keep running" as B #FBE9E7
+rectangle "Retry stage (Owner)\nattempt 1 again, from the stage's start,\nwith the counter reset" as R #E8F1FB
+
+A1 -right-> A2 : fails\nwait 30 s
+A2 -right-> A3 : fails\nwait 2 min
+A3 -right-> A4 : fails\nwait 10 min
+A4 -down-> B : fails
+B -left-> R
+
+note bottom of A1
+  Each retry is a new run, queued at once
+  with NotBefore = now + wait;
+  no worker leases it sooner.
+end note
+@enduml

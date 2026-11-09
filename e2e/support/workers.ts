@@ -23,6 +23,8 @@ export interface WorkerOptions {
   callTokens?: number;
   /** Stage whose scripted main step opens a pull request on hewn/scaffold (stage 6 allows it). */
   pullRequestStage?: number;
+  /** Stage whose scripted main step fails, how many times per project before it passes, and with what reason. */
+  fail?: { stage: number; times: number; reason: string };
 }
 
 export function startWorkers(count: number, stepMs: number, options: WorkerOptions = {}): () => Promise<void> {
@@ -49,6 +51,13 @@ export function startWorkers(count: number, stepMs: number, options: WorkerOptio
         ...(options.pullRequestStage === undefined
           ? {}
           : { HEWN_SCRIPTED_PULL_REQUEST_STAGE: String(options.pullRequestStage) }),
+        ...(options.fail === undefined
+          ? {}
+          : {
+              HEWN_SCRIPTED_FAIL_STAGE: String(options.fail.stage),
+              HEWN_SCRIPTED_FAIL_TIMES: String(options.fail.times),
+              HEWN_SCRIPTED_FAIL_REASON: options.fail.reason,
+            }),
         HEWN_MAGIC_PATTERNS_URL: `http://127.0.0.1:${MAGIC_PATTERNS_PORT}/mcp`,
         HEWN_MAGIC_PATTERNS_TOKEN: MAGIC_PATTERNS_TOKEN,
         HEWN_MAGIC_PATTERNS_POLL_MS: '200',

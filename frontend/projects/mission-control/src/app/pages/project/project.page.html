@@ -58,8 +58,18 @@
               </div>
             </div>
             @if (session.isOwner() && direction(); as d) {
-              @if (control(d) || canCancel(d)) {
+              @if (control(d) || canCancel(d) || canRetryStage(d)) {
                 <div class="cluster">
+                  @if (canRetryStage(d)) {
+                    <button
+                      class="btn btn--sm"
+                      type="button"
+                      [disabled]="retrySending()"
+                      (click)="retryStage(d.id)"
+                    >
+                      <svg hw-icon name="rotateCcw" class="icon--sm"></svg>Retry stage
+                    </button>
+                  }
                   @switch (control(d)) {
                     @case ('pause') {
                       <button
@@ -129,7 +139,12 @@
                     duration(stage.startedAt, stage.endedAt)
                   }}</span></span
                 ><span class="visually-hidden">{{ stage.status }}</span>
-                @if (stage.status === 'Running' && (stage.step || stage.latestLine)) {
+                @if (retryLine(stage.number); as countdown) {
+                  <span class="stage__live"
+                    ><span class="stage__live-step">{{ countdown }}</span
+                    ><span class="stage__live-line">{{ d.retry?.reason }}</span></span
+                  >
+                } @else if (stage.status === 'Running' && (stage.step || stage.latestLine)) {
                   <span class="stage__live"
                     ><span class="stage__live-step">{{ stage.step }}</span
                     ><span class="stage__live-line">{{ stage.latestLine }}</span></span
@@ -163,6 +178,29 @@
                   </div>
                 </div>
               }
+            }
+            @if (d.status === 'Blocked' && d.failedStage === stage.number) {
+              <div class="callout callout--danger" role="alert">
+                <svg hw-icon name="xCircle" class="icon--lg"></svg>
+                <div>
+                  <p class="callout__title">{{ blockedTitle(p.retryBackoffSeconds ?? []) }}</p>
+                  <p class="callout__body">
+                    {{ blockedBody(d.failureReason, p.retryBackoffSeconds ?? []) }}
+                  </p>
+                  @if (session.isOwner()) {
+                    <div class="callout__actions">
+                      <button
+                        class="btn btn--sm"
+                        type="button"
+                        [disabled]="retrySending()"
+                        (click)="retryStage(d.id)"
+                      >
+                        <svg hw-icon name="rotateCcw" class="icon--sm"></svg>Retry stage
+                      </button>
+                    </div>
+                  }
+                </div>
+              </div>
             }
             @if (d.status === 'Cancelled') {
               <div class="callout" role="status">

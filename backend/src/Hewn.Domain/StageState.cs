@@ -34,6 +34,14 @@ public sealed class StageState
         EndedAt = null;
     }
 
+    /// <summary>Runs again from its start, as a new attempt of the whole stage.</summary>
+    internal void Restart(DateTimeOffset now)
+    {
+        Status = StageStatus.Running;
+        StartedAt = now;
+        EndedAt = null;
+    }
+
     internal void Pause() => Status = StageStatus.Paused;
 
     internal void Resume() => Status = StageStatus.Running;

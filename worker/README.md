@@ -15,6 +15,8 @@ lease (409 `lease_lost`, or two missed heartbeats) stops the run, and the worker
 | `HEWN_MAGIC_PATTERNS_POLL_MS` | Generation poll interval; defaults to 60000, as Magic Patterns asks |
 | `HEWN_SCRIPTED_STEP_MS` | Time each scripted step takes (default 1000) |
 | `HEWN_SCRIPTED_FAIL_STAGE` | Stage whose main step fails, for failure demos |
+| `HEWN_SCRIPTED_FAIL_TIMES` | How many times that stage fails per project before it passes (every time when unset), so retries and Retry stage can be shown |
+| `HEWN_SCRIPTED_FAIL_REASON` | The failure's message (default "Scripted failure in stage {n}") |
 
 Stages built so far:
 

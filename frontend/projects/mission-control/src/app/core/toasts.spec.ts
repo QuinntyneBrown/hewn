@@ -41,4 +41,27 @@ describe('Toasts', () => {
 
     expect(toasts.items()).toHaveLength(0);
   });
+
+  it('keeps a danger toast until it is dismissed, with its actions', () => {
+    const toasts = new Toasts();
+    const retried: string[] = [];
+    const id = toasts.show({
+      tone: 'danger',
+      title: 'Parcel Post is blocked',
+      text: 'Requirements failed after 3 retries. Other projects keep running.',
+      actions: [
+        { label: 'Open log', link: ['/projects', 'p1'], queryParams: { stage: 5 } },
+        { label: 'Retry stage', run: () => retried.push('p1') },
+      ],
+    });
+
+    vi.advanceTimersByTime(60 * 60_000);
+    expect(toasts.items().map((t) => t.actions?.map((a) => a.label))).toEqual([
+      ['Open log', 'Retry stage'],
+    ]);
+    toasts.items()[0]!.actions![1]!.run!();
+    expect(retried).toEqual(['p1']);
+    toasts.dismiss(id);
+    expect(toasts.items()).toHaveLength(0);
+  });
 });

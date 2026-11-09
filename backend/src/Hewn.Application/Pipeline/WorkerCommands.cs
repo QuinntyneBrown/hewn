@@ -52,7 +52,8 @@ public sealed record LeasedRunDto(
     LeasedRunDirection Direction,
     string SkillsSource,
     decimal DescopeThresholdDays,
-    int MaxIterations);
+    int MaxIterations,
+    int Attempt);
 
 public sealed record LeaseRunCommand(string WorkerId) : IRequest<LeasedRunDto?>;
 
@@ -104,7 +105,8 @@ public sealed class LeaseRunHandler(
             new LeasedRunDirection(direction.Kind.ToString(), direction.Idea, direction.HasUiChange),
             options.Value.SkillsSource,
             options.Value.DescopeThresholdDays,
-            options.Value.MaxIterations);
+            options.Value.MaxIterations,
+            run.Attempt);
     }
 
     /// <summary>Creates or adopts the repository; on refusal fails the run with GitHub's reason and returns false.</summary>

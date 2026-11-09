@@ -42,6 +42,14 @@ import { RaiseBudgetDialog, RaiseBudgetData } from './raise-budget.dialog';
 import { suggestedBudget } from './raise-budget';
 import { CancelDirectionData, CancelDirectionDialog } from './cancel-direction.dialog';
 import {
+  blockedBody,
+  blockedTitle,
+  blockedToast,
+  canRetryStage,
+  retryCountdown,
+  retryFailure,
+} from './retry-stage';
+import {
   canCancel,
   cancelledBody,
   cancelledTitle,
@@ -82,7 +90,13 @@ const TABS: readonly { id: Tab; label: string }[] = [
 ];
 
 /** Events that change what a selected stage's detail lists. */
-const DETAIL_EVENTS = new Set(['StageChanged', 'StepStarted', 'DecisionRecorded']);
+const DETAIL_EVENTS = new Set([
+  'StageChanged',
+  'StepStarted',
+  'DecisionRecorded',
+  'RunRetryScheduled',
+  'StageBlocked',
+]);
 
 /** Stage changes are announced at most once every 5 seconds per project (L2-047 AC3). */
 export const ANNOUNCE_EVERY_MS = 5000;
@@ -356,6 +370,35 @@ export class ProjectPage {
     });
   }
   protected readonly pausedByOwner = PAUSED_BY_OWNER;
+  protected readonly canRetryStage = canRetryStage;
+  protected readonly blockedTitle = blockedTitle;
+  protected readonly blockedBody = blockedBody;
+  /** True while a Retry stage request is on its way. */
+  protected readonly retrySending = signal(false);
+
+  /** "Retry 1 of 3 in 0:24" on the stage an automatic retry is waiting for (L2-006 AC1); ticks each second. */
+  protected retryLine(stage: number): string | null {
+    const retry = this.direction()?.retry;
+    return retry && retry.stage === stage ? retryCountdown(retry, this.now()) : null;
+  }
+
+  /** Retry stage (L2-006 AC3): the failed stage runs again from its start. The page updates from the events. */
+  protected retryStage(directionId: string): void {
+    const project = this.project();
+    if (!project || !this.session.isOwner() || this.retrySending()) return;
+    this.retrySending.set(true);
+    this.api.retryStage(project.id, directionId).subscribe({
+      next: () => this.retrySending.set(false),
+      error: (error: unknown) => {
+        this.retrySending.set(false);
+        this.toasts.show({
+          tone: 'warn',
+          title: `${project.name} wasn’t retried`,
+          text: retryFailure(error instanceof HttpErrorResponse ? error.status : 0),
+        });
+      },
+    });
+  }
   /** True while a Pause or Resume request is on its way. */
   protected readonly controlSending = signal(false);
 
@@ -444,6 +487,30 @@ export class ProjectPage {
   constructor() {
     // L2-053 AC2: the 80% warning, pushed live. The meter keeps showing it after the toast leaves.
     const toasts = inject(Toasts);
+    // L2-006 AC2: a stage blocked after its retries; the toast stays until dismissed and offers the way back.
+    this.events$
+      .pipe(
+        filter((event) => event.type === 'StageBlocked'),
+        takeUntilDestroyed(),
+      )
+      .subscribe((event) => {
+        const project = this.project();
+        const stage = event.payload['stage'] as number;
+        const directionId = event.payload['directionId'] as string;
+        toasts.show({
+          ...blockedToast(
+            project?.name ?? 'This project',
+            event.payload['stageName'] as string,
+            (event.payload['attempts'] as number) - 1,
+          ),
+          actions: [
+            { label: 'Open log', link: ['/projects', event.projectId], queryParams: { stage } },
+            ...(this.session.isOwner()
+              ? [{ label: 'Retry stage', run: () => this.retryStage(directionId) }]
+              : []),
+          ],
+        });
+      });
     this.events$
       .pipe(
         filter((event) => event.type === 'BudgetWarning'),

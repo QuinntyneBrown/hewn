@@ -65,6 +65,11 @@ public static class DependencyInjection
             {
                 o.StopDeadlineSeconds = deadline;
             }
+
+            if (configuration["Hewn:Retry:BackoffSeconds"] is { Length: > 0 } backoff)
+            {
+                o.RetryBackoffSeconds = [.. backoff.Split(',').Select(v => int.Parse(v.Trim(), System.Globalization.CultureInfo.InvariantCulture))];
+            }
         });
 
         if (configuration.GetValue<bool>("Hewn:Fakes:Enabled"))

@@ -1,7 +1,8 @@
 export type StageStatus =
   'Pending' | 'Running' | 'Paused' | 'Succeeded' | 'Failed' | 'Skipped' | 'Cancelled';
 
-export type DirectionStatus = 'Queued' | 'Running' | 'Paused' | 'Complete' | 'Cancelled';
+export type DirectionStatus =
+  'Queued' | 'Running' | 'Paused' | 'Complete' | 'Cancelled' | 'Blocked';
 
 export type DirectionKind = 'Product' | 'Feature';
 
@@ -50,6 +51,21 @@ export interface Direction {
   awaitingStop: boolean;
   /** Open pull requests labelled hewn:cancelled. */
   labelledPullRequests: number[];
+  /** While Blocked (L2-006 AC2): why the stage's last attempt failed, which stage, and when. */
+  failureReason: string | null;
+  failedStage: number | null;
+  failedAt: string | null;
+  /** An automatic retry waiting out its backoff (L2-006 AC1). */
+  retry: PendingRetry | null;
+}
+
+export interface PendingRetry {
+  stage: number;
+  /** 2 to 4: the attempt that runs next. */
+  attempt: number;
+  maxAttempts: number;
+  notBefore: string;
+  reason: string | null;
 }
 
 export interface Project {
@@ -64,6 +80,8 @@ export interface Project {
   directions: Direction[];
   /** Spend to date across the project's directions (L2-052 AC2). */
   spendUsd: number;
+  /** The waits before each automatic retry, in seconds (L2-006 AC1). */
+  retryBackoffSeconds?: number[];
 }
 
 export interface SubmitProductDirectionRequest {
