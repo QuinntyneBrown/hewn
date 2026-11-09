@@ -30,6 +30,8 @@ public sealed class HewnDbContext(DbContextOptions<HewnDbContext> options) : DbC
 
     public DbSet<DirectionDefaults> DirectionDefaults => Set<DirectionDefaults>();
 
+    public DbSet<LeasingSwitch> LeasingSwitches => Set<LeasingSwitch>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(HewnDbContext).Assembly);

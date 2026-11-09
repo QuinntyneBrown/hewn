@@ -248,6 +248,27 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.ToTable("increments", (string)null);
                 });
 
+            modelBuilder.Entity("Hewn.Domain.LeasingSwitch", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("ChangedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ChangedBy")
+                        .IsRequired()
+                        .HasMaxLength(39)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Stopped")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("leasing_switches", (string)null);
+                });
+
             modelBuilder.Entity("Hewn.Domain.ModelCall", b =>
                 {
                     b.Property<Guid>("Id")

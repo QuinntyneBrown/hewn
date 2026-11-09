@@ -40,6 +40,22 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
         return this;
     }
 
+    private bool _ownsDatabase = true;
+
+    private HewnApiFactory(string databaseFile) => _databaseFile = databaseFile;
+
+    /// <summary>A second host on the same database file, as after a server restart; it takes over the file.</summary>
+    public HewnApiFactory Restart()
+    {
+        if (_databaseFile is null)
+        {
+            throw new InvalidOperationException("Only a factory with a database file can restart.");
+        }
+
+        _ownsDatabase = false;
+        return new HewnApiFactory(_databaseFile).WithSettings([.. _settings]);
+    }
+
     public HewnApiFactory(bool databaseFile = false)
     {
         if (databaseFile)
@@ -148,6 +164,11 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
         if (_databaseFile is not null)
         {
             SqliteConnection.ClearAllPools();
+            if (!_ownsDatabase)
+            {
+                return;
+            }
+
             foreach (var file in new[] { _databaseFile, $"{_databaseFile}-wal", $"{_databaseFile}-shm" })
             {
                 File.Delete(file);
