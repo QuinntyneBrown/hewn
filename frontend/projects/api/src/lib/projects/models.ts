@@ -199,3 +199,41 @@ export interface DirectionControlResult {
   status: DirectionStatus;
   pauseRequested: boolean;
 }
+
+export type IncrementStatus = 'Queued' | 'InProgress' | 'Blocked' | 'Merged';
+
+/** One increment of the current direction's backlog (L2-020 AC2). */
+export interface BacklogIncrement {
+  number: number;
+  title: string;
+  journey: number | null;
+  l2Ids: string[];
+  estimateDays: number;
+  dependsOn: number[];
+  status: IncrementStatus;
+  iterations: number;
+  /** What still fails on a Blocked increment, as the test gate reported it. */
+  failingTests: string[];
+  pullRequestNumber: number | null;
+  pullRequestUrl: string | null;
+}
+
+/** A design stage 9 descoped, with its reason (L2-019 AC4). */
+export interface DeferredDesign {
+  title: string;
+  l2Ids: string[];
+  estimateDays: number;
+  reason: string;
+}
+
+/** GET /api/projects/{id}/backlog: the increments, the deferred designs apart, and the totals (L2-018, L2-025 AC4). */
+export interface Backlog {
+  directionId: string | null;
+  increments: BacklogIncrement[];
+  deferred: DeferredDesign[];
+  merged: number;
+  total: number;
+  mergedDays: number;
+  totalDays: number;
+  percentComplete: number;
+}

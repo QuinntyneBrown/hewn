@@ -31,6 +31,14 @@ export const routes: Routes = [
       {
         path: 'projects/:projectId',
         title: 'Project · Hewn',
+        // Input binding sets an input with no route data to undefined, so each section names itself.
+        data: { section: 'pipeline' },
+        loadComponent: () => import('./pages/project/project.page').then((m) => m.ProjectPage),
+      },
+      {
+        path: 'projects/:projectId/backlog',
+        title: 'Backlog · Hewn',
+        data: { section: 'backlog' },
         loadComponent: () => import('./pages/project/project.page').then((m) => m.ProjectPage),
       },
       {

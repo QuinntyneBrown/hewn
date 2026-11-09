@@ -1,6 +1,7 @@
 import { test as base, expect, Page } from '@playwright/test';
 import { NewDirectionPage } from '../pages/new-direction.page';
 import { ProjectPage } from '../pages/project.page';
+import { BacklogPage } from '../pages/backlog.page';
 import { ProjectsPage } from '../pages/projects.page';
 import { SettingsPage } from '../pages/settings.page';
 
@@ -22,6 +23,7 @@ interface Pages {
   newDirection: NewDirectionPage;
   project: ProjectPage;
   projects: ProjectsPage;
+  backlog: BacklogPage;
   settings: SettingsPage;
 }
 
@@ -29,6 +31,7 @@ export const test = base.extend<Pages>({
   newDirection: async ({ page }, use) => use(new NewDirectionPage(page)),
   project: async ({ page }, use) => use(new ProjectPage(page)),
   projects: async ({ page }, use) => use(new ProjectsPage(page)),
+  backlog: async ({ page }, use) => use(new BacklogPage(page)),
   settings: async ({ page }, use) => use(new SettingsPage(page)),
 });
 

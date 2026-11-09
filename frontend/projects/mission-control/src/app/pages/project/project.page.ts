@@ -37,6 +37,7 @@ import {
 } from 'rxjs';
 import { SessionStore } from '../../core/session-store';
 import { Toasts } from '../../core/toasts';
+import { BacklogComponent } from './backlog.component';
 import { LiveLogComponent } from './live-log.component';
 import { RaiseBudgetDialog, RaiseBudgetData } from './raise-budget.dialog';
 import { suggestedBudget } from './raise-budget';
@@ -108,9 +109,24 @@ const LOG_PAGE = 5000;
  * The project page (L2-030): the pipeline with each stage's status, duration and, while running, its step and
  * latest log line; the selected stage's runs, log, artifacts and decisions. Kept current by the live event stream.
  */
+/** Events after which the backlog or its totals may differ: a plan, an increment's progress, a stage, a direction. */
+const BACKLOG_EVENTS = new Set([
+  'BacklogPlanned',
+  'IncrementChanged',
+  'StageChanged',
+  'DirectionChanged',
+]);
+
 @Component({
   selector: 'hw-project-page',
-  imports: [RouterLink, IconComponent, StatusComponent, StatusIconComponent, LiveLogComponent],
+  imports: [
+    RouterLink,
+    IconComponent,
+    StatusComponent,
+    StatusIconComponent,
+    LiveLogComponent,
+    BacklogComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project.page.html',
 })
@@ -124,6 +140,8 @@ export class ProjectPage {
   readonly projectId = input.required<string>();
   /** `?stage=` from the URL: the stage the user selected. */
   readonly stage = input<string>();
+  /** The section tab, from the route's data: the pipeline, or the backlog at `/projects/{id}/backlog`. */
+  readonly section = input<'pipeline' | 'backlog'>('pipeline');
 
   /** Bumped by "Try again" to load the project once more. */
   private readonly attempt = signal(0);
@@ -173,6 +191,15 @@ export class ProjectPage {
     map(({ event }) => event),
     filter((event): event is ProjectEvent => event !== null),
     distinctUntilChanged((a, b) => a.sequence === b.sequence),
+  );
+
+  /** Counts the events that can change the backlog, so the Backlog tab reads it again after each (L2-025 AC4). */
+  protected readonly backlogChanges = toSignal(
+    this.events$.pipe(
+      filter((e) => BACKLOG_EVENTS.has(e.type)),
+      scan((n) => n + 1, 0),
+    ),
+    { initialValue: 0 },
   );
 
   private readonly live = toSignal(this.live$, {

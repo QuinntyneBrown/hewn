@@ -1,0 +1,168 @@
+@switch (loaded().state) {
+  @case ('loading') {
+    <div class="pad section">
+      <span class="skeleton skeleton--title" aria-hidden="true"></span>
+      <div class="rows rows--backlog mt-6">
+        <div aria-busy="true" aria-live="polite">
+          <p class="visually-hidden">Loading the backlog</p>
+          <ul>
+            @for (n of [1, 2, 3, 4, 5]; track n) {
+              <li class="row" aria-hidden="true">
+                <span class="skeleton skeleton--w50" aria-hidden="true"></span>
+                <span class="skeleton skeleton--w66" aria-hidden="true"></span>
+                <span class="skeleton skeleton--w33" aria-hidden="true"></span>
+              </li>
+            }
+          </ul>
+        </div>
+      </div>
+    </div>
+  }
+  @case ('error') {
+    <div class="pad">
+      <div class="empty empty--error" role="alert">
+        <svg hw-icon name="warning"></svg>
+        <div>
+          <h2 class="empty__title">The backlog couldn’t load</h2>
+          <p class="empty__text">{{ $any(loaded()).message }}</p>
+        </div>
+        <div class="cluster">
+          <button class="btn" type="button" (click)="retry()">Try again</button>
+          <a class="btn btn--ghost" [routerLink]="['/projects', projectId()]">Open the pipeline</a>
+        </div>
+      </div>
+    </div>
+  }
+  @default {
+    @if (backlog(); as b) {
+      @if (b.total === 0 && b.deferred.length === 0) {
+        <div class="pad section">
+          <div class="empty">
+            <svg hw-icon name="inbox"></svg>
+            <div>
+              <h2 class="empty__title">No backlog yet</h2>
+              <p class="empty__text">
+                The backlog is produced by stage 9, Estimates. Increments appear here, in journey
+                order, as soon as estimates finish.
+              </p>
+            </div>
+            <a class="btn" [routerLink]="['/projects', projectId()]">Open the pipeline</a>
+          </div>
+        </div>
+      } @else {
+        <div class="pad section">
+          <div class="cluster cluster--between" style="align-items: flex-end">
+            <div>
+              <h2 class="section__title">Active backlog</h2>
+              <p class="section__desc">
+                Ordered by journey; nothing comes before an increment it depends on.
+              </p>
+            </div>
+            <p class="text-sm text-muted tabular" data-testid="backlog-totals">
+              <span style="color: var(--color-fg-default)">{{ b.merged }} of {{ b.total }}</span>
+              merged ·
+              <span style="color: var(--color-fg-default)"
+                >{{ b.mergedDays }} of {{ b.totalDays }}</span
+              >
+              ideal days ·
+              <span style="color: var(--color-fg-default)">{{ b.percentComplete }}%</span> complete
+            </p>
+          </div>
+          @for (n of blocked(); track n.number) {
+            <div class="callout callout--danger mt-6" role="status">
+              <svg hw-icon name="xCircle" class="icon--lg"></svg>
+              <div>
+                <p class="callout__title">{{ n.title }}</p>
+                <p class="callout__body">{{ n.body }}</p>
+              </div>
+            </div>
+          }
+          <div class="rows rows--backlog mt-6">
+            <div class="rows__head" aria-hidden="true">
+              <span>#</span><span>Increment</span><span>Journey</span><span>Requirements</span
+              ><span class="row__end">Estimate</span><span>Status</span
+              ><span class="row__end">PR</span>
+            </div>
+            <ol aria-label="Active backlog">
+              @for (i of rows(); track i.number) {
+                <li
+                  class="row"
+                  [class.row--current]="i.status === 'InProgress' || i.status === 'Blocked'"
+                >
+                  <span class="text-mono-xs text-subtle tabular">{{ i.number }}</span>
+                  <span
+                    class="truncate"
+                    [style.font-weight]="
+                      i.status === 'InProgress' || i.status === 'Blocked'
+                        ? 'var(--font-weight-medium)'
+                        : null
+                    "
+                    >{{ i.title }}</span
+                  >
+                  <span class="lg-hide"
+                    ><hw-status [status]="i.look.status" [label]="i.look.label"
+                  /></span>
+                  <span class="col2 text-xs text-muted">{{
+                    i.journey ? 'Journey ' + i.journey : ''
+                  }}</span>
+                  <span class="col2 truncate text-mono-xs text-subtle">{{ i.l2 }}</span>
+                  <span class="lg-only tabular text-muted row__end">{{ i.estimate }}</span>
+                  <span class="lg-only"
+                    ><hw-status [status]="i.look.status" [label]="i.look.label"
+                  /></span>
+                  <span class="col2 text-xs row__end">
+                    @switch (i.pr.kind) {
+                      @case ('link') {
+                        <a class="quiet-link mono" [href]="$any(i.pr).href"
+                          ><svg
+                            hw-icon
+                            [name]="$any(i.pr).merged ? 'gitMerge' : 'gitPullRequest'"
+                            class="icon--xs"
+                            [class.s-icon--ok]="$any(i.pr).merged"
+                          ></svg>
+                          {{ $any(i.pr).text }}</a
+                        >
+                      }
+                      @case ('soon') {
+                        <span class="quiet-link mono"
+                          ><svg hw-icon name="gitPullRequest" class="icon--xs"></svg> soon</span
+                        >
+                      }
+                      @default {
+                        <span class="text-subtle lg-only">—</span>
+                      }
+                    }
+                  </span>
+                </li>
+              }
+            </ol>
+          </div>
+          @if (deferred().length > 0) {
+            <section class="mt-12" aria-labelledby="deferred-title">
+              <h2 class="section__title" id="deferred-title">Deferred</h2>
+              <p class="section__desc">
+                Descoped during estimates. Each L2 carries <code>Status: Deferred</code> with this
+                reason.
+              </p>
+              <ul class="files mt-4" aria-label="Deferred">
+                @for (d of deferred(); track d.title) {
+                  <li class="file" style="grid-template-columns: minmax(0, 1fr)">
+                    <span class="cluster"
+                      ><span class="status status--muted"
+                        ><svg hw-icon name="minusCircle"></svg
+                        ><span class="visually-hidden">Deferred</span></span
+                      ><span class="text-sm">{{ d.title }}</span
+                      ><span class="text-mono-xs text-subtle">{{ d.l2 }}</span
+                      ><span class="text-xs text-muted tabular">{{ d.estimate }}</span></span
+                    >
+                    <span class="text-sm text-muted">{{ d.reason }}</span>
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+        </div>
+      }
+    }
+  }
+}
