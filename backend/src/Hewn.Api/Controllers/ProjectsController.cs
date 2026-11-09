@@ -36,6 +36,11 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
     public Task<IReadOnlyList<ProjectSummaryDto>> List(CancellationToken cancellationToken) =>
         mediator.Send(new ListProjectsQuery(), cancellationToken);
 
+    /// <summary>L2-020 AC2, L2-019 AC4: the current direction's increments, deferred designs and totals.</summary>
+    [HttpGet("{projectId:guid}/backlog")]
+    public Task<BacklogDto> Backlog(Guid projectId, CancellationToken cancellationToken) =>
+        mediator.Send(new GetProjectBacklogQuery(projectId), cancellationToken);
+
     /// <summary>L2-005: adds a feature direction to an existing product.</summary>
     [HttpPost("{projectId:guid}/directions")]
     [Authorize(Policy = AuthSetup.OwnerPolicy)]

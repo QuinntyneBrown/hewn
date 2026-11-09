@@ -4,6 +4,7 @@ import { catchError, Observable, throwError } from 'rxjs';
 import { toFieldErrors } from '../problems/field-errors';
 import { toRateLimited } from '../problems/rate-limited';
 import {
+  Backlog,
   LogLine,
   Project,
   StageDetail,
@@ -25,6 +26,8 @@ export interface ProjectsApi {
   ): Observable<SubmitProductDirectionResult>;
   getProject(id: string): Observable<Project>;
   listProjects(): Observable<ProjectSummary[]>;
+  /** The current direction's backlog: increments in order, deferred designs apart, and the totals (L2-020 AC2). */
+  getBacklog(projectId: string): Observable<Backlog>;
   /** Adds a feature direction (L2-005). Errors with FieldErrorsProblem when a field rule is broken. */
   submitFeatureDirection(
     projectId: string,
@@ -77,6 +80,10 @@ export class HttpProjectsApi implements ProjectsApi {
 
   listProjects(): Observable<ProjectSummary[]> {
     return this.http.get<ProjectSummary[]>('/api/projects');
+  }
+
+  getBacklog(projectId: string): Observable<Backlog> {
+    return this.http.get<Backlog>(`/api/projects/${encodeURIComponent(projectId)}/backlog`);
   }
 
   submitFeatureDirection(

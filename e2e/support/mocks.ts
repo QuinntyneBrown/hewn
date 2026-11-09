@@ -29,8 +29,9 @@ export function compare(actual: Buffer, expected: Buffer): Difference {
 
 export interface RegionOptions {
   /**
-   * Crop to the element's whole-pixel box (its position and size rounded down). An element of the same size at a
-   * different sub-pixel position then gives an image of the same size, instead of one a pixel larger.
+   * Move the element onto the whole-pixel grid, then crop to its box with the size rounded down. An element of the
+   * same size at a different sub-pixel position, for example below a header of another height, then gives the same
+   * image: the same size, and its text rasterised on the same grid.
    */
   snap?: boolean;
 }
@@ -52,10 +53,36 @@ export async function mockRegion(
 
 export async function region(locator: Locator, options: RegionOptions = {}): Promise<Buffer> {
   if (!options.snap) return locator.screenshot({ animations: 'disabled', caret: 'hide' });
+  const page = locator.page();
+  await locator.scrollIntoViewIfNeeded();
+  // Move the element by its sub-pixel offset so it starts on a whole pixel, as the same element does in the mock.
+  // A relative offset goes through layout, which snaps borders and text to the pixel grid as a static element's
+  // are; a transform would raster the element on its own layer at the fractional position.
+  const restore = await locator.evaluate((el: HTMLElement) => {
+    const before = el.getAttribute('style');
+    const r = el.getBoundingClientRect();
+    if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+    el.style.left = `${Math.round(r.x) - r.x}px`;
+    el.style.top = `${Math.round(r.y) - r.y}px`;
+    return before;
+  });
   const box = (await locator.boundingBox())!;
-  return locator.page().screenshot({
+  // The box is relative to the viewport; a full-page clip in page coordinates also covers a region below the fold.
+  const scroll = await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY }));
+  const shot = await page.screenshot({
     animations: 'disabled',
     caret: 'hide',
-    clip: { x: Math.floor(box.x), y: Math.floor(box.y), width: Math.floor(box.width), height: Math.floor(box.height) },
+    fullPage: true,
+    clip: {
+      x: Math.round(box.x + scroll.x),
+      y: Math.round(box.y + scroll.y),
+      width: Math.floor(box.width),
+      height: Math.floor(box.height),
+    },
   });
+  await locator.evaluate((el: HTMLElement, before: string | null) => {
+    if (before === null) el.removeAttribute('style');
+    else el.setAttribute('style', before);
+  }, restore);
+  return shot;
 }

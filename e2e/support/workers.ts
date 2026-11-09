@@ -25,6 +25,10 @@ export interface WorkerOptions {
   pullRequestStage?: number;
   /** Stage whose scripted main step fails, how many times per project before it passes, and with what reason. */
   fail?: { stage: number; times: number; reason: string };
+  /** An increment title the scripted agent never implements, so that increment blocks (L2-022 AC2). */
+  blockIncrement?: string;
+  /** How long the scripted agent takes over each stage 10 session, so increments can be watched. */
+  incrementMs?: number;
 }
 
 export function startWorkers(count: number, stepMs: number, options: WorkerOptions = {}): () => Promise<void> {
@@ -58,6 +62,8 @@ export function startWorkers(count: number, stepMs: number, options: WorkerOptio
               HEWN_SCRIPTED_FAIL_TIMES: String(options.fail.times),
               HEWN_SCRIPTED_FAIL_REASON: options.fail.reason,
             }),
+        ...(options.incrementMs === undefined ? {} : { HEWN_SCRIPTED_INCREMENT_MS: String(options.incrementMs) }),
+        ...(options.blockIncrement === undefined ? {} : { HEWN_SCRIPTED_BLOCK_INCREMENT: options.blockIncrement }),
         HEWN_MAGIC_PATTERNS_URL: `http://127.0.0.1:${MAGIC_PATTERNS_PORT}/mcp`,
         HEWN_MAGIC_PATTERNS_TOKEN: MAGIC_PATTERNS_TOKEN,
         HEWN_MAGIC_PATTERNS_POLL_MS: '200',

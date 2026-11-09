@@ -21,7 +21,7 @@ The slice spans the stage executor, three planners and the Backlog page.
 - **`Descoper`** — applies the threshold rule with one split attempt, then the journey-main-path and out-of-scope rules, and annotates each deferred L2 in `docs/specs/L2.md`.
 - **`BacklogPlanner`** — builds increments of one journey or part of one, orders them by journey number, and topologically sorts so no increment precedes one it depends on.
 - **`BacklogIndex`** — Hewn database table of increments (number, title, journey, L2 IDs, estimate, status, PR number) updated by stage 9 and by stage 10 events.
-- **`BacklogPage (Angular)`** — lists increments with status (Queued, In progress, Blocked, Merged, Deferred), estimate and PR link, and a separate Deferred section with reasons.
+- **`BacklogComponent (Angular)`** — the project page's Backlog tab: lists increments with status (Queued, In progress, Blocked, Merged), estimate and PR link, and a separate Deferred section with reasons, read from `GET /api/projects/{id}/backlog`.
 
 ## Requirements
 
@@ -93,4 +93,19 @@ Active increments show status, estimate and PR link (L2-020 AC2); deferred items
   (Queued, InProgress, Blocked, Merged, Deferred), reason and pull request number. `PUT
   /api/worker/runs/{id}/backlog` (stage 9 only) replaces a direction's rows and appends `BacklogPlanned`; the API
   rejects numbering gaps and any dependency on a later or missing increment.
-- **Deferred.** The Backlog page (L2-019 AC4, L2-020 AC2) with journey 12.
+- **The Backlog page (journey 12).** `GET /api/projects/{id}/backlog` (`GetProjectBacklogHandler`) returns the
+  current direction's backlog (the active direction, else the latest, as Projects shows it): the increments in
+  number order with status, estimate, journey, L2s, depends-on, iterations, failing tests, pull request number and
+  `https://github.com/{repository}/pull/{n}`; the deferred designs apart, with their reasons; and the totals,
+  merged of total, merged of estimated ideal days, and the project's percent complete from `ProjectSummaryReader`.
+  There is no `BacklogController` or separate `BacklogPage`. The Backlog is a tab of the project page at
+  `/projects/{id}/backlog`, beside Pipeline in a new `phead__tabs` header. The other tabs in the mock (Designs,
+  Design system, Decisions, Artifacts, Traceability) come with their own journeys.
+- **Live.** The project page already follows the project's events. Each `BacklogPlanned`, `IncrementChanged`,
+  `StageChanged` or `DirectionChanged` bumps a counter the Backlog tab watches, and the tab reads the backlog again.
+  That costs one read per event and keeps the totals right, so `IncrementChanged` payloads are not applied in place.
+- **Blocked.** A blocked increment gets the mock's danger callout: its iterations, its failing tests as the gate
+  reported them, and the first increment left that doesn't depend on it, directly or through another.
+- **Not in the mock's header.** The project header has no "Complete" figure yet, so the totals line adds
+  "· {n}% complete" after the ideal days. Increment titles are plain text until the increment page (journey 13)
+  exists.

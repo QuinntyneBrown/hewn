@@ -73,10 +73,18 @@ if (gateName !== 'stack' && gateName !== 'scripted') {
   console.error('HEWN_GATE must be "stack" or "scripted".');
   process.exit(2);
 }
-const increments = new IncrementStageExecutor(new ScriptedStageAgent(), [dotnetAngularTemplate], {
-  pollMs: Number(process.env.HEWN_CHECK_POLL_MS ?? 30_000),
-  ...(gateName === 'scripted' ? { gate: () => new ScriptedTestGate() } : {}),
-});
+// HEWN_SCRIPTED_BLOCK_INCREMENT: an increment title the scripted agent never implements, so it blocks (e2e, videos).
+// HEWN_SCRIPTED_INCREMENT_MS: how long the scripted agent takes over each stage 10 session.
+const blockIncrement = process.env['HEWN_SCRIPTED_BLOCK_INCREMENT'];
+const incrementDelayMs = Number(process.env['HEWN_SCRIPTED_INCREMENT_MS'] ?? 0);
+const increments = new IncrementStageExecutor(
+  new ScriptedStageAgent(undefined, { ...(blockIncrement ? { blockIncrement } : {}), incrementDelayMs }),
+  [dotnetAngularTemplate],
+  {
+    pollMs: Number(process.env.HEWN_CHECK_POLL_MS ?? 30_000),
+    ...(gateName === 'scripted' ? { gate: () => new ScriptedTestGate() } : {}),
+  },
+);
 const executor: StageExecutor =
   executorName === 'scripted'
     ? scripted
