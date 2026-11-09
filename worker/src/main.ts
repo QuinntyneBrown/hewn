@@ -1,6 +1,8 @@
 import { hostname } from 'node:os';
 import type { WorkerLocation } from './api.ts';
+import { ScriptedStageAgent } from './agents/scripted-agent.ts';
 import { BootstrapStageExecutor } from './executors/bootstrap-executor.ts';
+import { DOCUMENT_STAGES, DocumentStageExecutor } from './executors/document-executor.ts';
 import { ScriptedStageExecutor } from './executors/scripted-executor.ts';
 import { StageRouter, type StageExecutor } from './executors/stage-executor.ts';
 import { HttpHewnApi } from './http-api.ts';
@@ -37,8 +39,18 @@ const scripted = new ScriptedStageExecutor({
   stepMs: Number(process.env.HEWN_SCRIPTED_STEP_MS ?? 1000),
   failStage: failStage === undefined ? undefined : Number(failStage),
 });
+// Only the scripted agent exists so far; the Claude Agent SDK agent arrives with run isolation.
+const documents = new DocumentStageExecutor(new ScriptedStageAgent());
 const executor: StageExecutor =
-  executorName === 'scripted' ? scripted : new StageRouter(new Map([[0, new BootstrapStageExecutor()]]), scripted);
+  executorName === 'scripted'
+    ? scripted
+    : new StageRouter(
+        new Map<number, StageExecutor>([
+          [0, new BootstrapStageExecutor()],
+          ...[...DOCUMENT_STAGES.keys()].map((stage) => [stage, documents] as const),
+        ]),
+        scripted,
+      );
 
 const stop = new AbortController();
 for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => stop.abort());

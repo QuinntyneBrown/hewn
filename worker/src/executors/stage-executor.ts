@@ -11,6 +11,8 @@ export interface RunContext {
   workspace: string;
   log(level: LogLevel, text: string): Promise<void>;
   listSkillFolders(): Promise<Record<string, string[]>>;
+  /** The product repository's default branch as a gzipped tarball with one top-level folder. */
+  downloadRepository(): Promise<Buffer>;
   /** Commits as step `step`; the idempotency key is `{run}/{step}/commit`, so a resumed step cannot commit twice. */
   commit(step: number, message: string, files: CommitFile[]): Promise<string>;
 }

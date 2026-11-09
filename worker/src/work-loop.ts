@@ -92,6 +92,7 @@ export class WorkLoop {
       workspace,
       log: (level, text) => this.api.log(workerId, run, [{ level, text }]),
       listSkillFolders: () => this.api.listSkillFolders(workerId, run),
+      downloadRepository: () => this.api.downloadRepository(workerId, run),
       commit: (step, message, files) => this.api.commit(workerId, run, `${run.runId}/${step}/commit`, message, files),
     };
 
