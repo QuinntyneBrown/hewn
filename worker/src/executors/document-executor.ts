@@ -2,11 +2,18 @@ import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { join, posix, relative, sep } from 'node:path';
+import { dirname, join, posix, relative, sep } from 'node:path';
 import { promisify } from 'node:util';
 import type { CommitFile, LeasedRun } from '../api.ts';
 import { DECISIONS, parseDecisions, readDecisions } from '../agents/decision-log.ts';
 import type { StageAgent } from '../agents/stage-agent.ts';
+import { MagicPatternsUnavailable, type MagicPatterns } from '../magic-patterns/magic-patterns.ts';
+import {
+  tokenMismatches,
+  validateDesignSystem,
+  validateTokenCoverage,
+} from '../validators/design-system-validators.ts';
+import { mockPath, readManifest, validateMocks } from '../validators/mock-validator.ts';
 import {
   type Problems,
   validateBrief,
@@ -21,6 +28,20 @@ const run = promisify(execFile);
 const COMMIT_STEP = 2;
 /** Document stages read and write files only; no shell, network or git (agent-isolation design). */
 const FILE_TOOLS = ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Skill'] as const;
+const MAGIC_PATTERNS_TOOLS = [
+  'mcp__magic-patterns__create_design',
+  'mcp__magic-patterns__send_prompt',
+  'mcp__magic-patterns__get_design_status',
+  'mcp__magic-patterns__read_artifact_files',
+  'mcp__magic-patterns__write_artifact_files',
+  'mcp__magic-patterns__list_design_systems',
+] as const;
+
+interface StageHookContext {
+  directory: string;
+  context: RunContext;
+  magicPatterns: MagicPatterns | undefined;
+}
 
 interface StageDefinition {
   skill: string | null;
@@ -28,7 +49,11 @@ interface StageDefinition {
   outputs: string[];
   task: string;
   commitMessage: string;
-  validate(directory: string, leased: LeasedRun): Problems;
+  /** `required` fails the run before the agent starts when Magic Patterns is unreachable (L2-010 AC5). */
+  magicPatterns?: 'required' | 'optional';
+  /** Runs after the agent and before validation, e.g. exporting designs. */
+  afterAgent?(hook: StageHookContext): Promise<void>;
+  validate(directory: string, leased: LeasedRun): Problems | Promise<Problems>;
 }
 
 export const DOCUMENT_STAGES: ReadonlyMap<number, StageDefinition> = new Map([
@@ -40,6 +65,30 @@ export const DOCUMENT_STAGES: ReadonlyMap<number, StageDefinition> = new Map([
       task: 'Write docs/brief.md with the sections Problem, Users, Core features, Out of scope and Assumptions, each non-empty.',
       commitMessage: 'Write the product brief',
       validate: (d) => validateBrief(d),
+    },
+  ],
+  [
+    2,
+    {
+      skill: 'writing-html-mocks',
+      outputs: ['docs/mocks/'],
+      task: 'Design every screen for the core features in docs/brief.md in Magic Patterns, never by hand, following the writing-html-mocks screen inventory and state rules. Give each screen default, loading, empty and error states as default.html, loading.html, empty.html and error.html in its design, or record why a state does not apply. List every design in docs/mocks/manifest.json as {"screens": [{screen, feature, magicPatternsUrl, editorId, states, notApplicable}]}; Hewn exports the HTML.',
+      commitMessage: 'Design the screens in Magic Patterns',
+      magicPatterns: 'required',
+      afterAgent: exportMocks,
+      validate: (d) => validateMocks(d),
+    },
+  ],
+  [
+    3,
+    {
+      skill: 'extracting-design-systems',
+      outputs: ['docs/design-system/'],
+      task: 'Extract the design system from docs/mocks/ into docs/design-system/: tokens.json (DTCG) with color.light, color.dark, typography, spacing, radius, elevation and motion, and one page per component under components/. Every colour used in the mocks must match a colour token.',
+      commitMessage: 'Extract the design system',
+      magicPatterns: 'optional',
+      afterAgent: compareWithMagicPatterns,
+      validate: (d) => [...validateDesignSystem(d), ...validateTokenCoverage(d)],
     },
   ],
   [
@@ -90,9 +139,12 @@ export const DOCUMENT_STAGES: ReadonlyMap<number, StageDefinition> = new Map([
  */
 export class DocumentStageExecutor implements StageExecutor {
   private readonly agent: StageAgent;
+  private readonly magicPatterns: (() => MagicPatterns) | undefined;
 
-  constructor(agent: StageAgent) {
+  /** `magicPatterns` opens a client per run; without it the design stages fail as not configured. */
+  constructor(agent: StageAgent, magicPatterns?: () => MagicPatterns) {
     this.agent = agent;
+    this.magicPatterns = magicPatterns;
   }
 
   plan(leased: LeasedRun, context: RunContext): StageStep[] {
@@ -112,6 +164,44 @@ export class DocumentStageExecutor implements StageExecutor {
     directory: string,
     signal: AbortSignal,
   ): Promise<void> {
+    const magicPatterns = await this.openMagicPatterns(definition, context);
+    try {
+      await this.runAgent(leased, definition, context, directory, magicPatterns, signal);
+    } finally {
+      await magicPatterns?.close();
+    }
+  }
+
+  private async openMagicPatterns(
+    definition: StageDefinition,
+    context: RunContext,
+  ): Promise<MagicPatterns | undefined> {
+    if (!definition.magicPatterns) return undefined;
+    if (!this.magicPatterns) {
+      if (definition.magicPatterns === 'required') throw new MagicPatternsUnavailable('not configured');
+      await context.log('warn', 'Magic Patterns is not configured; its design-system settings were not compared');
+      return undefined;
+    }
+    const client = this.magicPatterns();
+    try {
+      await client.ping();
+      return client;
+    } catch (error) {
+      await client.close();
+      if (definition.magicPatterns === 'required') throw error;
+      await context.log('warn', `${(error as Error).message}; its design-system settings were not compared`);
+      return undefined;
+    }
+  }
+
+  private async runAgent(
+    leased: LeasedRun,
+    definition: StageDefinition,
+    context: RunContext,
+    directory: string,
+    magicPatterns: MagicPatterns | undefined,
+    signal: AbortSignal,
+  ): Promise<void> {
     // A resumed run starts at this step with a fresh workspace, so check out again.
     if (!existsSync(directory)) await checkOut(context, directory);
     const before = await snapshot(directory);
@@ -123,17 +213,19 @@ export class DocumentStageExecutor implements StageExecutor {
         directory,
         skill: definition.skill,
         instructions: instructionsFor(leased, definition),
-        allowedTools: FILE_TOOLS,
+        allowedTools: definition.magicPatterns === 'required' ? [...FILE_TOOLS, ...MAGIC_PATTERNS_TOOLS] : FILE_TOOLS,
+        ...(magicPatterns ? { magicPatterns } : {}),
       },
       signal,
     );
+    await definition.afterAgent?.({ directory, context, magicPatterns });
 
     for (const { question, answer } of parseDecisions(readDecisions(directory)).slice(decisionsBefore)) {
       await context.log('info', `Question: ${question}`);
       await context.log('info', `Answer: ${answer}`);
     }
 
-    const problems = definition.validate(directory, leased);
+    const problems = await definition.validate(directory, leased);
     if (problems.length > 0) throw new Error(`${leased.stageName} output is invalid: ${problems.join('; ')}`);
 
     const files: CommitFile[] = [];
@@ -147,6 +239,32 @@ export class DocumentStageExecutor implements StageExecutor {
     }
     await context.commit(COMMIT_STEP, definition.commitMessage, files);
   }
+}
+
+/** Stage 2 (L2-010 AC3): writes each design's state files from Magic Patterns into docs/mocks/{screen}/{state}.html. */
+async function exportMocks({ directory, context, magicPatterns }: StageHookContext): Promise<void> {
+  const screens = readManifest(directory) ?? [];
+  for (const screen of screens) {
+    const files = await magicPatterns!.readFiles(
+      screen.editorId,
+      screen.states.map((s) => `${s}.html`),
+    );
+    for (const state of screen.states) {
+      const html = files[`${state}.html`];
+      if (html === undefined) continue;
+      const path = join(directory, mockPath(screen.screen, state));
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(path, html);
+    }
+  }
+  await context.log('info', `Exported ${screens.length} designs from Magic Patterns`);
+}
+
+/** Stage 3 (L2-012 AC3): logs Magic Patterns design-system colours the extracted tokens do not match. */
+async function compareWithMagicPatterns({ directory, context, magicPatterns }: StageHookContext): Promise<void> {
+  const settings = await magicPatterns?.designSystemTokens();
+  if (!settings) return;
+  for (const mismatch of tokenMismatches(directory, settings)) await context.log('warn', mismatch);
 }
 
 function instructionsFor(leased: LeasedRun, definition: StageDefinition): string {

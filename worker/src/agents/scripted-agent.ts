@@ -1,7 +1,8 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { StageAgent, StageAgentTask } from './stage-agent.ts';
 import { appendDecision } from './decision-log.ts';
+import { colorsIn } from '../validators/colors.ts';
 
 /**
  * A deterministic stand-in for the model, used by tests and the e2e stack. It writes documents that pass each
@@ -44,6 +45,66 @@ export class ScriptedStageAgent implements StageAgent {
           'Who is the primary user?',
           `The people the direction describes: ${lowerFirst(firstSentence(run.project.idea))}`,
           'The direction names its audience; a narrower first user keeps the brief testable.',
+        );
+        return;
+      }
+      case 2: {
+        const magicPatterns = task.magicPatterns;
+        if (!magicPatterns) throw new Error('Stage 2 needs Magic Patterns.');
+        const screens = [];
+        for (const feature of sectionList(read('docs/brief.md'), 'Core features').map((f) => f.split(' — ')[0]!)) {
+          const design = await magicPatterns.createDesign({
+            name: feature,
+            prompt: `The ${feature} screen of ${run.project.name}, responsive from 375 px, light and dark, as raw HTML files default.html, loading.html, empty.html and error.html.`,
+          });
+          await magicPatterns.waitUntilReady(design.editorId);
+          screens.push({
+            screen: slug(feature),
+            feature,
+            magicPatternsUrl: design.url,
+            editorId: design.editorId,
+            states: ['default', 'loading', 'empty', 'error'],
+            notApplicable: {},
+          });
+        }
+        write('docs/mocks/manifest.json', `${JSON.stringify({ screens }, null, 2)}\n`);
+        decide(
+          'Which states does each screen need?',
+          'Default, loading, empty and error for every screen.',
+          'Each screen loads data, so every state applies (writing-html-mocks state rules).',
+        );
+        return;
+      }
+      case 3: {
+        const mocks = readdirSync(join(directory, 'docs/mocks'), { recursive: true, withFileTypes: true })
+          .filter((e) => e.isFile() && e.name.endsWith('.html'))
+          .map((e) => readFileSync(join(e.parentPath, e.name), 'utf8'));
+        const light = new Set<string>();
+        const dark = new Set<string>();
+        for (const html of mocks) {
+          const [before, ...after] = html.split(/@media\s*\(prefers-color-scheme:\s*dark\)/);
+          colorsIn(before!).forEach((c) => light.add(c));
+          colorsIn(after.join(' ')).forEach((c) => dark.add(c));
+        }
+        const group = (colors: Set<string>) =>
+          Object.fromEntries([...colors].map((c, i) => [`color-${i + 1}`, { $type: 'color', $value: c }]));
+        const tokens = {
+          color: { light: group(light), dark: group(dark.size > 0 ? dark : light) },
+          typography: { body: { $type: 'fontFamily', $value: 'system-ui, sans-serif' } },
+          spacing: { '2': { $type: 'dimension', $value: '8px' }, '4': { $type: 'dimension', $value: '16px' } },
+          radius: { md: { $type: 'dimension', $value: '8px' } },
+          elevation: { '1': { $type: 'shadow', $value: '0 1px 2px rgb(0 0 0 / 10%)' } },
+          motion: { fast: { $type: 'duration', $value: '150ms' } },
+        };
+        write('docs/design-system/tokens.json', `${JSON.stringify(tokens, null, 2)}\n`);
+        write(
+          'docs/design-system/components/button.html',
+          '<!doctype html>\n<html lang="en">\n<head><meta charset="utf-8"><title>Button</title></head>\n<body><h1>Button</h1><p>Primary action. Uses color tokens and radius md.</p></body>\n</html>\n',
+        );
+        decide(
+          'How are colour tokens named?',
+          'By order of first use until a designer names them.',
+          'Names carry meaning only once roles are known; the values are what the mocks require.',
         );
         return;
       }
