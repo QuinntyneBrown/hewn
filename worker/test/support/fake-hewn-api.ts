@@ -85,6 +85,10 @@ export class FakeHewnApi implements HewnApi {
     }
   }
 
+  async downloadRepository(): Promise<Buffer> {
+    return Buffer.alloc(0);
+  }
+
   async listSkillFolders(): Promise<Record<string, string[]>> {
     return { '.claude/skills': [], '.agents/skills': [] };
   }

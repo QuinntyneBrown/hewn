@@ -70,3 +70,27 @@ Five validators implement `IStageValidator`; each returns a `ValidationReport` w
 Shown for stage 5. A broken rule fails the run with the offending IDs (L2-014 AC2, AC3) and the retry policy applies (L2-006); the other four stages follow the same path with their own validator.
 
 ![Sequence diagram: run a document stage](diagrams/sequence-run-document-stage.png)
+
+## Decisions made while building the slice
+
+- **Checkout by archive.** The worker downloads the default branch as a gzipped tarball through
+  `GET /api/worker/runs/{id}/repository/archive`, fenced by the lease, and commits through the commit mutation
+  (ADR 0006). It holds no GitHub credential and needs no git remote until the push proxy exists.
+- **Two steps.** "Check out repository", then "Write documents", which checks out again on a resumed run,
+  runs the agent, validates and commits at step 2 with the key `{run}/2/commit`. A resumed run reruns the agent
+  rather than trusting a half-written workspace; the key keeps the commit single.
+- **Only the stage's files are committed.** The executor diffs the working copy against the checkout and commits
+  changed files under the stage's outputs plus `docs/decisions.md`; anything else is logged as "Ignored a change
+  outside this stage" and dropped. `CommitPolicy` on the API enforces the same paths.
+- **Decisions are read from the log.** The agent appends to `docs/decisions.md` (date, stage, question, answer,
+  rationale); the executor logs each new entry's question and answer to the run log (L2-009 AC2, L2-054).
+- **Validators return every problem.** Each returns a list of messages naming the file, section or IDs, and the
+  run fails with all of them joined. Banned words are checked outside double quotes, curly quotes and code.
+- **User interface criterion (L2-017 AC2).** The starting rule: a Given/When/Then line naming a page, dialog,
+  screen, control, button, form, field, link, message, toast, banner, view, tab or menu.
+- **Stack check (L2-013).** With no preference the Decision section must name .NET and Angular; with one it must
+  contain the named stack.
+- **Scripted agent first.** `ScriptedStageAgent` writes valid documents from the direction and earlier documents
+  for tests and the e2e stack. The Claude Agent SDK agent arrives with run isolation (agent-isolation design), so
+  no model runs on the worker host unsandboxed. Deferred with it: `IdAllocator` for feature directions
+  (L2-017 AC3 is followed by the scripted agent but not validated).

@@ -5,9 +5,17 @@ namespace Hewn.Application.Pipeline;
 /// <summary>What each stage may write to the product repository. Stages not listed may not commit yet.</summary>
 public static class CommitPolicy
 {
+    /// <summary>Every agent stage may append to the decision log (L2-054).</summary>
+    private const string Decisions = "docs/decisions.md";
+
     private static readonly Dictionary<int, (string[] Prefixes, string[] Exact)> ByStage = new()
     {
         [0] = ([".claude/skills/", ".agents/skills/"], [".hewn/skills.lock"]),
+        [1] = ([], ["docs/brief.md", Decisions]),
+        [4] = ([], ["docs/adr/0001-stack.md", Decisions]),
+        [5] = ([], ["docs/specs/L1.md", "docs/specs/L2.md", Decisions]),
+        [7] = (["docs/detailed-designs/"], [Decisions]),
+        [8] = ([], ["docs/journeys.md", Decisions]),
     };
 
     public static void EnsureAllowed(int stage, IEnumerable<string> paths)

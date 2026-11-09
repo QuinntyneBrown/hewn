@@ -52,6 +52,12 @@ export class HttpHewnApi implements HewnApi {
     >;
   }
 
+  async downloadRepository(workerId: string, run: LeasedRun): Promise<Buffer> {
+    const query = new URLSearchParams({ workerId, epoch: String(run.epoch) });
+    const response = await this.fetch('GET', `/api/worker/runs/${run.runId}/repository/archive?${query}`);
+    return Buffer.from(await response.arrayBuffer());
+  }
+
   async commit(
     workerId: string,
     run: LeasedRun,
@@ -79,6 +85,12 @@ export class HttpHewnApi implements HewnApi {
   }
 
   private async send(method: 'GET' | 'POST', path: string, body?: unknown): Promise<unknown> {
+    const response = await this.fetch(method, path, body);
+    if (response.status === 204) return null;
+    return response.json();
+  }
+
+  private async fetch(method: 'GET' | 'POST', path: string, body?: unknown): Promise<Response> {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method,
       headers: { authorization: `Bearer ${this.token}`, 'content-type': 'application/json' },
@@ -87,7 +99,6 @@ export class HttpHewnApi implements HewnApi {
 
     if (response.status === 409) throw new LeaseLostError();
     if (!response.ok) throw new Error(`Hewn API ${path.split('?')[0]} answered ${response.status}`);
-    if (response.status === 204) return null;
-    return response.json();
+    return response;
   }
 }

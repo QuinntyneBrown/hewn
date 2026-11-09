@@ -20,6 +20,12 @@ Stages built so far:
   copies `.claude/skills/` and `.agents/skills/` except folders the repository already has, writes
   `.hewn/skills.lock` and commits through the API. The worker never holds a GitHub credential.
 
+- **Stages 1, 4, 5, 7 and 8, documents** (`DocumentStageExecutor`): checks out the product repository from the
+  API's archive (needs `tar`), runs the stage's agent with its skill and file tools only, logs each question the
+  agent answered for itself, validates the output and commits only the stage's documents and
+  `docs/decisions.md`. The agent is `ScriptedStageAgent` until the Claude Agent SDK agent lands with run
+  isolation.
+
 Every other stage runs the scripted executor: three steps (prepare, run, commit) with no agent, model or
 GitHub call, until its real executor lands.
 

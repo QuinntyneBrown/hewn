@@ -67,6 +67,7 @@ function context(existing: Record<string, string[]> = {}): RunContext & Recorded
     ...recorded,
     workspace: join(root, 'workspace'),
     log: async (_level, text) => void recorded.logs.push(text),
+    downloadRepository: async () => Buffer.alloc(0),
     listSkillFolders: async () => ({ '.claude/skills': [], '.agents/skills': [], ...existing }),
     commit: async (step, message, files) => {
       recorded.commits.push({ step, message, files: new Map(files.map((f) => [f.path, f.content.toString('utf8')])) });

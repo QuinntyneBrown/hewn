@@ -65,6 +65,11 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
     public Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> SkillFolders(Guid runId, [FromQuery] string workerId, [FromQuery] long epoch, CancellationToken cancellationToken) =>
         mediator.Send(new ListSkillFoldersQuery(runId, workerId, epoch), cancellationToken);
 
+    /// <summary>The default branch as a gzipped tarball with one top-level folder.</summary>
+    [HttpGet("runs/{runId:guid}/repository/archive")]
+    public async Task<IActionResult> Archive(Guid runId, [FromQuery] string workerId, [FromQuery] long epoch, CancellationToken cancellationToken) =>
+        File(await mediator.Send(new GetRepositoryArchiveQuery(runId, workerId, epoch), cancellationToken), "application/gzip");
+
     /// <summary>The GitHub write broker. Only `commit` exists so far; workers never hold a GitHub credential.</summary>
     [HttpPost("runs/{runId:guid}/github/mutations")]
     public async Task<IActionResult> Mutate(Guid runId, MutationRequest request, CancellationToken cancellationToken)

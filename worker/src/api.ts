@@ -41,6 +41,8 @@ export interface HewnApi {
   result(workerId: string, run: LeasedRun, outcome: RunOutcome): Promise<void>;
   /** Skill folder names already in the product repository, by skill root. */
   listSkillFolders(workerId: string, run: LeasedRun): Promise<Record<string, string[]>>;
+  /** The product repository's default branch as a gzipped tarball with one top-level folder. */
+  downloadRepository(workerId: string, run: LeasedRun): Promise<Buffer>;
   /** Commits through the API's GitHub write broker; repeating a key returns the first commit's SHA. */
   commit(
     workerId: string,
