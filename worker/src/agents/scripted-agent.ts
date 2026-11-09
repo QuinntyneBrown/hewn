@@ -12,11 +12,18 @@ import { execFileSync } from 'node:child_process';
  * stage's validator from the direction and the documents earlier stages wrote, and records one decision per
  * stage the way the real agent answers a skill's question itself (L2-054).
  */
+export interface ScriptedAgentOptions {
+  /** An increment whose title contains this is never implemented, so its tests stay red and it blocks (L2-022 AC2). */
+  blockIncrement?: string;
+}
+
 export class ScriptedStageAgent implements StageAgent {
   private readonly today: () => string;
+  private readonly options: ScriptedAgentOptions;
 
-  constructor(today: () => string = () => new Date().toISOString().slice(0, 10)) {
+  constructor(today: () => string = () => new Date().toISOString().slice(0, 10), options: ScriptedAgentOptions = {}) {
     this.today = today;
+    this.options = options;
   }
 
   async run(task: StageAgentTask): Promise<void> {
@@ -71,7 +78,7 @@ export class ScriptedStageAgent implements StageAgent {
         const features = featuresFrom(run.project.idea);
         write(
           'docs/brief.md',
-          `# ${run.project.name} brief\n\n## Problem\n${run.project.idea}\n\n## Users\nThe people the direction describes: ${lowerFirst(firstSentence(run.project.idea))}\n\n## Core features\n${features.map((f) => `- ${f}`).join('\n')}\n\n## Out of scope\n- Native mobile apps\n- Integrations beyond CSV import and export\n\n## Assumptions\n- Users work in a modern desktop or phone browser.\n- One team per account in the first release.\n`,
+          `# ${run.project.name} brief\n\n## Problem\n${run.project.idea}\n\n## Users\nThe people the direction describes: ${lowerFirst(firstSentence(run.project.idea))}\n\n## Core features\n${features.map((f) => `- ${f}`).join('\n')}\n\n## Out of scope\n- Native mobile apps\n- Integrations beyond CSV import and export\n${niceToHave(run.project.idea)}\n## Assumptions\n- Users work in a modern desktop or phone browser.\n- One team per account in the first release.\n`,
         );
         decide(
           'Who is the primary user?',
@@ -272,6 +279,7 @@ export class ScriptedStageAgent implements StageAgent {
             );
             return;
           case 'implement':
+            if (this.options.blockIncrement && includes(increment.title, this.options.blockIncrement)) return;
             write(
               scriptedImplementation(test),
               `/** ${increment.title} (${increment.l2Ids.join(', ')}). */\nexport const ${camel(increment.slug)} = true;\n`,
@@ -312,6 +320,21 @@ function featureTitle(text: string): string {
     .split(/\s+with\s+/)[0]!
     .trim();
   return title.charAt(0).toUpperCase() + title.slice(1);
+}
+
+/** "… Nice to have: review history and exports." → a brief section listing them, which stage 9 descopes (L2-019 AC2). */
+function niceToHave(idea: string): string {
+  const named = /nice[ -]to[ -]have:\s*([^.]+)/i.exec(idea)?.[1];
+  if (!named) return '';
+  const items = named
+    .split(/,\s*|\s+and\s+/)
+    .map((i) => i.trim())
+    .filter(Boolean);
+  return `\n## Nice to have\n${items.map((i) => `- ${i.charAt(0).toUpperCase()}${i.slice(1)}`).join('\n')}\n`;
+}
+
+function includes(text: string, part: string): boolean {
+  return text.toLowerCase().includes(part.toLowerCase());
 }
 
 function firstSentence(text: string): string {
