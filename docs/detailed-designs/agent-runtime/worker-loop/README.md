@@ -104,3 +104,20 @@ After 60 seconds without heartbeats the lease expires and another worker leases 
 A worker cut off by a partition keeps running until it learns its lease is gone. It holds no GitHub credential, so every write it attempts reaches the broker carrying epoch 3; the API now holds epoch 4, so the broker rejects each one inside the run write lock and forwards nothing to GitHub. On the first `LeaseLost` the worker stops the run container.
 
 ![Sequence diagram: fence a stale worker](diagrams/sequence-fence-stale-worker.png)
+
+## Decisions made while building the slice
+
+Journey 1, part 2 built the loop, leases and fencing that L2-004 needs.
+
+- **Protocol over HTTP.** Register, lease (204 when there is no work), heartbeat, checkpoint and result are
+  `POST /api/worker/...` calls carrying `{workerId, epoch}`. The `/hubs/workers` push (`WorkAvailable`)
+  is not built yet; workers poll every 15 seconds, the ceiling L2-026 AC5 allows.
+- **Fencing without a row lock** on SQLite: see [ADR 0005](../../../adr/0005-leases-on-sqlite.md).
+- **Scripted executor.** Until stage executors land, the worker runs `ScriptedStageExecutor`: three steps
+  per stage (prepare, run, commit), no agent, model or GitHub call. The e2e suite starts real worker
+  processes with it, so the fake worker AGENTS.md describes is the real worker with a scripted executor.
+- **Checkpoints** carry a step number and an optional SHA; the git sidecar, the reconciler and the
+  write broker come with the stages that push (part 3 onward).
+- **Failure text is redacted** before it is stored (`SecretRedactor`).
+- **Not built yet:** the Workers page and issued tokens, `WorkerChanged`, the git sidecar, the container
+  image, `CheckpointReconciler` and the `RunWriteLock`.

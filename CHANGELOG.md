@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Run a product direction through stages 0 to 10 (journey 1, L2-004 AC1-AC3): leased runs fenced by epoch,
+  heartbeats and 60-second expiry, the pipeline orchestrator, the Mission Control hub with catch-up by
+  sequence number, and the project page following the pipeline live to Complete.
+- The worker (`worker/`): the work loop with heartbeats, checkpoints and resume, and a scripted executor for
+  tests and demos.
 - Submit a product direction (journey 1, L2-001): the New direction page, `POST /api/projects` with field
   validation and the GitHub write probe, the project page with every stage, and the `DirectionQueued` event.
 - Backend solution (`Hewn.Domain`, `Hewn.Application`, `Hewn.Infrastructure`, `Hewn.Api`, `Hewn.Cli`) with

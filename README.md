@@ -189,7 +189,8 @@ pwsh eng/Start-Api.ps1                # API on http://localhost:5200
 cd frontend
 npm start                             # Mission Control on http://localhost:4200
 
-docker compose -f deploy/docker-compose.yml up worker
+# A worker with the scripted executor; the API needs the same HEWN_WORKER_TOKEN
+pwsh eng/Start-Worker.ps1
 ```
 
 Sign in with a GitHub account on the allow list (`HEWN_ALLOWED_GITHUB_USERS`). Until GitHub sign-in
@@ -229,9 +230,10 @@ Secrets are never written to configuration files in the repository.
 | `HEWN_SKILLS_SOURCE`            | API     | Skill library repository; defaults to `QuinntyneBrown/greenlit`          |
 | `HEWN_DEFAULT_BUDGET_USD`       | API     | Default spend cap per direction                                          |
 | `HEWN_DESCOPE_THRESHOLD_DAYS`   | API     | Designs estimated above this are split or deferred; defaults to `3`      |
-| `HEWN_WORKER_TOKEN`             | Worker  | Token issued from Mission Control (secret)                               |
+| `HEWN_WORKER_TOKEN`             | API, Worker | Worker token (secret). For now one shared value set on both; Mission Control will issue tokens |
 | `HEWN_API_URL`                  | Worker  | Where the worker connects                                                |
-| `HEWN_WORKER_LOCATION`          | Worker  | `Local` or `Cloud`                                                       |
+| `HEWN_LOCATION`                 | Worker  | `Local` or `Cloud`                                                       |
+| `HEWN_EXECUTOR`                 | Worker  | `scripted` (deterministic stand-in until the real stage executors land)  |
 
 ## Running the tests
 
@@ -261,6 +263,7 @@ npx playwright install chromium
 npm run test:behavior                 # behavior
 npm run test:a11y                     # axe-core on every page and state
 npm run test:visual                   # visual parity with docs/mocks
+npm run test:pipeline                 # directions run live on scripted workers
 ```
 
 Every acceptance test file starts with a header naming the requirements it covers:

@@ -76,3 +76,22 @@ A stage starts only after its predecessor Succeeded (L2-004 AC1). For a feature 
 A second direction on a busy project queues and starts when the active one is Complete or Cancelled, first in, first out (L2-004 AC4, L2-005 AC4).
 
 ![Sequence diagram: queue a second direction](diagrams/sequence-queue-second-direction.png)
+
+## Decisions made while building the slice
+
+Journey 1, part 2 built L2-004 AC1-AC3. These choices refine the design above.
+
+- **The first run is queued with the direction.** `SubmitProductDirection` adds the stage 0 `Run` in the
+  same unit of work as the project, the direction and `DirectionQueued`, so a submitted direction is
+  leasable the moment the API answers.
+- **The stage starts on lease.** The orchestrator marks a stage Running when a worker first leases its run
+  (`StageChanged`, plus `DirectionChanged` for stage 0). A resumed run changes nothing visible.
+- **Events.** `StageChanged {directionId, stage, name, status, startedAt, endedAt}`,
+  `DirectionChanged {directionId, status, completedAt}` and `ProjectChanged {status}`. A full product
+  direction emits 22 `StageChanged`, then `DirectionChanged` Complete and `ProjectChanged` Idle.
+- **Failure.** A failed run marks the stage Failed and the project Blocked; no further run is queued. Retry
+  and the Blocked view come with L2-006.
+- **Header pill.** The pill beside the project name follows the current direction, as the mocks do: Running
+  while queued or running, Complete when done; a Blocked project always reads Blocked.
+- **Not built yet:** the direction queue for a second direction (AC4, with journey 2), `StagePlan` for
+  feature directions, skipping stages 2 and 3, and the no-approval end-to-end test (part 9).
