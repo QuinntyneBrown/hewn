@@ -12,6 +12,8 @@ public static class CommitPolicy
     {
         [0] = ([".claude/skills/", ".agents/skills/"], [".hewn/skills.lock"]),
         [1] = ([], ["docs/brief.md", Decisions]),
+        [2] = (["docs/mocks/"], [Decisions]),
+        [3] = (["docs/design-system/"], [Decisions]),
         [4] = ([], ["docs/adr/0001-stack.md", Decisions]),
         [5] = ([], ["docs/specs/L1.md", "docs/specs/L2.md", Decisions]),
         [7] = (["docs/detailed-designs/"], [Decisions]),
