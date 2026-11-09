@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth-guard';
 import { ShellComponent } from './layout/shell';
+import { ProjectsPage } from './pages/projects/projects.page';
 
 export const routes: Routes = [
   {
@@ -18,7 +19,8 @@ export const routes: Routes = [
         path: 'projects',
         pathMatch: 'full',
         title: 'Projects · Hewn',
-        loadComponent: () => import('./pages/projects/projects.page').then((m) => m.ProjectsPage),
+        // Eager: the page L2-045 AC1 measures loads without waiting for a route chunk; every other route is lazy.
+        component: ProjectsPage,
       },
       {
         path: 'projects/new',
