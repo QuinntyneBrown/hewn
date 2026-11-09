@@ -122,9 +122,25 @@ public sealed class AppendRunLogHandler(IAppDbContext db, LeaseService leases, E
     {
         var run = await leases.FenceAsync(command.RunId, command.WorkerId, command.Epoch, cancellationToken);
         await events.LockAsync(run.ProjectId, cancellationToken);
+        await RunLog.AppendAsync(db, events, run, command.Lines, clock.GetUtcNow(), cancellationToken);
+        await FencedSave.SaveAsync(db, cancellationToken);
+        await events.PublishAsync(cancellationToken);
+    }
+}
+
+/// <summary>Appends run log lines, numbered per run and redacted, with the <c>LogLines</c> event. The caller holds the project lock.</summary>
+public static class RunLog
+{
+    public static async Task AppendAsync(
+        IAppDbContext db,
+        EventAppender events,
+        Run run,
+        IReadOnlyList<RunLogEntry> entries,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
         var last = await db.RunLogLines.Where(l => l.RunId == run.Id).Select(l => (long?)l.Sequence).MaxAsync(cancellationToken) ?? 0;
-        var now = clock.GetUtcNow();
-        var lines = command.Lines.Select(line => new RunLogLine(run.Id, ++last, line.Level, SecretRedactor.Redact(line.Text), now)).ToList();
+        var lines = entries.Select(line => new RunLogLine(run.Id, ++last, line.Level, SecretRedactor.Redact(line.Text), now)).ToList();
         db.RunLogLines.AddRange(lines);
         await events.AppendAsync(
             run.ProjectId,
@@ -137,9 +153,10 @@ public sealed class AppendRunLogHandler(IAppDbContext db, LeaseService leases, E
                 lines = lines.Select(l => new { line = l.Sequence, at = l.At, level = l.Level, text = l.Text }),
             },
             cancellationToken);
-        await FencedSave.SaveAsync(db, cancellationToken);
-        await events.PublishAsync(cancellationToken);
     }
+
+    public static Task InfoAsync(IAppDbContext db, EventAppender events, Run run, string text, DateTimeOffset now, CancellationToken cancellationToken) =>
+        AppendAsync(db, events, run, [new RunLogEntry("info", text)], now, cancellationToken);
 }
 
 internal static class RunProject

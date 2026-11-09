@@ -1,4 +1,5 @@
 using Hewn.Api.Auth;
+using Hewn.Application.Pipeline;
 using Hewn.Application.Projects;
 using Hewn.Application.Spend;
 using MediatR;
@@ -52,6 +53,18 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
     [Authorize(Policy = AuthSetup.OwnerPolicy)]
     public Task<RaiseAndResumeResult> RaiseAndResume(Guid projectId, Guid directionId, RaiseAndResumeRequest request, CancellationToken cancellationToken) =>
         mediator.Send(new RaiseAndResumeCommand(projectId, directionId, request.BudgetUsd, request.CurrentBudgetUsd), cancellationToken);
+
+    /// <summary>L2-029 AC1: the step in progress finishes, then the direction is Paused and nothing new starts.</summary>
+    [HttpPost("{projectId:guid}/directions/{directionId:guid}/pause")]
+    [Authorize(Policy = AuthSetup.OwnerPolicy)]
+    public Task<DirectionControlResult> Pause(Guid projectId, Guid directionId, CancellationToken cancellationToken) =>
+        mediator.Send(new PauseDirectionCommand(projectId, directionId), cancellationToken);
+
+    /// <summary>L2-029 AC2: a paused direction continues from its next step.</summary>
+    [HttpPost("{projectId:guid}/directions/{directionId:guid}/resume")]
+    [Authorize(Policy = AuthSetup.OwnerPolicy)]
+    public Task<DirectionControlResult> Resume(Guid projectId, Guid directionId, CancellationToken cancellationToken) =>
+        mediator.Send(new ResumeDirectionCommand(projectId, directionId), cancellationToken);
 
     [HttpGet("{projectId:guid}")]
     public Task<ProjectDto> Get(Guid projectId, CancellationToken cancellationToken) =>

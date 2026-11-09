@@ -9,6 +9,7 @@ import {
   ProjectSummary,
   RaiseAndResumeRequest,
   RaiseAndResumeResult,
+  DirectionControlResult,
   SubmitFeatureDirectionRequest,
   SubmitProductDirectionRequest,
   SubmitProductDirectionResult,
@@ -40,6 +41,10 @@ export interface ProjectsApi {
     directionId: string,
     request: RaiseAndResumeRequest,
   ): Observable<RaiseAndResumeResult>;
+  /** L2-029 AC1: the step in progress finishes, then the direction is Paused. */
+  pause(projectId: string, directionId: string): Observable<DirectionControlResult>;
+  /** L2-029 AC2: the direction continues from its next step. */
+  resume(projectId: string, directionId: string): Observable<DirectionControlResult>;
 }
 
 export const PROJECTS_API = new InjectionToken<ProjectsApi>('ProjectsApi');
@@ -100,5 +105,24 @@ export class HttpProjectsApi implements ProjectsApi {
         request,
       )
       .pipe(catchError((error: unknown) => throwError(() => toFieldErrors(error) ?? error)));
+  }
+
+  pause(projectId: string, directionId: string): Observable<DirectionControlResult> {
+    return this.control(projectId, directionId, 'pause');
+  }
+
+  resume(projectId: string, directionId: string): Observable<DirectionControlResult> {
+    return this.control(projectId, directionId, 'resume');
+  }
+
+  private control(
+    projectId: string,
+    directionId: string,
+    action: 'pause' | 'resume',
+  ): Observable<DirectionControlResult> {
+    return this.http.post<DirectionControlResult>(
+      `/api/projects/${encodeURIComponent(projectId)}/directions/${encodeURIComponent(directionId)}/${action}`,
+      {},
+    );
   }
 }

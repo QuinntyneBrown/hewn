@@ -118,6 +118,9 @@ Journey 1, part 2 built the loop, leases and fencing that L2-004 needs.
   processes with it, so the fake worker AGENTS.md describes is the real worker with a scripted executor.
 - **Checkpoints** carry a step number and an optional SHA; the git sidecar, the reconciler and the
   write broker come with the stages that push (part 3 onward).
+- **The checkpoint answers with a verdict** (journey 6): `{verdict: "Continue" | "Pause"}`. On `Pause` the run has
+  been paused at this checkpoint and its lease released; the worker ends the run without another step or a result
+  ([ADR 0011](../../../adr/0011-pause-takes-effect-at-the-next-checkpoint.md)).
 - **Failure text is redacted** before it is stored (`SecretRedactor`).
 - **Not built yet:** the Workers page and issued tokens, `WorkerChanged`, the git sidecar, the container
   image, `CheckpointReconciler` and the `RunWriteLock`.

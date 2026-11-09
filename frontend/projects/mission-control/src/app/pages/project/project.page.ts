@@ -41,6 +41,12 @@ import { LiveLogComponent } from './live-log.component';
 import { RaiseBudgetDialog, RaiseBudgetData } from './raise-budget.dialog';
 import { suggestedBudget } from './raise-budget';
 import {
+  controlFailure,
+  directionControl,
+  PAUSED_BY_OWNER,
+  pausedTitle,
+} from './direction-controls';
+import {
   budgetWarningToast,
   clockTime,
   dollars,
@@ -94,6 +100,7 @@ export class ProjectPage {
   private readonly api = inject(PROJECTS_API);
   private readonly events = inject(PROJECT_EVENTS);
   private readonly dialog = inject(Dialog);
+  private readonly toasts = inject(Toasts);
   protected readonly session = inject(SessionStore);
 
   readonly projectId = input.required<string>();
@@ -318,6 +325,38 @@ export class ProjectPage {
 
   protected setNewBudget(directionId: string, value: string): void {
     this.newBudgets.update((all) => ({ ...all, [directionId]: value }));
+  }
+
+  protected readonly control = directionControl;
+  protected readonly pausedTitle = pausedTitle;
+  protected readonly pausedByOwner = PAUSED_BY_OWNER;
+  /** True while a Pause or Resume request is on its way. */
+  protected readonly controlSending = signal(false);
+
+  /**
+   * Pause or Resume (L2-029 AC1, AC2). The page updates from the events the command sends: Pausing… while the
+   * step in progress finishes, then Paused; Running again on Resume.
+   */
+  protected sendControl(direction: { id: string }, action: 'pause' | 'resume'): void {
+    const project = this.project();
+    if (!project || !this.session.isOwner() || this.controlSending()) return;
+    this.controlSending.set(true);
+    const request =
+      action === 'pause'
+        ? this.api.pause(project.id, direction.id)
+        : this.api.resume(project.id, direction.id);
+    request.subscribe({
+      next: () => this.controlSending.set(false),
+      error: (error: unknown) => {
+        this.controlSending.set(false);
+        const status = error instanceof HttpErrorResponse ? error.status : 0;
+        this.toasts.show({
+          tone: 'warn',
+          title: `${project.name} wasn’t ${action === 'pause' ? 'paused' : 'resumed'}`,
+          text: controlFailure(action, status),
+        });
+      },
+    });
   }
 
   /** Raise and resume (L2-053 AC3). The page updates from the events the command sends. */

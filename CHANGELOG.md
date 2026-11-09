@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Pause and resume a direction (journey 6, L2-029 AC1, AC2, AC5, L2-050 AC3): an Owner presses Pause on a running
+  direction; the step in progress finishes and checkpoints, then the direction is Paused ("Paused by … at …") and
+  nothing new starts. Resume continues the same run from the next step, and no completed step runs twice
+  (`POST /api/projects/{id}/directions/{d}/pause` and `/resume`, `PauseRequested`, `DirectionResumed`; ADR 0011).
+  Viewers see no control and get 403.
+
 - Raise budget and resume (journey 5, L2-053 AC3, L2-029 AC5): on a direction Paused with "Budget reached", an
   Owner enters a new budget above the spend and presses Raise and resume; the budget is raised and the direction
   resumes from the step after its checkpoint in one action
@@ -90,3 +96,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Architecture decision records 0001 to 0004 in `docs/adr/`.
 - Root documentation: README, license, contributing guide, code of conduct, security policy,
   support guide, agent guidance and GitHub templates.
+
+### Changed
+
+- The worker checkpoint endpoint answers 200 `{verdict: "Continue" | "Pause"}` instead of 204.
+

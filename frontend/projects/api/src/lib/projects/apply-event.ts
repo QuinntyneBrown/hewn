@@ -63,7 +63,16 @@ export function applyEvent(project: Project, event: ProjectEvent): Project {
               status: p['status'] as DirectionStatus,
               completedAt: (p['completedAt'] as string | null) ?? null,
               pauseReason: (p['pauseReason'] as string | null) ?? null,
+              pauseRequested: (p['pauseRequested'] as boolean | undefined) ?? false,
+              pausedBy: (p['pausedBy'] as string | null) ?? null,
+              pausedAt: (p['pausedAt'] as string | null) ?? null,
             },
+      );
+      break;
+    case 'PauseRequested':
+      // L2-029 AC1: the step in progress finishes before the direction pauses.
+      next.directions = project.directions.map((d) =>
+        d.id !== p['directionId'] ? d : { ...d, pauseRequested: true },
       );
       break;
     case 'DirectionQueued': {

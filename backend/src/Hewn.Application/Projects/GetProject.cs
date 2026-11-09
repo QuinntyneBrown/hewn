@@ -33,7 +33,10 @@ public sealed record DirectionDto(
     string? UiDecision,
     decimal SpendUsd,
     bool BudgetWarned,
-    string? PauseReason);
+    string? PauseReason,
+    bool PauseRequested,
+    string? PausedBy,
+    DateTimeOffset? PausedAt);
 
 public sealed record ProjectDto(
     Guid Id,
@@ -117,5 +120,8 @@ public sealed class GetProjectHandler(IAppDbContext db) : IRequestHandler<GetPro
         d.UiDecision,
         d.SpendUsd,
         d.BudgetWarned,
-        d.PauseReason);
+        d.PauseReason,
+        d.PauseRequestedBy is not null,
+        d.PausedBy,
+        d.PausedAt);
 }

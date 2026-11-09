@@ -1,5 +1,6 @@
 import {
   LeaseLostError,
+  type CheckpointVerdict,
   type CommitFile,
   type HewnApi,
   type LeasedRun,
@@ -33,6 +34,8 @@ export class FakeHewnApi implements HewnApi {
   readonly modelCalls: (ModelCallReport & { runId: string })[] = [];
   /** Answers to the next model calls; Continue once these run out. */
   readonly verdicts: ModelCallVerdict[] = [];
+  /** Answers to the next checkpoints; Continue once these run out. */
+  readonly checkpointVerdicts: CheckpointVerdict[] = [];
   readonly commits: { runId: string; idempotencyKey: string; message: string; paths: string[] }[] = [];
   private readonly queue: LeasedRun[] = [];
   private nextId = 1;
@@ -100,8 +103,9 @@ export class FakeHewnApi implements HewnApi {
     return this.verdicts.shift() ?? { verdict: 'Continue', directionSpendUsd: 0, budgetUsd: 300 };
   }
 
-  async checkpoint(_workerId: string, run: LeasedRun, step: number): Promise<void> {
+  async checkpoint(_workerId: string, run: LeasedRun, step: number): Promise<CheckpointVerdict> {
     this.record({ method: 'checkpoint', runId: run.runId, step });
+    return this.checkpointVerdicts.shift() ?? 'Continue';
   }
 
   async result(_workerId: string, run: LeasedRun, outcome: RunOutcome): Promise<void> {

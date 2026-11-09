@@ -50,6 +50,17 @@ public sealed class Direction
 
     public const string BudgetReached = "Budget reached";
 
+    /// <summary>The reason an Owner's Pause records (L2-029 AC1).</summary>
+    public const string PausedByOwner = "Paused by an Owner";
+
+    /// <summary>The Owner who pressed Pause, while the step in progress finishes; null when no pause is pending.</summary>
+    public string? PauseRequestedBy { get; private set; }
+
+    /// <summary>Who paused the direction and when it became Paused, for "Paused by … at …".</summary>
+    public string? PausedBy { get; private set; }
+
+    public DateTimeOffset? PausedAt { get; private set; }
+
     public DirectionStatus Status { get; private set; }
 
     public string SubmittedBy { get; private set; }
@@ -106,6 +117,7 @@ public sealed class Direction
         {
             Status = DirectionStatus.Complete;
             CompletedAt = now;
+            PauseRequestedBy = null;
         }
 
         return next;
@@ -167,8 +179,81 @@ public sealed class Direction
     {
         Status = DirectionStatus.Paused;
         PauseReason = reason;
+        PauseRequestedBy = null;
         var stage = Stage(stageNumber);
         stage.Pause();
+        return stage;
+    }
+
+    /// <summary>
+    /// An Owner pressed Pause (L2-029 AC1). Nothing stops yet: the step in progress finishes, and its checkpoint
+    /// pauses the direction. Returns false when a pause was already requested.
+    /// </summary>
+    public bool RequestPause(string requestedBy)
+    {
+        if (Status is not (DirectionStatus.Queued or DirectionStatus.Running))
+        {
+            throw new InvalidOperationException($"Direction {Id} is {Status}; only a queued or running direction pauses.");
+        }
+
+        if (PauseRequestedBy is not null)
+        {
+            return false;
+        }
+
+        PauseRequestedBy = requestedBy;
+        return true;
+    }
+
+    /// <summary>
+    /// The requested pause takes effect at a checkpoint or before a stage starts: the direction is Paused and a
+    /// running stage pauses with it. Returns the stage when its status changed.
+    /// </summary>
+    public StageState? PauseAsRequested(int stageNumber, DateTimeOffset now)
+    {
+        if (PauseRequestedBy is null)
+        {
+            throw new InvalidOperationException($"Direction {Id} has no pause requested.");
+        }
+
+        Status = DirectionStatus.Paused;
+        PauseReason = PausedByOwner;
+        PausedBy = PauseRequestedBy;
+        PausedAt = now;
+        PauseRequestedBy = null;
+        var stage = Stage(stageNumber);
+        if (stage.Status != StageStatus.Running)
+        {
+            return null;
+        }
+
+        stage.Pause();
+        return stage;
+    }
+
+    /// <summary>True when an Owner paused the direction and Resume continues it.</summary>
+    public bool IsPausedByOwner => Status == DirectionStatus.Paused && PauseReason == PausedByOwner;
+
+    /// <summary>Resume (L2-029 AC2): the direction runs again and a paused stage carries on. Returns the stage when its status changed.</summary>
+    public StageState? Resume(int stageNumber)
+    {
+        if (!IsPausedByOwner)
+        {
+            throw new InvalidOperationException($"Direction {Id} is not paused by an Owner.");
+        }
+
+        var stage = Stage(stageNumber);
+        // A direction paused before its first stage started waits for a worker again, as it did before.
+        Status = _stages.Any(s => s.StartedAt is not null) ? DirectionStatus.Running : DirectionStatus.Queued;
+        PauseReason = null;
+        PausedBy = null;
+        PausedAt = null;
+        if (stage.Status != StageStatus.Paused)
+        {
+            return null;
+        }
+
+        stage.Resume();
         return stage;
     }
 
@@ -200,7 +285,11 @@ public sealed class Direction
         return stage;
     }
 
-    public void FailStage(int number, DateTimeOffset now) => Stage(number).End(StageStatus.Failed, now);
+    public void FailStage(int number, DateTimeOffset now)
+    {
+        Stage(number).End(StageStatus.Failed, now);
+        PauseRequestedBy = null;
+    }
 
     public StageState Stage(int number) => _stages.Single(s => s.Number == number);
 

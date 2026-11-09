@@ -65,6 +65,17 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("PauseRequestedBy")
+                        .HasMaxLength(39)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("PausedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PausedBy")
+                        .HasMaxLength(39)
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("TEXT");
 

@@ -138,8 +138,14 @@ export class WorkLoop {
         await steps[index]!.execute(lease.signal);
         if (lease.signal.aborted) return;
         await logs.flush();
-        await this.api.checkpoint(workerId, run, index + 1);
+        const verdict = await this.api.checkpoint(workerId, run, index + 1);
         this.log('Checkpoint', { runId: run.runId, step: index + 1 });
+        if (verdict === 'Pause') {
+          // An Owner pressed Pause: Hewn has paused the direction at this checkpoint and released the lease.
+          this.log('Paused at a checkpoint; the run stops here', { runId: run.runId, step: index + 1 });
+          lease.abort(new Error('Paused at a checkpoint.'));
+          return;
+        }
       }
 
       if (lease.signal.aborted) return;

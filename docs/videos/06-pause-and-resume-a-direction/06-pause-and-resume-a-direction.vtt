@@ -1,0 +1,226 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:06.57
+This is journey six of Hewn, the software factory: pause and resume a direction.
+
+00:00:06.57 --> 00:00:11.89
+Hewn runs without approval steps, so an Owner needs a safety control: stop after the
+
+00:00:11.89 --> 00:00:15.81
+work in hand, and carry on later without doing anything twice.
+
+00:00:15.81 --> 00:00:20.31
+This video walks through how it was built: the flow, the pause request,
+
+00:00:20.31 --> 00:00:23.60
+the checkpoint, the resume, the page, and the tests.
+
+00:00:24.75 --> 00:00:27.82
+An Owner presses Pause on a running direction.
+
+00:00:27.82 --> 00:00:33.15
+The current step finishes, the direction becomes Paused, and nothing new starts.
+
+00:00:33.15 --> 00:00:37.82
+Resume continues from the next step, and no completed step runs twice.
+
+00:00:37.82 --> 00:00:43.29
+Viewers never see the controls, and if they try the API, it answers four oh three.
+
+00:00:44.44 --> 00:00:45.88
+Here is the whole flow.
+
+00:00:45.88 --> 00:00:48.94
+Pause is recorded at once, but nothing stops yet.
+
+00:00:48.94 --> 00:00:53.63
+The worker finishes its step and reports the checkpoint, as it always does,
+
+00:00:53.63 --> 00:00:56.82
+and the checkpoint's answer tells it to stop there.
+
+00:00:56.82 --> 00:00:59.51
+Resume puts the same run back in the queue,
+
+00:00:59.51 --> 00:01:03.32
+and the next worker to lease it starts at the following step.
+
+00:01:04.47 --> 00:01:09.34
+The pause command takes the project's lock and finds the direction's run.
+
+00:01:09.34 --> 00:01:14.87
+It records who asked, sends a Pause requested event, and writes Pause requested by,
+
+00:01:14.87 --> 00:01:16.00
+into the run log.
+
+00:01:16.00 --> 00:01:20.73
+If the run is still waiting for a worker, there is no step to wait for,
+
+00:01:20.73 --> 00:01:22.87
+so the direction pauses at once.
+
+00:01:22.87 --> 00:01:25.33
+Pressing Pause twice changes nothing.
+
+00:01:26.48 --> 00:01:29.88
+This is the worker loop's checkpoint sequence.
+
+00:01:29.88 --> 00:01:33.94
+Every step ends with a checkpoint, recorded by the API.
+
+00:01:33.94 --> 00:01:38.00
+Now the API answers with a verdict: continue, or pause.
+
+00:01:38.35 --> 00:01:43.43
+When a pause is waiting, the checkpoint that ends the step in progress is where it
+
+00:01:43.43 --> 00:01:44.23
+takes effect.
+
+00:01:44.23 --> 00:01:48.75
+The API writes Step finished, checkpoint, direction Paused, into the log,
+
+00:01:48.75 --> 00:01:53.21
+releases the lease, keeps the checkpoint, and pauses the run, the stage,
+
+00:01:53.21 --> 00:01:55.87
+the direction and the project, in one save.
+
+00:01:56.22 --> 00:02:00.83
+In the worker, a pause verdict ends the run right there: no further step,
+
+00:02:00.83 --> 00:02:01.72
+and no result.
+
+00:02:01.72 --> 00:02:04.75
+Then the worker goes back to leasing other work.
+
+00:02:05.90 --> 00:02:10.69
+Resume queues the same run again, with its checkpoint, and sets the stage,
+
+00:02:10.69 --> 00:02:13.66
+the direction and the project back to Running.
+
+00:02:13.66 --> 00:02:17.74
+The next lease starts the run at the step after its checkpoint.
+
+00:02:17.74 --> 00:02:23.24
+A direction paused at its budget is not resumed this way: it answers with a conflict,
+
+00:02:23.24 --> 00:02:26.02
+because only Raise and resume continues it.
+
+00:02:27.17 --> 00:02:31.05
+On the project page, Owners see Pause on a running direction.
+
+00:02:31.05 --> 00:02:35.89
+Once pressed, the button shows Pausing, while the step in progress finishes.
+
+00:02:36.24 --> 00:02:41.23
+Paused, the header offers Resume, and the callout says who paused and when,
+
+00:02:41.23 --> 00:02:43.96
+and that nothing new starts until Resume.
+
+00:02:43.96 --> 00:02:46.42
+It works in dark mode and on a phone.
+
+00:02:47.57 --> 00:02:50.32
+Each slice began with its tests failing.
+
+00:02:50.32 --> 00:02:55.70
+The backend gained seven tests against the real API: the pause after the step,
+
+00:02:55.70 --> 00:03:00.10
+the resume from the next step, a run still waiting for a worker,
+
+00:03:00.10 --> 00:03:04.92
+a stage that ends while a pause is pending, the Viewer, the conflicts,
+
+00:03:04.92 --> 00:03:06.30
+and another project.
+
+00:03:06.30 --> 00:03:09.67
+The worker gained three tests against a fake API.
+
+00:03:10.02 --> 00:03:13.98
+All green, the backend has one hundred and seventy eight tests,
+
+00:03:13.98 --> 00:03:19.01
+the worker one hundred and thirty three, and the frontend sixty four unit tests.
+
+00:03:19.01 --> 00:03:22.91
+End to end, a new pipeline test pauses a real worker mid step,
+
+00:03:22.91 --> 00:03:27.37
+checks that nothing runs while paused, checks the Viewer and the page's
+
+00:03:27.37 --> 00:03:32.33
+accessibility, then resumes, and checks that each step of the stage ran exactly
+
+00:03:32.33 --> 00:03:32.65
+once.
+
+00:03:32.65 --> 00:03:35.54
+There are forty seven end to end tests in all.
+
+00:03:36.69 --> 00:03:40.57
+Here is a direction running Bootstrap, in its second step.
+
+00:03:40.57 --> 00:03:42.17
+The Owner presses Pause.
+
+00:03:42.17 --> 00:03:46.05
+The button says Pausing, and the log says Pause requested.
+
+00:03:46.05 --> 00:03:50.73
+The step carries on to its last log line, then reports its checkpoint,
+
+00:03:50.73 --> 00:03:52.60
+and the direction is Paused.
+
+00:03:52.95 --> 00:03:53.69
+Now Resume.
+
+00:03:53.69 --> 00:03:57.74
+The header turns back to Pause, and the log says Resumed by.
+
+00:03:57.74 --> 00:04:02.47
+The worker polls for work, leases the same run again with a new epoch,
+
+00:04:02.47 --> 00:04:06.04
+and carries on with its third step, Commit artifacts.
+
+00:04:06.04 --> 00:04:08.40
+Steps one and two do not run again.
+
+00:04:08.40 --> 00:04:13.26
+Bootstrap succeeds, and Idea begins, with its own steps and its own log.
+
+00:04:13.61 --> 00:04:16.14
+Bootstrap's log tells the whole story.
+
+00:04:16.14 --> 00:04:21.07
+The pause request, the step that finished, the checkpoint, and the resume.
+
+00:04:21.07 --> 00:04:23.87
+No line of a completed step appears twice.
+
+00:04:24.22 --> 00:04:27.40
+And a Viewer sees the pause, with no controls at all.
+
+00:04:28.55 --> 00:04:30.20
+Journey six is complete.
+
+00:04:30.20 --> 00:04:34.82
+Pause waits for the step in progress, then stops at its checkpoint.
+
+00:04:34.82 --> 00:04:39.71
+Resume carries on from the next step, and no completed step runs twice.
+
+00:04:39.71 --> 00:04:41.77
+And only Owners can do either.
+
+00:04:41.77 --> 00:04:44.87
+Next comes journey seven: cancel a direction.

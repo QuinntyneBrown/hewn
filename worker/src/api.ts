@@ -136,13 +136,17 @@ export interface CheckRun {
   status: 'queued' | 'in_progress' | 'completed' | string;
   conclusion: string | null;
 }
+/** What to do after a checkpoint: carry on, or stop the run there because an Owner pressed Pause. */
+export type CheckpointVerdict = 'Continue' | 'Pause';
+
 export interface HewnApi {
   register(registration: WorkerRegistration): Promise<string>;
   lease(workerId: string): Promise<LeasedRun | null>;
   heartbeat(workerId: string, run: LeasedRun): Promise<void>;
   /** Names the step (1-based) the worker is starting, shown live on the running stage. */
   startStep(workerId: string, run: LeasedRun, step: number, name: string): Promise<void>;
-  checkpoint(workerId: string, run: LeasedRun, step: number, sha?: string): Promise<void>;
+  /** Reports a completed step; the answer is Pause when an Owner pressed Pause (L2-029 AC1). */
+  checkpoint(workerId: string, run: LeasedRun, step: number, sha?: string): Promise<CheckpointVerdict>;
   result(workerId: string, run: LeasedRun, outcome: RunOutcome): Promise<void>;
   /** Skill folder names already in the product repository, by skill root. */
   listSkillFolders(workerId: string, run: LeasedRun): Promise<Record<string, string[]>>;

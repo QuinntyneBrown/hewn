@@ -52,6 +52,11 @@ else current
   proxy --> cw : ok
   cw -> lease : ReportCheckpoint(run, epoch 3, step tests, sha a1b2c3)
   lease -> db : Run.Checkpoint = {tests, a1b2c3}; commit (L2-050 AC1)
-  lease --> cw : Recorded; start next step
+  alt no pause requested
+    lease --> cw : 200 {verdict: Continue}; start next step
+  else an Owner pressed Pause (L2-029 AC1)
+    lease -> db : Run Paused, lease released;\nstage, direction and project Paused
+    lease --> cw : 200 {verdict: Pause}; end the run, no result
+  end
 end
 @enduml

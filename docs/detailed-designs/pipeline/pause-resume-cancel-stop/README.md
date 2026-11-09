@@ -61,7 +61,7 @@ Both controllers send typed control messages through one channel that enforces t
 
 ### Behaviour — pause and resume
 
-Pause waits for the current step to finish and checkpoint (L2-029 AC1); Resume continues from the next step (AC2).
+Pause waits for the current step to finish and checkpoint (L2-029 AC1): the checkpoint's answer tells the worker to stop there. Resume queues the same run again, so it continues from the next step (AC2) and no completed step runs twice (L2-050 AC3).
 
 ![Sequence diagram: pause and resume](diagrams/sequence-pause-resume.png)
 
@@ -76,3 +76,29 @@ The run stops within 10 seconds, the direction is Cancelled, and open pull reque
 Every worker halts its active run within 10 seconds and leases nothing until Start workers (L2-029 AC4).
 
 ![Sequence diagram: stop and start all workers](diagrams/sequence-stop-all.png)
+
+## Decisions made while building Pause and Resume
+
+Journey 6 built Pause and Resume (L2-029 AC1, AC2, AC5). Cancel and Stop all come with journeys 7 and 8.
+
+- **Pause is answered on the checkpoint call, not a control channel** ([ADR 0011](../../../adr/0011-pause-takes-effect-at-the-next-checkpoint.md)).
+  `POST /api/projects/{projectId}/directions/{directionId}/pause` records the request (`PauseRequested`, "Pause
+  requested by {login}" in the run log). The worker's next checkpoint, the end of the step in progress, answers
+  `{verdict: "Pause"}`, and the run, stage, direction and project turn Paused with "Step {n} finished · checkpoint ·
+  direction Paused" in the log. `WorkerControlChannel`, `RunSupervisor` and `PauseAfterStep` are not built; Cancel
+  and Stop all need them to stop a run within 10 seconds.
+- **Routes sit under the project**, like every other project-scoped endpoint, so another project's direction is
+  404: `.../directions/{id}/pause` and `.../resume`, served by `ProjectsController` (no `DirectionControlsController`).
+- **No step to wait for:** a run still waiting for a worker pauses at once, and a stage that ends while a pause is
+  pending leaves the next stage's run paused, so it does not start.
+- **Resume re-queues the paused run** (`DirectionResumed`, "Resumed by {login}"): the next lease bumps the epoch and
+  starts after the checkpoint.
+- **Refusals:** 403 for Viewers; 409 `not_running` (Pause with no queued or leased run), `not_paused` (Resume on a
+  direction that is not paused) and `budget_reached` (a budget stop continues only through Raise and resume). Pause
+  twice is harmless.
+- **The header** follows the mocks: Pause on a running direction, Resume on a paused one, and the paused callout
+  "Paused by {login} at {time}". Between the two, the Pause button shows the design system's busy state
+  ("Pausing…", `aria-busy`), so no new mock was needed. `DirectionControlsComponent` is part of the project page's
+  header rather than a component of its own. Cancel is not shown until journey 7 builds it.
+- **Not built yet:** audit entries for Pause and Resume (the audit log is journey 32).
+

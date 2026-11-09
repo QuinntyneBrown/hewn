@@ -26,6 +26,9 @@ const project = (): Project => ({
       spendUsd: 0,
       budgetWarned: false,
       pauseReason: null,
+      pauseRequested: false,
+      pausedBy: null,
+      pausedAt: null,
       stages: [0, 1].map((number) => ({
         number,
         name: `S${number}`,
@@ -235,6 +238,51 @@ describe('applyEvent', () => {
       budgetUsd: 350,
       spendUsd: 250,
       budgetWarned: false,
+    });
+  });
+
+  it('shows Pausing from PauseRequested while the step in progress finishes (L2-029 AC1)', () => {
+    const next = applyEvent(
+      project(),
+      event(2, 'PauseRequested', { directionId: 'd', requestedBy: 'quinntynebrown' }),
+    );
+
+    expect(next.directions[0]!.pauseRequested).toBe(true);
+  });
+
+  it('takes who paused and when from DirectionChanged, and clears them on Resume (L2-029 AC1, AC2)', () => {
+    const paused = applyEvent(
+      project(),
+      event(2, 'DirectionChanged', {
+        directionId: 'd',
+        status: 'Paused',
+        completedAt: null,
+        pauseReason: 'Paused by an Owner',
+        pauseRequested: false,
+        pausedBy: 'quinntynebrown',
+        pausedAt: '2026-11-09T14:29:40Z',
+      }),
+    );
+    expect(paused.directions[0]).toMatchObject({
+      status: 'Paused',
+      pauseRequested: false,
+      pausedBy: 'quinntynebrown',
+      pausedAt: '2026-11-09T14:29:40Z',
+    });
+
+    const resumed = applyEvent(
+      paused,
+      event(3, 'DirectionChanged', {
+        directionId: 'd',
+        status: 'Running',
+        completedAt: null,
+        pauseReason: null,
+      }),
+    );
+    expect(resumed.directions[0]).toMatchObject({
+      status: 'Running',
+      pausedBy: null,
+      pausedAt: null,
     });
   });
 });

@@ -3,31 +3,13 @@
 // Description: On a direction Paused with "Budget reached", an Owner raises the budget above the spend and the direction resumes from its next step with spend continuing live; a budget at or below the spend is refused inline; a Viewer sees no control and the API answers 403
 
 import AxeBuilder from '@axe-core/playwright';
-import type { Page } from '@playwright/test';
 import { expect, signIn, test, uniqueName } from '../../fixtures/test';
 import { ProjectPage } from '../../pages/project.page';
 import { compare, mockRegion, region } from '../../support/mocks';
+import { drainQueue, xsrfToken } from '../../support/queue';
 import { startWorkers } from '../../support/workers';
 
 const idea = 'A web app for small accounting teams to reconcile statements.';
-
-/** Runs whatever earlier suites left queued with fast real workers, so this spec's runs start at once. */
-async function drainQueue(page: Page): Promise<void> {
-  const stop = startWorkers(3, 50);
-  try {
-    await expect
-      .poll(
-        async () => {
-          const projects = (await (await page.request.get('/api/projects')).json()) as { status: string }[];
-          return projects.filter((p) => p.status === 'Running').length;
-        },
-        { timeout: 180_000, intervals: [1_000] },
-      )
-      .toBe(0);
-  } finally {
-    await stop();
-  }
-}
 
 test.describe('Raise budget and resume', () => {
   test.describe.configure({ timeout: 240_000 });
@@ -73,7 +55,7 @@ test.describe('Raise budget and resume', () => {
     ).directions[0]!.id;
     const forbidden = await viewerPage.request.post(
       `/api/projects/${projectId}/directions/${directionId}/raise-and-resume`,
-      { data: { budgetUsd: 50, currentBudgetUsd: 10 }, headers: { 'X-XSRF-TOKEN': await xsrf(viewerPage) } },
+      { data: { budgetUsd: 50, currentBudgetUsd: 10 }, headers: { 'X-XSRF-TOKEN': await xsrfToken(viewerPage) } },
     );
     expect(forbidden.status()).toBe(403);
     await viewerContext.close();
@@ -125,8 +107,3 @@ test.describe('Raise budget and resume', () => {
     );
   });
 });
-
-async function xsrf(page: Page): Promise<string> {
-  await page.request.get('/api/me');
-  return (await page.context().cookies()).find((c) => c.name === 'XSRF-TOKEN')?.value ?? '';
-}

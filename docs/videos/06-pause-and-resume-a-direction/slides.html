@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 06 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="06" data-video-title="Pause and resume a direction" data-parts="Introduction|Goal|Flow|Pause|Checkpoint|Resume|Page|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 6</div>
+  <h1>Pause and resume a direction</h1>
+  <p class="lead">Stop after the step in hand, and carry on later without doing anything twice.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video walks through how it was built">
+  <figure><img src="screens/paused-desktop.png" alt="A direction Paused by quinntynebrown at a checkpoint, with Resume in the header"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="An Owner presses Pause on a running direction.">
+  <div class="cols cols--wide">
+    <figure><img src="screens/running-desktop.png" alt="A running direction with Pause in the header"></figure>
+    <ul class="bullets small">
+      <li>Current step finishes</li>
+      <li>Resume: the next step</li>
+      <li>Viewers: no control, 403</li>
+    </ul>
+  </div>
+</section>
+
+<section id="flow" data-part="2" data-cue="Here is the whole flow.">
+  <figure class="diagram"><img src="../../detailed-designs/pipeline/pause-resume-cancel-stop/diagrams/sequence-pause-resume.png" alt="Sequence diagram: Pause is recorded, the worker's checkpoint answers Pause, Resume re-queues the run, which starts at the next step"></figure>
+</section>
+
+<section id="pause" data-part="3" data-cue="The pause command takes the project's lock">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/PauseAndResume.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,7,8,9-13">        if (!direction.RequestPause(user.Login))
+        {
+            return DirectionControl.Result(direction);
+        }
+
+        var now = clock.GetUtcNow();
+        await events.AppendAsync(project.Id, PauseRequested, new { directionId = direction.Id, requestedBy = user.Login }, cancellationToken);
+        await RunLog.InfoAsync(db, events, run, $"Pause requested by {user.Login}", now, cancellationToken);
+        if (run.Status == RunStatus.Queued)
+        {
+            // No step is in progress, so there is nothing to wait for.
+            await pipeline.OnPauseTakesEffectAsync(run, project, direction, cancellationToken);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        await events.PublishAsync(cancellationToken);</pre>
+</section>
+
+<section id="checkpoint-diagram" data-part="4" data-cue="This is the worker loop's checkpoint sequence.">
+  <figure class="diagram"><img src="../../detailed-designs/agent-runtime/worker-loop/diagrams/sequence-checkpoint.png" alt="Sequence diagram: commit and record a checkpoint, answered Continue, or Pause when an Owner pressed Pause"></figure>
+</section>
+
+<section id="checkpoint" data-part="4" data-cue="When a pause is waiting, the checkpoint that ends the step in progress">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/WorkerCommands.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,6,7,10">        // The step in progress has finished and is checkpointed: this is where the requested pause takes effect.
+        await events.LockAsync(run.ProjectId, cancellationToken);
+        var project = await db.Projects.Include(p =&gt; p.Directions).SingleAsync(p =&gt; p.Id == run.ProjectId, cancellationToken);
+        var direction = project.Directions.Single(d =&gt; d.Id == run.DirectionId);
+        var sha = command.Sha is null ? string.Empty : $" {command.Sha[..7]}";
+        await RunLog.InfoAsync(db, events, run, $"Step {command.Step} finished · checkpoint{sha} · direction Paused", now, cancellationToken);
+        await pipeline.OnPauseTakesEffectAsync(run, project, direction, cancellationToken);
+        await FencedSave.SaveAsync(db, cancellationToken);
+        await events.PublishAsync(cancellationToken);
+        return CheckpointVerdict.Pause;</pre>
+</section>
+
+<section id="worker" data-part="4" data-cue="In the worker, a pause verdict ends the run right there">
+  <div class="code-file">worker/src/work-loop.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="5,7-11">        await this.api.startStep(workerId, run, index + 1, steps[index]!.name);
+        await steps[index]!.execute(lease.signal);
+        if (lease.signal.aborted) return;
+        await logs.flush();
+        const verdict = await this.api.checkpoint(workerId, run, index + 1);
+        this.log('Checkpoint', { runId: run.runId, step: index + 1 });
+        if (verdict === 'Pause') {
+          // An Owner pressed Pause: Hewn has paused the direction at this checkpoint and released the lease.
+          this.log('Paused at a checkpoint; the run stops here', { runId: run.runId, step: index + 1 });
+          lease.abort(new Error('Paused at a checkpoint.'));
+          return;
+        }</pre>
+</section>
+
+<section id="resume" data-part="5" data-cue="Resume queues the same run again">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/PipelineOrchestrator.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="3,4,10">    public async Task OnResumedAsync(Run run, Project project, Direction direction, CancellationToken cancellationToken)
+    {
+        run.Resume();
+        if (direction.Resume(run.Stage) is { } stage)
+        {
+            await AppendStageAsync(direction, stage, cancellationToken);
+        }
+
+        await AppendDirectionAsync(direction, cancellationToken);
+        project.ChangeStatus(ProjectStatus.Running);
+        await AppendProjectAsync(project, cancellationToken);
+    }</pre>
+</section>
+
+<section id="page" data-part="6" data-cue="On the project page, Owners see Pause">
+  <figure><img src="screens/pausing-desktop.png" alt="The header shows Pausing… while Run Bootstrap finishes, and the log reads Pause requested by quinntynebrown"></figure>
+</section>
+
+<section id="page-paused" data-part="6" data-cue="Paused, the header offers Resume">
+  <div class="cols">
+    <figure><img src="screens/paused-desktop-dark.png" alt="The paused direction in dark mode"></figure>
+    <figure class="phone"><img src="screens/paused-phone.png" alt="The paused direction on a phone, with Resume"></figure>
+  </div>
+</section>
+
+<section id="red" data-part="7" data-cue="Each slice began with its tests failing.">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Pipeline/PauseAndResumeTests.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="2,6,7,15,16">        // The step finishes and checkpoints; the answer tells the worker to stop there.
+        Assert.Equal("Pause", await VerdictAsync(await s.Worker.CheckpointAsync(run, 2)));
+
+        var project = await ProjectAsync(s.Owner, s.ProjectId);
+        Assert.Equal("Paused", project.GetProperty("status").GetString());
+        var direction = project.GetProperty("directions")[0];
+        Assert.Equal("Paused", direction.GetProperty("status").GetString());
+        Assert.Equal("Paused by an Owner", direction.GetProperty("pauseReason").GetString());
+        Assert.Equal("quinntynebrown", direction.GetProperty("pausedBy").GetString());
+        Assert.NotEqual(JsonValueKind.Null, direction.GetProperty("pausedAt").ValueKind);
+        Assert.False(direction.GetProperty("pauseRequested").GetBoolean());
+        Assert.Equal("Paused", direction.GetProperty("stages")[0].GetProperty("status").GetString());
+
+        // The lease is released and nothing new starts until Resume.
+        Assert.Equal(HttpStatusCode.Conflict, (await s.Worker.HeartbeatAsync(run)).StatusCode);
+        Assert.Null(await s.Worker.LeaseAsync());</pre>
+  <div class="result red">✘ 7 failed · PauseAndResumeTests</div>
+</section>
+
+<section id="red-worker" data-part="7" data-cue="The worker gained three tests against a fake API.">
+  <div class="code-file">worker/test/pause.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3,9-12">  it('finishes the step in progress, then starts no further step and reports no result', async () =&gt; {
+    api.enqueueStage(0, 0, 0);
+    api.checkpointVerdicts.push('Continue', 'Pause');
+    const executed: string[] = [];
+    void start(steps(4, executed));
+
+    await vi.advanceTimersByTimeAsync(2_000);
+
+    expect(executed).toEqual(['s0.1', 's0.2']);
+    expect(api.calls.filter((c) =&gt; c.method === 'step').map((c) =&gt; c.step)).toEqual([1, 2]);
+    expect(api.calls.filter((c) =&gt; c.method === 'checkpoint').map((c) =&gt; c.step)).toEqual([1, 2]);
+    expect(api.count('result')).toBe(0);
+    expect(logs).toContain('Paused at a checkpoint; the run stops here');
+  });</pre>
+  <div class="result red">✘ 2 failed · pause.spec.ts</div>
+  <div class="result green">✓ 178 backend · 133 worker passed</div>
+</section>
+
+<section id="tests" data-part="7" data-cue="All green, the backend has one hundred and seventy eight tests">
+  <div class="cols cols--3">
+    <div class="card"><h3>178 backend</h3><p class="small">7 new, real API</p></div>
+    <div class="card"><h3>133 worker · 64 frontend</h3><p class="small">3 and 11 new</p></div>
+    <div class="card"><h3>47 e2e</h3><p class="small">Pipeline 14 · behaviour 15 · a11y 11 · visual 7</p></div>
+  </div>
+</section>
+
+<section id="e2e" data-part="7" data-cue="checks that each step of the stage ran exactly once">
+  <div class="code-file">e2e/tests/pipeline/pause-and-resume.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1-3,4-8">    const bootstrapSteps = (await project.events())
+      .filter((e) =&gt; e.type === 'StepStarted' &amp;&amp; e.payload['stage'] === 0)
+      .map((e) =&gt; e.payload['name']);
+    expect(bootstrapSteps, 'each Bootstrap step ran once, in order').toEqual([
+      'Prepare workspace',
+      'Run Bootstrap',
+      'Commit artifacts',
+    ]);</pre>
+  <div class="result green">✓ each Bootstrap step ran once, in order</div>
+</section>
+
+<section id="clip-pause" data-part="8" data-cue="Here is a direction running Bootstrap" data-clip="clips/pause.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Pause mid-step: Pausing… until Run Bootstrap finishes, then Paused at its checkpoint</aside>
+</section>
+
+<section id="clip-resume" data-part="8" data-cue="Now Resume." data-clip="clips/resume.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">The same run carries on with Commit artifacts; Bootstrap succeeds and Idea starts</aside>
+</section>
+
+<section id="log" data-part="8" data-cue="Bootstrap's log tells the whole story.">
+  <figure><img src="screens/bootstrap-log-desktop.png" alt="Bootstrap's log: Pause requested, Step 2 finished · checkpoint · direction Paused, Resumed by quinntynebrown, and no repeated lines"></figure>
+</section>
+
+<section id="viewer" data-part="8" data-cue="And a Viewer sees the pause, with no controls at all.">
+  <figure><img src="screens/paused-viewer-desktop.png" alt="A Viewer sees the paused direction without Resume"></figure>
+</section>
+
+<section id="recap" data-part="9" data-cue="Journey six is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Pause stops at the next checkpoint</li>
+    <li>Resume: the next step, none twice</li>
+    <li>Owners only; Viewers get 403</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>
