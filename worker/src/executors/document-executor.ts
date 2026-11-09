@@ -5,7 +5,14 @@ import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, posix, relative, sep } from 'node:path';
 import { promisify } from 'node:util';
 import type { CommitFile, LeasedRun } from '../api.ts';
-import { DECISIONS, parseDecisions, readDecisions } from '../agents/decision-log.ts';
+import {
+  AUTONOMY,
+  DECISIONS,
+  linkedAdrs,
+  parseDecisions,
+  readDecisions,
+  validateDecisions,
+} from '../agents/decision-log.ts';
 import type { StageAgent } from '../agents/stage-agent.ts';
 import { MagicPatternsUnavailable, type MagicPatterns } from '../magic-patterns/magic-patterns.ts';
 import {
@@ -243,13 +250,18 @@ export class DocumentStageExecutor implements StageExecutor {
       await context.log('info', `Answer: ${answer}`);
     }
 
-    const problems = await definition.validate(directory, leased);
+    const problems = [...(await definition.validate(directory, leased)), ...validateDecisions(directory)];
     if (problems.length > 0) throw new Error(`${leased.stageName} output is invalid: ${problems.join('; ')}`);
 
     const files: CommitFile[] = [];
+    const adrs = new Set(linkedAdrs(directory));
     for (const [path, hash] of await snapshot(directory)) {
       if (before.get(path) === hash) continue;
-      if (path === DECISIONS || definition.outputs.some((o) => (o.endsWith('/') ? path.startsWith(o) : path === o))) {
+      if (
+        path === DECISIONS ||
+        adrs.has(path) ||
+        definition.outputs.some((o) => (o.endsWith('/') ? path.startsWith(o) : path === o))
+      ) {
         files.push({ path, content: await readFile(join(directory, path)) });
       } else {
         await context.log('warn', `Ignored a change outside this stage: ${path}`);
@@ -307,7 +319,7 @@ function instructionsFor(leased: LeasedRun, definition: StageDefinition): string
     `Direction: ${leased.project.idea}`,
     leased.project.stackPreference ? `Named stack: ${leased.project.stackPreference}` : 'No stack was named.',
     definition.task,
-    `Nobody will answer questions. When a skill or this task asks one meant for the user, answer it yourself from the direction, docs/brief.md and the existing documents, and append it to ${DECISIONS} as "## {date} · Stage ${leased.stage} ${leased.stageName}" with **Question:**, **Answer:** and **Rationale:** lines.`,
+    AUTONOMY,
     'Change no other files.',
   ].join('\n\n');
 }
