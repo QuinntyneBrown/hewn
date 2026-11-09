@@ -115,6 +115,7 @@ function harness(backlog: Increment[]) {
     log: async (_level, text) => void logs.push(text),
     listSkillFolders: async () => ({}),
     recordDecisions: async () => {},
+    recordModelCall: async () => {},
     downloadRepository: async () => execFileSync('tar', ['-czf', '-', '-C', root, 'kiln-abc1234']),
     commit: async (step, message, files: CommitFile[], branch, options) => {
       commits.push({

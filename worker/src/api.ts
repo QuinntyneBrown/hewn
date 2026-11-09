@@ -54,6 +54,23 @@ export interface ScopeReport {
 export type RunOutcome = { outcome: 'Succeeded' } | { outcome: 'Failed'; error: string };
 export class LeaseLostError extends Error {}
 
+/** The direction reached its budget and is Paused; the run ends after the call that reached it (L2-053 AC3). */
+export class BudgetReachedError extends Error {}
+
+/** A model call a run made (L2-052 AC1). The call id makes a retried report count once. */
+export interface ModelCallReport {
+  callId: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+export interface ModelCallVerdict {
+  verdict: 'Continue' | 'Warn' | 'Stop';
+  directionSpendUsd: number;
+  budgetUsd: number;
+}
+
 export interface CommitFile {
   path: string;
   content: Buffer;
@@ -151,6 +168,7 @@ export interface HewnApi {
   reportBacklog(workerId: string, run: LeasedRun, report: BacklogReport): Promise<void>;
   reportScope(workerId: string, run: LeasedRun, report: ScopeReport): Promise<void>;
   recordDecisions(workerId: string, run: LeasedRun, decisions: ReportedDecision[]): Promise<void>;
+  recordModelCall(workerId: string, run: LeasedRun, call: ModelCallReport): Promise<ModelCallVerdict>;
   mergePullRequest(workerId: string, run: LeasedRun, idempotencyKey: string, number: number): Promise<string>;
   protectDefaultBranch(workerId: string, run: LeasedRun, idempotencyKey: string, checks: string[]): Promise<void>;
   log(workerId: string, run: LeasedRun, lines: { level: LogLevel; text: string }[]): Promise<void>;

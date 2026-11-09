@@ -43,6 +43,8 @@ const failStage = process.env.HEWN_SCRIPTED_FAIL_STAGE;
 const scripted = new ScriptedStageExecutor({
   stepMs: Number(process.env.HEWN_SCRIPTED_STEP_MS ?? 1000),
   logLines: Number(process.env.HEWN_SCRIPTED_LOG_LINES ?? 0),
+  modelCalls: Number(process.env.HEWN_SCRIPTED_MODEL_CALLS ?? 0),
+  callTokens: Number(process.env.HEWN_SCRIPTED_CALL_TOKENS ?? 10_000),
   failStage: failStage === undefined ? undefined : Number(failStage),
 });
 // Magic Patterns' MCP endpoint and credential; without them the design stages fail as not configured.

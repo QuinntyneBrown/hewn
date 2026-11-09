@@ -154,6 +154,7 @@ describe('a document stage', () => {
         order.push('commit');
         return 'c0ffee';
       },
+      recordModelCall: async () => {},
       recordDecisions: async (decisions) => {
         order.push('decisions');
         reported.push(...decisions);
