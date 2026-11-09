@@ -1,0 +1,337 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:06.29
+This is journey one of Hewn, the software factory: build a new product.
+
+00:00:06.29 --> 00:00:10.06
+An Owner types a product direction into Mission Control,
+
+00:00:10.06 --> 00:00:14.92
+and Hewn turns it into a working, tested product in a GitHub repository.
+
+00:00:14.92 --> 00:00:19.03
+It runs eleven stages and asks nobody anything along the way.
+
+00:00:19.03 --> 00:00:22.40
+This video walks through the whole implementation,
+
+00:00:22.40 --> 00:00:25.50
+from the form to the last merged pull request.
+
+00:00:26.65 --> 00:00:28.38
+Journey one is for Owners.
+
+00:00:28.38 --> 00:00:31.37
+They want a product, not a project to manage.
+
+00:00:31.37 --> 00:00:35.28
+Hewn takes a name, an idea, an optional stack and a budget,
+
+00:00:35.28 --> 00:00:40.33
+and from there it works alone: it writes the documents, designs the screens,
+
+00:00:40.33 --> 00:00:44.85
+scaffolds the code, plans the work and ships it in small increments.
+
+00:00:45.20 --> 00:00:47.51
+The pipeline has eleven stages.
+
+00:00:47.51 --> 00:00:52.80
+Bootstrap, idea, designs, design system, stack, requirements, scaffold,
+
+00:00:52.80 --> 00:00:57.13
+detailed designs, user journeys, estimates and increments.
+
+00:00:57.13 --> 00:01:02.72
+Each stage runs on a worker, and each one ends in a commit to the product's
+
+00:01:02.72 --> 00:01:03.54
+repository.
+
+00:01:04.69 --> 00:01:06.56
+Three parts work together.
+
+00:01:06.56 --> 00:01:10.37
+Mission Control is the Angular app the Owner watches.
+
+00:01:10.37 --> 00:01:14.47
+The Hewn API is a dot net service that owns the pipeline,
+
+00:01:14.47 --> 00:01:17.42
+the database and every GitHub credential.
+
+00:01:17.42 --> 00:01:22.74
+Workers are Node processes that lease one stage at a time and do the work.
+
+00:01:23.09 --> 00:01:27.79
+A worker leases a run, sends heartbeats, and checkpoints after each step.
+
+00:01:27.79 --> 00:01:33.06
+Every request carries the lease's epoch, so a worker that lost its lease is fenced
+
+00:01:33.06 --> 00:01:36.60
+out and can never write after another worker took over.
+
+00:01:36.95 --> 00:01:39.64
+Workers never hold a GitHub credential.
+
+00:01:39.64 --> 00:01:44.20
+Every write goes through the API's broker: commits, pull requests,
+
+00:01:44.20 --> 00:01:46.21
+merges and branch protection.
+
+00:01:46.21 --> 00:01:51.53
+Each is keyed by run and step, so a resumed worker gets the first result back
+
+00:01:51.53 --> 00:01:53.26
+instead of writing twice.
+
+00:01:53.26 --> 00:01:58.72
+And a commit policy decides, per stage, which branches and paths that stage may
+
+00:01:58.72 --> 00:01:59.13
+write.
+
+00:02:00.28 --> 00:02:03.42
+Stage zero creates or connects the repository,
+
+00:02:03.42 --> 00:02:08.54
+and copies in the Greenlit skills the agents follow, pinned in a lock file.
+
+00:02:08.89 --> 00:02:12.74
+Stages one, four, five, seven and eight write documents.
+
+00:02:12.74 --> 00:02:17.20
+The agent writes the brief, the stack decision, the requirements,
+
+00:02:17.20 --> 00:02:20.16
+the detailed designs and the user journeys.
+
+00:02:20.16 --> 00:02:24.76
+Then a validator checks each document before anything is committed.
+
+00:02:24.76 --> 00:02:29.09
+If it fails, the run fails, and nothing reaches the repository.
+
+00:02:29.44 --> 00:02:33.84
+Stages two and three design the product through Magic Patterns.
+
+00:02:33.84 --> 00:02:39.29
+Stage two creates one design per screen in four states, and exports the mocks.
+
+00:02:39.29 --> 00:02:44.19
+Stage three extracts a design system, with tokens and component pages,
+
+00:02:44.19 --> 00:02:47.96
+and checks that every colour the mocks use is a token.
+
+00:02:48.31 --> 00:02:51.83
+Stage six generates the scaffold for the chosen stack.
+
+00:02:51.83 --> 00:02:56.47
+It merges it through a pull request once continuous integration passes,
+
+00:02:56.47 --> 00:03:00.32
+and then makes those checks required on the default branch.
+
+00:03:00.67 --> 00:03:04.19
+Stage nine estimates every design in ideal days.
+
+00:03:04.19 --> 00:03:10.06
+It defers what is oversized, out of scope, or on no journey, each with a reason,
+
+00:03:10.06 --> 00:03:14.90
+and plans a backlog of increments in journey and dependency order.
+
+00:03:16.05 --> 00:03:19.93
+Stage ten delivers that backlog, one increment at a time.
+
+00:03:19.93 --> 00:03:24.90
+Each increment starts on a feature branch from the latest default branch.
+
+00:03:24.90 --> 00:03:27.97
+The first commit holds only acceptance tests,
+
+00:03:27.97 --> 00:03:31.03
+each tracing to the increment's requirements.
+
+00:03:31.03 --> 00:03:33.07
+A guard rejects anything else.
+
+00:03:33.42 --> 00:03:37.68
+The new tests run once, and the failing result is recorded as red.
+
+00:03:37.68 --> 00:03:42.96
+Then the agent implements in iterations, and a fixed gate decides when it is done:
+
+00:03:42.96 --> 00:03:47.47
+backend tests, frontend lint and unit tests, and the end to end suite.
+
+00:03:47.47 --> 00:03:51.01
+After ten failing iterations, the increment is blocked,
+
+00:03:51.01 --> 00:03:55.33
+and work moves on to the next increment that does not depend on it.
+
+00:03:55.68 --> 00:03:59.24
+When the gate is green, the agent records a short video,
+
+00:03:59.24 --> 00:04:01.14
+and Hewn opens a pull request.
+
+00:04:01.14 --> 00:04:04.25
+Its title names the journey and the requirements.
+
+00:04:04.25 --> 00:04:08.44
+Its body has six sections, with every test command and its counts.
+
+00:04:08.44 --> 00:04:12.69
+When the checks pass, Hewn squash merges it and deletes the branch.
+
+00:04:12.69 --> 00:04:15.61
+If the default branch moved, it rebases first.
+
+00:04:15.61 --> 00:04:20.44
+Then it marks the designs complete and updates the estimates before the next
+
+00:04:20.44 --> 00:04:21.52
+increment starts.
+
+00:04:22.67 --> 00:04:26.20
+Skills are written for people, and they ask questions.
+
+00:04:26.20 --> 00:04:28.22
+Hewn never waits for an answer.
+
+00:04:28.22 --> 00:04:33.32
+Every agent session is told that nobody will reply, and it has no tool to ask.
+
+00:04:33.32 --> 00:04:37.11
+So the agent decides from the direction and the documents,
+
+00:04:37.11 --> 00:04:42.21
+and appends each decision to the decision log, with the date, stage, question,
+
+00:04:42.21 --> 00:04:43.59
+answer and rationale.
+
+00:04:43.59 --> 00:04:48.03
+A decision that changes the architecture also gets a numbered A D R.
+
+00:04:49.18 --> 00:04:52.87
+Everything was built test first, in nine pull requests.
+
+00:04:52.87 --> 00:04:58.04
+The backend has one hundred and twenty acceptance tests against the real API,
+
+00:04:58.04 --> 00:04:59.72
+with an in memory GitHub.
+
+00:04:59.72 --> 00:05:03.75
+The worker has one hundred and nine tests against fake APIs.
+
+00:05:03.75 --> 00:05:09.45
+The end to end suites drive Mission Control with real workers: eight behaviour tests,
+
+00:05:09.45 --> 00:05:13.95
+five accessibility tests, two visual tests and four pipeline tests.
+
+00:05:14.30 --> 00:05:18.05
+The last pipeline test is the one that matters most.
+
+00:05:18.05 --> 00:05:21.73
+It submits a small direction and then only watches.
+
+00:05:21.73 --> 00:05:26.06
+It passes when every stage succeeds, no dialog ever appears,
+
+00:05:26.06 --> 00:05:29.38
+and every planned increment is merged by Hewn.
+
+00:05:30.53 --> 00:05:31.89
+Here is New direction.
+
+00:05:31.89 --> 00:05:36.40
+Submit it empty, and the errors appear inline, with a summary at the top.
+
+00:05:36.75 --> 00:05:39.31
+Here is the real app with one worker.
+
+00:05:39.31 --> 00:05:44.79
+The Owner types a name and an idea that is too short, sees the error, fixes it,
+
+00:05:44.79 --> 00:05:45.62
+and submits.
+
+00:05:45.62 --> 00:05:48.05
+From there nobody touches anything.
+
+00:05:48.05 --> 00:05:53.18
+The stages advance from pending to succeeded, and the direction completes.
+
+00:05:53.53 --> 00:05:58.82
+While it runs, the project page shows each stage's status in text and icon,
+
+00:05:58.82 --> 00:06:00.38
+never by colour alone.
+
+00:06:00.38 --> 00:06:03.28
+The phone layout works in dark mode, too.
+
+00:06:04.43 --> 00:06:08.50
+This is what the stages wrote into the product's repository.
+
+00:06:08.50 --> 00:06:12.24
+These come from the scripted agent the test stack uses,
+
+00:06:12.24 --> 00:06:14.35
+so they are deliberately plain.
+
+00:06:14.35 --> 00:06:17.61
+First, the brief and a mock from Magic Patterns.
+
+00:06:17.96 --> 00:06:22.52
+Next, a design system component page and the stack decision record.
+
+00:06:22.87 --> 00:06:25.52
+Then the requirements and a detailed design.
+
+00:06:25.87 --> 00:06:30.07
+Then the user journeys and the estimates, with the roadmap of increments.
+
+00:06:30.42 --> 00:06:33.41
+Here is one increment going from red to green.
+
+00:06:33.41 --> 00:06:36.92
+The acceptance test came first, with its trace header.
+
+00:06:36.92 --> 00:06:40.56
+The red run failed it, the first iteration made it pass,
+
+00:06:40.56 --> 00:06:44.27
+and the pull request was opened and merged automatically.
+
+00:06:44.62 --> 00:06:50.12
+And this is the decision log, one entry per question an agent answered for itself.
+
+00:06:51.27 --> 00:06:52.92
+Journey one is complete.
+
+00:06:52.92 --> 00:06:57.99
+An Owner submits a direction, and Hewn runs all eleven stages to a merged,
+
+00:06:57.99 --> 00:07:00.66
+tested product, with no approval steps.
+
+00:07:00.66 --> 00:07:05.80
+Every write goes through the API's broker, every stage's output is checked,
+
+00:07:05.80 --> 00:07:07.93
+and every decision is recorded.
+
+00:07:07.93 --> 00:07:13.55
+Next come the journeys that let Owners watch and steer: budgets, pause and resume,
+
+00:07:13.55 --> 00:07:16.02
+and the backlog and increment pages.

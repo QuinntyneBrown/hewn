@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { HewnApiError, type CheckRun, type CommitFile, type Increment, type LeasedRun } from '../api.ts';
+import { AUTONOMY, validateDecisions } from '../agents/decision-log.ts';
 import type { IncrementTask, StageAgent } from '../agents/stage-agent.ts';
 import type { Backlog } from '../estimates/backlog-planner.ts';
 import { markComplete } from '../increments/progress.ts';
@@ -146,7 +147,12 @@ export class IncrementStageExecutor implements StageExecutor {
             key(`implement-${state.iterations}`),
             `Implement ${increment.title} (iteration ${state.iterations})`,
           );
-          const result = await gate.full(directory, testFiles, signal);
+          const gated = await gate.full(directory, testFiles, signal);
+          // L2-054 AC2: an incomplete decision log keeps the increment from being green.
+          const decisions = validateDecisions(directory).map((p) => `Decision log: ${p}`);
+          const result = decisions.length
+            ? { ...gated, passed: false, failing: [...gated.failing, ...decisions] }
+            : gated;
           await context.log(
             'info',
             `Increment ${n}: iteration ${state.iterations} of ${maxIterations} ${result.passed ? 'green' : 'failed'}`,
@@ -342,6 +348,10 @@ export class IncrementStageExecutor implements StageExecutor {
 }
 
 function instructionsFor(task: IncrementTask): string {
+  return `${phaseInstructions(task)}\n\n${AUTONOMY}`;
+}
+
+function phaseInstructions(task: IncrementTask): string {
   const scope = `Increment ${task.number}, "${task.title}", covering ${task.l2Ids.join(', ')}${
     task.designs.length ? ` (designs: ${task.designs.join(', ')})` : ''
   }.`;

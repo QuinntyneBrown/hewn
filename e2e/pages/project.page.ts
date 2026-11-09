@@ -8,6 +8,8 @@ export class ProjectPage {
   readonly repository: Locator;
   readonly completeCallout: Locator;
   readonly announcer: Locator;
+  /** Any dialog asking the user for something; a run never needs one (L2-028). */
+  readonly dialogs: Locator;
 
   private readonly page: Page;
 
@@ -19,6 +21,14 @@ export class ProjectPage {
     this.repository = page.locator('.phead__repo');
     this.completeCallout = page.locator('.callout--ok', { hasText: 'Direction complete' });
     this.announcer = page.locator('[data-testid="pipeline-announcer"]');
+    this.dialogs = page.locator('[role="dialog"], [role="alertdialog"]');
+  }
+
+  /** The project's event stream from the start, as the API serves it to Mission Control. */
+  async events(): Promise<{ type: string; payload: Record<string, unknown> }[]> {
+    const response = await this.page.request.get(`/api/projects/${this.projectIdFromUrl()}/events?after=0`);
+    if (!response.ok()) throw new Error(`events: ${response.status()}`);
+    return (await response.json()) as { type: string; payload: Record<string, unknown> }[];
   }
 
   async open(projectId: string): Promise<void> {

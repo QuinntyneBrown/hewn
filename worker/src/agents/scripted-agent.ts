@@ -27,7 +27,12 @@ export class ScriptedStageAgent implements StageAgent {
     };
     const read = (path: string) =>
       existsSync(join(directory, path)) ? readFileSync(join(directory, path), 'utf8') : '';
-    const decide = (question: string, answer: string, rationale: string) =>
+    const decide = (
+      question: string,
+      answer: string,
+      rationale: string,
+      architecture?: { context: string; consequences: string; alternatives?: string },
+    ) =>
       appendDecision(directory, {
         date: this.today(),
         stage: run.stage,
@@ -35,6 +40,7 @@ export class ScriptedStageAgent implements StageAgent {
         question,
         answer,
         rationale,
+        ...(architecture ? { architecture } : {}),
       });
 
     switch (run.stage) {
@@ -158,6 +164,19 @@ export class ScriptedStageAgent implements StageAgent {
           'One subsystem, product, until the product grows a second area.',
           'There are few features; extra subsystems would be empty.',
         );
+        if (!/\*\*ADR:\*\*/.test(read('docs/decisions.md'))) {
+          decide(
+            'How do the frontend and the API talk?',
+            'REST over JSON between the Angular app and the API.',
+            'The scaffold already serves a REST API and an Angular client; nothing in the brief needs push updates.',
+            {
+              context: 'Every design pairs a page with an endpoint, so the two apps need one contract.',
+              alternatives:
+                'GraphQL, rejected as more machinery than one client needs; SignalR, not needed without push updates.',
+              consequences: 'Each design names its endpoints; real-time features would need a new decision.',
+            },
+          );
+        }
         return;
       }
       case 8: {

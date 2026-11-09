@@ -1,5 +1,5 @@
 // Acceptance Test
-// Traces to: L2-009, L2-010, L2-012, L2-013, L2-014, L2-016, L2-017, L2-018, L2-019
+// Traces to: L2-009, L2-010, L2-012, L2-013, L2-014, L2-016, L2-017, L2-018, L2-019, L2-054
 // Description: Document stages read the repository as an archive and may write only their own documents and the decision log
 
 using System.Formats.Tar;
@@ -127,6 +127,32 @@ public sealed class DocumentStageTests : IAsyncLifetime
         var response = await CommitAsync(worker, run, path);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("path_not_allowed", (await HewnClient.ReadJsonAsync(response)).GetProperty("code").GetString());
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5)]
+    [InlineData(7)]
+    [InlineData(9)]
+    public async Task An_agent_stage_may_record_an_architecture_decision_as_an_ADR(int stage)
+    {
+        var (worker, run) = await LeaseStageAsync(stage);
+
+        var response = await CommitAsync(worker, run, "docs/adr/0002-rest-between-frontend-and-api.md", "docs/decisions.md");
+
+        response.EnsureSuccessStatusCode();
+    }
+
+    [Theory]
+    [InlineData("docs/adr/notes.txt")]
+    [InlineData("docs/adr/sub/0002-x.md")]
+    public async Task Only_numbered_ADR_files_count_as_architecture_decisions(string path)
+    {
+        var (worker, run) = await LeaseStageAsync(1);
+
+        var response = await CommitAsync(worker, run, path);
+
         Assert.Equal("path_not_allowed", (await HewnClient.ReadJsonAsync(response)).GetProperty("code").GetString());
     }
 

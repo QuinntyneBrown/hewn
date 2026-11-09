@@ -21,6 +21,7 @@ import { IncrementStageExecutor } from '../src/executors/increment-executor.ts';
 import type { RunContext } from '../src/executors/stage-executor.ts';
 import { ScriptedTestGate, scriptedImplementation } from '../src/increments/scripted-gate.ts';
 import { dotnetAngularTemplate } from '../src/scaffold/dotnet-angular-template.ts';
+import { AUTONOMY } from '../src/agents/decision-log.ts';
 import { ScriptedStageAgent } from '../src/agents/scripted-agent.ts';
 
 let root: string;
@@ -378,5 +379,31 @@ describe('stage 10, Increments', () => {
     expect(h.commits[0]!.files.get('e2e/tests/sign-in.spec.ts')).toMatch(
       /^\/\/ Acceptance Test\n\/\/ Traces to: L2-001\n/,
     );
+  });
+
+  it('tells every session to decide for itself, never gives it a way to ask, and checks the decisions it records', async () => {
+    const h = harness([increment(1, 'Sign in', 1, 'L2-001')]);
+    const agent = new FakeAgent();
+    const implement = agent.implement;
+    agent.implement = (task) => {
+      implement(task);
+      write(
+        task.directory,
+        'docs/decisions.md',
+        '# Decisions\n\n## 2026-11-09 · Stage 10 Increments\n\n**Question:** Where?\n',
+      );
+    };
+
+    await deliver(agent, h.ctx);
+
+    expect(agent.tasks.every((t) => t.instructions.includes(AUTONOMY))).toBe(true);
+    expect(agent.tasks.some((t) => t.allowedTools.includes('AskUserQuestion'))).toBe(false);
+    expect(h.updates.at(-1)!.update).toMatchObject({
+      status: 'Blocked',
+      failingTests: [
+        'Decision log: Decision 1 ("Where?") has no **Answer:**',
+        'Decision log: Decision 1 ("Where?") has no **Rationale:**',
+      ],
+    });
   });
 });

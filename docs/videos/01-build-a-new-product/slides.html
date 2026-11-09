@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 01 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="01" data-video-title="Build a new product" data-parts="Introduction|Goal|Architecture|Stages|Increments|Decisions|Tests|Screens|Artifacts|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 1</div>
+  <h1>Build a new product</h1>
+  <p class="lead">From a product direction to a merged, tested product in eleven stages, with nobody asked anything along the way.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video walks through the whole implementation">
+  <figure><img src="screens/complete-desktop.png" alt="The project page with all eleven stages Succeeded and Direction complete"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="Journey one is for Owners.">
+  <div class="cols cols--wide">
+    <figure><img src="screens/new-direction-desktop.png" alt="The New direction form"></figure>
+    <ul class="bullets small">
+      <li>Name, idea, optional stack, budget</li>
+      <li>Then Hewn works alone</li>
+      <li>Documents, designs, code, increments</li>
+    </ul>
+  </div>
+</section>
+
+<section id="flow" data-part="1" data-cue="The pipeline has eleven stages.">
+  <h2>Eleven stages</h2>
+  <ul class="steps">
+    <li class="done">0 Bootstrap</li><li class="done">1 Idea</li><li class="done">2 Designs</li><li class="done">3 Design system</li><li class="done">4 Stack</li><li class="done">5 Requirements</li><li class="done">6 Scaffold</li><li class="done">7 Detailed designs</li><li class="done">8 User journeys</li><li class="done">9 Estimates</li><li class="done">10 Increments</li>
+  </ul>
+</section>
+
+<section id="containers" data-part="2" data-cue="Three parts work together.">
+  <figure class="diagram"><img src="../../detailed-designs/agent-runtime/worker-loop/diagrams/c4-container.png" alt="C4 container diagram: Mission Control, the Hewn API and workers"></figure>
+</section>
+
+<section id="lease" data-part="2" data-cue="A worker leases a run, sends heartbeats">
+  <figure class="diagram"><img src="../../detailed-designs/agent-runtime/worker-loop/diagrams/sequence-fence-stale-worker.png" alt="Sequence diagram: a stale worker is fenced by epoch"></figure>
+</section>
+
+<section id="broker" data-part="2" data-cue="Workers never hold a GitHub credential.">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/CommitPolicy.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,9-10">[1] = ([], ["docs/brief.md", Decisions]),
+[2] = (["docs/mocks/"], [Decisions]),
+[3] = (["docs/design-system/"], [Decisions]),
+[4] = ([], ["docs/adr/0001-stack.md", Decisions]),
+[5] = ([], ["docs/specs/L1.md", "docs/specs/L2.md", Decisions]),
+[7] = (["docs/detailed-designs/"], [Decisions]),
+[8] = ([], ["docs/journeys.md", Decisions]),
+[9] = (["docs/estimates/", "docs/detailed-designs/"], ["docs/specs/L2.md", Decisions]),
+// On the default branch, increments only update progress after a merge.
+[10] = (["docs/estimates/"], [Decisions]),</pre>
+</section>
+
+<section id="stage0" data-part="3" data-cue="Stage zero creates or connects the repository">
+  <figure class="diagram"><img src="../../detailed-designs/stages/bootstrap-skills/diagrams/sequence-bootstrap.png" alt="Sequence diagram: stage 0 bootstraps the skills"></figure>
+</section>
+
+<section id="documents" data-part="3" data-cue="Stages one, four, five, seven and eight write documents.">
+  <div class="code-file">worker/src/executors/document-executor.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3-4">await this.agent.run({ run: leased, directory, skill: definition.skill, instructions, allowedTools }, signal);
+await definition.afterAgent?.({ directory, context, magicPatterns, leased });
+const problems = [...(await definition.validate(directory, leased)), ...validateDecisions(directory)];
+if (problems.length &gt; 0) throw new Error(`${leased.stageName} output is invalid: ${problems.join('; ')}`);
+await context.commit(COMMIT_STEP, definition.commitMessage, files);</pre>
+</section>
+
+<section id="design" data-part="3" data-cue="Stages two and three design the product through Magic Patterns.">
+  <figure class="diagram"><img src="../../detailed-designs/stages/design-screens/diagrams/sequence-design-export-validate.png" alt="Sequence diagram: design, export and validate mocks"></figure>
+</section>
+
+<section id="scaffold" data-part="3" data-cue="Stage six generates the scaffold for the chosen stack.">
+  <figure class="diagram"><img src="../../detailed-designs/stages/scaffold-solution/diagrams/sequence-scaffold.png" alt="Sequence diagram: scaffold, pull request, checks, merge and protect"></figure>
+</section>
+
+<section id="estimates" data-part="3" data-cue="Stage nine estimates every design in ideal days.">
+  <div class="code-file">worker/src/estimates/backlog-planner.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2-6">const rule =
+  d.estimateDays &gt; threshold ? { rule: 0, reason: `Estimated at ${d.estimateDays} days, above the ${threshold}-day threshold…` }
+  : outMatch ? { rule: 1, reason: `Listed as out of scope in the brief: ${outMatch}` }
+  : niceMatch ? { rule: 1, reason: `Listed as nice-to-have in the brief: ${niceMatch}` }
+  : !d.l2Ids.some((id) =&gt; onJourney.has(id)) ? { rule: 2, reason: "Its requirements appear in no journey's main path" }
+  : null;</pre>
+</section>
+
+<section id="testfirst" data-part="4" data-cue="Stage ten delivers that backlog, one increment at a time.">
+  <figure class="diagram"><img src="../../detailed-designs/increments/write-tests-first/diagrams/sequence-test-first.png" alt="Sequence diagram: write the tests first and record red"></figure>
+</section>
+
+<section id="iterate" data-part="4" data-cue="The new tests run once, and the failing result is recorded as red.">
+  <div class="code-file">worker/src/executors/increment-executor.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="4,9">while (state.iterations &lt; maxIterations) {
+  state.iterations++;
+  await this.agent.run(this.agentTask(leased, directory, 'implementing-incrementally', task('implement', { failing })), signal);
+  await commitChanges(key(`implement-${state.iterations}`), `Implement ${increment.title} (iteration ${state.iterations})`);
+  const gated = await gate.full(directory, testFiles, signal);
+  const decisions = validateDecisions(directory).map((p) =&gt; `Decision log: ${p}`);
+  const result = decisions.length ? { ...gated, passed: false, failing: [...gated.failing, ...decisions] } : gated;
+  if (result.passed) return result;
+  failing = result.failing;
+}
+throw new Blocked(failing);</pre>
+</section>
+
+<section id="merge" data-part="4" data-cue="When the gate is green, the agent records a short video">
+  <figure class="diagram"><img src="../../detailed-designs/increments/open-and-merge-pull-request/diagrams/sequence-open-checks-merge.png" alt="Sequence diagram: open the pull request, watch checks, merge"></figure>
+</section>
+
+<section id="decisions" data-part="5" data-cue="Skills are written for people, and they ask questions.">
+  <div class="code-file">worker/src/agents/decision-log.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2-3">export const AUTONOMY = [
+  'Nobody will answer questions, review your work or approve anything: carry on without waiting.',
+  'When a skill or task asks a question meant for the user, answer it yourself from the direction, docs/brief.md and the existing documents.',
+  'Append each answer to docs/decisions.md as "## {date} · Stage {n} {stage name}" followed by **Question:**, **Answer:** and **Rationale:** lines.',
+  'When a decision changes the architecture, also write docs/adr/{NNNN}-{slug}.md …',
+].join('\n');</pre>
+</section>
+
+<section id="tests" data-part="6" data-cue="Everything was built test first, in nine pull requests.">
+  <div class="cols cols--3">
+    <div class="card"><h3>120 backend</h3><p class="small">Real API, in-memory GitHub</p></div>
+    <div class="card"><h3>109 worker</h3><p class="small">Executors against fake APIs</p></div>
+    <div class="card"><h3>19 e2e</h3><p class="small">Behaviour 8 · a11y 5 · visual 2 · pipeline 4</p></div>
+  </div>
+</section>
+
+<section id="noapproval" data-part="6" data-cue="The last pipeline test is the one that matters most.">
+  <div class="code-file">e2e/tests/pipeline/no-approval.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2,5-6,8">// From here the test only watches: no clicks, no typing, no reloads.
+await expect(project.completeCallout).toBeVisible({ timeout: 120_000 });
+expect(await project.stageStatuses()).toEqual(Array(11).fill('Succeeded'));
+await expect(project.projectStatus).toHaveText('Complete');
+await expect(project.dialogs).toHaveCount(0);
+expect(prompts).toEqual([]);
+// Every planned increment merged through its pull request, with none blocked.
+expect(merged).toHaveLength(planned as number);</pre>
+  <div class="result green">✓ 4 passed · pipeline</div>
+</section>
+
+<section id="invalid" data-part="7" data-cue="Here is New direction.">
+  <figure><img src="screens/new-direction-invalid-desktop.png" alt="New direction with inline errors and an error summary"></figure>
+</section>
+
+<section id="clip" data-part="7" data-cue="Here is the real app with one worker." data-clip="clips/journey.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">An inline error, the fix, then every stage to Complete with no input</aside>
+</section>
+
+<section id="running" data-part="7" data-cue="While it runs, the project page shows each stage's status">
+  <div class="cols">
+    <figure><img src="screens/project-running-desktop.png" alt="The project page while stage 2 runs"></figure>
+    <figure class="phone"><img src="screens/complete-phone-dark.png" alt="The completed project on a phone in dark mode"></figure>
+  </div>
+</section>
+
+<section id="a-brief" data-part="8" data-cue="This is what the stages wrote into the product's repository.">
+  <div class="cols">
+    <figure><img src="screens/artifact-brief.png" alt="docs/brief.md"></figure>
+    <figure><img src="screens/artifact-mock.png" alt="A mock exported from Magic Patterns"></figure>
+  </div>
+</section>
+
+<section id="a-ds" data-part="8" data-cue="Next, a design system component page">
+  <div class="cols">
+    <figure><img src="screens/artifact-design-system.png" alt="docs/design-system/components/button.html"></figure>
+    <figure><img src="screens/artifact-adr.png" alt="docs/adr/0001-stack.md"></figure>
+  </div>
+</section>
+
+<section id="a-specs" data-part="8" data-cue="Then the requirements and a detailed design.">
+  <div class="cols">
+    <figure><img src="screens/artifact-specs.png" alt="docs/specs/L2.md"></figure>
+    <figure><img src="screens/artifact-design.png" alt="A detailed design README"></figure>
+  </div>
+</section>
+
+<section id="a-journeys" data-part="8" data-cue="Then the user journeys and the estimates">
+  <div class="cols">
+    <figure><img src="screens/artifact-journeys.png" alt="docs/journeys.md"></figure>
+    <figure><img src="screens/artifact-estimates.png" alt="docs/estimates/README.md"></figure>
+  </div>
+</section>
+
+<section id="a-increment" data-part="8" data-cue="Here is one increment going from red to green.">
+  <div class="cols">
+    <figure><img src="screens/artifact-test.png" alt="The increment's acceptance test with its trace header"></figure>
+    <figure><img src="screens/artifact-pr-body.png" alt="The merged pull request body"></figure>
+  </div>
+  <div class="result red">✘ red recorded: 1 failing</div>
+  <div class="result green">✓ iteration 1 of 10 green · merged</div>
+</section>
+
+<section id="a-decisions" data-part="8" data-cue="And this is the decision log">
+  <figure><img src="screens/artifact-decisions.png" alt="docs/decisions.md"></figure>
+</section>
+
+<section id="recap" data-part="9" data-cue="Journey one is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Eleven stages from direction to merged product</li>
+    <li>Brokered writes, validated outputs, recorded decisions</li>
+    <li>Next: budgets, pause and resume, backlog pages</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>
