@@ -9,9 +9,11 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import {
   HttpProjectsApi,
   HttpSessionApi,
+  HttpSettingsApi,
   PROJECT_EVENTS,
   PROJECTS_API,
   SESSION_API,
+  SETTINGS_API,
   SignalRProjectEvents,
 } from '@hewn/api';
 import { routes } from './app.routes';
@@ -27,6 +29,7 @@ export const appConfig: ApplicationConfig = {
     ),
     { provide: PROJECTS_API, useClass: HttpProjectsApi },
     { provide: SESSION_API, useClass: HttpSessionApi },
+    { provide: SETTINGS_API, useClass: HttpSettingsApi },
     { provide: PROJECT_EVENTS, useClass: SignalRProjectEvents },
     provideAppInitializer(() => inject(SessionStore).load()),
   ],

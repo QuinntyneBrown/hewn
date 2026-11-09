@@ -62,6 +62,7 @@ export function applyEvent(project: Project, event: ProjectEvent): Project {
               ...d,
               status: p['status'] as DirectionStatus,
               completedAt: (p['completedAt'] as string | null) ?? null,
+              pauseReason: (p['pauseReason'] as string | null) ?? null,
             },
       );
       break;
@@ -82,6 +83,25 @@ export function applyEvent(project: Project, event: ProjectEvent): Project {
               hasUiChange: p['hasUiChange'] as boolean,
               uiDecision: (p['uiDecision'] as string | null) ?? null,
             },
+      );
+      break;
+    case 'SpendUpdated':
+      next.spendUsd = p['projectSpendUsd'] as number;
+      next.directions = project.directions.map((d) =>
+        d.id !== p['directionId']
+          ? d
+          : {
+              ...d,
+              spendUsd: p['directionSpendUsd'] as number,
+              budgetUsd: p['budgetUsd'] as number,
+            },
+      );
+      break;
+    case 'BudgetWarning':
+      next.directions = project.directions.map((d) =>
+        d.id !== p['directionId']
+          ? d
+          : { ...d, budgetWarned: true, spendUsd: p['spendUsd'] as number },
       );
       break;
     case 'ProjectChanged':

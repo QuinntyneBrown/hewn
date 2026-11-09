@@ -1,6 +1,7 @@
 import { test as base, expect, Page } from '@playwright/test';
 import { NewDirectionPage } from '../pages/new-direction.page';
 import { ProjectPage } from '../pages/project.page';
+import { SettingsPage } from '../pages/settings.page';
 
 export type Login = 'quinntynebrown' | 'ada';
 
@@ -18,11 +19,13 @@ export function uniqueName(prefix: string): string {
 interface Pages {
   newDirection: NewDirectionPage;
   project: ProjectPage;
+  settings: SettingsPage;
 }
 
 export const test = base.extend<Pages>({
   newDirection: async ({ page }, use) => use(new NewDirectionPage(page)),
   project: async ({ page }, use) => use(new ProjectPage(page)),
+  settings: async ({ page }, use) => use(new SettingsPage(page)),
 });
 
 export { expect };

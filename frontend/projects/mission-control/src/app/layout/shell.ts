@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { IconComponent, IconName } from '@hewn/components';
 import { SessionStore } from '../core/session-store';
+import { ToastRegionComponent } from './toast-region';
 import { WordmarkComponent } from './wordmark';
 
 interface NavItem {
@@ -13,7 +14,14 @@ interface NavItem {
 /** Sidebar, top bar and main region shared by every signed-in page. */
 @Component({
   selector: 'hw-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, IconComponent, WordmarkComponent],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    IconComponent,
+    WordmarkComponent,
+    ToastRegionComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell.html',
 })

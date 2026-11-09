@@ -1,0 +1,82 @@
+<div class="page-header">
+  <div class="truncate">
+    <h1>Settings</h1>
+    <p class="page-header__desc">
+      Your preferences, who can sign in, and the defaults every direction starts with.
+    </p>
+  </div>
+</div>
+<div class="pad" style="padding-bottom: var(--space-12)">
+  @if (!session.isOwner()) {
+    <div class="callout callout--info" role="status">
+      <svg hw-icon name="lock" class="icon--lg"></svg>
+      <div>
+        <p class="callout__title">Read-only for Viewers</p>
+        <p class="callout__body">Direction defaults are managed by an Owner.</p>
+      </div>
+    </div>
+  }
+  <form
+    class="settings-section"
+    aria-labelledby="s-defaults"
+    novalidate
+    [formGroup]="form"
+    (ngSubmit)="save()"
+  >
+    <div class="settings-section__intro">
+      <h2 id="s-defaults" style="font: var(--text-h3)">Direction defaults</h2>
+      <p>What every new direction starts with.</p>
+    </div>
+    <div class="settings-section__body stack" style="gap: var(--space-6)">
+      <hw-error-summary [items]="summary()" purpose="before the defaults can be saved" />
+      @if (saved(); as budget) {
+        <div class="callout callout--ok" role="status">
+          <svg hw-icon name="checkCircle" class="icon--lg"></svg>
+          <div>
+            <p class="callout__title">Defaults saved</p>
+            <p class="callout__body">{{ savedText(budget) }}</p>
+          </div>
+        </div>
+      }
+      @if (failure(); as message) {
+        <div class="callout callout--danger" role="alert">
+          <svg hw-icon name="errorCircle" class="icon--lg"></svg>
+          <div>
+            <p class="callout__title">Defaults not saved</p>
+            <p class="callout__body">{{ message }}</p>
+          </div>
+        </div>
+      }
+      <hw-field
+        controlId="default-budget"
+        label="Default budget per direction"
+        hint="Warns at 80%, pauses at 100%. Can be changed on each direction."
+        [error]="error('defaultBudgetUsd')"
+      >
+        <div class="prefix prefix--money">
+          <span class="prefix__sym" aria-hidden="true">$</span
+          ><input
+            class="input"
+            id="default-budget"
+            inputmode="decimal"
+            formControlName="budget"
+            [readOnly]="readOnly()"
+            [attr.aria-invalid]="error('defaultBudgetUsd') ? 'true' : null"
+            [attr.aria-describedby]="describedBy('default-budget', error('defaultBudgetUsd'))"
+          />
+        </div>
+      </hw-field>
+      @if (session.isOwner()) {
+        <div class="form-actions">
+          @if (saving()) {
+            <button class="btn btn--primary" type="submit" aria-busy="true" disabled>
+              <svg hw-icon name="spinner"></svg>Saving…
+            </button>
+          } @else {
+            <button class="btn btn--primary" type="submit">Save defaults</button>
+          }
+        </div>
+      }
+    </div>
+  </form>
+</div>

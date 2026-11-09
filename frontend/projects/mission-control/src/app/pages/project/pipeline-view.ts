@@ -165,3 +165,40 @@ export function mergeLines(existing: LogLine[], incoming: readonly LogLine[]): L
   if (byLine.size === before) return existing;
   return [...byLine.values()].sort((a, b) => a.line - b.line);
 }
+
+const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
+/** Dollars as the mocks write them: $1,234.50. */
+export function dollars(amount: number): string {
+  return usd.format(amount);
+}
+
+/** The header's spend meter (L2-052 AC2): spend of budget, the share spent, and warning once at 80% (L2-053). */
+export function spendView(
+  spendUsd: number,
+  budgetUsd: number,
+  warned: boolean,
+  pauseReason: string | null,
+): { spent: string; budget: string; percent: number; warn: boolean; text: string } {
+  const percent = budgetUsd > 0 ? Math.min(100, Math.round((spendUsd / budgetUsd) * 100)) : 0;
+  return {
+    spent: dollars(spendUsd),
+    budget: dollars(budgetUsd),
+    percent,
+    warn: warned || pauseReason !== null,
+    text: `${dollars(spendUsd)} of ${dollars(budgetUsd)} budget`,
+  };
+}
+
+/** The live toast when a direction's spend reaches 80% of its budget (L2-053 AC2). */
+export function budgetWarningToast(
+  projectName: string,
+  spendUsd: number,
+  budgetUsd: number,
+): { tone: 'warn'; title: string; text: string } {
+  return {
+    tone: 'warn',
+    title: `${projectName} at 80% of budget`,
+    text: `${dollars(spendUsd)} of ${dollars(budgetUsd)}. It pauses at ${dollars(budgetUsd)}.`,
+  };
+}
