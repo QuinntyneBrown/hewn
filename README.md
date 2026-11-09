@@ -228,7 +228,7 @@ Secrets are never written to configuration files in the repository.
 | `ANTHROPIC_API_KEY`             | Worker  | Model access for agents (secret)                                         |
 | `HEWN_MAGIC_PATTERNS_TOKEN`     | Worker  | Magic Patterns MCP credential (secret)                                   |
 | `HEWN_SKILLS_SOURCE`            | API     | Skill library repository; defaults to `QuinntyneBrown/greenlit`          |
-| `HEWN_DEFAULT_BUDGET_USD`       | API     | Default spend cap per direction                                          |
+| `HEWN_DEFAULT_BUDGET_USD`       | API     | Default budget per direction until an Owner saves one in Settings (300)  |
 | `HEWN_DESCOPE_THRESHOLD_DAYS`   | API     | Designs estimated above this are split or deferred; defaults to `3`      |
 | `HEWN_MAX_ITERATIONS`           | API     | Implement-and-test iterations before an increment is Blocked; `10`       |
 | `HEWN_GATE`                     | Worker  | `stack` (default) runs the stack's tests; `scripted` stands in for e2e   |

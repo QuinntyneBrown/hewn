@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Limit spending (journey 4, L2-052, L2-053 AC1-AC3):
+  - workers report every model call (`POST /api/worker/runs/{id}/model-calls`); Hewn prices it from a configured
+    price table and records its tokens, model and cost against its run, stage, direction and project (ADR 0010);
+  - spend shows live on the project header as a meter of the direction's budget (`SpendUpdated`);
+  - at 80% a `BudgetWarning` raises a warning toast and turns the meter to warning;
+  - at 100% the direction pauses with "Budget reached" after the current call, keeping its checkpoint;
+  - Settings has Direction defaults: an Owner sets the default budget new directions start with
+    (`GET`/`PUT /api/settings/direction-defaults`); Viewers see it read-only.
 - Monitor a direction (journey 3, L2-030, L2-031, L2-033, L2-047 AC3):
   - the running stage shows its current step and latest log line, live, from new `StepStarted` and `LogLines`
     events; workers name each step (`PUT /api/worker/runs/{id}/step`) and send log lines in batches;
