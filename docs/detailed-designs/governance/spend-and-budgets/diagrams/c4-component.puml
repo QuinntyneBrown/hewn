@@ -10,7 +10,7 @@ Container_Boundary(api_b, "Hewn API") {
   Component(ledger, "SpendLedger", "Application service", "Records cost; running totals")
   Component(price, "PriceTable", "Configuration", "Price per model")
   Component(guard, "BudgetGuard", "Domain service", "Warn at 80%, pause at 100%")
-  Component(ctrl, "DirectionsController", "ASP.NET Core controller", "Raise and resume")
+  Component(ctrl, "ProjectsController", "ASP.NET Core controller", "Raise and resume")
   Component(hub, "MissionControlHub", "SignalR hub", "Pushes spend events")
 }
 
