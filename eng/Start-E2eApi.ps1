@@ -19,6 +19,8 @@ $env:HEWN_ALLOWED_GITHUB_USERS = 'quinntynebrown:Owner,ada:Viewer'
 $env:HEWN_GITHUB_OWNER = 'hewn-builds'
 $env:HEWN_DEFAULT_BUDGET_USD = '300'
 $env:HEWN_WORKER_TOKEN = 'e2e-worker-token-not-a-secret'
+# Short waits before each automatic retry of a failed run (30 s, 2 min, 10 min in production; L2-006 AC1).
+$env:Hewn__Retry__BackoffSeconds = '2,3,4'
 
 # A small Greenlit for stage 0 to copy from: a git repository built from e2e/fixtures/greenlit.
 $greenlit = Join-Path $root 'backend/.e2e/greenlit'

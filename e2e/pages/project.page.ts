@@ -54,6 +54,11 @@ export class ProjectPage {
   readonly dialogFooter: Locator;
   /** Live toasts, such as the 80% budget warning (L2-053 AC2). */
   readonly toasts: Locator;
+  /** A stage blocked after its retries (L2-006 AC2), and Retry stage (AC3). */
+  readonly blockedCallout: Locator;
+  readonly calloutRetryStage: Locator;
+  readonly retryStageButton: Locator;
+  readonly blockedToast: Locator;
   /** Any dialog asking the user for something; a run never needs one (L2-028). */
   readonly dialogs: Locator;
 
@@ -97,6 +102,10 @@ export class ProjectPage {
     this.keepRunning = this.cancelDialog.getByRole('button', { name: 'Keep running' });
     this.cancelFailure = this.cancelDialog.getByRole('alert');
     this.cancelDialogFooter = this.cancelDialog.locator('.dialog__footer');
+    this.blockedCallout = page.locator('.callout', { hasText: /Stage failed after \d+ retr/ });
+    this.calloutRetryStage = this.blockedCallout.getByRole('button', { name: 'Retry stage' });
+    this.retryStageButton = header.getByRole('button', { name: 'Retry stage' });
+    this.blockedToast = this.toasts.filter({ hasText: ' is blocked' });
     this.cancelledCallout = page.locator('.callout', { hasText: 'Submit a new direction to continue.' });
     this.headerMeta = header.locator('.phead__meta');
     this.calloutNewBudget = this.budgetReachedCallout.getByLabel('New budget');
@@ -173,6 +182,11 @@ export class ProjectPage {
   async restInDialog(): Promise<void> {
     await this.raiseDialog.getByRole('heading').hover();
     await this.dialogBudget.focus();
+  }
+
+  /** A button or link under a toast, such as the blocked toast's Open log and Retry stage. */
+  toastAction(toast: Locator, name: string): Locator {
+    return toast.getByRole('link', { name }).or(toast.getByRole('button', { name }));
   }
 
   /** The running stage's live step and latest log line (L2-030 AC2). */
