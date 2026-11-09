@@ -67,6 +67,8 @@ test.describe('Queue further directions', () => {
       timeout: 120_000,
     });
     await expect(project.queuedCallout).toHaveCount(0);
+    // Let the last direction finish, so no worker is left holding a lease when this test stops its workers.
+    await expect(project.projectStatus).toHaveText('Complete', { timeout: 120_000 });
 
     const changes = (await project.events())
       .filter((e) => e.type === 'DirectionChanged')
@@ -81,6 +83,6 @@ test.describe('Queue further directions', () => {
     // First in, first out: each starts only after the one before it is Complete.
     expect(changes.indexOf(`${product}:Complete`)).toBeLessThan(changes.indexOf(`${first}:Running`));
     expect(changes.indexOf(`${first}:Complete`)).toBeLessThan(changes.indexOf(`${second}:Running`));
-    expect(changes.indexOf(`${first}:Complete`)).toBeGreaterThan(-1);
+    expect(changes.indexOf(`${second}:Complete`)).toBeGreaterThan(changes.indexOf(`${second}:Running`));
   });
 });
