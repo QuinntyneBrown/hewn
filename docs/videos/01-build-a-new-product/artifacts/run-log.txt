@@ -1,0 +1,43 @@
+[1] Question: Who is the primary user?
+[1] Answer: The people the direction describes: booking firing slots for a shared pottery kiln, with deposits and a waitlist.
+[2] Exported 3 designs from Magic Patterns
+[2] Question: Which states does each screen need?
+[2] Answer: Default, loading, empty and error for every screen.
+[3] Question: How are colour tokens named?
+[3] Answer: By order of first use until a designer names them.
+[4] Question: Which stack should the product use?
+[4] Answer: .NET 10 (LTS) backend with an Angular 21 frontend
+[5] Question: How fine-grained are the first requirements?
+[5] Answer: One L1 and one L2 per core feature in the brief.
+[6] Generated 26 files from the dotnet-angular template
+[6] Opened pull request #2: https://github.com/hewn-builds/kiln-booking/pull/2
+[6] CI passed on pull request #3: backend, frontend, e2e
+[6] Merged #4; the default branch now requires backend, frontend, e2e
+[7] Question: How are features grouped into subsystems?
+[7] Answer: One subsystem, product, until the product grows a second area.
+[7] Question: How do the frontend and the API talk?
+[7] Answer: REST over JSON between the Angular app and the API.
+[8] Question: How are journeys numbered?
+[8] Answer: Existing numbers are kept; new journeys take the next free numbers.
+[9] Question: How large is each design?
+[9] Answer: Two ideal days each, none split.
+[9] Planned 3 increments; deferred 0 designs
+[10] Increment 1: Sign in on feature/sign-in
+[10] Increment 1: red recorded, 1 failing
+[10] Increment 1: iteration 1 of 10 green
+[10] Increment 1: opened #5 https://github.com/hewn-builds/kiln-booking/pull/5
+[10] Increment 1: merged #5
+[10] Percent complete: 33%
+[10] Increment 2: Main workflow on feature/main-workflow
+[10] Increment 2: red recorded, 1 failing
+[10] Increment 2: iteration 1 of 10 green
+[10] Increment 2: opened #6 https://github.com/hewn-builds/kiln-booking/pull/6
+[10] Increment 2: merged #6
+[10] Percent complete: 67%
+[10] Increment 3: Review history on feature/review-history
+[10] Increment 3: red recorded, 1 failing
+[10] Increment 3: iteration 1 of 10 green
+[10] Increment 3: opened #7 https://github.com/hewn-builds/kiln-booking/pull/7
+[10] Increment 3: merged #7
+[10] Percent complete: 100%
+[10] Backlog done: 3 merged, 0 blocked
