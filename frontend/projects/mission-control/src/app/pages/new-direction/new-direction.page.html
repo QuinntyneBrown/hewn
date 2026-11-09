@@ -18,15 +18,23 @@
           Once you submit, Hewn runs to merged code without asking you anything.
         </p>
         <div class="segmented segmented--lg mt-8" role="radiogroup" aria-label="Direction type">
-          <span class="segmented__opt" role="radio" aria-checked="true" tabindex="0"
+          <span
+            class="segmented__opt"
+            role="radio"
+            data-mode="product"
+            [attr.aria-checked]="mode() === 'product'"
+            [attr.tabindex]="mode() === 'product' ? 0 : -1"
+            (click)="choose('product')"
+            (keydown)="onModeKey($event)"
             >New product</span
           ><span
             class="segmented__opt"
             role="radio"
-            aria-checked="false"
-            aria-disabled="true"
-            tabindex="-1"
-            title="Feature directions arrive with journey 2"
+            data-mode="feature"
+            [attr.aria-checked]="mode() === 'feature'"
+            [attr.tabindex]="mode() === 'feature' ? 0 : -1"
+            (click)="choose('feature')"
+            (keydown)="onModeKey($event)"
             >Feature for a product</span
           >
         </div>
@@ -41,74 +49,113 @@
             </div>
           }
           <hw-error-summary [items]="summary()" purpose="before Hewn can start" />
-          <hw-field
-            controlId="name"
-            label="Name"
-            hint="1–100 characters, unique among your projects"
-            [error]="error('name')"
-          >
-            <input
-              class="input"
-              id="name"
-              formControlName="name"
-              autocomplete="off"
-              [readOnly]="submitting()"
-              [attr.aria-invalid]="error('name') ? 'true' : null"
-              [attr.aria-describedby]="describedBy('name', error('name'))"
-            />
-          </hw-field>
-          <hw-field
-            controlId="idea"
-            label="Idea"
-            [hint]="ideaCount() + ' of 20,000 characters'"
-            [error]="error('idea')"
-          >
-            <textarea
-              class="textarea"
-              id="idea"
-              rows="7"
-              formControlName="idea"
-              [readOnly]="submitting()"
-              [attr.aria-invalid]="error('idea') ? 'true' : null"
-              [attr.aria-describedby]="describedBy('idea', error('idea'))"
-            ></textarea>
-          </hw-field>
-          <div class="form-grid form-grid--2">
+          @if (mode() === 'feature') {
             <hw-field
-              controlId="stack"
-              label="Stack"
-              [optional]="true"
-              hint="Default: .NET backend, Angular frontend"
-              [error]="error('stackPreference')"
+              controlId="product"
+              label="Product"
+              hint="A product whose first direction isn’t complete queues the feature behind it"
+            >
+              <select
+                class="select"
+                id="product"
+                formControlName="product"
+                aria-describedby="product-hint"
+              >
+                @for (option of products() ?? []; track option.id) {
+                  <option [value]="option.id">{{ option.label }}</option>
+                } @empty {
+                  <option value="" disabled>
+                    {{ products() === null ? 'Loading products…' : 'No products yet' }}
+                  </option>
+                }
+              </select>
+            </hw-field>
+            <hw-field
+              controlId="feature"
+              label="Feature"
+              [hint]="featureCount() + ' of 20,000 characters'"
+              [error]="error('idea')"
+            >
+              <textarea
+                class="textarea"
+                id="feature"
+                rows="4"
+                formControlName="feature"
+                [readOnly]="submitting()"
+                [attr.aria-invalid]="error('idea') ? 'true' : null"
+                [attr.aria-describedby]="describedBy('feature', error('idea'))"
+              ></textarea>
+            </hw-field>
+          } @else {
+            <hw-field
+              controlId="name"
+              label="Name"
+              hint="1–100 characters, unique among your projects"
+              [error]="error('name')"
             >
               <input
                 class="input"
-                id="stack"
-                formControlName="stack"
-                placeholder=".NET + Angular"
+                id="name"
+                formControlName="name"
+                autocomplete="off"
                 [readOnly]="submitting()"
-                [attr.aria-invalid]="error('stackPreference') ? 'true' : null"
-                [attr.aria-describedby]="describedBy('stack', error('stackPreference'))"
+                [attr.aria-invalid]="error('name') ? 'true' : null"
+                [attr.aria-describedby]="describedBy('name', error('name'))"
               />
             </hw-field>
             <hw-field
-              controlId="repo"
-              label="Existing repository"
-              [optional]="true"
-              hint="https://github.com/{owner}/{repo}"
-              [error]="error('repositoryUrl')"
+              controlId="idea"
+              label="Idea"
+              [hint]="ideaCount() + ' of 20,000 characters'"
+              [error]="error('idea')"
             >
-              <input
-                class="input"
-                id="repo"
-                formControlName="repo"
-                [placeholder]="repoPlaceholder()"
+              <textarea
+                class="textarea"
+                id="idea"
+                rows="7"
+                formControlName="idea"
                 [readOnly]="submitting()"
-                [attr.aria-invalid]="error('repositoryUrl') ? 'true' : null"
-                [attr.aria-describedby]="describedBy('repo', error('repositoryUrl'))"
-              />
+                [attr.aria-invalid]="error('idea') ? 'true' : null"
+                [attr.aria-describedby]="describedBy('idea', error('idea'))"
+              ></textarea>
             </hw-field>
-          </div>
+            <div class="form-grid form-grid--2">
+              <hw-field
+                controlId="stack"
+                label="Stack"
+                [optional]="true"
+                hint="Default: .NET backend, Angular frontend"
+                [error]="error('stackPreference')"
+              >
+                <input
+                  class="input"
+                  id="stack"
+                  formControlName="stack"
+                  placeholder=".NET + Angular"
+                  [readOnly]="submitting()"
+                  [attr.aria-invalid]="error('stackPreference') ? 'true' : null"
+                  [attr.aria-describedby]="describedBy('stack', error('stackPreference'))"
+                />
+              </hw-field>
+              <hw-field
+                controlId="repo"
+                label="Existing repository"
+                [optional]="true"
+                hint="https://github.com/{owner}/{repo}"
+                [error]="error('repositoryUrl')"
+              >
+                <input
+                  class="input"
+                  id="repo"
+                  formControlName="repo"
+                  [placeholder]="repoPlaceholder()"
+                  [readOnly]="submitting()"
+                  [attr.aria-invalid]="error('repositoryUrl') ? 'true' : null"
+                  [attr.aria-describedby]="describedBy('repo', error('repositoryUrl'))"
+                />
+              </hw-field>
+            </div>
+          }
           <hw-field
             controlId="budget"
             label="Budget"
@@ -144,17 +191,33 @@
       </form>
       <aside class="rail" aria-labelledby="plan-title">
         <h2 id="plan-title" style="font: var(--text-h3)">What runs next</h2>
-        <p class="text-sm text-muted mt-1">
-          All eleven stages, in order. The first pull request lands after scaffold.
-        </p>
-        <ol class="plan mt-4">
-          @for (stage of plan; track stage.name) {
-            <li>
-              <svg hw-status-icon status="Pending"></svg><span>{{ stage.name }}</span
-              ><span class="out">{{ stage.output }}</span>
-            </li>
-          }
-        </ol>
+        @if (mode() === 'feature') {
+          <p class="text-sm text-muted mt-1">
+            Bootstrap, stack and scaffold are skipped. Designs are skipped too if there is no UI
+            change.
+          </p>
+          <ol class="plan mt-4">
+            @for (stage of featurePlan; track stage.name) {
+              <li>
+                <svg hw-status-icon [status]="stage.skipped ? 'Skipped' : 'Pending'"></svg
+                ><span [class.skip]="stage.skipped">{{ stage.name }}</span
+                ><span class="out">{{ stage.output }}</span>
+              </li>
+            }
+          </ol>
+        } @else {
+          <p class="text-sm text-muted mt-1">
+            All eleven stages, in order. The first pull request lands after scaffold.
+          </p>
+          <ol class="plan mt-4">
+            @for (stage of plan; track stage.name) {
+              <li>
+                <svg hw-status-icon status="Pending"></svg><span>{{ stage.name }}</span
+                ><span class="out">{{ stage.output }}</span>
+              </li>
+            }
+          </ol>
+        }
       </aside>
     </div>
   </div>

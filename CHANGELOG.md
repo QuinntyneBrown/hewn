@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add a feature (journey 2, L2-005, L2-010 AC6, L2-014 AC4, L2-017 AC3, L2-054):
+  - New direction's Feature for a product adds a feature direction to an existing product through
+    `POST /api/projects/{id}/directions`; `GET /api/projects` lists products and whether a feature would queue;
+  - a feature direction skips Bootstrap, Stack and Scaffold, and also Designs and Design system when stage 1
+    records that the user interface does not change (`PUT /api/worker/runs/{id}/scope`, ADR 0008);
+  - a feature submitted while another direction is active queues behind it, first in, first out;
+  - stages 2, 5 and 8 keep every existing design, requirement ID and journey number, and stage 9 plans only
+    unbuilt designs;
+  - the project page strikes through skipped stages, shows queued directions and explains a completed feature.
 - Decisions and no approval steps (journey 1, L2-054 AC1-AC2, L2-028):
   - every agent session decides for itself under one shared instruction, with no tool for asking;
   - decisions are checked for their fields, and a decision that changes the architecture is recorded as a numbered ADR;

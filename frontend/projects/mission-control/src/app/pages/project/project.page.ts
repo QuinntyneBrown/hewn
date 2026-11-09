@@ -24,7 +24,13 @@ import {
   asyncScheduler,
   timer,
 } from 'rxjs';
-import { formatDuration, headerStatus } from './pipeline-view';
+import {
+  clockTime,
+  directionTitle,
+  featureOutcome,
+  formatDuration,
+  headerStatus,
+} from './pipeline-view';
 
 type Loaded = { state: 'loading' } | { state: 'missing' } | { state: 'ready'; project: Project };
 
@@ -89,6 +95,18 @@ export class ProjectPage {
       null
     );
   });
+
+  /** Directions waiting behind the one shown, first in, first out (L2-004 AC4, L2-005 AC4). */
+  protected readonly queued = computed(() => {
+    const shown = this.direction();
+    return (this.project()?.directions ?? []).filter(
+      (d) => d.status === 'Queued' && d.id !== shown?.id,
+    );
+  });
+
+  protected readonly title = directionTitle;
+  protected readonly clockTime = clockTime;
+  protected readonly featureOutcome = featureOutcome;
 
   protected readonly status = computed(() => {
     const project = this.project();

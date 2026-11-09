@@ -1,6 +1,6 @@
 // Acceptance Test
-// Traces to: L2-001
-// Description: New direction matches docs/mocks region by region (form and stage plan) in the default and repo-no-access states
+// Traces to: L2-001, L2-005
+// Description: New direction matches docs/mocks region by region (form and stage plan) in the default, feature and repo-no-access states
 
 import { expect, signIn, test } from '../../fixtures/test';
 import { compare, mockRegion, region } from '../../support/mocks';
@@ -45,4 +45,16 @@ test('repo-no-access: the form with the repository error matches the mock', asyn
     await mockRegion(page, 'pages/new-direction/repo-no-access.html', 'form.form-col'),
   );
   expect(diff.ratio).toBeLessThan(tolerance);
+});
+
+test('feature: "What runs next" strikes through the skipped stages as the mock does', async ({ page, newDirection }) => {
+  await newDirection.open();
+  await newDirection.featureMode.click();
+  await page.locator('h1').click();
+
+  const diff = compare(
+    await region(newDirection.plan),
+    await mockRegion(page, 'pages/new-direction/feature.html', 'aside.rail'),
+  );
+  expect(diff.ratio, 'aside.rail differs from the mock').toBeLessThan(tolerance);
 });

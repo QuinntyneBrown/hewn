@@ -52,6 +52,8 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
         IReadOnlyList<string>? FailingTests = null,
         int? PullRequestNumber = null);
 
+    public sealed record ScopeRequest(string WorkerId, long Epoch, bool HasUiChange, string? Rationale);
+
     public sealed record BacklogRequest(string WorkerId, long Epoch, IReadOnlyList<PlannedIncrement> Increments, IReadOnlyList<DeferredDesign> Deferred);
 
     [HttpPost("register")]
@@ -123,6 +125,14 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
     [HttpGet("runs/{runId:guid}/pull-requests/{number:int}/checks")]
     public async Task<IActionResult> Checks(Guid runId, int number, [FromQuery] string workerId, [FromQuery] long epoch, CancellationToken cancellationToken) =>
         Ok(new { checks = await mediator.Send(new GetPullRequestChecksQuery(runId, workerId, epoch, number), cancellationToken) });
+
+    /// <summary>Stage 1 of a feature direction: the recorded decision on whether the feature changes the UI.</summary>
+    [HttpPut("runs/{runId:guid}/scope")]
+    public async Task<IActionResult> Scope(Guid runId, ScopeRequest request, CancellationToken cancellationToken)
+    {
+        await mediator.Send(new ReportScopeCommand(runId, request.WorkerId, request.Epoch, request.HasUiChange, request.Rationale), cancellationToken);
+        return NoContent();
+    }
 
     /// <summary>Stage 9's backlog: the ordered increments and the descoped designs with reasons.</summary>
     [HttpPut("runs/{runId:guid}/backlog")]

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDuration, headerStatus } from './pipeline-view';
+import { formatDuration, headerStatus, directionTitle, featureOutcome } from './pipeline-view';
 
 describe('formatDuration', () => {
   it('shows a dash for a stage that has not started', () => {
@@ -35,5 +35,30 @@ describe('headerStatus', () => {
 
   it('falls back to the project status without a direction', () => {
     expect(headerStatus('Idle', null)).toBe('Idle');
+  });
+});
+
+describe('directionTitle', () => {
+  it('takes the first clause of the first sentence', () => {
+    expect(directionTitle('Add a CSV export of the shift report, one row per shift. More.')).toBe(
+      'Add a CSV export of the shift report',
+    );
+    expect(directionTitle('Export a reconciled period as PDF.')).toBe(
+      'Export a reconciled period as PDF',
+    );
+  });
+});
+
+describe('featureOutcome', () => {
+  it('names the skipped design stages and the recorded reason when the UI does not change', () => {
+    expect(featureOutcome('Northwind Ops', false, 'The feature adds no screen or state')).toBe(
+      'Bootstrap, stack and scaffold were skipped. Designs and design system were skipped too: The feature adds no screen or state. Northwind Ops is Idle until the next direction.',
+    );
+  });
+
+  it('mentions only the always-skipped stages when the UI changes', () => {
+    expect(featureOutcome('Northwind Ops', true, 'It adds a page.')).toBe(
+      'Bootstrap, stack and scaffold were skipped. Northwind Ops is Idle until the next direction.',
+    );
   });
 });

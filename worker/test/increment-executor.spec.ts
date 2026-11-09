@@ -145,6 +145,7 @@ function harness(backlog: Increment[]) {
     protectDefaultBranch: async () => {
       throw new Error('stage 10 never protects');
     },
+    reportScope: async () => undefined,
     reportBacklog: async () => {
       throw new Error('stage 10 never reports a backlog');
     },

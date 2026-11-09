@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 02 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="02" data-video-title="Add a feature" data-parts="Introduction|Goal|Architecture|Decision|Numbers|Tests|Screens|Documents|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 2</div>
+  <h1>Add a feature</h1>
+  <p class="lead">Extend a product that already exists, running only the stages the feature needs and keeping every number.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video walks through how it was built">
+  <figure><img src="screens/feature-complete-desktop.png" alt="A completed feature direction with stages 0, 2, 3, 4 and 6 struck through as Skipped"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="Journey two is for Owners whose product is already running.">
+  <div class="cols cols--wide">
+    <figure><img src="screens/feature-form-desktop.png" alt="New direction with Feature for a product chosen"></figure>
+    <ul class="bullets small">
+      <li>Pick a product</li>
+      <li>Describe the feature</li>
+      <li>Set a budget</li>
+    </ul>
+  </div>
+</section>
+
+<section id="flow" data-part="1" data-cue="A feature skips three stages every time">
+  <h2>The feature plan</h2>
+  <ul class="steps">
+    <li>0 Bootstrap · skipped</li><li class="done">1 Idea</li><li class="done">2 Designs · if UI</li><li class="done">3 Design system · if UI</li><li>4 Stack · skipped</li><li class="done">5 Requirements</li><li>6 Scaffold · skipped</li><li class="done">7 Detailed designs</li><li class="done">8 User journeys</li><li class="done">9 Estimates</li><li class="done">10 Increments</li>
+  </ul>
+</section>
+
+<section id="submit" data-part="2" data-cue="The Hewn API owns the plan.">
+  <div class="code-file">backend/src/Hewn.Application/Projects/SubmitFeatureDirection.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="5,12-15">var project = await db.Projects.Include(p =&gt; p.Directions)
+    .SingleOrDefaultAsync(p =&gt; p.Id == command.ProjectId, cancellationToken)
+    ?? throw new NotFoundException();
+
+var startsNow = project.AddFeatureDirection(command.Idea!, command.BudgetUsd, user.Login, clock.GetUtcNow(), out var direction);
+db.Directions.Add(direction); // a new child with its own key; EF would otherwise treat it as an existing row
+await events.AppendAsync(
+    project.Id,
+    "DirectionQueued",
+    new { directionId = direction.Id, kind = direction.Kind.ToString(), stage = direction.FirstStage, stageStatus = StageStatus.Pending.ToString(), startsNow, direction = GetProjectHandler.ToDto(direction) },
+    cancellationToken);
+if (startsNow)
+{
+    await pipeline.StartDirectionAsync(project, direction, cancellationToken);
+}</pre>
+</section>
+
+<section id="queue" data-part="2" data-cue="One direction runs per project.">
+  <figure class="diagram"><img src="../../detailed-designs/pipeline/run-direction/diagrams/sequence-queue-second-direction.png" alt="Sequence diagram: a second direction queues and starts when the active one ends"></figure>
+</section>
+
+<section id="promote" data-part="2" data-cue="When the active direction completes, the orchestrator starts the oldest one waiting">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/PipelineOrchestrator.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="2-7">await AppendDirectionAsync(direction, cancellationToken);
+if (project.NextQueuedDirection(direction.Id) is { } queued)
+{
+    // One direction per project, first in, first out (L2-004 AC4, L2-005 AC4).
+    await StartDirectionAsync(project, queued, cancellationToken);
+    return;
+}
+
+project.ChangeStatus(ProjectStatus.Idle);
+await AppendProjectAsync(project, cancellationToken);</pre>
+</section>
+
+<section id="decision" data-part="3" data-cue="Whether a feature changes the user interface is a judgement">
+  <figure><img src="screens/decision-ui.png" alt="The decision log entry answering Does this feature change the user interface? with No"></figure>
+</section>
+
+<section id="skip" data-part="3" data-cue="The worker checks that the answer is there">
+  <div class="code-file">backend/src/Hewn.Domain/Direction.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="3-4,10-11">HasUiChange = hasUiChange;
+UiDecision = rationale;
+var skipped = new List&lt;StageState&gt;();
+foreach (var number in UiStages)
+{
+    var stage = Stage(number);
+    if (hasUiChange || stage.Status != StageStatus.Pending)
+    {
+        continue;
+    }
+    stage.End(StageStatus.Skipped, now);
+    skipped.Add(stage);
+}
+return skipped;</pre>
+</section>
+
+<section id="documents-diagram" data-part="4" data-cue="Requirement IDs and journey numbers appear in tests">
+  <figure class="diagram"><img src="../../detailed-designs/stages/produce-stage-documents/diagrams/sequence-run-document-stage.png" alt="Sequence diagram: a document stage checks out, runs the agent, validates and commits"></figure>
+</section>
+
+<section id="kept" data-part="4" data-cue="Before a stage's agent runs, the worker copies the numbered documents.">
+  <div class="code-file">worker/src/validators/document-validators.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1-2,6,8">const old = numbers(before);
+const now = numbers(after);
+const highest = Math.max(0, ...old.map(Number));
+const width = old[0]?.length ?? 1;
+return [
+  ...old.filter((n) =&gt; !now.includes(n)).map((n) =&gt; `${path} dropped ${label(n)}`),
+  ...now
+    .filter((n) =&gt; !old.includes(n) &amp;&amp; Number(n) &lt;= highest)
+    .map(
+      (n) =&gt;
+        `${path} numbers new ${label(n)} below the next free number, ${label(String(highest + 1).padStart(width, '0'))}`,
+    ),
+];</pre>
+</section>
+
+<section id="designs" data-part="4" data-cue="Stage two follows the same rule for designs">
+  <div class="code-file">worker/src/estimates/backlog-planner.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2-3,7">// Designs an earlier direction already built are neither descoped nor planned again (L2-005 AC1).
+const unbuilt = designs.filter((d) =&gt; d.completePercent &lt; 100);
+const deferred = descope(workspace, unbuilt, journeys, thresholdDays);
+const deferredNames = new Set(deferred.map((d) =&gt; d.design));
+const active = designs.filter((d) =&gt; !deferredNames.has(d.design));
+const increments = order(
+  active.filter((d) =&gt; d.completePercent &lt; 100),
+  journeys,
+  thresholdDays,
+);</pre>
+</section>
+
+<section id="red" data-part="5" data-cue="Every slice started with failing acceptance tests.">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Projects/FeatureDirectionTests.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="3,8">var stages = await worker.RunUntilIdleAsync();
+
+Assert.Equal([1, 2, 3, 5, 7, 8, 9, 10], stages);
+var project = await HewnClient.ReadJsonAsync(await owner.GetAsync($"/api/projects/{projectId}"));
+Assert.Equal("Idle", project.GetProperty("status").GetString());
+var done = project.GetProperty("directions")[1];
+Assert.Equal("Complete", done.GetProperty("status").GetString());
+Assert.Equal(["Skipped", "Succeeded", "Succeeded", "Succeeded", "Skipped", "Succeeded", "Skipped", "Succeeded", "Succeeded", "Succeeded", "Succeeded"], Statuses(done));</pre>
+  <div class="result red">✘ 13 failed · FeatureDirectionTests</div>
+  <div class="result green">✓ 133 passed · backend</div>
+</section>
+
+<section id="tests" data-part="5" data-cue="Mission Control has twenty two unit tests.">
+  <div class="cols cols--3">
+    <div class="card"><h3>133 backend</h3><p class="small">13 new, real API</p></div>
+    <div class="card"><h3>120 worker</h3><p class="small">11 new, fake APIs</p></div>
+    <div class="card"><h3>28 e2e</h3><p class="small">Behaviour 12 · a11y 7 · visual 3 · pipeline 6</p></div>
+  </div>
+</section>
+
+<section id="form" data-part="6" data-cue="Here is New direction.">
+  <div class="cols">
+    <figure><img src="screens/feature-form-desktop.png" alt="Feature for a product with the skipped stages struck through"></figure>
+    <figure class="phone"><img src="screens/feature-form-phone.png" alt="The same form on a phone"></figure>
+  </div>
+</section>
+
+<section id="invalid" data-part="6" data-cue="A feature that is too short gets an inline error">
+  <div class="cols">
+    <figure><img src="screens/feature-invalid-desktop.png" alt="An inline error under Feature and an error summary"></figure>
+    <figure><img src="screens/feature-queued-desktop.png" alt="The project page with 1 direction queued"></figure>
+  </div>
+</section>
+
+<section id="clip" data-part="6" data-cue="Here is the real app with one worker." data-clip="clips/feature.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Feature for a product, a feature with no screen change, then every scoped stage to Complete</aside>
+</section>
+
+<section id="complete" data-part="6" data-cue="When it finishes, the project page says what was skipped and why">
+  <div class="cols">
+    <figure><img src="screens/feature-complete-desktop-dark.png" alt="The completed feature direction in dark mode"></figure>
+    <figure class="phone"><img src="screens/feature-complete-phone-dark.png" alt="The completed feature direction on a phone in dark mode"></figure>
+  </div>
+</section>
+
+<section id="diff-l2" data-part="7" data-cue="This is what the feature changed in the product's repository.">
+  <figure><img src="screens/diff-l2.png" alt="docs/specs/L2.md: L2-001 to L2-003 unchanged, L2-004 added"></figure>
+</section>
+
+<section id="diff-journeys" data-part="7" data-cue="The user journeys are the same">
+  <figure><img src="screens/diff-journeys.png" alt="docs/journeys.md: journey 3 unchanged, journey 4 added"></figure>
+</section>
+
+<section id="refusal" data-part="7" data-cue="And this is the recorded decision that skipped designs and design system.">
+  <div class="cols">
+    <figure><img src="screens/decision-ui.png" alt="The recorded decision"></figure>
+    <figure><img src="screens/refusal.png" alt="Stage 5 refused: docs/specs/L2.md dropped L2-002"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="8" data-cue="Journey two is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Only the stages a feature needs</li>
+    <li>A recorded decision skips the design stages</li>
+    <li>Every requirement and journey number is kept</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

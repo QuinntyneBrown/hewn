@@ -21,6 +21,8 @@ export interface LeasedRun {
     stackPreference: string | null;
     repository: string | null;
   };
+  /** What the direction asks for. A feature direction works on the new or changed scope only (L2-005). */
+  direction?: LeasedDirection;
   /** Clone URL of the skill library stage 0 copies from. */
   skillsSource: string;
   /** Designs estimated above this many ideal days are split or descoped (stage 9). */
@@ -28,6 +30,20 @@ export interface LeasedRun {
   /** Implement-and-test iterations before an increment is Blocked (stage 10). */
   maxIterations: number;
 }
+export interface LeasedDirection {
+  kind: 'Product' | 'Feature';
+  /** The product idea, or the feature to add. */
+  idea: string;
+  /** Stage 1's recorded decision for a feature direction; null until it is made. */
+  hasUiChange: boolean | null;
+}
+
+/** Stage 1 of a feature direction: the recorded decision on whether the feature changes the UI (L2-005 AC2). */
+export interface ScopeReport {
+  hasUiChange: boolean;
+  rationale: string;
+}
+
 export type RunOutcome = { outcome: 'Succeeded' } | { outcome: 'Failed'; error: string };
 export class LeaseLostError extends Error {}
 
@@ -124,6 +140,7 @@ export interface HewnApi {
   ): Promise<PullRequest>;
   pullRequestChecks(workerId: string, run: LeasedRun, number: number): Promise<CheckRun[]>;
   reportBacklog(workerId: string, run: LeasedRun, report: BacklogReport): Promise<void>;
+  reportScope(workerId: string, run: LeasedRun, report: ScopeReport): Promise<void>;
   mergePullRequest(workerId: string, run: LeasedRun, idempotencyKey: string, number: number): Promise<string>;
   protectDefaultBranch(workerId: string, run: LeasedRun, idempotencyKey: string, checks: string[]): Promise<void>;
   log(workerId: string, run: LeasedRun, lines: { level: LogLevel; text: string }[]): Promise<void>;

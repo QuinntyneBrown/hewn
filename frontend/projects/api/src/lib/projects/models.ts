@@ -25,6 +25,9 @@ export interface Direction {
   submittedAt: string;
   completedAt: string | null;
   stages: Stage[];
+  /** For a feature direction, stage 1's recorded decision on whether the user interface changes. */
+  hasUiChange?: boolean | null;
+  uiDecision?: string | null;
 }
 
 export interface Project {
@@ -44,6 +47,20 @@ export interface SubmitProductDirectionRequest {
   idea: string;
   stackPreference: string | null;
   repositoryUrl: string | null;
+  budgetUsd: number;
+}
+
+/** A project in the list; a feature for one whose first direction isn't Complete queues behind it. */
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  repository: string | null;
+  status: ProjectStatus;
+  firstDirectionComplete: boolean;
+}
+
+export interface SubmitFeatureDirectionRequest {
+  idea: string;
   budgetUsd: number;
 }
 

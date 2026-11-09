@@ -93,8 +93,33 @@ Journey 1, part 2 built L2-004 AC1-AC3. These choices refine the design above.
   and the Blocked view come with L2-006.
 - **Header pill.** The pill beside the project name follows the current direction, as the mocks do: Running
   while queued or running, Complete when done; a Blocked project always reads Blocked.
-- **Not built yet:** the direction queue for a second direction (AC4, with journey 2), `StagePlan` for
-  feature directions, skipping stages 2 and 3, and the no-approval end-to-end test (part 9).
+- **Not built yet then:** the direction queue and feature directions came with journey 2 (below); the
+  no-approval end-to-end test with part 9.
+
+## Feature directions (journey 2)
+
+Journey 2 built L2-005 AC1-AC4. See [ADR 0008](../../adr/0008-feature-scope-is-a-recorded-decision.md).
+
+- **Submitting.** `POST /api/projects/{id}/directions` `{idea, budgetUsd}` (Owner only; 404 for an unknown
+  project; `idea` 10 to 20,000 characters). The feature direction is created with stages 0, 4 and 6 Skipped,
+  and `DirectionQueued` carries the whole direction so an open project page can show it.
+- **The queue.** A project's active direction is the one Running or Paused, else its oldest Queued one. A
+  feature submitted to a project with an active direction stays Queued; otherwise its first run (stage 1) is
+  queued at once and the project turns Running. When a direction completes, the orchestrator starts the oldest
+  queued direction instead of setting the project Idle (L2-004 AC4).
+- **`StagePlan`.** It is the stage list itself: the next stage is the next Pending one, so Skipped stages are
+  never offered. Stage 1 reports the recorded UI-change decision through `PUT /api/worker/runs/{id}/scope`;
+  without a change, stages 2 and 3 become Skipped before stage 2 would be queued (AC2, L2-054).
+- **The lease** carries `direction: {kind, idea, hasUiChange}`, so every agent session names the feature and
+  works on the new or changed scope.
+- **`ScopeSnapshot`** is the set of numbered documents the worker copies before each document stage's agent runs;
+  stages 2, 5 and 8 fail when one of their numbers or designs is dropped or reused (AC3, L2-014 AC4, L2-017 AC3,
+  L2-010 AC6).
+- **Mission Control.** New direction's Feature for a product lists products from `GET /api/projects`; one whose
+  first direction isn't Complete reads "queues behind the running direction". The project page strikes through
+  Skipped stages, shows "N direction(s) queued" naming the next one, and a "Feature direction complete" callout
+  that says what was skipped and the recorded reason.
+- **Not built yet:** cancelling a direction (journey 6) must also start the next queued direction.
 
 ## No approval steps (L2-028)
 

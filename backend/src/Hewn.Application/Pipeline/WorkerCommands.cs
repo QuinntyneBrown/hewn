@@ -36,6 +36,9 @@ public sealed class RegisterWorkerHandler(IAppDbContext db, TimeProvider clock) 
 
 public sealed record LeasedRunProject(Guid Id, string Name, string Idea, string? StackPreference, string? Repository);
 
+/// <summary>What the run's direction asks for: the product idea, or the feature to add.</summary>
+public sealed record LeasedRunDirection(string Kind, string Idea, bool? HasUiChange);
+
 public sealed record LeasedRunDto(
     Guid RunId,
     long Epoch,
@@ -46,6 +49,7 @@ public sealed record LeasedRunDto(
     int CheckpointStep,
     string? CheckpointSha,
     LeasedRunProject Project,
+    LeasedRunDirection Direction,
     string SkillsSource,
     decimal DescopeThresholdDays,
     int MaxIterations);
@@ -97,6 +101,7 @@ public sealed class LeaseRunHandler(
             run.CheckpointStep,
             run.CheckpointSha,
             new LeasedRunProject(project.Id, project.Name, project.Idea, project.StackPreference, project.Repository),
+            new LeasedRunDirection(direction.Kind.ToString(), direction.Idea, direction.HasUiChange),
             options.Value.SkillsSource,
             options.Value.DescopeThresholdDays,
             options.Value.MaxIterations);

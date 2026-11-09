@@ -15,6 +15,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 01 · 7 | [Build a new product, part seven: estimates and descoping](01-build-a-new-product-part-7/README.md) | ~2:59 | Journey 1, part 7 |
 | 01 · 8 | [Build a new product, part eight: increments](01-build-a-new-product-part-8/README.md) | ~3:06 | Journey 1, part 8 |
 | 01 | [Build a new product](01-build-a-new-product/README.md) | ~7:19 | Journey 1, full |
+| 02 | [Add a feature](02-add-a-feature/README.md) | ~5:07 | Journey 2 |
 
 ## Voice
 

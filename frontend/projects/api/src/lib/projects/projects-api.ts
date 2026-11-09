@@ -2,7 +2,13 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, InjectionToken } from '@angular/core';
 import { catchError, Observable, throwError } from 'rxjs';
 import { toFieldErrors } from '../problems/field-errors';
-import { Project, SubmitProductDirectionRequest, SubmitProductDirectionResult } from './models';
+import {
+  Project,
+  ProjectSummary,
+  SubmitFeatureDirectionRequest,
+  SubmitProductDirectionRequest,
+  SubmitProductDirectionResult,
+} from './models';
 
 /** Projects and directions. Pages depend on PROJECTS_API, never on the implementation. */
 export interface ProjectsApi {
@@ -11,6 +17,12 @@ export interface ProjectsApi {
     request: SubmitProductDirectionRequest,
   ): Observable<SubmitProductDirectionResult>;
   getProject(id: string): Observable<Project>;
+  listProjects(): Observable<ProjectSummary[]>;
+  /** Adds a feature direction (L2-005). Errors with FieldErrorsProblem when a field rule is broken. */
+  submitFeatureDirection(
+    projectId: string,
+    request: SubmitFeatureDirectionRequest,
+  ): Observable<SubmitProductDirectionResult>;
 }
 
 export const PROJECTS_API = new InjectionToken<ProjectsApi>('ProjectsApi');
@@ -29,5 +41,21 @@ export class HttpProjectsApi implements ProjectsApi {
 
   getProject(id: string): Observable<Project> {
     return this.http.get<Project>(`/api/projects/${encodeURIComponent(id)}`);
+  }
+
+  listProjects(): Observable<ProjectSummary[]> {
+    return this.http.get<ProjectSummary[]>('/api/projects');
+  }
+
+  submitFeatureDirection(
+    projectId: string,
+    request: SubmitFeatureDirectionRequest,
+  ): Observable<SubmitProductDirectionResult> {
+    return this.http
+      .post<SubmitProductDirectionResult>(
+        `/api/projects/${encodeURIComponent(projectId)}/directions`,
+        request,
+      )
+      .pipe(catchError((error: unknown) => throwError(() => toFieldErrors(error) ?? error)));
   }
 }

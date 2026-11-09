@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, posix, relative, sep } from 'node:path';
 import { promisify } from 'node:util';
@@ -11,6 +11,8 @@ import {
   linkedAdrs,
   parseDecisions,
   readDecisions,
+  UI_CHANGE_QUESTION,
+  uiChangeDecision,
   validateDecisions,
 } from '../agents/decision-log.ts';
 import type { StageAgent } from '../agents/stage-agent.ts';
@@ -24,8 +26,11 @@ import { mockPath, readManifest, validateMocks } from '../validators/mock-valida
 import { validateEstimates } from '../validators/estimate-validator.ts';
 import { planBacklog, type Backlog } from '../estimates/backlog-planner.ts';
 import {
+  type Baseline,
   type Problems,
   validateBrief,
+  validateKeptDesigns,
+  validateKeptNumbers,
   validateDesignCoverage,
   validateJourneys,
   validateRequirements,
@@ -64,7 +69,8 @@ interface StageDefinition {
   magicPatterns?: 'required' | 'optional';
   /** Runs after the agent and before validation, e.g. exporting designs. */
   afterAgent?(hook: StageHookContext): Promise<void>;
-  validate(directory: string, leased: LeasedRun): Problems | Promise<Problems>;
+  /** `baseline` holds the numbered documents as they were before the agent ran, so later directions keep their numbers. */
+  validate(directory: string, leased: LeasedRun, baseline: Baseline): Problems | Promise<Problems>;
   /** Runs once the stage's commit has landed. */
   afterCommit?(hook: StageHookContext): Promise<void>;
 }
@@ -89,7 +95,7 @@ export const DOCUMENT_STAGES: ReadonlyMap<number, StageDefinition> = new Map([
       commitMessage: 'Design the screens in Magic Patterns',
       magicPatterns: 'required',
       afterAgent: exportMocks,
-      validate: (d) => validateMocks(d),
+      validate: async (d, _l, b) => [...(await validateMocks(d)), ...validateKeptDesigns(d, b)],
     },
   ],
   [
@@ -121,7 +127,11 @@ export const DOCUMENT_STAGES: ReadonlyMap<number, StageDefinition> = new Map([
       outputs: ['docs/specs/L1.md', 'docs/specs/L2.md'],
       task: 'Write docs/specs/L1.md and docs/specs/L2.md from docs/brief.md. Every L2 traces to an L1, every L1 has an L2, every L2 has a Given/When/Then criterion, IDs are unique, and the words should, may and might appear only in quoted text.',
       commitMessage: 'Write the requirements',
-      validate: (d) => validateRequirements(d),
+      validate: (d, _l, b) => [
+        ...validateRequirements(d),
+        ...validateKeptNumbers(d, b, 'docs/specs/L1.md', /^##\s+L1-(\d+)/gm, (n) => `L1-${n}`),
+        ...validateKeptNumbers(d, b, 'docs/specs/L2.md', /^##\s+L2-(\d+)/gm, (n) => `L2-${n}`),
+      ],
     },
   ],
   [
@@ -141,7 +151,10 @@ export const DOCUMENT_STAGES: ReadonlyMap<number, StageDefinition> = new Map([
       outputs: ['docs/journeys.md'],
       task: 'Write docs/journeys.md as numbered journeys ("## {n}. {title}") with **Actor:**, **Mocks:**, **Covers:** (L2 IDs) and **Steps:**. Keep existing journey numbers; new journeys take the next free numbers. Cover every L2 with a user interface criterion.',
       commitMessage: 'Define the user journeys',
-      validate: (d) => validateJourneys(d),
+      validate: (d, _l, b) => [
+        ...validateJourneys(d),
+        ...validateKeptNumbers(d, b, 'docs/journeys.md', /^##\s+(\d+)\./gm, (n) => `journey ${n}`),
+      ],
     },
   ],
   [
@@ -230,7 +243,10 @@ export class DocumentStageExecutor implements StageExecutor {
     // A resumed run starts at this step with a fresh workspace, so check out again.
     if (!existsSync(directory)) await checkOut(context, directory);
     const before = await snapshot(directory);
-    const decisionsBefore = parseDecisions(readDecisions(directory)).length;
+    const decisionsBefore = readDecisions(directory).split(/^## /m).length - 1;
+    const baseline: Baseline = new Map(
+      KEPT.filter((p) => existsSync(join(directory, p))).map((p) => [p, readFileSync(join(directory, p), 'utf8')]),
+    );
 
     await this.agent.run(
       {
@@ -245,12 +261,24 @@ export class DocumentStageExecutor implements StageExecutor {
     );
     await definition.afterAgent?.({ directory, context, magicPatterns, leased });
 
-    for (const { question, answer } of parseDecisions(readDecisions(directory)).slice(decisionsBefore)) {
+    for (const { question, answer } of parseDecisions(
+      readDecisions(directory)
+        .split(/^(?=## )/m)
+        .slice(1 + decisionsBefore)
+        .join(''),
+    )) {
       await context.log('info', `Question: ${question}`);
       await context.log('info', `Answer: ${answer}`);
     }
 
-    const problems = [...(await definition.validate(directory, leased)), ...validateDecisions(directory)];
+    const scope = decidesScope(leased) ? uiChangeDecision(directory, decisionsBefore) : null;
+    const problems = [
+      ...(await definition.validate(directory, leased, baseline)),
+      ...validateDecisions(directory),
+      ...(decidesScope(leased) && !scope
+        ? [`Feature direction: record the answer to "${UI_CHANGE_QUESTION}" in docs/decisions.md`]
+        : []),
+    ];
     if (problems.length > 0) throw new Error(`${leased.stageName} output is invalid: ${problems.join('; ')}`);
 
     const files: CommitFile[] = [];
@@ -268,6 +296,15 @@ export class DocumentStageExecutor implements StageExecutor {
       }
     }
     await context.commit(COMMIT_STEP, definition.commitMessage, files);
+    if (scope) {
+      await context.reportScope(scope);
+      await context.log(
+        'info',
+        scope.hasUiChange
+          ? 'User interface change: stages 2 and 3 run'
+          : 'No user interface change: stages 2 and 3 will be skipped',
+      );
+    }
     await definition.afterCommit?.({ directory, context, magicPatterns, leased });
   }
 }
@@ -313,10 +350,31 @@ async function compareWithMagicPatterns({ directory, context, magicPatterns }: S
   for (const mismatch of tokenMismatches(directory, settings)) await context.log('warn', mismatch);
 }
 
+/** Numbered documents a later direction keeps: requirement IDs, journey numbers and designs (L2-005 AC3, L2-010 AC6). */
+const KEPT = ['docs/specs/L1.md', 'docs/specs/L2.md', 'docs/journeys.md', 'docs/mocks/manifest.json'];
+
+/** Stage 1 of a feature direction decides whether the feature changes the user interface (L2-005 AC2). */
+function decidesScope(leased: LeasedRun): boolean {
+  return leased.stage === 1 && leased.direction?.kind === 'Feature';
+}
+
 function instructionsFor(leased: LeasedRun, definition: StageDefinition): string {
+  const feature =
+    leased.direction?.kind === 'Feature'
+      ? [
+          `Feature direction: ${leased.direction.idea}`,
+          'The product already exists. Work on the new or changed scope only: update the existing documents and designs, keep every existing requirement ID, journey number and design, and give new ones the next free numbers.',
+          ...(decidesScope(leased)
+            ? [
+                `Add the feature to the Core features in docs/brief.md. Then answer "${UI_CHANGE_QUESTION}" in docs/decisions.md with an answer starting Yes or No; with No, Hewn skips Designs and Design system.`,
+              ]
+            : []),
+        ]
+      : [];
   return [
     `You are stage ${leased.stage} (${leased.stageName}) of Hewn's pipeline for "${leased.project.name}".`,
     `Direction: ${leased.project.idea}`,
+    ...feature,
     leased.project.stackPreference ? `Named stack: ${leased.project.stackPreference}` : 'No stack was named.',
     definition.task,
     AUTONOMY,

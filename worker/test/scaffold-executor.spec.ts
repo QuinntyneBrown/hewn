@@ -78,6 +78,7 @@ function context(checkResponses: CheckRun[][]) {
     protectDefaultBranch: async (step, checks) => void calls.push(`protect ${step} ${checks.join(',')}`),
     nextIncrement: async () => null,
     updateIncrement: async () => undefined,
+    reportScope: async () => undefined,
     reportBacklog: async () => {
       throw new Error('reportBacklog is only for stage 9');
     },

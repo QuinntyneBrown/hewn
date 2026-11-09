@@ -45,6 +45,9 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.Property<long?>("CompletedAt")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool?>("HasUiChange")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Idea")
                         .IsRequired()
                         .HasMaxLength(20000)
@@ -69,6 +72,10 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.Property<string>("SubmittedBy")
                         .IsRequired()
                         .HasMaxLength(39)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UiDecision")
+                        .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

@@ -92,5 +92,11 @@ Shown for stage 5. A broken rule fails the run with the offending IDs (L2-014 AC
   contain the named stack.
 - **Scripted agent first.** `ScriptedStageAgent` writes valid documents from the direction and earlier documents
   for tests and the e2e stack. The Claude Agent SDK agent arrives with run isolation (agent-isolation design), so
-  no model runs on the worker host unsandboxed. Deferred with it: `IdAllocator` for feature directions
-  (L2-017 AC3 is followed by the scripted agent but not validated).
+  no model runs on the worker host unsandboxed.
+- **Feature directions (journey 2).** Instead of an `IdAllocator`, the agent numbers new requirements and journeys
+  from the files it reads, and the executor checks the result: before the agent runs it copies `docs/specs/L1.md`,
+  `docs/specs/L2.md` and `docs/journeys.md`, and validation fails with "{file} dropped {ID}" or "{file} numbers new
+  {ID} below the next free number, {ID}" (L2-005 AC3, L2-014 AC4, L2-017 AC3). Stage 1 of a feature adds the feature
+  to the brief's Core features and must answer "Does this feature change the user interface?" in the decision
+  log; the executor reports the answer to the API after the commit ([ADR 0008](../../../adr/0008-feature-scope-is-a-recorded-decision.md)).
+  Stage 9 plans only designs below 100% complete.

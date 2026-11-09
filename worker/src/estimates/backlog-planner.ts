@@ -53,16 +53,38 @@ interface Journey {
 export function planBacklog(workspace: string, thresholdDays: number): Backlog {
   const designs = readEstimatedDesigns(workspace);
   const journeys = readJourneys(workspace);
-  const deferred = descope(workspace, designs, journeys, thresholdDays);
+  // Designs an earlier direction already built are neither descoped nor planned again (L2-005 AC1).
+  const unbuilt = designs.filter((d) => d.completePercent < 100);
+  const deferred = descope(workspace, unbuilt, journeys, thresholdDays);
   const deferredNames = new Set(deferred.map((d) => d.design));
   const active = designs.filter((d) => !deferredNames.has(d.design));
-  const increments = order(active, journeys, thresholdDays);
+  const increments = order(
+    active.filter((d) => d.completePercent < 100),
+    journeys,
+    thresholdDays,
+  );
 
   const backlog: Backlog = { thresholdDays, increments, deferred };
   write(workspace, `${ESTIMATES}/README.md`, readme(active, backlog));
   write(workspace, `${ESTIMATES}/backlog.json`, `${JSON.stringify(backlog, null, 2)}\n`);
   annotateDeferred(workspace, active, deferred);
   return backlog;
+}
+
+/**
+ * L2-025 AC4: recomputes the estimates README (overall estimate and percent complete) from the plan stage 9
+ * committed, so the roadmap stays as planned while increments merge. Without a plan it plans afresh.
+ */
+export function refreshEstimatesReadme(workspace: string, thresholdDays: number): void {
+  const plan = read(workspace, `${ESTIMATES}/backlog.json`);
+  if (plan === null) {
+    planBacklog(workspace, thresholdDays);
+    return;
+  }
+  const backlog = JSON.parse(plan) as Backlog;
+  const deferredNames = new Set(backlog.deferred.map((d) => d.design));
+  const active = readEstimatedDesigns(workspace).filter((d) => !deferredNames.has(d.design));
+  write(workspace, `${ESTIMATES}/README.md`, readme(active, backlog));
 }
 
 function descope(

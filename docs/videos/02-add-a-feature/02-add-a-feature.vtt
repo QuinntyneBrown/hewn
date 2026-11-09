@@ -1,0 +1,247 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:05.66
+This is journey two of Hewn, the software factory: add a feature.
+
+00:00:05.66 --> 00:00:08.99
+Once a product exists, an Owner describes a feature,
+
+00:00:08.99 --> 00:00:12.13
+and Hewn runs only the stages that feature needs.
+
+00:00:12.13 --> 00:00:17.07
+It keeps every requirement number and journey number the product already has.
+
+00:00:17.07 --> 00:00:21.87
+This video walks through how it was built, from the form to the stage plan,
+
+00:00:21.87 --> 00:00:25.20
+the recorded decision, and the documents it changes.
+
+00:00:26.35 --> 00:00:29.98
+Journey two is for Owners whose product is already running.
+
+00:00:29.98 --> 00:00:33.18
+They should not have to start over to add one thing.
+
+00:00:33.18 --> 00:00:38.04
+They pick a product, describe the feature in ten to twenty thousand characters,
+
+00:00:38.04 --> 00:00:39.09
+and set a budget.
+
+00:00:39.44 --> 00:00:44.51
+A feature skips three stages every time: bootstrap, stack and scaffold.
+
+00:00:44.51 --> 00:00:48.58
+The repository, the stack and the solution already exist.
+
+00:00:48.58 --> 00:00:52.22
+If the agent decides the feature changes no screen,
+
+00:00:52.22 --> 00:00:55.22
+designs and design system are skipped too.
+
+00:00:55.22 --> 00:00:59.36
+The other stages run, limited to the new or changed scope.
+
+00:01:00.51 --> 00:01:02.40
+The Hewn API owns the plan.
+
+00:01:02.40 --> 00:01:07.35
+A new endpoint adds a feature direction to a project, with stages zero,
+
+00:01:07.35 --> 00:01:09.38
+four and six already skipped.
+
+00:01:09.38 --> 00:01:13.49
+The lease now tells the worker what the direction asks for,
+
+00:01:13.49 --> 00:01:18.52
+so every agent session names the feature and works only on what changes.
+
+00:01:18.87 --> 00:01:20.90
+One direction runs per project.
+
+00:01:20.90 --> 00:01:25.55
+A feature submitted while another direction is active waits in a queue.
+
+00:01:25.55 --> 00:01:31.06
+When the active direction completes, the orchestrator starts the oldest one waiting,
+
+00:01:31.06 --> 00:01:32.37
+first in, first out.
+
+00:01:33.52 --> 00:01:37.41
+Whether a feature changes the user interface is a judgement,
+
+00:01:37.41 --> 00:01:39.87
+and agents make judgements themselves.
+
+00:01:39.87 --> 00:01:45.18
+Stage one answers one fixed question in the decision log: does this feature change
+
+00:01:45.18 --> 00:01:46.41
+the user interface?
+
+00:01:46.41 --> 00:01:50.95
+The worker checks that the answer is there, commits it with the brief,
+
+00:01:50.95 --> 00:01:52.63
+and reports it to the API.
+
+00:01:52.63 --> 00:01:57.81
+With no change, the API marks designs and design system skipped before stage two
+
+00:01:57.81 --> 00:01:58.59
+would start.
+
+00:01:59.74 --> 00:02:05.23
+Requirement IDs and journey numbers appear in tests, pull request titles and videos,
+
+00:02:05.23 --> 00:02:08.10
+so a later direction must never change them.
+
+00:02:08.10 --> 00:02:12.67
+Before a stage's agent runs, the worker copies the numbered documents.
+
+00:02:12.67 --> 00:02:15.68
+Afterwards it checks that nothing was dropped,
+
+00:02:15.68 --> 00:02:19.79
+and that every new number comes after the highest existing one.
+
+00:02:19.79 --> 00:02:25.02
+An agent that renumbers a requirement fails the stage, and nothing is committed.
+
+00:02:25.37 --> 00:02:31.31
+Stage two follows the same rule for designs: it keeps every design in the manifest,
+
+00:02:31.31 --> 00:02:34.32
+adds new ones, and exports them all again.
+
+00:02:34.32 --> 00:02:37.76
+Stage nine plans only the designs not yet built,
+
+00:02:37.76 --> 00:02:40.77
+so the feature gets its own short backlog.
+
+00:02:41.92 --> 00:02:45.38
+Every slice started with failing acceptance tests.
+
+00:02:45.38 --> 00:02:49.19
+The backend gained thirteen tests against the real API,
+
+00:02:49.19 --> 00:02:51.27
+and all thirteen failed first.
+
+00:02:51.27 --> 00:02:54.66
+The worker gained eleven tests against fake APIs.
+
+00:02:54.66 --> 00:02:58.96
+All green, the backend has one hundred and thirty three tests,
+
+00:02:58.96 --> 00:03:01.59
+and the worker one hundred and twenty.
+
+00:03:01.94 --> 00:03:04.78
+Mission Control has twenty two unit tests.
+
+00:03:04.78 --> 00:03:09.65
+End to end, there are twelve behaviour tests, seven accessibility tests,
+
+00:03:09.65 --> 00:03:12.49
+three visual tests and six pipeline tests.
+
+00:03:12.49 --> 00:03:17.96
+Two of the pipeline tests run a real worker through a product and then a feature.
+
+00:03:19.11 --> 00:03:20.50
+Here is New direction.
+
+00:03:20.50 --> 00:03:24.41
+Choose feature for a product, and the form asks for a product,
+
+00:03:24.41 --> 00:03:25.98
+the feature and a budget.
+
+00:03:25.98 --> 00:03:30.27
+The plan on the right strikes through bootstrap, stack and scaffold.
+
+00:03:30.62 --> 00:03:35.52
+A feature that is too short gets an inline error, the same as a new product.
+
+00:03:35.52 --> 00:03:38.87
+A product that is still running says so in the list,
+
+00:03:38.87 --> 00:03:41.00
+and the feature queues behind it.
+
+00:03:41.00 --> 00:03:45.13
+The project page names the waiting direction and when it starts.
+
+00:03:45.48 --> 00:03:47.90
+Here is the real app with one worker.
+
+00:03:47.90 --> 00:03:51.89
+The Owner chooses feature for a product, picks Northwind Ops,
+
+00:03:51.89 --> 00:03:55.49
+describes a feature with no screen change, and submits.
+
+00:03:55.49 --> 00:03:59.94
+The skipped stages are struck through, and the rest run to complete.
+
+00:04:00.29 --> 00:04:04.40
+When it finishes, the project page says what was skipped and why,
+
+00:04:04.40 --> 00:04:06.30
+quoting the recorded decision.
+
+00:04:06.30 --> 00:04:08.95
+It works in dark mode and on a phone, too.
+
+00:04:10.10 --> 00:04:14.21
+This is what the feature changed in the product's repository.
+
+00:04:14.21 --> 00:04:18.59
+These documents come from the scripted agent the test stack uses,
+
+00:04:18.59 --> 00:04:20.68
+so they are deliberately plain.
+
+00:04:20.68 --> 00:04:26.01
+In the requirements, L2 one to three are untouched, and the feature is L2 four,
+
+00:04:26.01 --> 00:04:27.42
+the next free number.
+
+00:04:27.77 --> 00:04:31.44
+The user journeys are the same: journeys one to three are kept,
+
+00:04:31.44 --> 00:04:33.60
+and the feature becomes journey four.
+
+00:04:33.95 --> 00:04:38.73
+And this is the recorded decision that skipped designs and design system.
+
+00:04:38.73 --> 00:04:42.39
+When an agent renumbers an existing requirement instead,
+
+00:04:42.39 --> 00:04:45.53
+the stage fails with the requirement it dropped.
+
+00:04:46.68 --> 00:04:48.30
+Journey two is complete.
+
+00:04:48.30 --> 00:04:53.62
+A feature runs only the stages it needs, decides for itself whether the screens
+
+00:04:53.62 --> 00:04:56.44
+change, queues behind an active direction,
+
+00:04:56.44 --> 00:04:59.61
+and keeps every number the product already has.
+
+00:04:59.61 --> 00:05:03.51
+Next comes journey three, watching a direction as it runs.

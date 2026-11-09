@@ -1,6 +1,6 @@
 // Acceptance Test
-// Traces to: L2-001, L2-047
-// Description: New direction and the project page have no axe-core violations in their default, invalid and forbidden states
+// Traces to: L2-001, L2-005, L2-047
+// Description: New direction and the project page have no axe-core violations in their default, feature, invalid, forbidden and queued states
 
 import AxeBuilder from '@axe-core/playwright';
 import { expect, signIn, test, uniqueName } from '../../fixtures/test';
@@ -41,5 +41,29 @@ test('Project page after submission', async ({ page, newDirection, project }) =>
   await newDirection.fill({ name, idea });
   await newDirection.submit();
   await expect(project.heading).toHaveText(name);
+  expect(await violations(page)).toEqual([]);
+});
+
+test('New direction, feature for a product', async ({ page, newDirection }) => {
+  await signIn(page, 'quinntynebrown');
+  await newDirection.open();
+  await newDirection.featureMode.click();
+  await newDirection.feature.fill('short');
+  await newDirection.submit();
+  await expect(newDirection.errorFor('feature')).toBeVisible();
+  expect(await violations(page)).toEqual([]);
+});
+
+test('Project page with a feature queued behind the product', async ({ page, newDirection, project }) => {
+  await signIn(page, 'quinntynebrown');
+  await newDirection.open();
+  const name = uniqueName('A11y queue');
+  await newDirection.fill({ name, idea });
+  await newDirection.submit();
+  await expect(project.heading).toHaveText(name);
+  await newDirection.open();
+  await newDirection.fillFeature({ product: name, feature: 'Add a CSV export of the reconciled period.' });
+  await newDirection.submit();
+  await expect(project.queuedCallout).toBeVisible();
   expect(await violations(page)).toEqual([]);
 });

@@ -78,4 +78,7 @@ Designs are made through MCP (L2-010 AC1), recorded with URLs (AC2), exported (A
 - **Validation.** parse5 parse errors fail a file; Chromium (playwright-core) loads each file at 375, 768 and
   1280 px and fails it when `scrollWidth > clientWidth`. All problems are reported together.
 - **Credential.** `HEWN_MAGIC_PATTERNS_URL` and `HEWN_MAGIC_PATTERNS_TOKEN` on the worker until L2-040's store.
-- **Deferred.** L2-010 AC6 (feature directions update existing designs) with journey 2.
+- **Feature directions (L2-010 AC6, journey 2).** Stage 2 runs only when stage 1 recorded a UI change. The agent
+  keeps every existing manifest entry, updating its design in Magic Patterns where the feature changes it, and
+  adds designs for new screens. The export then refreshes every design in the manifest. Validation fails with
+  "docs/mocks/manifest.json dropped the {screen} design" when an entry disappears.
