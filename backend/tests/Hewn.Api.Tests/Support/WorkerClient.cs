@@ -18,6 +18,9 @@ public sealed class WorkerClient
 
     public string WorkerId { get; }
 
+    /// <summary>The worker-token client, for protocol calls the helpers don't wrap.</summary>
+    public HttpClient Http => _http;
+
     public static async Task<WorkerClient> RegisterAsync(HttpClient http, string token, string name = "test-worker", string location = "Local")
     {
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);

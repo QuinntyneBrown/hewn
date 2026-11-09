@@ -44,9 +44,46 @@ public sealed class GitHubAppClient(HttpClient http, IOptions<GitHubAppOptions> 
         return token!.Token;
     }
 
-    public async Task<HttpResponseMessage> SendAsRepositoryAsync(HttpMethod method, string path, string token, CancellationToken cancellationToken)
+    /// <summary>Returns an installation token for an account (to create repositories), or null when the App is not installed there.</summary>
+    public async Task<string?> GetAccountTokenAsync(string owner, CancellationToken cancellationToken)
+    {
+        if (!_options.IsConfigured)
+        {
+            return null;
+        }
+
+        var jwt = CreateAppJwt();
+        Installation? installation = null;
+        foreach (var path in new[] { $"orgs/{owner}/installation", $"users/{owner}/installation" })
+        {
+            using var lookup = Request(HttpMethod.Get, path, jwt);
+            using var response = await http.SendAsync(lookup, cancellationToken);
+            if (response.IsSuccessStatusCode)
+            {
+                installation = await response.Content.ReadFromJsonAsync<Installation>(cancellationToken);
+                break;
+            }
+        }
+
+        if (installation is null)
+        {
+            return null;
+        }
+
+        using var exchange = Request(HttpMethod.Post, $"app/installations/{installation.Id}/access_tokens", jwt);
+        using var tokenResponse = await http.SendAsync(exchange, cancellationToken);
+        tokenResponse.EnsureSuccessStatusCode();
+        return (await tokenResponse.Content.ReadFromJsonAsync<AccessToken>(cancellationToken))!.Token;
+    }
+
+    public async Task<HttpResponseMessage> SendAsRepositoryAsync(HttpMethod method, string path, string token, CancellationToken cancellationToken, object? body = null)
     {
         using var request = Request(method, path, token);
+        if (body is not null)
+        {
+            request.Content = JsonContent.Create(body);
+        }
+
         return await http.SendAsync(request, cancellationToken);
     }
 

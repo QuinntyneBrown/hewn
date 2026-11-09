@@ -5,6 +5,7 @@ using Hewn.Application.Events;
 using Hewn.Domain;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Hewn.Application.Pipeline;
 
@@ -44,7 +45,8 @@ public sealed record LeasedRunDto(
     string StageName,
     int CheckpointStep,
     string? CheckpointSha,
-    LeasedRunProject Project);
+    LeasedRunProject Project,
+    string SkillsSource);
 
 public sealed record LeaseRunCommand(string WorkerId) : IRequest<LeasedRunDto?>;
 
@@ -52,7 +54,9 @@ public sealed class LeaseRunHandler(
     IAppDbContext db,
     LeaseService leases,
     PipelineOrchestrator pipeline,
+    RepositoryProvisioner provisioner,
     EventAppender events,
+    IOptions<PipelineOptions> options,
     TimeProvider clock) : IRequestHandler<LeaseRunCommand, LeasedRunDto?>
 {
     public async Task<LeasedRunDto?> Handle(LeaseRunCommand command, CancellationToken cancellationToken)
@@ -68,6 +72,14 @@ public sealed class LeaseRunHandler(
 
         var project = await db.Projects.Include(p => p.Directions).SingleAsync(p => p.Id == run.ProjectId, cancellationToken);
         var direction = project.Directions.Single(d => d.Id == run.DirectionId);
+        if (run.Stage == 0 && !await ProvisionAsync(run, project, direction, cancellationToken))
+        {
+            worker.Seen(clock.GetUtcNow(), WorkerStatus.Idle);
+            await db.SaveChangesAsync(cancellationToken);
+            await events.PublishAsync(cancellationToken);
+            return null;
+        }
+
         await pipeline.OnLeasedAsync(run, direction, cancellationToken);
         worker.Seen(clock.GetUtcNow(), WorkerStatus.Busy);
         await db.SaveChangesAsync(cancellationToken);
@@ -82,7 +94,29 @@ public sealed class LeaseRunHandler(
             Stages.Names[run.Stage],
             run.CheckpointStep,
             run.CheckpointSha,
-            new LeasedRunProject(project.Id, project.Name, project.Idea, project.StackPreference, project.Repository));
+            new LeasedRunProject(project.Id, project.Name, project.Idea, project.StackPreference, project.Repository),
+            options.Value.SkillsSource);
+    }
+
+    /// <summary>Creates or adopts the repository; on refusal fails the run with GitHub's reason and returns false.</summary>
+    private async Task<bool> ProvisionAsync(Run run, Project project, Direction direction, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (await provisioner.EnsureRepositoryAsync(project, cancellationToken))
+            {
+                await pipeline.OnRepositoryAttachedAsync(project, cancellationToken);
+            }
+
+            return true;
+        }
+        catch (GitHubException e)
+        {
+            await pipeline.OnLeasedAsync(run, direction, cancellationToken);
+            run.Fail(SecretRedactor.Redact(e.Message), clock.GetUtcNow());
+            await pipeline.OnFailedAsync(run, project, direction, cancellationToken);
+            return false;
+        }
     }
 }
 

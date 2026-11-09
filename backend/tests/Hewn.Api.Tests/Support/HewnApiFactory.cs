@@ -23,6 +23,8 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
 
     public const string WorkerToken = "test-worker-token-0123456789";
 
+    public const string SkillsSource = "https://github.com/QuinntyneBrown/greenlit.git";
+
     public FakeGitHub GitHub { get; } = new();
 
     /// <summary>Test clock; advance it to expire leases.</summary>
@@ -45,6 +47,8 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Testing");
         builder.UseSetting("Hewn:Auth:DevSignIn", "true");
         builder.UseSetting("HEWN_WORKER_TOKEN", WorkerToken);
+        builder.UseSetting("HEWN_GITHUB_OWNER", "hewn-builds");
+        builder.UseSetting("HEWN_SKILLS_SOURCE", SkillsSource);
         builder.UseSetting("Hewn:Leases:ReaperEnabled", "false");
         builder.UseSetting("ConnectionStrings:Hewn", "DataSource=:memory:");
         foreach (var (key, value) in _settings)
@@ -58,6 +62,7 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
             services.AddDbContext<HewnDbContext>(o => o.UseSqlite(_connection, s => s.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
             services.RemoveAll<IGitHubRepositoryProbe>();
             services.AddSingleton<IGitHubRepositoryProbe>(GitHub);
+            services.AddSingleton<IGitHubRepositories>(GitHub);
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Clock);
         });

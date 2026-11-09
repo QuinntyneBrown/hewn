@@ -1,4 +1,5 @@
 using Hewn.Application.Abstractions;
+using Hewn.Application.Pipeline;
 using Hewn.Infrastructure.Fakes;
 using Hewn.Infrastructure.GitHub;
 using Hewn.Infrastructure.Persistence;
@@ -22,14 +23,26 @@ public static class DependencyInjection
             o.PrivateKey = configuration["HEWN_GITHUB_APP_PRIVATE_KEY"];
         });
 
+        services.Configure<PipelineOptions>(o =>
+        {
+            o.GitHubOwner = configuration["HEWN_GITHUB_OWNER"];
+            if (!string.IsNullOrWhiteSpace(configuration["HEWN_SKILLS_SOURCE"]))
+            {
+                o.SkillsSource = configuration["HEWN_SKILLS_SOURCE"]!;
+            }
+        });
+
         if (configuration.GetValue<bool>("Hewn:Fakes:Enabled"))
         {
-            services.AddSingleton<IGitHubRepositoryProbe, ScriptedGitHubRepositoryProbe>();
+            services.AddSingleton<InMemoryGitHub>(sp => new InMemoryGitHub(configuration));
+            services.AddSingleton<IGitHubRepositoryProbe>(sp => sp.GetRequiredService<InMemoryGitHub>());
+            services.AddSingleton<IGitHubRepositories>(sp => sp.GetRequiredService<InMemoryGitHub>());
         }
         else
         {
             services.AddHttpClient<GitHubAppClient>();
             services.AddScoped<IGitHubRepositoryProbe, GitHubAppRepositoryProbe>();
+            services.AddScoped<IGitHubRepositories, GitHubAppRepositories>();
         }
 
         return services;

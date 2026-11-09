@@ -78,6 +78,41 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.ToTable("directions", (string)null);
                 });
 
+            modelBuilder.Entity("Hewn.Domain.GitHubMutation", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Result")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.ToTable("github_mutations", (string)null);
+                });
+
             modelBuilder.Entity("Hewn.Domain.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -192,6 +227,39 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.HasIndex("Status", "CreatedAt");
 
                     b.ToTable("runs", (string)null);
+                });
+
+            modelBuilder.Entity("Hewn.Domain.RunLogLine", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("At")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Level")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("Sequence")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RunId", "Sequence")
+                        .IsUnique();
+
+                    b.ToTable("run_log_lines", (string)null);
                 });
 
             modelBuilder.Entity("Hewn.Domain.StoredEvent", b =>

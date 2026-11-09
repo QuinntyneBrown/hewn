@@ -18,6 +18,10 @@ public sealed class HewnDbContext(DbContextOptions<HewnDbContext> options) : DbC
 
     public DbSet<Worker> Workers => Set<Worker>();
 
+    public DbSet<RunLogLine> RunLogLines => Set<RunLogLine>();
+
+    public DbSet<GitHubMutation> GitHubMutations => Set<GitHubMutation>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(HewnDbContext).Assembly);

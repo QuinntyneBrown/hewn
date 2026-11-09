@@ -1,0 +1,153 @@
+using System.Security.Cryptography;
+using System.Text;
+using Hewn.Application.Abstractions;
+using Microsoft.Extensions.Configuration;
+
+namespace Hewn.Infrastructure.Fakes;
+
+/// <summary>
+/// Deterministic GitHub for tests and end-to-end runs (Hewn:Fakes:Enabled). Repositories live in memory.
+/// Repositories listed under Hewn:Fakes:GitHub:NoAccess or :NotFound answer the probe that way; every other
+/// repository is writable, and a repository the probe accepts but nobody created is created on first use.
+/// </summary>
+public class InMemoryGitHub(IConfiguration? configuration) : IGitHubRepositoryProbe, IGitHubRepositories
+{
+    private readonly Dictionary<string, RepositoryAccess> _access = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, FakeRepository> _repositories = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Lock _lock = new();
+
+    public void SetAccess(string owner, string name, RepositoryAccess access)
+    {
+        lock (_lock)
+        {
+            _access[$"{owner}/{name}"] = access;
+        }
+    }
+
+    public FakeRepository? Repository(string owner, string name)
+    {
+        lock (_lock)
+        {
+            return _repositories.GetValueOrDefault($"{owner}/{name}");
+        }
+    }
+
+    /// <summary>Adds a repository with an initial commit holding <paramref name="files"/>.</summary>
+    public FakeRepository Seed(string owner, string name, IReadOnlyList<string> topics, Dictionary<string, string>? files = null, bool isPrivate = true)
+    {
+        lock (_lock)
+        {
+            var repository = new FakeRepository(owner, name, isPrivate, [.. topics]);
+            repository.Commit("Initial commit", (files ?? new() { ["README.md"] = $"# {name}\n" })
+                .Select(f => new RepositoryFile(f.Key, Encoding.UTF8.GetBytes(f.Value))).ToList());
+            _repositories[$"{owner}/{name}"] = repository;
+            return repository;
+        }
+    }
+
+    public Task<RepositoryAccess> ProbeAsync(string owner, string name, CancellationToken cancellationToken)
+    {
+        var fullName = $"{owner}/{name}";
+        lock (_lock)
+        {
+            if (_access.TryGetValue(fullName, out var access))
+            {
+                return Task.FromResult(access);
+            }
+        }
+
+        if (Listed("NoAccess", fullName))
+        {
+            return Task.FromResult(RepositoryAccess.NoAccess);
+        }
+
+        return Task.FromResult(Listed("NotFound", fullName) ? RepositoryAccess.NotFound : RepositoryAccess.Writable);
+    }
+
+    public Task<GitHubRepositoryInfo?> FindAsync(string owner, string name, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            return Task.FromResult(_repositories.GetValueOrDefault($"{owner}/{name}")?.Info);
+        }
+    }
+
+    public Task<GitHubRepositoryInfo> CreatePrivateAsync(string owner, string name, string description, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            if (_repositories.ContainsKey($"{owner}/{name}"))
+            {
+                throw new GitHubException($"Repository creation failed: name already exists on this account ({owner}/{name}).");
+            }
+
+            return Task.FromResult(Seed(owner, name, ["hewn"]).Info);
+        }
+    }
+
+    public Task<IReadOnlyList<string>> ListDirectoriesAsync(string owner, string name, string path, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            var prefix = path.TrimEnd('/') + "/";
+            IReadOnlyList<string> names = Existing(owner, name).Files.Keys
+                .Where(p => p.StartsWith(prefix, StringComparison.Ordinal) && p.IndexOf('/', prefix.Length) > 0)
+                .Select(p => p[prefix.Length..p.IndexOf('/', prefix.Length)])
+                .Distinct()
+                .Order(StringComparer.Ordinal)
+                .ToList();
+            return Task.FromResult(names);
+        }
+    }
+
+    public Task<string> CommitAsync(string owner, string name, string message, IReadOnlyList<RepositoryFile> files, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            return Task.FromResult(Existing(owner, name).Commit(message, files));
+        }
+    }
+
+    // A repository the probe allowed (an Owner's existing repository) exists on first use.
+    private FakeRepository Existing(string owner, string name) =>
+        _repositories.GetValueOrDefault($"{owner}/{name}") ?? Seed(owner, name, []);
+
+    private bool Listed(string key, string fullName) =>
+        (configuration?[$"Hewn:Fakes:GitHub:{key}"] ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Contains(fullName, StringComparer.OrdinalIgnoreCase);
+}
+
+public sealed class FakeRepository(string owner, string name, bool isPrivate, List<string> topics)
+{
+    public string Owner { get; } = owner;
+
+    public string Name { get; } = name;
+
+    public bool IsPrivate { get; } = isPrivate;
+
+    public List<string> Topics { get; } = topics;
+
+    public Dictionary<string, byte[]> Files { get; } = new(StringComparer.Ordinal);
+
+    public List<FakeCommit> Commits { get; } = [];
+
+    public GitHubRepositoryInfo Info => new(Owner, Name, IsPrivate, [.. Topics], Commits.Count);
+
+    public string? Read(string path) => Files.TryGetValue(path, out var bytes) ? Encoding.UTF8.GetString(bytes) : null;
+
+    internal string Commit(string message, IReadOnlyList<RepositoryFile> files)
+    {
+        foreach (var file in files)
+        {
+            Files[file.Path] = file.Content;
+        }
+
+        var parent = Commits.Count == 0 ? string.Empty : Commits[^1].Sha;
+        var sha = Convert.ToHexStringLower(SHA1.HashData(Encoding.UTF8.GetBytes($"{parent}\n{message}\n{string.Join('\n', files.Select(f => f.Path))}\n{Commits.Count}")));
+        Commits.Add(new FakeCommit(sha, message, [.. files.Select(f => f.Path)]));
+        return sha;
+    }
+}
+
+public sealed record FakeCommit(string Sha, string Message, IReadOnlyList<string> Paths);
