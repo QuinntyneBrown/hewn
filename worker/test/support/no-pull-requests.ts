@@ -7,8 +7,16 @@ const unexpected = (name: string) => async (): Promise<never> => {
 /** The pull request half of a RunContext, for stages that must never call it. */
 export const noPullRequests: Pick<
   RunContext,
-  'openPullRequest' | 'pullRequestChecks' | 'mergePullRequest' | 'protectDefaultBranch' | 'reportBacklog'
+  | 'openPullRequest'
+  | 'pullRequestChecks'
+  | 'mergePullRequest'
+  | 'protectDefaultBranch'
+  | 'reportBacklog'
+  | 'nextIncrement'
+  | 'updateIncrement'
 > = {
+  nextIncrement: unexpected('nextIncrement'),
+  updateIncrement: unexpected('updateIncrement'),
   reportBacklog: unexpected('reportBacklog'),
   openPullRequest: unexpected('openPullRequest'),
   pullRequestChecks: unexpected('pullRequestChecks'),

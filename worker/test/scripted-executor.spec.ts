@@ -21,6 +21,7 @@ const run = (stage: number): LeasedRun => ({
   project: { id: 'p', name: 'Ledgerline', idea: 'x', stackPreference: null, repository: null },
   skillsSource: 'unused',
   descopeThresholdDays: 3,
+  maxIterations: 10,
 });
 
 describe('ScriptedStageExecutor', () => {

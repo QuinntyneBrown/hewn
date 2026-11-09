@@ -56,11 +56,12 @@ const run = (skillsSource: string): LeasedRun => ({
   project: { id: 'p', name: 'Kiln Booking', idea: 'x', stackPreference: null, repository: 'hewn-builds/kiln-booking' },
   skillsSource,
   descopeThresholdDays: 3,
+  maxIterations: 10,
 });
 
 interface Recorded {
   logs: string[];
-  commits: { step: number; message: string; files: Map<string, string> }[];
+  commits: { step: number | string; message: string; files: Map<string, string> }[];
 }
 
 function context(existing: Record<string, string[]> = {}): RunContext & Recorded {

@@ -4,6 +4,8 @@ import type { StageAgent, StageAgentTask } from './stage-agent.ts';
 import { appendDecision } from './decision-log.ts';
 import { colorsIn } from '../validators/colors.ts';
 import { designFolders } from '../estimates/backlog-planner.ts';
+import { scriptedImplementation } from '../increments/scripted-gate.ts';
+import { execFileSync } from 'node:child_process';
 
 /**
  * A deterministic stand-in for the model, used by tests and the e2e stack. It writes documents that pass each
@@ -199,6 +201,39 @@ export class ScriptedStageAgent implements StageAgent {
         );
         return;
       }
+      case 10: {
+        const increment = task.increment;
+        if (!increment) throw new Error('Stage 10 sessions name their increment.');
+        const test = `e2e/tests/${increment.slug}.spec.ts`;
+        switch (increment.phase) {
+          case 'tests':
+            write(
+              test,
+              `// Acceptance Test\n// Traces to: ${increment.l2Ids.join(', ')}\n// Description: ${increment.title}\n\nimport { expect, test } from '@playwright/test';\n\ntest('${increment.title.replace(/'/g, "\\'")}', async () => {\n  expect(true).toBe(true);\n});\n`,
+            );
+            return;
+          case 'implement':
+            write(
+              scriptedImplementation(test),
+              `/** ${increment.title} (${increment.l2Ids.join(', ')}). */\nexport const ${camel(increment.slug)} = true;\n`,
+            );
+            if (!(increment.failing ?? []).length) {
+              decide(
+                `How should ${increment.title} be built?`,
+                'As one feature folder in the frontend, behind the existing shell.',
+                'The smallest change that makes the acceptance tests pass.',
+              );
+            }
+            return;
+          case 'video':
+            recordStillVideo(directory, increment.slug, increment.title);
+            return;
+          case 'resolve':
+            // The branch's version already holds both sides' intent in the scripted repository.
+            return;
+        }
+        return;
+      }
       default:
         throw new Error(`The scripted agent has no script for stage ${run.stage}.`);
     }
@@ -236,4 +271,40 @@ function slug(text: string): string {
 
 function pad(n: number): string {
   return String(n).padStart(3, '0');
+}
+
+function camel(slug: string): string {
+  return slug.replace(/-([a-z0-9])/g, (_m, c: string) => c.toUpperCase()).replace(/^[0-9]/, (d) => `n${d}`);
+}
+
+/** A 3-second 1080p title card with captions, standing in for a walkthrough; ffmpeg must be installed. */
+function recordStillVideo(directory: string, slug: string, title: string): void {
+  const folder = join(directory, 'docs/videos', slug);
+  mkdirSync(folder, { recursive: true });
+  writeFileSync(join(folder, 'script.md'), `# ${title}\n\nThe journey, step by step, in the running app.\n`);
+  writeFileSync(join(folder, `${slug}.vtt`), `WEBVTT\n\n00:00.000 --> 00:03.000\n${title}\n`);
+  try {
+    execFileSync(
+      'ffmpeg',
+      [
+        '-y',
+        '-v',
+        'error',
+        '-f',
+        'lavfi',
+        '-i',
+        'color=c=0xf5f3ef:s=1920x1080:d=3',
+        '-pix_fmt',
+        'yuv420p',
+        join(folder, `${slug}.mp4`),
+      ],
+      { stdio: 'ignore' },
+    );
+  } catch (error) {
+    throw new Error(
+      (error as NodeJS.ErrnoException).code === 'ENOENT'
+        ? 'ffmpeg is not installed'
+        : 'ffmpeg could not record the video',
+    );
+  }
 }

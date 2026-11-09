@@ -4,6 +4,8 @@ import { ScriptedStageAgent } from './agents/scripted-agent.ts';
 import { BootstrapStageExecutor } from './executors/bootstrap-executor.ts';
 import { DOCUMENT_STAGES, DocumentStageExecutor } from './executors/document-executor.ts';
 import { ScaffoldStageExecutor } from './executors/scaffold-executor.ts';
+import { IncrementStageExecutor } from './executors/increment-executor.ts';
+import { ScriptedTestGate } from './increments/scripted-gate.ts';
 import { dotnetAngularTemplate } from './scaffold/dotnet-angular-template.ts';
 import { ScriptedStageExecutor } from './executors/scripted-executor.ts';
 import { StageRouter, type StageExecutor } from './executors/stage-executor.ts';
@@ -57,6 +59,16 @@ const documents = new DocumentStageExecutor(new ScriptedStageAgent(), magicPatte
 const scaffold = new ScaffoldStageExecutor([dotnetAngularTemplate], {
   pollMs: Number(process.env.HEWN_CHECK_POLL_MS ?? 30_000),
 });
+// HEWN_GATE=scripted pairs the scripted agent with a stand-in gate in the e2e stack; otherwise the stack's own commands run.
+const gateName = process.env.HEWN_GATE ?? 'stack';
+if (gateName !== 'stack' && gateName !== 'scripted') {
+  console.error('HEWN_GATE must be "stack" or "scripted".');
+  process.exit(2);
+}
+const increments = new IncrementStageExecutor(new ScriptedStageAgent(), [dotnetAngularTemplate], {
+  pollMs: Number(process.env.HEWN_CHECK_POLL_MS ?? 30_000),
+  ...(gateName === 'scripted' ? { gate: () => new ScriptedTestGate() } : {}),
+});
 const executor: StageExecutor =
   executorName === 'scripted'
     ? scripted
@@ -64,6 +76,7 @@ const executor: StageExecutor =
         new Map<number, StageExecutor>([
           [0, new BootstrapStageExecutor()],
           [6, scaffold],
+          [10, increments],
           ...[...DOCUMENT_STAGES.keys()].map((stage) => [stage, documents] as const),
         ]),
         scripted,

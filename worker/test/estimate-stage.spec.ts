@@ -53,6 +53,7 @@ const leased: LeasedRun = {
   project: { id: 'p', name: 'Kiln', idea: 'Kiln slots.', stackPreference: null, repository: 'hewn-builds/kiln' },
   skillsSource: 'unused',
   descopeThresholdDays: 3,
+  maxIterations: 10,
 };
 
 function context() {

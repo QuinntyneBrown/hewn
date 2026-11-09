@@ -10,6 +10,26 @@ export const dotnetAngularTemplate: StackTemplate = {
   id: 'dotnet-angular',
   matches: (decision) => /\.NET\b/i.test(decision) && /\bAngular\b/i.test(decision),
   checks: ['backend', 'frontend', 'e2e'],
+  gate: [
+    { suite: 'backend', cwd: 'backend', command: 'dotnet', args: ['test'] },
+    {
+      suite: 'frontend lint',
+      cwd: 'frontend',
+      command: 'npm',
+      args: ['run', 'lint'],
+      before: [{ command: 'npm', args: ['install', '--no-audit', '--no-fund'] }],
+    },
+    { suite: 'frontend unit', cwd: 'frontend', command: 'npm', args: ['test'] },
+    {
+      suite: 'e2e',
+      cwd: 'e2e',
+      command: 'npx',
+      args: ['playwright', 'test'],
+      acceptance: true,
+      stripPrefix: 'e2e/',
+      before: [{ command: 'npm', args: ['install', '--no-audit', '--no-fund'] }],
+    },
+  ],
   generate(projectName) {
     const P = pascal(projectName);
     const k = kebab(projectName);

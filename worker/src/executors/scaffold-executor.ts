@@ -115,7 +115,8 @@ export class ScaffoldStageExecutor implements StageExecutor {
   }
 }
 
-function stackDecision(directory: string): string {
+/** The Decision section of stage 4's stack ADR. */
+export function stackDecision(directory: string): string {
   const path = join(directory, 'docs/adr/0001-stack.md');
   if (!existsSync(path)) throw new Error('docs/adr/0001-stack.md does not exist; stage 4 chooses the stack');
   const text = readFileSync(path, 'utf8');

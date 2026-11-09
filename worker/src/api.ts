@@ -25,6 +25,8 @@ export interface LeasedRun {
   skillsSource: string;
   /** Designs estimated above this many ideal days are split or descoped (stage 9). */
   descopeThresholdDays: number;
+  /** Implement-and-test iterations before an increment is Blocked (stage 10). */
+  maxIterations: number;
 }
 export type RunOutcome = { outcome: 'Succeeded' } | { outcome: 'Failed'; error: string };
 export class LeaseLostError extends Error {}
@@ -47,6 +49,40 @@ export interface BacklogReport {
     dependsOn: number[];
   }[];
   deferred: { title: string; l2Ids: string[]; estimateDays: number; reason: string }[];
+}
+
+/** A backlog increment, as Hewn offers it to stage 10. */
+export interface Increment {
+  number: number;
+  title: string;
+  journey: number;
+  l2Ids: string[];
+  estimateDays: number;
+  dependsOn: number[];
+  status: string;
+  iterations: number;
+}
+
+/** Stage 10's progress on one increment (L2-021 AC3, L2-022 AC2, L2-025). */
+export interface IncrementUpdate {
+  status: 'InProgress' | 'Blocked' | 'Merged';
+  redFailing?: number;
+  redPassing?: number;
+  iterations?: number;
+  failingTests?: string[];
+  pullRequestNumber?: number;
+}
+
+/** A refusal from the API, with the ProblemDetails code clients branch on. */
+export class HewnApiError extends Error {
+  readonly status: number;
+  readonly code: string | null;
+
+  constructor(message: string, status: number, code: string | null) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
 }
 
 export interface PullRequest {
@@ -78,6 +114,7 @@ export interface HewnApi {
     message: string,
     files: CommitFile[],
     branch?: string,
+    options?: CommitOptions,
   ): Promise<string>;
   openPullRequest(
     workerId: string,
@@ -90,4 +127,12 @@ export interface HewnApi {
   mergePullRequest(workerId: string, run: LeasedRun, idempotencyKey: string, number: number): Promise<string>;
   protectDefaultBranch(workerId: string, run: LeasedRun, idempotencyKey: string, checks: string[]): Promise<void>;
   log(workerId: string, run: LeasedRun, lines: { level: LogLevel; text: string }[]): Promise<void>;
+  /** Stage 10: the next runnable increment, or null when none is left. */
+  nextIncrement(workerId: string, run: LeasedRun): Promise<Increment | null>;
+  updateIncrement(workerId: string, run: LeasedRun, number: number, update: IncrementUpdate): Promise<void>;
+}
+
+export interface CommitOptions {
+  /** Put the commit on the default branch's head and move the branch there; `files` must be all the branch changes. */
+  rebase?: boolean;
 }
