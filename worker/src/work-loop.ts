@@ -176,8 +176,9 @@ export class WorkLoop {
   }
 
   /**
-   * Holds the control poll open while the run executes. Cancel (L2-029 AC3) aborts the step in progress at once;
-   * the API has already ended the run, so nothing more is reported.
+   * Holds the control poll open while the run executes. Cancel (L2-029 AC3) and Halt (Stop all workers, AC4) abort
+   * the step in progress at once; the API has already taken the run back, so nothing more is reported. A halted run
+   * keeps its checkpoint and is leased again after Start workers.
    */
   private async listenForControl(workerId: string, run: LeasedRun, lease: AbortController): Promise<void> {
     while (!lease.signal.aborted) {
@@ -186,6 +187,11 @@ export class WorkLoop {
         if (control === 'Cancel') {
           this.log('Cancelled; the run stops now', { runId: run.runId });
           lease.abort(new Error('Cancelled by an Owner.'));
+          return;
+        }
+        if (control === 'Halt') {
+          this.log('Halted: all workers stopped; the run waits at its checkpoint', { runId: run.runId });
+          lease.abort(new Error('All workers stopped by an Owner.'));
           return;
         }
       } catch (error) {

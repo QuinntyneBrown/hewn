@@ -7,6 +7,7 @@ import {
   type ModelCallReport,
   type ModelCallVerdict,
   type ReportedDecision,
+  type RunControl,
   type RunOutcome,
   type WorkerRegistration,
 } from '../../src/api.ts';
@@ -39,13 +40,28 @@ export class FakeHewnApi implements HewnApi {
   readonly commits: { runId: string; idempotencyKey: string; message: string; paths: string[] }[] = [];
   private readonly queue: LeasedRun[] = [];
   private nextId = 1;
-  private readonly cancelled = new Set<string>();
+  private readonly controls = new Map<string, RunControl>();
   private readonly held = new Map<string, () => void>();
 
   /** Cancels the runs whose control poll is held now, as an Owner's Cancel does (L2-029 AC3). */
   cancel(): void {
+    this.answerHeld('Cancel');
+  }
+
+  /** Halts the runs whose control poll is held now, as Stop all workers does (L2-029 AC4). */
+  halt(): void {
+    this.answerHeld('Halt');
+  }
+
+  /** Queues a run again, as Start workers does for a halted run. */
+  requeue(run: LeasedRun): void {
+    this.controls.delete(run.runId);
+    this.queue.push(run);
+  }
+
+  private answerHeld(control: RunControl): void {
     for (const [runId, wake] of this.held) {
-      this.cancelled.add(runId);
+      this.controls.set(runId, control);
       wake();
     }
   }
@@ -100,9 +116,14 @@ export class FakeHewnApi implements HewnApi {
     if (fault === 'down') throw new Error('connect ECONNREFUSED');
   }
 
-  async control(_workerId: string, run: LeasedRun, waitSeconds: number, signal: AbortSignal): Promise<'Cancel' | null> {
+  async control(
+    _workerId: string,
+    run: LeasedRun,
+    waitSeconds: number,
+    signal: AbortSignal,
+  ): Promise<RunControl | null> {
     this.record({ method: 'control', runId: run.runId });
-    if (this.cancelled.has(run.runId)) return 'Cancel';
+    if (this.controls.has(run.runId)) return this.controls.get(run.runId)!;
     await new Promise<void>((resolve) => {
       const done = () => {
         clearTimeout(timer);
@@ -114,7 +135,7 @@ export class FakeHewnApi implements HewnApi {
       signal.addEventListener('abort', done, { once: true });
       this.held.set(run.runId, done);
     });
-    return this.cancelled.has(run.runId) ? 'Cancel' : null;
+    return this.controls.get(run.runId) ?? null;
   }
 
   async startStep(_workerId: string, run: LeasedRun, step: number, name: string): Promise<void> {
