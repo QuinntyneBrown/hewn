@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   signal,
@@ -10,7 +11,8 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { FieldErrorsProblem, PROJECTS_API } from '@hewn/api';
+import { FieldErrorsProblem, PROJECTS_API, RateLimitedProblem } from '@hewn/api';
+import { rateLimitedText } from './rate-limited';
 import {
   describedBy,
   ErrorSummaryComponent,
@@ -92,6 +94,12 @@ export class NewDirectionPage {
   protected readonly submitting = signal(false);
   protected readonly problem = signal<FieldErrorsProblem | null>(null);
   protected readonly failure = signal<string | null>(null);
+  /**
+   * L2-043 AC4: more than the allowed directions in a minute. The form keeps everything typed, and Start direction
+   * stays disabled until the Owner can submit again.
+   */
+  protected readonly rateLimited = signal<string | null>(null);
+  private rateLimitTimer: ReturnType<typeof setTimeout> | undefined;
 
   private readonly values = toSignal(this.form.valueChanges, {
     initialValue: this.form.getRawValue(),
@@ -160,8 +168,12 @@ export class NewDirectionPage {
     group?.querySelector<HTMLElement>(`[data-mode="${mode}"]`)?.focus();
   }
 
+  constructor() {
+    inject(DestroyRef).onDestroy(() => clearTimeout(this.rateLimitTimer));
+  }
+
   protected submit(): void {
-    if (this.submitting()) {
+    if (this.submitting() || this.rateLimited()) {
       return;
     }
     const v = this.form.getRawValue();
@@ -174,6 +186,7 @@ export class NewDirectionPage {
     }
     this.submitting.set(true);
     this.failure.set(null);
+    this.rateLimited.set(null);
     const request =
       this.mode() === 'feature'
         ? this.api.submitFeatureDirection(v.product, { idea: v.feature, budgetUsd })
@@ -196,6 +209,15 @@ export class NewDirectionPage {
           return;
         }
         this.problem.set(null);
+        if (error instanceof RateLimitedProblem) {
+          this.rateLimited.set(rateLimitedText(error.limit, error.retryAfterSeconds));
+          clearTimeout(this.rateLimitTimer);
+          this.rateLimitTimer = setTimeout(
+            () => this.rateLimited.set(null),
+            error.retryAfterSeconds * 1000,
+          );
+          return;
+        }
         const status = (error as { status?: number }).status;
         this.failure.set(
           `The API returned ${status || 'no response'}. Nothing was created; your text is kept below. Try again.`,

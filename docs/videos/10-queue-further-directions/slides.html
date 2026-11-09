@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 10 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="10" data-video-title="Queue further directions" data-parts="Introduction|Goal|Queue|Next|Limit|Page|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 10</div>
+  <h1>Queue further directions</h1>
+  <p class="lead">Submit the next idea now; Hewn holds it in line and starts it by itself.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video walks through how it was built">
+  <figure><img src="screens/queued-desktop.png" alt="Ledgerline's project page with the callout 2 directions queued, naming the CSV export as the next to start"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="An Owner submits further directions on a project while one is running.">
+  <div class="cols cols--wide">
+    <figure><img src="screens/next-desktop.png" alt="The CSV export feature direction running on Ledgerline, with 1 direction queued"></figure>
+    <ul class="bullets small">
+      <li>First in, first out</li>
+      <li>One active direction per project</li>
+      <li>Projects run in parallel</li>
+      <li>Over 10 a minute: 429</li>
+    </ul>
+  </div>
+</section>
+
+<section id="flow" data-part="2" data-cue="Most of the queue has been there since journey two.">
+  <figure class="diagram"><img src="../../detailed-designs/pipeline/run-direction/diagrams/sequence-queue-second-direction.png" alt="Sequence diagram: a second direction submitted while one runs is stored Queued, and the orchestrator starts it when the first completes"></figure>
+</section>
+
+<section id="queue" data-part="2" data-cue="Adding a feature direction checks for an active direction first">
+  <div class="code-file">backend/src/Hewn.Domain/Project.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,2,14">    public Direction? ActiveDirection =&gt;
+        _directions.Where(d =&gt; d.IsActive).OrderBy(d =&gt; d.Status == DirectionStatus.Queued).ThenBy(d =&gt; d.SubmittedAt).FirstOrDefault();
+
+    /// &lt;summary&gt;True once the first product direction is Complete; a feature submitted earlier waits behind it.&lt;/summary&gt;
+    public bool FirstDirectionComplete =&gt;
+        _directions.OrderBy(d =&gt; d.SubmittedAt).FirstOrDefault()?.Status == DirectionStatus.Complete;
+
+    /// &lt;summary&gt;
+    /// Adds a feature direction (L2-005). Returns true when it can start now; false when another direction is
+    /// active and it waits in the queue, first in, first out (L2-004 AC4).
+    /// &lt;/summary&gt;
+    public bool AddFeatureDirection(string idea, decimal budgetUsd, string submittedBy, DateTimeOffset now, out Direction direction)
+    {
+        var startsNow = ActiveDirection is null;
+        direction = Direction.Feature(Id, idea, budgetUsd, submittedBy, now);
+        _directions.Add(direction);</pre>
+</section>
+
+<section id="next" data-part="3" data-cue="When a direction completes, the orchestrator looks for">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/PipelineOrchestrator.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="2,5,9">        await AppendDirectionAsync(direction, cancellationToken);
+        if (project.NextQueuedDirection(direction.Id) is { } queued)
+        {
+            // One direction per project, first in, first out (L2-004 AC4, L2-005 AC4).
+            await StartDirectionAsync(project, queued, cancellationToken);
+            return;
+        }
+
+        project.ChangeStatus(ProjectStatus.Idle);
+        await AppendProjectAsync(project, cancellationToken);
+    }</pre>
+</section>
+
+<section id="limit" data-part="4" data-cue="A pipeline behavior runs ahead of validation">
+  <div class="code-file">backend/src/Hewn.Application/Projects/DirectionSubmissionLimit.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="3,4,8,10,12">            var now = clock.GetUtcNow();
+            var since = now - Window;
+            var recent = await db.Directions.AsNoTracking()
+                .Where(d =&gt; d.SubmittedBy == user.Login &amp;&amp; d.SubmittedAt &gt; since)
+                .OrderBy(d =&gt; d.SubmittedAt)
+                .Select(d =&gt; d.SubmittedAt)
+                .ToListAsync(cancellationToken);
+            if (recent.Count &gt;= perMinute)
+            {
+                var opens = recent[recent.Count - perMinute] + Window;
+                var wait = Math.Max(1, (int)Math.Ceiling((opens - now).TotalSeconds));
+                throw new TooManyRequestsException(
+                    "rate_limited",
+                    $"You’ve submitted {recent.Count} directions in the last minute. You can submit again in {wait} seconds.",
+                    perMinute,
+                    wait);</pre>
+</section>
+
+<section id="problem" data-part="4" data-cue="The API turns that into a 429">
+  <div class="code-file">backend/src/Hewn.Api/Errors/ApplicationExceptionHandler.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="3,6,8">    private static ProblemDetails TooMany(HttpContext httpContext, TooManyRequestsException e)
+    {
+        httpContext.Response.Headers.RetryAfter = e.RetryAfterSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return new ProblemDetails
+        {
+            Status = StatusCodes.Status429TooManyRequests,
+            Title = e.Message,
+            Extensions = { ["code"] = e.Code, ["limit"] = e.Limit, ["retryAfterSeconds"] = e.RetryAfterSeconds },
+        };
+    }</pre>
+</section>
+
+<section id="order" data-part="4" data-cue="Counting stored directions, instead of using">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Projects/DirectionRateLimitTests.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="3,6,9,10">        }
+
+        _factory.Clock.Advance(TimeSpan.FromSeconds(49));
+        var early = await SubmitProductAsync(owner, "Project 11");
+        Assert.Equal(HttpStatusCode.TooManyRequests, early.StatusCode);
+        Assert.Equal(1, (await HewnClient.ReadJsonAsync(early)).GetProperty("retryAfterSeconds").GetInt32());
+
+        _factory.Clock.Advance(TimeSpan.FromSeconds(1));
+        Assert.Equal(HttpStatusCode.Created, (await SubmitProductAsync(owner, "Project 11")).StatusCode);
+        // Project 2 is still inside the minute, and Project 11 just joined it.
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await SubmitProductAsync(owner, "Project 12")).StatusCode);</pre>
+  <div class="result green">✓ the minute slides with the test clock</div>
+</section>
+
+<section id="page" data-part="5" data-cue="the API library turns the 429 into a rate limited problem">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/new-direction/new-direction.page.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="7-15">      error: (error: unknown) =&gt; {
+        this.submitting.set(false);
+        if (error instanceof FieldErrorsProblem) {
+          this.problem.set(error);
+          return;
+        }
+        this.problem.set(null);
+        if (error instanceof RateLimitedProblem) {
+          this.rateLimited.set(rateLimitedText(error.limit, error.retryAfterSeconds));
+          clearTimeout(this.rateLimitTimer);
+          this.rateLimitTimer = setTimeout(
+            () =&gt; this.rateLimited.set(null),
+            error.retryAfterSeconds * 1000,
+          );
+          return;</pre>
+</section>
+
+<section id="callout" data-part="5" data-cue="the page shows the warning callout from the mock">
+  <figure><img src="screens/rate-limited-desktop.png" alt="New direction with the warning callout Too many directions in a minute above the form, which keeps the name and idea"></figure>
+</section>
+
+<section id="themes" data-part="5" data-cue="It works in dark mode and on a phone.">
+  <div class="cols">
+    <figure><img src="screens/rate-limited-desktop-dark.png" alt="The rate-limited state in dark mode"></figure>
+    <figure class="phone"><img src="screens/rate-limited-phone.png" alt="The rate-limited state on a phone"></figure>
+  </div>
+</section>
+
+<section id="red" data-part="6" data-cue="Each slice began with its tests failing.">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Projects/DirectionRateLimitTests.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="2,4,6,9,10">        _factory.Clock.Advance(TimeSpan.FromSeconds(2));
+        var refused = await SubmitFeatureAsync(owner, projectId);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, refused.StatusCode);
+        var problem = await HewnClient.ReadJsonAsync(refused);
+        Assert.Equal("rate_limited", problem.GetProperty("code").GetString());
+        Assert.Equal(10, problem.GetProperty("limit").GetInt32());
+        // The first submission leaves the minute 60 - 20 = 40 seconds from now.
+        Assert.Equal(40, problem.GetProperty("retryAfterSeconds").GetInt32());
+        Assert.Equal(TimeSpan.FromSeconds(40), refused.Headers.RetryAfter?.Delta);
+        Assert.Equal(10, await DirectionCountAsync());
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await SubmitProductAsync(owner, "Project 11")).StatusCode);</pre>
+  <div class="result red">✘ 3 failed · DirectionRateLimitTests</div>
+</section>
+
+<section id="tests" data-part="6" data-cue="All green, the backend has">
+  <div class="cols cols--3">
+    <div class="card"><h3>198 backend</h3><p class="small">4 new, real API</p></div>
+    <div class="card"><h3>140 worker · 97 frontend</h3><p class="small">4 new frontend</p></div>
+    <div class="card"><h3>56 e2e</h3><p class="small">3 new, one with a real worker</p></div>
+  </div>
+</section>
+
+<section id="e2e" data-part="6" data-cue="One submits two feature directions on a running project">
+  <div class="code-file">e2e/tests/pipeline/queue-further-directions.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="12-14">    const changes = (await project.events())
+      .filter((e) =&gt; e.type === 'DirectionChanged')
+      .map((e) =&gt; `${String(e.payload['directionId']).slice(0, 8)}:${String(e.payload['status'])}`);
+    const directions = (
+      (await (await page.request.get(`/api/projects/${project.projectIdFromUrl()}`)).json()) as {
+        directions: { id: string; kind: string; idea: string }[];
+      }
+    ).directions;
+    const [product, first, second] = directions.map((d) =&gt; d.id.slice(0, 8));
+    expect(directions.map((d) =&gt; d.kind)).toEqual(['Product', 'Feature', 'Feature']);
+    // First in, first out: each starts only after the one before it is Complete.
+    expect(changes.indexOf(`${product}:Complete`)).toBeLessThan(changes.indexOf(`${first}:Running`));
+    expect(changes.indexOf(`${first}:Complete`)).toBeLessThan(changes.indexOf(`${second}:Running`));
+    expect(changes.indexOf(`${first}:Complete`)).toBeGreaterThan(-1);
+  });</pre>
+  <div class="result green">✓ 2 directions queued · each started by itself, first in, first out</div>
+</section>
+
+<section id="clip-queue" data-part="7" data-cue="Here is Ledgerline, with its product direction running." data-clip="clips/queue.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Two feature directions submitted on a running product; the queued callout counts them</aside>
+</section>
+
+<section id="queued-themes" data-part="7" data-cue="The queue reads the same in dark mode and on a phone.">
+  <div class="cols">
+    <figure><img src="screens/queued-desktop-dark.png" alt="2 directions queued in dark mode"></figure>
+    <figure class="phone"><img src="screens/queued-phone.png" alt="2 directions queued on a phone"></figure>
+  </div>
+</section>
+
+<section id="clip-next" data-part="7" data-cue="The product direction reaches its last stages." data-clip="clips/next.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">The product direction completes and the CSV export starts by itself</aside>
+</section>
+
+<section id="limited" data-part="7" data-cue="And here is a second Owner">
+  <div class="cols">
+    <figure><img src="screens/rate-limited-desktop.png" alt="The eleventh direction refused with when to submit again"></figure>
+    <figure class="phone"><img src="screens/rate-limited-phone.png" alt="The same on a phone"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="8" data-cue="Journey ten is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Queued first in, first out, one per project</li>
+    <li>The next starts by itself</li>
+    <li>10 a minute; then 429 with when to retry</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

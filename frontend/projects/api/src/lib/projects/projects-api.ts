@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, InjectionToken } from '@angular/core';
 import { catchError, Observable, throwError } from 'rxjs';
 import { toFieldErrors } from '../problems/field-errors';
+import { toRateLimited } from '../problems/rate-limited';
 import {
   LogLine,
   Project,
@@ -63,7 +64,11 @@ export class HttpProjectsApi implements ProjectsApi {
   ): Observable<SubmitProductDirectionResult> {
     return this.http
       .post<SubmitProductDirectionResult>('/api/projects', request)
-      .pipe(catchError((error: unknown) => throwError(() => toFieldErrors(error) ?? error)));
+      .pipe(
+        catchError((error: unknown) =>
+          throwError(() => toFieldErrors(error) ?? toRateLimited(error) ?? error),
+        ),
+      );
   }
 
   getProject(id: string): Observable<Project> {
@@ -83,7 +88,11 @@ export class HttpProjectsApi implements ProjectsApi {
         `/api/projects/${encodeURIComponent(projectId)}/directions`,
         request,
       )
-      .pipe(catchError((error: unknown) => throwError(() => toFieldErrors(error) ?? error)));
+      .pipe(
+        catchError((error: unknown) =>
+          throwError(() => toFieldErrors(error) ?? toRateLimited(error) ?? error),
+        ),
+      );
   }
 
   getStageDetail(projectId: string, directionId: string, stage: number): Observable<StageDetail> {

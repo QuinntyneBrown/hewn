@@ -12,7 +12,10 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddMediatR(c => c.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
+        // L2-043: the submission limit runs before validation (ADR 0015).
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(Projects.DirectionSubmissionLimit<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        services.AddSingleton<Projects.DirectionSubmissionGate>();
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly, includeInternalTypes: true);
         services.AddScoped<EventAppender>();
         services.AddScoped<PipelineOrchestrator>();

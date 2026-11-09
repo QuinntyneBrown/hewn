@@ -1,0 +1,232 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:06.02
+This is journey ten of Hewn, the software factory: queue further directions.
+
+00:00:06.02 --> 00:00:09.47
+An Owner doesn't stop having ideas while a direction runs.
+
+00:00:09.47 --> 00:00:13.10
+Hewn should take the next one straight away, hold it in line,
+
+00:00:13.10 --> 00:00:18.04
+and start it by itself when its turn comes, without letting any one Owner flood it.
+
+00:00:18.04 --> 00:00:22.91
+This video walks through how it was built: the queue, starting the next direction,
+
+00:00:22.91 --> 00:00:25.65
+the submission limit, the page, and the tests.
+
+00:00:26.80 --> 00:00:31.51
+An Owner submits further directions on a project while one is running.
+
+00:00:31.51 --> 00:00:36.28
+They queue, first in, first out, with one active direction per project,
+
+00:00:36.28 --> 00:00:38.90
+and different projects run in parallel.
+
+00:00:38.90 --> 00:00:44.42
+An Owner who submits more than ten directions in a minute gets a 429 for the extra
+
+00:00:44.42 --> 00:00:47.11
+ones, saying when they can submit again.
+
+00:00:48.26 --> 00:00:51.42
+Most of the queue has been there since journey two.
+
+00:00:51.42 --> 00:00:55.57
+A project's active direction is the one running, paused or blocked,
+
+00:00:55.57 --> 00:00:57.43
+or else its oldest queued one.
+
+00:00:57.43 --> 00:01:02.58
+Adding a feature direction checks for an active direction first: when there is one,
+
+00:01:02.58 --> 00:01:07.36
+the new direction stays queued behind it, and the handler only starts it when
+
+00:01:07.36 --> 00:01:08.78
+nothing else is active.
+
+00:01:09.93 --> 00:01:15.09
+When a direction completes, the orchestrator looks for the oldest queued direction
+
+00:01:15.09 --> 00:01:18.24
+other than the one that just ended, and starts it,
+
+00:01:18.24 --> 00:01:20.51
+instead of setting the project Idle.
+
+00:01:20.51 --> 00:01:24.73
+Cancelling a direction has taken the same path since journey seven.
+
+00:01:24.73 --> 00:01:27.37
+Each project has its own active direction,
+
+00:01:27.37 --> 00:01:30.45
+so a queue on one project never holds up another.
+
+00:01:31.60 --> 00:01:34.19
+What's new in this journey is the limit.
+
+00:01:34.19 --> 00:01:38.90
+A pipeline behavior runs ahead of validation for the two submit commands.
+
+00:01:38.90 --> 00:01:44.00
+Holding a lock for this Owner, it counts the directions they stored in the last
+
+00:01:44.00 --> 00:01:46.39
+sixty seconds, by the injected clock.
+
+00:01:46.39 --> 00:01:51.61
+At the limit, it works out when the oldest of them leaves the minute, and throws.
+
+00:01:51.96 --> 00:01:56.78
+The API turns that into a 429 with the code rate limited, the limit,
+
+00:01:56.78 --> 00:02:00.04
+the seconds to wait, and a Retry After header.
+
+00:02:00.04 --> 00:02:05.14
+Counting stored directions, instead of using ASP.NET's own rate limiter,
+
+00:02:05.14 --> 00:02:11.02
+means a restart doesn't forget the count, refused and invalid requests don't use up
+
+00:02:11.02 --> 00:02:14.21
+the minute, and the tests can move the clock.
+
+00:02:14.21 --> 00:02:16.48
+ADR fifteen records that choice.
+
+00:02:17.63 --> 00:02:22.77
+On New direction, the API library turns the 429 into a rate limited problem,
+
+00:02:22.77 --> 00:02:28.04
+and the page shows the warning callout from the mock: too many directions in a
+
+00:02:28.04 --> 00:02:32.71
+minute, how many were submitted, and when the Owner can submit again.
+
+00:02:32.71 --> 00:02:38.12
+Nothing they typed is lost, and Start direction stays disabled until the wait is
+
+00:02:38.12 --> 00:02:38.46
+over.
+
+00:02:38.46 --> 00:02:40.97
+It works in dark mode and on a phone.
+
+00:02:42.12 --> 00:02:44.76
+Each slice began with its tests failing.
+
+00:02:44.76 --> 00:02:50.26
+The backend gained four tests against the real API: the eleventh submission refused
+
+00:02:50.26 --> 00:02:55.43
+with the right wait and nothing created, the minute sliding on the test clock,
+
+00:02:55.43 --> 00:03:00.53
+refused and invalid requests not counting with each Owner limited separately,
+
+00:03:00.53 --> 00:03:03.11
+and the setting that changes the limit.
+
+00:03:03.11 --> 00:03:08.01
+The frontend gained four unit tests for the 429 and the callout's wording.
+
+00:03:08.36 --> 00:03:12.50
+All green, the backend has one hundred and ninety eight tests,
+
+00:03:12.50 --> 00:03:17.51
+the worker one hundred and forty, and the frontend ninety seven unit tests.
+
+00:03:17.51 --> 00:03:20.05
+End to end, there are three new tests.
+
+00:03:20.05 --> 00:03:25.46
+One submits two feature directions on a running project and watches each start by
+
+00:03:25.46 --> 00:03:28.67
+itself, first in, first out, with a real worker.
+
+00:03:28.67 --> 00:03:33.48
+Another fills a second Owner's minute and checks the rate limited state,
+
+00:03:33.48 --> 00:03:36.95
+and a visual test compares that state with its mock.
+
+00:03:36.95 --> 00:03:39.89
+There are fifty six end to end tests in all.
+
+00:03:41.04 --> 00:03:44.46
+Here is Ledgerline, with its product direction running.
+
+00:03:44.46 --> 00:03:49.36
+The Owner opens New direction, chooses Feature for a product, picks Ledgerline,
+
+00:03:49.36 --> 00:03:52.53
+and adds a CSV export to the reconciliation report.
+
+00:03:52.53 --> 00:03:57.38
+Back on the project page, a callout says one direction is queued and names it.
+
+00:03:57.38 --> 00:04:02.22
+Then a second feature, emailing the reviewer a summary when a month is closed.
+
+00:04:02.22 --> 00:04:07.07
+Now two directions are queued, and the callout names the one that starts next.
+
+00:04:07.42 --> 00:04:10.53
+The queue reads the same in dark mode and on a phone.
+
+00:04:10.88 --> 00:04:13.93
+The product direction reaches its last stages.
+
+00:04:13.93 --> 00:04:18.97
+When it is Complete, the CSV export starts by itself as a feature direction,
+
+00:04:18.97 --> 00:04:24.01
+with its skipped stages struck through, and the callout counts the one still
+
+00:04:24.01 --> 00:04:24.54
+waiting.
+
+00:04:24.54 --> 00:04:26.13
+Nobody pressed anything.
+
+00:04:26.48 --> 00:04:31.37
+And here is a second Owner who has already submitted ten directions in the last
+
+00:04:31.37 --> 00:04:31.80
+minute.
+
+00:04:31.80 --> 00:04:36.07
+The eleventh is refused: the callout says when they can submit again,
+
+00:04:36.07 --> 00:04:38.60
+and the form keeps everything they typed.
+
+00:04:39.75 --> 00:04:41.31
+Journey ten is complete.
+
+00:04:41.31 --> 00:04:46.42
+Further directions queue first in, first out, one active direction per project,
+
+00:04:46.42 --> 00:04:51.22
+and each starts by itself when the one before it is Complete or Cancelled.
+
+00:04:51.22 --> 00:04:56.66
+An Owner can submit ten directions a minute; the extra ones get a 429 saying when to
+
+00:04:56.66 --> 00:04:59.64
+try again, and the page keeps what they typed.
+
+00:04:59.64 --> 00:05:03.08
+Reordering or removing queued directions comes later.
+
+00:05:03.08 --> 00:05:05.80
+Next comes journey eleven: find a project.

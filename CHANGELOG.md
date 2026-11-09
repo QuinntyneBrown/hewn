@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Queue further directions (journey 10, L2-004 AC4, L2-005 AC4, L2-043 AC4): directions submitted on a project with
+  an active one queue and start by themselves, first in, first out, now proven end to end with real workers. An
+  Owner may submit at most 10 directions in any minute (`Hewn:RateLimit:DirectionsPerMinute`); the extra requests
+  get 429 `rate_limited` with `retryAfterSeconds` and `Retry-After`, and create nothing (ADR 0015). New direction
+  shows "Too many directions in a minute" with when the Owner can submit again, keeping what was typed.
+
 - Recover a failed stage (journey 9, L2-006): a failed run is retried automatically up to 3 times, after 30 s, 2 min
   and 10 min (`Hewn:Retry:BackoffSeconds`); each retry is a new run that is not leased before its time, and the
   project page counts down to it. When the third retry fails, the stage is Failed, the direction and project
