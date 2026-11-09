@@ -91,9 +91,10 @@ Journey 11 built L2-002 AC1–AC4 and L2-045 AC1–AC2.
   A filter with no projects shows "No {status} projects" with Show all projects, adapted from the Archived
   no-results mock.
 - **Performance (L2-045).** `npm run test:perf` builds Mission Control for production, serves it gzipped with
-  the e2e API behind it, and runs Lighthouse's mobile profile on `/projects`: LCP measured 2.15 s with 125 KB of
-  initial JavaScript, gzipped. The build merges chunks (`NG_BUILD_OPTIMIZE_CHUNKS=1`), so the initial
-  JavaScript is one file; Angular preloads only ten, and the eleventh was found a round trip late. Start-up loads
-  the user and the config together, and Projects is the one eager route. The load test ensures 50 projects
+  the e2e API behind it, and runs Lighthouse's mobile profile on `/projects`: LCP measured 1.44 s with 146
+  projects and 125 KB of initial JavaScript, gzipped. The build merges chunks (`NG_BUILD_OPTIMIZE_CHUNKS=1`), so
+  the initial JavaScript is one file; Angular preloads only ten, and the eleventh was found a round trip late.
+  Start-up loads the user and the config together, Projects is the one eager route, and when the app opens on
+  `/projects`, `ProjectsPrefetch` requests the list alongside the session instead of after routing. The load test ensures 50 projects
   and 20 workers, then sends 1,000 reads from 20 clients: p95 13 ms overall, 15 ms for the list.
 

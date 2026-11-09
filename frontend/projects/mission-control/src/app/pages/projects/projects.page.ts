@@ -9,9 +9,10 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { PROJECT_EVENTS, PROJECTS_API, ProjectSummary } from '@hewn/api';
+import { PROJECT_EVENTS, ProjectSummary } from '@hewn/api';
 import { IconComponent, StatusComponent } from '@hewn/components';
 import { map } from 'rxjs';
+import { ProjectsPrefetch } from '../../core/projects-prefetch';
 import { SessionStore } from '../../core/session-store';
 import {
   byActivity,
@@ -36,7 +37,7 @@ const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' 
   templateUrl: './projects.page.html',
 })
 export class ProjectsPage {
-  private readonly api = inject(PROJECTS_API);
+  private readonly projects = inject(ProjectsPrefetch);
   private readonly live = inject(PROJECT_EVENTS);
   protected readonly session = inject(SessionStore);
 
@@ -80,7 +81,7 @@ export class ProjectsPage {
 
   protected load(): void {
     this.failure.set(null);
-    this.api.listProjects().subscribe({
+    this.projects.list().subscribe({
       next: (rows) => this.all.set(byActivity(rows)),
       error: (error: unknown) => {
         const status =

@@ -19,6 +19,7 @@ import {
   SignalRProjectEvents,
 } from '@hewn/api';
 import { routes } from './app.routes';
+import { ProjectsPrefetch } from './core/projects-prefetch';
 import { SessionStore } from './core/session-store';
 
 /** Composition root: every API contract is bound to its implementation here. */
@@ -34,6 +35,10 @@ export const appConfig: ApplicationConfig = {
     { provide: SETTINGS_API, useClass: HttpSettingsApi },
     { provide: WORKERS_API, useClass: HttpWorkersApi },
     { provide: PROJECT_EVENTS, useClass: SignalRProjectEvents },
-    provideAppInitializer(() => inject(SessionStore).load()),
+    provideAppInitializer(() => {
+      // Opening on Projects, its list is requested alongside the session, not after it (L2-045 AC1).
+      if (location.pathname === '/projects') inject(ProjectsPrefetch).start();
+      return inject(SessionStore).load();
+    }),
   ],
 };
