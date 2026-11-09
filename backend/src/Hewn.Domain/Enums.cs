@@ -19,6 +19,8 @@ public enum DirectionStatus
     Paused,
     Complete,
     Cancelled,
+    /// <summary>A stage failed after its automatic retries (L2-006 AC2); waits for an Owner's Retry stage.</summary>
+    Blocked,
 }
 
 public enum StageStatus

@@ -41,7 +41,10 @@ public sealed record DirectionDto(
     DateTimeOffset? CancelledAt,
     int? StoppedWithinSeconds,
     bool AwaitingStop,
-    IReadOnlyList<int> LabelledPullRequests);
+    IReadOnlyList<int> LabelledPullRequests,
+    string? FailureReason,
+    int? FailedStage,
+    DateTimeOffset? FailedAt);
 
 public sealed record ProjectDto(
     Guid Id,
@@ -133,5 +136,8 @@ public sealed class GetProjectHandler(IAppDbContext db) : IRequestHandler<GetPro
         d.CancelledAt,
         d.StoppedWithinSeconds,
         d.AwaitingStop,
-        d.LabelledPullRequestNumbers);
+        d.LabelledPullRequestNumbers,
+        d.FailureReason,
+        d.FailedStage,
+        d.FailedAt);
 }

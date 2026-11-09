@@ -54,6 +54,12 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
     public Task<RaiseAndResumeResult> RaiseAndResume(Guid projectId, Guid directionId, RaiseAndResumeRequest request, CancellationToken cancellationToken) =>
         mediator.Send(new RaiseAndResumeCommand(projectId, directionId, request.BudgetUsd, request.CurrentBudgetUsd), cancellationToken);
 
+    /// <summary>L2-006 AC3: a Blocked direction's failed stage runs again from its start with its retry counter reset.</summary>
+    [HttpPost("{projectId:guid}/directions/{directionId:guid}/retry-stage")]
+    [Authorize(Policy = AuthSetup.OwnerPolicy)]
+    public Task<DirectionControlResult> RetryStage(Guid projectId, Guid directionId, CancellationToken cancellationToken) =>
+        mediator.Send(new RetryStageCommand(projectId, directionId), cancellationToken);
+
     /// <summary>L2-029 AC1: the step in progress finishes, then the direction is Paused and nothing new starts.</summary>
     [HttpPost("{projectId:guid}/directions/{directionId:guid}/pause")]
     [Authorize(Policy = AuthSetup.OwnerPolicy)]

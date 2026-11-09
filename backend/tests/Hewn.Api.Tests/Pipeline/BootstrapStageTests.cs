@@ -100,9 +100,15 @@ public sealed class BootstrapStageTests : IAsyncLifetime
         var (owner, projectId) = await SubmitAsync();
         var worker = await _factory.RegisterWorkerAsync();
 
+        // Each attempt fails as it is leased; the stage blocks once the three retries (L2-006 AC1) have failed too.
         Assert.Null(await worker.LeaseAsync());
+        foreach (var wait in new[] { 30, 120, 600 })
+        {
+            _factory.Clock.Advance(TimeSpan.FromSeconds(wait));
+            Assert.Null(await worker.LeaseAsync());
+        }
 
-        var stored = await _factory.QueryAsync(db => db.Runs.SingleAsync(r => r.ProjectId == projectId));
+        var stored = await _factory.QueryAsync(db => db.Runs.OrderByDescending(r => r.Attempt).FirstAsync(r => r.ProjectId == projectId));
         Assert.Equal("hewn-builds/kiln-booking-co already exists and was not created by Hewn.", stored.Error);
         var project = await HewnClient.ReadJsonAsync(await owner.GetAsync($"/api/projects/{projectId}"));
         Assert.Equal("Blocked", project.GetProperty("status").GetString());
