@@ -9,11 +9,12 @@ namespace Hewn.Application.Events;
 /// Adds a client-visible event with the next per-project sequence number to the current unit of work.
 /// The unique (project, sequence) index rejects a concurrent writer that picked the same number.
 /// </summary>
-public sealed class EventAppender(IAppDbContext db, TimeProvider clock)
+public sealed class EventAppender(IAppDbContext db, IProjectEventPublisher publisher, TimeProvider clock)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     private readonly Dictionary<Guid, long> _pending = [];
+    private readonly List<StoredEvent> _unpublished = [];
 
     public async Task<StoredEvent> AppendAsync(Guid projectId, string type, object payload, CancellationToken cancellationToken)
     {
@@ -27,6 +28,20 @@ public sealed class EventAppender(IAppDbContext db, TimeProvider clock)
         var stored = new StoredEvent(projectId, last + 1, type, JsonSerializer.Serialize(payload, Json), clock.GetUtcNow());
         _pending[projectId] = stored.Sequence;
         db.Events.Add(stored);
+        _unpublished.Add(stored);
         return stored;
+    }
+
+    /// <summary>Broadcasts the events appended in this unit of work. Call after SaveChangesAsync succeeds.</summary>
+    public async Task PublishAsync(CancellationToken cancellationToken)
+    {
+        if (_unpublished.Count == 0)
+        {
+            return;
+        }
+
+        var events = _unpublished.ToList();
+        _unpublished.Clear();
+        await publisher.PublishAsync(events, cancellationToken);
     }
 }

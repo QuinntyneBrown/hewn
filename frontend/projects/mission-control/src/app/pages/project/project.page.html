@@ -1,4 +1,4 @@
-@if (project.value(); as p) {
+@if (project(); as p) {
   <header class="phead">
     <div class="phead__top">
       <nav aria-label="Breadcrumb">
@@ -12,7 +12,7 @@
         <div class="truncate">
           <div class="cluster cluster--lg">
             <h1>{{ p.name }}</h1>
-            <hw-status [status]="p.status" />
+            <hw-status [status]="status()" />
           </div>
           <div class="phead__meta">
             @if (direction(); as d) {
@@ -34,7 +34,11 @@
         <ol class="stages" aria-label="Pipeline">
           @for (stage of d.stages; track stage.number) {
             <li>
-              <span class="stage" [attr.data-stage]="stage.number" [attr.data-status]="stage.status"
+              <span
+                class="stage"
+                [attr.data-stage]="stage.number"
+                [attr.data-status]="stage.status"
+                [attr.aria-current]="stage.status === 'Running' ? 'step' : null"
                 ><span class="stage__row"
                   ><svg hw-status-icon [status]="stage.status"></svg
                   ><span class="stage__n">{{ stage.number }}</span
@@ -47,10 +51,24 @@
             </li>
           }
         </ol>
+        @if (d.status === 'Complete') {
+          <section aria-label="Direction result">
+            <div class="callout callout--ok" role="status">
+              <svg hw-icon name="checkCircle" class="icon--lg"></svg>
+              <div>
+                <p class="callout__title">Direction complete</p>
+                <p class="callout__body">All {{ d.stages.length }} stages succeeded.</p>
+              </div>
+            </div>
+          </section>
+        }
       }
     </div>
   </div>
-} @else if (project.error()) {
+  <div class="visually-hidden" role="status" aria-live="polite" data-testid="pipeline-announcer">
+    {{ announcement() }}
+  </div>
+} @else if (loaded().state === 'missing') {
   <div class="pad" style="padding-block: var(--space-16)">
     <div class="stack" style="align-items: flex-start">
       <h1>Project not found</h1>

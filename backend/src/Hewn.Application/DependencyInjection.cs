@@ -1,6 +1,7 @@
 using FluentValidation;
 using Hewn.Application.Common;
 using Hewn.Application.Events;
+using Hewn.Application.Pipeline;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,6 +15,8 @@ public static class DependencyInjection
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly, includeInternalTypes: true);
         services.AddScoped<EventAppender>();
+        services.AddScoped<PipelineOrchestrator>();
+        services.AddScoped<LeaseService>();
         services.AddSingleton(TimeProvider.System);
         return services;
     }

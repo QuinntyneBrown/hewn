@@ -1,4 +1,5 @@
 using Hewn.Application.Common;
+using Hewn.Application.Pipeline;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,6 +14,7 @@ public sealed class ApplicationExceptionHandler(IProblemDetailsService problems)
         {
             FieldValidationException e => FieldProblem(e),
             NotFoundException => new ProblemDetails { Status = StatusCodes.Status404NotFound, Title = "Not found", Extensions = { ["code"] = "not_found" } },
+            LeaseLostException => new ProblemDetails { Status = StatusCodes.Status409Conflict, Title = "Lease lost", Extensions = { ["code"] = "lease_lost" } },
             _ => null,
         };
 

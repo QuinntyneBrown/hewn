@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 01 part 2 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="01 · part 2" data-video-title="Build a new product, part two" data-parts="Introduction|What we built|Design|Code|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 1 · Part 2</div>
+  <h1>Run the pipeline</h1>
+  <p class="lead">A worker leases each stage, 0 to 10, in order. Mission Control follows live until the direction is Complete.</p>
+</section>
+
+<section id="built" data-part="1" data-cue="Three pieces meet in this slice.">
+  <h2>Three pieces</h2>
+  <div class="cols cols--3">
+    <div class="card"><h3>API</h3><ul class="bullets small"><li>Pipeline orchestrator</li><li>Lease service</li><li><span class="file">/hubs/mission-control</span></li></ul></div>
+    <div class="card"><h3>Worker</h3><ul class="bullets small"><li>Lease, heartbeat</li><li>Checkpoint each step</li><li>Stop on lost lease</li></ul></div>
+    <div class="card"><h3>Mission Control</h3><ul class="bullets small"><li>Live project page</li><li>Catch-up by sequence</li><li>Polite announcements</li></ul></div>
+  </div>
+</section>
+
+<section id="scripted" data-part="1" data-cue="The worker doesn't call a model yet.">
+  <h2>A scripted executor, for now</h2>
+  <ul class="steps">
+    <li class="done">Prepare workspace</li><li class="done">Run the stage</li><li class="done">Commit artifacts</li>
+  </ul>
+  <p class="muted small">No agent, model or GitHub call: deterministic tests and demos. Real stages replace it one at a time.</p>
+</section>
+
+<section id="sequence" data-part="2" data-cue="Here is the advance sequence from the design.">
+  <figure class="diagram"><img src="../../detailed-designs/pipeline/run-direction/diagrams/sequence-advance.png" alt="Sequence diagram: advance to the next stage"><figcaption>docs/detailed-designs/pipeline/run-direction</figcaption></figure>
+</section>
+
+<section id="lease" data-part="2" data-cue="A lease is one conditional update.">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/LeaseService.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="2-3,5-7">var granted = await db.Runs
+    .Where(r =&gt; r.Id == candidate.Id &amp;&amp; r.Status == RunStatus.Queued)
+    .Where(r =&gt; !db.Runs.Any(o =&gt; o.ProjectId == candidate.ProjectId &amp;&amp; o.Status == RunStatus.Leased))
+    .ExecuteUpdateAsync(set =&gt; set
+        .SetProperty(r =&gt; r.Status, RunStatus.Leased)
+        .SetProperty(r =&gt; r.WorkerId, workerId)
+        .SetProperty(r =&gt; r.LeaseEpoch, r =&gt; r.LeaseEpoch + 1)
+        .SetProperty(r =&gt; r.LeaseExpiresAt, expires),
+        cancellationToken);</pre>
+  <p class="muted small">Zero rows changed means another worker won. A stale epoch gets 409 <span class="file">lease_lost</span>.</p>
+</section>
+
+<section id="loop" data-part="3" data-cue="The worker loop is small.">
+  <div class="code-file">worker/src/work-loop.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1,3-6">const steps = this.executor.plan(run);
+for (let index = run.checkpointStep; index &lt; steps.length; index++) {
+  await steps[index]!.execute(lease.signal);
+  if (lease.signal.aborted) return;
+  await this.api.checkpoint(workerId, run, index + 1);
+}
+if (lease.signal.aborted) return;
+await this.api.result(workerId, run, { outcome: 'Succeeded' });</pre>
+  <p class="muted small">Heartbeat every 10 s; a 409 or two missed heartbeats abort the lease signal.</p>
+</section>
+
+<section id="live" data-part="3" data-cue="In Mission Control, the API library owns the hub connection.">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/project/project.page.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2-5">this.api.getProject(id).pipe(
+  switchMap((snapshot) =&gt;
+    this.events.follow(id, snapshot.lastSequence).pipe(
+      scan((acc, event) =&gt; ({ project: applyEvent(acc.project, event), event }), { project: snapshot, event: null }),
+    ),
+  ),
+)</pre>
+</section>
+
+<section id="tests" data-part="4" data-cue="The backend gained fifteen acceptance tests">
+  <h2>Tests</h2>
+  <div class="cols cols--3">
+    <div class="card"><h3>40 backend</h3><p class="small">Order, one lease per project, expiry, stale epochs, live events</p></div>
+    <div class="card"><h3>16 worker</h3><p class="small">Fake API and fake timers: heartbeats, polling, resume</p></div>
+    <div class="card"><h3>18 Playwright</h3><p class="small">Real workers run a direction live to Complete; axe clean</p></div>
+  </div>
+</section>
+
+<section id="clip" data-part="5" data-cue="Here is the real app, with one scripted worker" data-clip="clips/pipeline.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Submit, then every stage runs live to Complete</aside>
+</section>
+
+<section id="current" data-part="5" data-cue="The running stage is marked as the current step">
+  <div class="cols cols--wide">
+    <figure><img src="screens/running-desktop.png" alt="Stage 4 running"></figure>
+    <figure><img src="screens/complete-desktop.png" alt="Direction complete"></figure>
+  </div>
+</section>
+
+<section id="phone" data-part="5" data-cue="On a phone and in dark mode the pipeline reads the same.">
+  <div class="cols cols--3">
+    <figure class="phone"><img src="screens/running-phone.png" alt="Pipeline running on a phone"></figure>
+    <figure class="phone"><img src="screens/complete-phone-dark.png" alt="Complete on a phone, dark theme"></figure>
+    <figure class="phone"><img src="screens/running-phone-dark.png" alt="Running on a phone, dark theme"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="6" data-cue="Directions now run end to end on a worker">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Stages 0 to 10 run in order on a leased worker</li>
+    <li>Stale workers are fenced by epoch</li>
+    <li>Next: stage 0 creates the repository and installs the skills</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

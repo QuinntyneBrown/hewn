@@ -8,6 +8,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Hewn.Api.Tests.Support;
 
@@ -20,7 +21,12 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
 
     private readonly List<(string Key, string Value)> _settings = [];
 
+    public const string WorkerToken = "test-worker-token-0123456789";
+
     public FakeGitHub GitHub { get; } = new();
+
+    /// <summary>Test clock; advance it to expire leases.</summary>
+    public FakeTimeProvider Clock { get; } = new(DateTimeOffset.UtcNow);
 
     /// <summary>Adds configuration settings. Call before the first request.</summary>
     public HewnApiFactory WithSettings(params (string Key, string Value)[] settings)
@@ -38,6 +44,8 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment("Testing");
         builder.UseSetting("Hewn:Auth:DevSignIn", "true");
+        builder.UseSetting("HEWN_WORKER_TOKEN", WorkerToken);
+        builder.UseSetting("Hewn:Leases:ReaperEnabled", "false");
         builder.UseSetting("ConnectionStrings:Hewn", "DataSource=:memory:");
         foreach (var (key, value) in _settings)
         {
@@ -50,6 +58,8 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
             services.AddDbContext<HewnDbContext>(o => o.UseSqlite(_connection, s => s.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
             services.RemoveAll<IGitHubRepositoryProbe>();
             services.AddSingleton<IGitHubRepositoryProbe>(GitHub);
+            services.RemoveAll<TimeProvider>();
+            services.AddSingleton<TimeProvider>(Clock);
         });
     }
 
@@ -87,7 +97,21 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
         });
         var response = await client.PostAsJsonAsync("/api/auth/dev/sign-in", new { login });
         response.EnsureSuccessStatusCode();
-        return await HewnClient.CreateAsync(client);
+        var session = response.Headers.GetValues("Set-Cookie").First(c => c.StartsWith("hewn.session=", StringComparison.Ordinal));
+        return await HewnClient.CreateAsync(client, session.Split(';')[0]);
+    }
+
+    public async Task<WorkerClient> RegisterWorkerAsync(string name = "test-worker")
+    {
+        await SeedAsync(_ => { });
+        return await WorkerClient.RegisterAsync(CreateAnonymousClient(), WorkerToken, name);
+    }
+
+    /// <summary>Runs the expiry sweep the LeaseReaper runs every 10 seconds.</summary>
+    public async Task ExpireStaleLeasesAsync()
+    {
+        using var scope = Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<Hewn.Application.Pipeline.LeaseService>().ExpireStaleAsync(CancellationToken.None);
     }
 
     public HttpClient CreateAnonymousClient() =>

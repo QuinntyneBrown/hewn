@@ -1,0 +1,166 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:05.81
+In part one, an Owner submitted a direction and Hewn queued it.
+
+00:00:05.81 --> 00:00:10.52
+In part two, the direction actually runs: a worker leases each stage,
+
+00:00:10.52 --> 00:00:15.72
+from zero to ten, in order, and Mission Control follows along live until the
+
+00:00:15.72 --> 00:00:18.87
+direction is Complete and the project is Idle.
+
+00:00:20.02 --> 00:00:22.25
+Three pieces meet in this slice.
+
+00:00:22.25 --> 00:00:26.44
+The API gains the pipeline orchestrator and a lease service.
+
+00:00:26.44 --> 00:00:31.89
+A new TypeScript worker leases runs, sends heartbeats and reports checkpoints.
+
+00:00:31.89 --> 00:00:36.42
+And the project page in Mission Control listens to a SignalR hub,
+
+00:00:36.42 --> 00:00:39.71
+so every stage change appears without a reload.
+
+00:00:40.06 --> 00:00:42.59
+The worker doesn't call a model yet.
+
+00:00:42.59 --> 00:00:46.19
+It runs a scripted executor: three steps per stage,
+
+00:00:46.19 --> 00:00:48.51
+with no agent and no GitHub call.
+
+00:00:48.51 --> 00:00:54.22
+That keeps tests and demos deterministic, and later parts swap in the real stages
+
+00:00:54.22 --> 00:00:55.20
+one at a time.
+
+00:00:56.35 --> 00:00:59.27
+Here is the advance sequence from the design.
+
+00:00:59.27 --> 00:01:02.06
+When a worker reports that a run succeeded,
+
+00:01:02.06 --> 00:01:07.18
+the orchestrator marks the stage Succeeded and queues a run for the next stage,
+
+00:01:07.18 --> 00:01:09.97
+all in one commit with the matching events.
+
+00:01:09.97 --> 00:01:14.51
+After stage ten, it marks the direction Complete and the project Idle.
+
+00:01:14.86 --> 00:01:17.16
+A lease is one conditional update.
+
+00:01:17.16 --> 00:01:22.50
+The run moves from Queued to Leased only if no other run of the same project is
+
+00:01:22.50 --> 00:01:25.54
+leased, so one project never has two workers.
+
+00:01:25.54 --> 00:01:27.91
+Every grant raises the run's epoch.
+
+00:01:27.91 --> 00:01:32.17
+A worker that missed sixty seconds of heartbeats loses the run,
+
+00:01:32.17 --> 00:01:36.77
+and any call it makes with the old epoch is refused with lease lost.
+
+00:01:37.92 --> 00:01:39.58
+The worker loop is small.
+
+00:01:39.58 --> 00:01:42.71
+It leases a run, starts a ten-second heartbeat,
+
+00:01:42.71 --> 00:01:47.11
+and walks the steps after the last checkpoint, reporting each one.
+
+00:01:47.11 --> 00:01:50.71
+If the lease is lost, or two heartbeats in a row fail,
+
+00:01:50.71 --> 00:01:52.98
+it stops and reports nothing more.
+
+00:01:53.33 --> 00:01:57.64
+In Mission Control, the API library owns the hub connection.
+
+00:01:57.64 --> 00:02:03.39
+It replays any events the page missed by sequence number, then streams the rest.
+
+00:02:03.39 --> 00:02:06.55
+The page folds each event into its snapshot.
+
+00:02:07.70 --> 00:02:13.36
+The backend gained fifteen acceptance tests: stages in order, one lease per project,
+
+00:02:13.36 --> 00:02:18.34
+expiry after sixty seconds with the checkpoint kept, stale epochs refused,
+
+00:02:18.34 --> 00:02:20.23
+and live events in sequence.
+
+00:02:20.23 --> 00:02:23.46
+The worker has sixteen tests against a fake API,
+
+00:02:23.46 --> 00:02:26.42
+with fake timers for heartbeats and polling.
+
+00:02:26.42 --> 00:02:31.47
+Playwright now starts real workers and watches a direction run to Complete.
+
+00:02:32.62 --> 00:02:37.60
+Here is the real app, with one scripted worker running in the background.
+
+00:02:37.60 --> 00:02:41.69
+The Owner names the project, describes the idea and submits.
+
+00:02:41.69 --> 00:02:46.66
+The project page opens, and within a moment the worker leases stage zero.
+
+00:02:46.66 --> 00:02:50.82
+From there, stages tick from Pending to Running to Succeeded,
+
+00:02:50.82 --> 00:02:54.02
+each one starting only after the one before it,
+
+00:02:54.02 --> 00:02:57.50
+and the running stage's timer counts up as it goes.
+
+00:02:57.50 --> 00:03:01.11
+Nobody reloads the page and nobody approves anything.
+
+00:03:01.11 --> 00:03:06.84
+When stage ten finishes, the header reads Complete and the callout confirms that all
+
+00:03:06.84 --> 00:03:08.48
+eleven stages succeeded.
+
+00:03:08.83 --> 00:03:14.20
+The running stage is marked as the current step, with a spinner and a text label,
+
+00:03:14.20 --> 00:03:16.46
+so status never depends on colour.
+
+00:03:16.46 --> 00:03:20.51
+Screen readers hear each change through a polite live region.
+
+00:03:20.51 --> 00:03:24.23
+On a phone and in dark mode the pipeline reads the same.
+
+00:03:25.38 --> 00:03:31.06
+Directions now run end to end on a worker, fenced by leases and shown live.
+
+00:03:31.06 --> 00:03:37.41
+Next, stage zero does real work: it creates the repository and installs the Greenlit
+
+00:03:37.41 --> 00:03:37.94
+skills.

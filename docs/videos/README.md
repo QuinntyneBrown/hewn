@@ -7,6 +7,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | # | Video | Runtime | Pull request |
 |---|---|---|---|
 | 01 · 1 | [Build a new product, part one: submit a direction](01-build-a-new-product-part-1/README.md) | ~4:27 | Journey 1, part 1 |
+| 01 · 2 | [Build a new product, part two: run the pipeline](01-build-a-new-product-part-2/README.md) | ~3:41 | Journey 1, part 2 |
 
 ## Voice
 

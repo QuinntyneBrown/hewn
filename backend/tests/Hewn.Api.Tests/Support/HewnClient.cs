@@ -11,16 +11,21 @@ public sealed class HewnClient
 {
     private readonly HttpClient _http;
     private readonly string _xsrfToken;
+    private readonly string _sessionCookie;
 
-    private HewnClient(HttpClient http, string xsrfToken)
+    private HewnClient(HttpClient http, string xsrfToken, string sessionCookie)
     {
         _http = http;
         _xsrfToken = xsrfToken;
+        _sessionCookie = sessionCookie;
     }
+
+    /// <summary>The session cookie as a Cookie header value, for clients outside this HttpClient (SignalR).</summary>
+    public string CookieHeader() => _sessionCookie;
 
     public HttpClient Http => _http;
 
-    public static async Task<HewnClient> CreateAsync(HttpClient http)
+    public static async Task<HewnClient> CreateAsync(HttpClient http, string sessionCookie)
     {
         var response = await http.GetAsync("/api/me");
         response.EnsureSuccessStatusCode();
@@ -32,7 +37,7 @@ public sealed class HewnClient
             throw new InvalidOperationException("GET /api/me did not issue an XSRF-TOKEN cookie.");
         }
         var token = WebUtility.UrlDecode(cookie.Split(';')[0]["XSRF-TOKEN=".Length..]);
-        return new HewnClient(http, token);
+        return new HewnClient(http, token, sessionCookie);
     }
 
     public Task<HttpResponseMessage> GetAsync(string url) => _http.GetAsync(url);

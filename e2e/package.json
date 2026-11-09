@@ -7,6 +7,7 @@
     "test:behavior": "playwright test tests/behavior",
     "test:a11y": "playwright test tests/a11y",
     "test:visual": "playwright test tests/visual",
+    "test:pipeline": "playwright test tests/pipeline",
     "typecheck": "tsc --noEmit"
   },
   "license": "MIT",

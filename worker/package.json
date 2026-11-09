@@ -1,0 +1,25 @@
+{
+  "name": "@hewn/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hewn worker: leases runs from the Hewn API and executes stages",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "dev": "node --experimental-strip-types src/main.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write src test",
+    "format:check": "prettier --check src test"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "prettier": "^3.8.1",
+    "typescript": "~5.9.2",
+    "vitest": "^4.0.8"
+  }
+}

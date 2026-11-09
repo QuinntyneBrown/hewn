@@ -26,4 +26,17 @@ public sealed class StageState
     public DateTimeOffset? StartedAt { get; private set; }
 
     public DateTimeOffset? EndedAt { get; private set; }
+
+    internal void Start(DateTimeOffset now)
+    {
+        Status = StageStatus.Running;
+        StartedAt ??= now;
+        EndedAt = null;
+    }
+
+    internal void End(StageStatus status, DateTimeOffset now)
+    {
+        Status = status;
+        EndedAt = now;
+    }
 }
