@@ -15,7 +15,7 @@ public sealed record SubmitProductDirectionCommand(
     string? Idea,
     string? StackPreference,
     string? RepositoryUrl,
-    decimal BudgetUsd) : IRequest<SubmitProductDirectionResult>;
+    decimal? BudgetUsd) : IRequest<SubmitProductDirectionResult>;
 
 public sealed record SubmitProductDirectionResult(Guid ProjectId, Guid DirectionId);
 
@@ -89,8 +89,9 @@ public sealed class SubmitProductDirectionValidator : AbstractValidator<SubmitPr
             .WithMessage("Use a https://github.com/{owner}/{repo} URL.")
             .WithState(_ => "Existing repository must be a GitHub URL");
 
+        // No budget means the default an Owner set in Settings (L2-053 AC1).
         RuleFor(c => c.BudgetUsd)
-            .Must(b => b > 0 && b <= MaxBudgetUsd)
+            .Must(b => b is null || (b > 0 && b <= MaxBudgetUsd))
             .WithMessage("Budget must be more than $0 and at most $100,000.")
             .WithState(_ => "Budget must be more than $0");
     }
@@ -102,6 +103,7 @@ public sealed class SubmitProductDirectionHandler(
     ICurrentUser user,
     EventAppender events,
     PipelineOrchestrator pipeline,
+    Spend.DirectionDefaultsReader defaults,
     TimeProvider clock) : IRequestHandler<SubmitProductDirectionCommand, SubmitProductDirectionResult>
 {
     public async Task<SubmitProductDirectionResult> Handle(SubmitProductDirectionCommand command, CancellationToken cancellationToken)
@@ -119,7 +121,7 @@ public sealed class SubmitProductDirectionHandler(
             command.Idea!,
             string.IsNullOrWhiteSpace(command.StackPreference) ? null : command.StackPreference.Trim(),
             repository,
-            command.BudgetUsd,
+            command.BudgetUsd ?? (await defaults.ReadAsync(cancellationToken)).DefaultBudgetUsd,
             user.Login,
             clock.GetUtcNow());
         var direction = project.Directions[0];

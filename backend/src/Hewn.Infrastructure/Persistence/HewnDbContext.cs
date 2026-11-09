@@ -26,6 +26,10 @@ public sealed class HewnDbContext(DbContextOptions<HewnDbContext> options) : DbC
 
     public DbSet<Increment> Increments => Set<Increment>();
 
+    public DbSet<ModelCall> ModelCalls => Set<ModelCall>();
+
+    public DbSet<DirectionDefaults> DirectionDefaults => Set<DirectionDefaults>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(HewnDbContext).Assembly);

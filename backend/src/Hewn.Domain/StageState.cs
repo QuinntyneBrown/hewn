@@ -34,6 +34,8 @@ public sealed class StageState
         EndedAt = null;
     }
 
+    internal void Pause() => Status = StageStatus.Paused;
+
     internal void End(StageStatus status, DateTimeOffset now)
     {
         Status = status;

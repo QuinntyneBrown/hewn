@@ -1,3 +1,5 @@
+using Hewn.Application.Spend;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hewn.Api.Controllers;
@@ -5,14 +7,12 @@ namespace Hewn.Api.Controllers;
 /// <summary>Non-secret settings Mission Control shows: where new repositories go and the default budget.</summary>
 [ApiController]
 [Route("api/config")]
-public sealed class ConfigController(IConfiguration configuration) : ControllerBase
+public sealed class ConfigController(IConfiguration configuration, IMediator mediator) : ControllerBase
 {
-    public const decimal FallbackBudgetUsd = 300m;
-
     public sealed record PublicConfig(string? GithubOwner, decimal DefaultBudgetUsd);
 
     [HttpGet]
-    public PublicConfig Get() => new(
+    public async Task<PublicConfig> Get(CancellationToken cancellationToken) => new(
         configuration["HEWN_GITHUB_OWNER"],
-        configuration.GetValue<decimal?>("HEWN_DEFAULT_BUDGET_USD") ?? FallbackBudgetUsd);
+        (await mediator.Send(new GetDirectionDefaultsQuery(), cancellationToken)).DefaultBudgetUsd);
 }

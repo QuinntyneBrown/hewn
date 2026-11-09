@@ -79,6 +79,14 @@ public sealed class Run
         }
     }
 
+    /// <summary>Releases the lease and keeps the checkpoint, so a resume carries on from the last completed step.</summary>
+    public void Pause()
+    {
+        Status = RunStatus.Paused;
+        WorkerId = null;
+        LeaseExpiresAt = null;
+    }
+
     public void Succeed(DateTimeOffset now) => End(RunStatus.Succeeded, null, now);
 
     public void Fail(string error, DateTimeOffset now) => End(RunStatus.Failed, error, now);

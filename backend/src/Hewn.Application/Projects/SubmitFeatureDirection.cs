@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Hewn.Application.Projects;
 
-public sealed record SubmitFeatureDirectionCommand(Guid ProjectId, string? Idea, decimal BudgetUsd) : IRequest<SubmitProductDirectionResult>;
+public sealed record SubmitFeatureDirectionCommand(Guid ProjectId, string? Idea, decimal? BudgetUsd) : IRequest<SubmitProductDirectionResult>;
 
 public sealed class SubmitFeatureDirectionValidator : AbstractValidator<SubmitFeatureDirectionCommand>
 {
@@ -21,7 +21,7 @@ public sealed class SubmitFeatureDirectionValidator : AbstractValidator<SubmitFe
             .WithState(_ => "The feature must be 10 to 20,000 characters");
 
         RuleFor(c => c.BudgetUsd)
-            .Must(b => b > 0 && b <= SubmitProductDirectionValidator.MaxBudgetUsd)
+            .Must(b => b is null || (b > 0 && b <= SubmitProductDirectionValidator.MaxBudgetUsd))
             .WithMessage("Budget must be more than $0 and at most $100,000.")
             .WithState(_ => "Budget must be more than $0");
     }
@@ -36,6 +36,7 @@ public sealed class SubmitFeatureDirectionHandler(
     ICurrentUser user,
     EventAppender events,
     PipelineOrchestrator pipeline,
+    Spend.DirectionDefaultsReader defaults,
     TimeProvider clock) : IRequestHandler<SubmitFeatureDirectionCommand, SubmitProductDirectionResult>
 {
     public async Task<SubmitProductDirectionResult> Handle(SubmitFeatureDirectionCommand command, CancellationToken cancellationToken)
@@ -44,7 +45,7 @@ public sealed class SubmitFeatureDirectionHandler(
             .SingleOrDefaultAsync(p => p.Id == command.ProjectId, cancellationToken)
             ?? throw new NotFoundException();
 
-        var startsNow = project.AddFeatureDirection(command.Idea!, command.BudgetUsd, user.Login, clock.GetUtcNow(), out var direction);
+        var startsNow = project.AddFeatureDirection(command.Idea!, command.BudgetUsd ?? (await defaults.ReadAsync(cancellationToken)).DefaultBudgetUsd, user.Login, clock.GetUtcNow(), out var direction);
         db.Directions.Add(direction); // a new child with its own key; EF would otherwise treat it as an existing row
         await events.AppendAsync(
             project.Id,

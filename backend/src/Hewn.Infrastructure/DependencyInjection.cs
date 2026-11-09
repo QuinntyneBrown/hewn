@@ -1,5 +1,6 @@
 using Hewn.Application.Abstractions;
 using Hewn.Application.Pipeline;
+using Hewn.Application.Spend;
 using Hewn.Infrastructure.Fakes;
 using Hewn.Infrastructure.GitHub;
 using Hewn.Infrastructure.Persistence;
@@ -21,6 +22,25 @@ public static class DependencyInjection
         {
             o.AppId = configuration["HEWN_GITHUB_APP_ID"];
             o.PrivateKey = configuration["HEWN_GITHUB_APP_PRIVATE_KEY"];
+        });
+
+        services.Configure<SpendOptions>(o =>
+        {
+            if (decimal.TryParse(configuration["HEWN_DEFAULT_BUDGET_USD"], System.Globalization.CultureInfo.InvariantCulture, out var budget) && budget > 0)
+            {
+                o.DefaultBudgetUsd = budget;
+            }
+
+            // Hewn:Prices:{model}:InputPerMillionUsd and OutputPerMillionUsd add to or replace the built-in rates.
+            foreach (var model in configuration.GetSection("Hewn:Prices").GetChildren())
+            {
+                var input = model.GetValue<decimal?>("InputPerMillionUsd");
+                var output = model.GetValue<decimal?>("OutputPerMillionUsd");
+                if (input is >= 0 && output is >= 0)
+                {
+                    o.Prices[model.Key] = new ModelPrice(input.Value, output.Value);
+                }
+            }
         });
 
         services.Configure<PipelineOptions>(o =>

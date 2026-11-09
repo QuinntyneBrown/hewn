@@ -17,6 +17,8 @@ public static class DependencyInjection
         services.AddScoped<EventAppender>();
         services.AddScoped<PipelineOrchestrator>();
         services.AddScoped<LeaseService>();
+        services.AddScoped<Spend.PriceTable>();
+        services.AddScoped<Spend.DirectionDefaultsReader>();
         services.AddScoped<RepositoryProvisioner>();
         services.AddSingleton(TimeProvider.System);
         return services;

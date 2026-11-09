@@ -37,6 +37,19 @@ public sealed class Direction
 
     public decimal BudgetUsd { get; private set; }
 
+    /// <summary>The cost of every model call the direction's runs made (L2-052).</summary>
+    public decimal SpendUsd { get; private set; }
+
+    /// <summary>Set once spend reaches 80% of the budget, so the warning is sent once (L2-053 AC2).</summary>
+    public bool BudgetWarned { get; private set; }
+
+    /// <summary>Why a Paused direction stopped, such as "Budget reached".</summary>
+    public string? PauseReason { get; private set; }
+
+    public const decimal WarnAtFraction = 0.8m;
+
+    public const string BudgetReached = "Budget reached";
+
     public DirectionStatus Status { get; private set; }
 
     public string SubmittedBy { get; private set; }
@@ -125,6 +138,38 @@ public sealed class Direction
         }
 
         return skipped;
+    }
+
+    /// <summary>
+    /// Adds a model call's cost and applies the budget rule (L2-053): Stop once spend reaches the budget, Warn the
+    /// first time it reaches 80%, otherwise Continue. A call that jumps straight past both still marks the warning sent.
+    /// </summary>
+    public (BudgetVerdict Verdict, bool Warned) RecordSpend(decimal costUsd)
+    {
+        SpendUsd = Math.Round(SpendUsd + costUsd, 6, MidpointRounding.AwayFromZero);
+        var warned = false;
+        if (!BudgetWarned && SpendUsd >= BudgetUsd * WarnAtFraction)
+        {
+            BudgetWarned = true;
+            warned = true;
+        }
+
+        if (SpendUsd >= BudgetUsd)
+        {
+            return (BudgetVerdict.Stop, warned);
+        }
+
+        return (warned ? BudgetVerdict.Warn : BudgetVerdict.Continue, warned);
+    }
+
+    /// <summary>Pauses the direction and its running stage, recording why (L2-053 AC3).</summary>
+    public StageState Pause(int stageNumber, string reason)
+    {
+        Status = DirectionStatus.Paused;
+        PauseReason = reason;
+        var stage = Stage(stageNumber);
+        stage.Pause();
+        return stage;
     }
 
     public void FailStage(int number, DateTimeOffset now) => Stage(number).End(StageStatus.Failed, now);

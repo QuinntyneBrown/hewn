@@ -1,5 +1,6 @@
 using Hewn.Api.Auth;
 using Hewn.Application.Pipeline;
+using Hewn.Application.Spend;
 using Hewn.Domain;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -43,6 +44,8 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
     public sealed record LogRequest(string WorkerId, long Epoch, IReadOnlyList<RunLogEntry> Lines);
 
     public sealed record StepRequest(string WorkerId, long Epoch, int Step, string Name);
+
+    public sealed record ModelCallRequest(string WorkerId, long Epoch, string CallId, string Model, long InputTokens, long OutputTokens);
 
     public sealed record DecisionsRequest(string WorkerId, long Epoch, IReadOnlyList<ReportedDecision> Decisions);
 
@@ -137,6 +140,16 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
         await mediator.Send(new StartStepCommand(runId, request.WorkerId, request.Epoch, request.Step, request.Name), cancellationToken);
         return NoContent();
     }
+
+    /// <summary>
+    /// A model call the run made (L2-052 AC1). The answer is the budget verdict: Continue, Warn, or Stop, which
+    /// means the direction is Paused with "Budget reached" and the worker ends the run after this call (L2-053).
+    /// </summary>
+    [HttpPost("runs/{runId:guid}/model-calls")]
+    public Task<ModelCallVerdict> ModelCall(Guid runId, ModelCallRequest request, CancellationToken cancellationToken) =>
+        mediator.Send(
+            new RecordModelCallCommand(runId, request.WorkerId, request.Epoch, request.CallId, request.Model, request.InputTokens, request.OutputTokens),
+            cancellationToken);
 
     /// <summary>The decisions the run recorded in docs/decisions.md (L2-054), for the stage's Decisions tab.</summary>
     [HttpPost("runs/{runId:guid}/decisions")]
