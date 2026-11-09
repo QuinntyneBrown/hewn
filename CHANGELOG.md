@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add a feature (journey 2, L2-005, L2-010 AC6, L2-014, L2-017 AC3, L2-054):
+- Add a feature (journey 2, L2-005, L2-010 AC6, L2-014 AC4, L2-017 AC3, L2-054):
   - New direction's Feature for a product adds a feature direction to an existing product through
     `POST /api/projects/{id}/directions`; `GET /api/projects` lists products and whether a feature would queue;
   - a feature direction skips Bootstrap, Stack and Scaffold, and also Designs and Design system when stage 1

@@ -113,7 +113,7 @@ Journey 2 built L2-005 AC1-AC4. See [ADR 0008](../../adr/0008-feature-scope-is-a
 - **The lease** carries `direction: {kind, idea, hasUiChange}`, so every agent session names the feature and
   works on the new or changed scope.
 - **`ScopeSnapshot`** is the set of numbered documents the worker copies before each document stage's agent runs;
-  stages 2, 5 and 8 fail when one of their numbers or designs is dropped or reused (AC3, L2-014, L2-017 AC3,
+  stages 2, 5 and 8 fail when one of their numbers or designs is dropped or reused (AC3, L2-014 AC4, L2-017 AC3,
   L2-010 AC6).
 - **Mission Control.** New direction's Feature for a product lists products from `GET /api/projects`; one whose
   first direction isn't Complete reads "queues behind the running direction". The project page strikes through
