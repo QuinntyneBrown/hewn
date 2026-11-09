@@ -6,6 +6,8 @@ import {
   type IncrementUpdate,
   type BacklogReport,
   type ScopeReport,
+  type ModelCallReport,
+  type ModelCallVerdict,
   type ReportedDecision,
   type CommitFile,
   type HewnApi,
@@ -163,6 +165,14 @@ export class HttpHewnApi implements HewnApi {
 
   async recordDecisions(workerId: string, run: LeasedRun, decisions: ReportedDecision[]): Promise<void> {
     await this.post(`/api/worker/runs/${run.runId}/decisions`, { workerId, epoch: run.epoch, decisions });
+  }
+
+  async recordModelCall(workerId: string, run: LeasedRun, call: ModelCallReport): Promise<ModelCallVerdict> {
+    return (await this.post(`/api/worker/runs/${run.runId}/model-calls`, {
+      workerId,
+      epoch: run.epoch,
+      ...call,
+    })) as ModelCallVerdict;
   }
 
   async log(workerId: string, run: LeasedRun, lines: { level: LogLevel; text: string }[]): Promise<void> {

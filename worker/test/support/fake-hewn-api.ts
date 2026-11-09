@@ -3,6 +3,8 @@ import {
   type CommitFile,
   type HewnApi,
   type LeasedRun,
+  type ModelCallReport,
+  type ModelCallVerdict,
   type ReportedDecision,
   type RunOutcome,
   type WorkerRegistration,
@@ -28,6 +30,9 @@ export class FakeHewnApi implements HewnApi {
   readonly logTimes: number[] = [];
   logBatches = 0;
   readonly decisions: { runId: string; decisions: ReportedDecision[] }[] = [];
+  readonly modelCalls: (ModelCallReport & { runId: string })[] = [];
+  /** Answers to the next model calls; Continue once these run out. */
+  readonly verdicts: ModelCallVerdict[] = [];
   readonly commits: { runId: string; idempotencyKey: string; message: string; paths: string[] }[] = [];
   private readonly queue: LeasedRun[] = [];
   private nextId = 1;
@@ -88,6 +93,11 @@ export class FakeHewnApi implements HewnApi {
 
   async recordDecisions(_workerId: string, run: LeasedRun, decisions: ReportedDecision[]): Promise<void> {
     this.decisions.push({ runId: run.runId, decisions });
+  }
+
+  async recordModelCall(_workerId: string, run: LeasedRun, call: ModelCallReport): Promise<ModelCallVerdict> {
+    this.modelCalls.push({ runId: run.runId, ...call });
+    return this.verdicts.shift() ?? { verdict: 'Continue', directionSpendUsd: 0, budgetUsd: 300 };
   }
 
   async checkpoint(_workerId: string, run: LeasedRun, step: number): Promise<void> {

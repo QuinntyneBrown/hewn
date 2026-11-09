@@ -21,6 +21,12 @@ export class ProjectPage {
   readonly artifactPaths: Locator;
   readonly decisionQuestions: Locator;
   readonly notice: Locator;
+  /** The header's spend of budget (L2-052 AC2) and the pause at 100% (L2-053 AC3). */
+  readonly spendMeter: Locator;
+  readonly spendLabel: Locator;
+  readonly budgetReachedCallout: Locator;
+  /** Live toasts, such as the 80% budget warning (L2-053 AC2). */
+  readonly toasts: Locator;
   /** Any dialog asking the user for something; a run never needs one (L2-028). */
   readonly dialogs: Locator;
 
@@ -47,6 +53,10 @@ export class ProjectPage {
     this.artifactPaths = this.detail.locator('.file__path');
     this.decisionQuestions = this.detail.locator('.decision__q');
     this.notice = this.detail.locator('.empty');
+    this.spendMeter = page.getByRole('meter', { name: 'Spend' });
+    this.spendLabel = page.locator('.phead__spend .phead__label');
+    this.budgetReachedCallout = page.locator('.callout', { hasText: 'Paused · Budget reached' });
+    this.toasts = page.locator('.toast-region .toast');
   }
 
   /** The project's event stream from the start, as the API serves it to Mission Control. */

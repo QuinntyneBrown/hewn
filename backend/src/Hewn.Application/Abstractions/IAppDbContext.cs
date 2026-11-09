@@ -25,5 +25,9 @@ public interface IAppDbContext
 
     DbSet<Increment> Increments { get; }
 
+    DbSet<ModelCall> ModelCalls { get; }
+
+    DbSet<DirectionDefaults> DirectionDefaults { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

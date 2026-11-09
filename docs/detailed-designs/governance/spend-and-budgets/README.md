@@ -17,7 +17,7 @@ Terms used in this design:
 The slice spans the worker's model-call meter, the spend ledger and budget guard in the API, and the spend UI.
 
 - **`ModelCallMeter (worker)`** — wraps the Claude Agent SDK's model client; after each call it reports `ModelCallRecorded(run, model, inputTokens, outputTokens)` and, before the next call, checks the budget verdict the API returned.
-- **`PriceTable`** — per-model prices; the source and update process are <TO SUPPLY>.
+- **`PriceTable`** — per-model prices in USD per million input and output tokens, from configuration (`Hewn:Prices:{model}`), defaulting to Anthropic's published prices. A price changes by configuration and restart; recorded calls keep their cost. An unknown model is priced at the table's highest rates (ADR 0010).
 - **`SpendLedger`** — table of model calls with cost, keyed by run, stage, direction and project; maintains running totals per direction and project and emits `SpendUpdated` (L2-031).
 - **`BudgetGuard`** — on each recorded call compares direction spend with its budget. Crossing 80% emits `BudgetWarning`; reaching 100% sets the direction Paused with reason "Budget reached" and returns `Stop` to the meter, which ends the run at a checkpoint after the current call.
 - **`RaiseAndResumeCommand`** — `POST /api/directions/{id}/raise-and-resume {budget}`, Owner policy. Rejects a budget at or below spend with 400; otherwise updates the budget and resumes in one transaction.
@@ -70,3 +70,30 @@ Each call is recorded with tokens, model and cost (L2-052 AC1) and spend updates
 A direction gets the Settings default, changeable at submission (L2-053 AC1). Raise and resume needs a budget above spend and resumes in one action (AC3).
 
 ![Sequence diagram: set and raise a budget](diagrams/sequence-raise-and-resume.png)
+
+## Decisions made while building the slice
+
+Journey 4 built L2-052 and L2-053 AC1-AC3 up to the pause. Raise and resume is journey 5. These choices refine the
+design above; ADR 0010 records them.
+
+- **The meter.** The worker's `RunContext.recordModelCall({model, inputTokens, outputTokens})` posts
+  `POST /api/worker/runs/{id}/model-calls` with a random `callId`; the API dedupes on (run, call id) and answers
+  `{verdict, directionSpendUsd, budgetUsd}`. Only the scripted executor makes calls until the Agent SDK agent lands.
+- **Events.** `SpendUpdated {directionId, stage, runId, model, inputTokens, outputTokens, costUsd,
+  directionSpendUsd, projectSpendUsd, budgetUsd}`, `BudgetWarning {directionId, spendUsd, budgetUsd}` once per
+  direction, and `DirectionChanged` now carries `pauseReason`.
+- **Stop.** The run, its stage, the direction ("Budget reached") and the project turn Paused; the lease is released
+  and the run keeps its checkpoint for Raise and resume. The worker ends the run with no further call, checkpoint or
+  result.
+- **Concurrent reports.** A worker's log batch and its model call often arrive together. `EventAppender` takes a
+  per-project lock before reading the last sequence and holds it until the events are published, and the model-call
+  handler takes it before reading spend, so neither the sequence nor the total can be claimed twice.
+- **Rounding.** Costs and spend are rounded to 6 decimal places, since SQLite stores decimals as doubles.
+- **Defaults.** A one-row `direction_defaults` table holds the Owner's default budget ($10 to $10,000), read through
+  `GET /api/settings/direction-defaults` and `GET /api/config`; `HEWN_DEFAULT_BUDGET_USD` applies until it is saved.
+- **The UI.** The project header shows the direction's spend of budget as a `role="meter"` with the amounts in text,
+  turning to warning at 80% (so status never rests on colour). The 80% `BudgetWarning` also raises a warning toast
+  (10 s, pauses on hover or focus). A budget-reached direction shows the "Paused · Budget reached" callout; its
+  raise controls arrive with Raise and resume. Settings builds only the Direction defaults section's budget; the
+  descope threshold, appearance, access and integrations arrive with their own journeys.
+

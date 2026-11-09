@@ -121,6 +121,7 @@ public sealed class AppendRunLogHandler(IAppDbContext db, LeaseService leases, E
     public async Task Handle(AppendRunLogCommand command, CancellationToken cancellationToken)
     {
         var run = await leases.FenceAsync(command.RunId, command.WorkerId, command.Epoch, cancellationToken);
+        await events.LockAsync(run.ProjectId, cancellationToken);
         var last = await db.RunLogLines.Where(l => l.RunId == run.Id).Select(l => (long?)l.Sequence).MaxAsync(cancellationToken) ?? 0;
         var now = clock.GetUtcNow();
         var lines = command.Lines.Select(line => new RunLogLine(run.Id, ++last, line.Level, SecretRedactor.Redact(line.Text), now)).ToList();

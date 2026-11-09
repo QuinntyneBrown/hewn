@@ -27,8 +27,36 @@
                 ><svg hw-icon name="github" class="icon--xs"></svg> {{ p.repository }}</a
               >
             }
+            @if (projectSpend(); as total) {
+              <span class="tabular">Project spend {{ total }}</span>
+            }
           </div>
         </div>
+        @if (spend(); as s) {
+          <div class="phead__stats">
+            <div class="phead__spend">
+              <div class="phead__label">
+                <span>Spend</span
+                ><span class="tabular"
+                  ><strong>{{ s.spent }}</strong> of {{ s.budget }}</span
+                >
+              </div>
+              <div
+                class="meter mt-2"
+                [class.meter--warn]="s.warn"
+                role="meter"
+                aria-label="Spend"
+                [attr.aria-valuenow]="direction()!.spendUsd"
+                aria-valuemin="0"
+                [attr.aria-valuemax]="direction()!.budgetUsd"
+                [attr.aria-valuetext]="s.text"
+                data-testid="spend-meter"
+              >
+                <span class="meter__bar" [style.--value]="s.percent + '%'"></span>
+              </div>
+            </div>
+          </div>
+        }
       </div>
     </div>
   </header>
@@ -91,6 +119,15 @@
                   </div>
                 </div>
               }
+            }
+            @if (d.status === 'Paused' && d.pauseReason === budgetReached) {
+              <div class="callout callout--warn" role="status">
+                <svg hw-icon name="warning" class="icon--lg"></svg>
+                <div>
+                  <p class="callout__title">Paused · Budget reached</p>
+                  <p class="callout__body">{{ budgetReachedText(d.spendUsd, d.budgetUsd) }}</p>
+                </div>
+              </div>
             }
             @if (d.status === 'Complete' && d.kind === 'Feature') {
               <div class="callout callout--info" role="status">

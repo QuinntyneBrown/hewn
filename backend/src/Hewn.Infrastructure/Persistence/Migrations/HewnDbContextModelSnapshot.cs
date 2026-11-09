@@ -42,6 +42,9 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.Property<double>("BudgetUsd")
                         .HasColumnType("REAL");
 
+                    b.Property<bool>("BudgetWarned")
+                        .HasColumnType("INTEGER");
+
                     b.Property<long?>("CompletedAt")
                         .HasColumnType("INTEGER");
 
@@ -58,8 +61,15 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("PauseReason")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("TEXT");
+
+                    b.Property<double>("SpendUsd")
+                        .HasColumnType("REAL");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -83,6 +93,27 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.HasIndex("ProjectId", "SubmittedAt");
 
                     b.ToTable("directions", (string)null);
+                });
+
+            modelBuilder.Entity("Hewn.Domain.DirectionDefaults", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("DefaultBudgetUsd")
+                        .HasColumnType("REAL");
+
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UpdatedBy")
+                        .IsRequired()
+                        .HasMaxLength(39)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("direction_defaults", (string)null);
                 });
 
             modelBuilder.Entity("Hewn.Domain.GitHubMutation", b =>
@@ -187,6 +218,56 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.HasIndex("DirectionId", "Number");
 
                     b.ToTable("increments", (string)null);
+                });
+
+            modelBuilder.Entity("Hewn.Domain.ModelCall", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CallId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("CostUsd")
+                        .HasColumnType("REAL");
+
+                    b.Property<Guid>("DirectionId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("InputTokens")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("OutputTokens")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("RecordedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Stage")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId", "DirectionId");
+
+                    b.HasIndex("RunId", "CallId")
+                        .IsUnique();
+
+                    b.ToTable("model_calls", (string)null);
                 });
 
             modelBuilder.Entity("Hewn.Domain.Project", b =>

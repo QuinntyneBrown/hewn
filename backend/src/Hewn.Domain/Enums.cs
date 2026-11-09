@@ -62,6 +62,8 @@ public enum RunStatus
     Succeeded,
     Failed,
     Cancelled,
+    /// <summary>Stopped with its direction (for example at the budget); keeps its checkpoint for a resume.</summary>
+    Paused,
 }
 
 public enum IncrementStatus

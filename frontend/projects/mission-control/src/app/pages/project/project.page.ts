@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
-import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import {
   applyEvent,
@@ -34,9 +34,12 @@ import {
   throttleTime,
   timer,
 } from 'rxjs';
+import { Toasts } from '../../core/toasts';
 import { LiveLogComponent } from './live-log.component';
 import {
+  budgetWarningToast,
   clockTime,
+  dollars,
   directionTitle,
   featureOutcome,
   formatDuration,
@@ -44,6 +47,7 @@ import {
   logTime,
   mergeLines,
   selectedStage,
+  spendView,
   STAGE_META,
   stageNotice,
 } from './pipeline-view';
@@ -277,6 +281,25 @@ export class ProjectPage {
     return stageNotice(stage, first);
   });
 
+  /** The shown direction's spend of its budget (L2-052 AC2), warning from 80% (L2-053 AC2). */
+  protected readonly spend = computed(() => {
+    const d = this.direction();
+    return d ? spendView(d.spendUsd, d.budgetUsd, d.budgetWarned, d.pauseReason) : null;
+  });
+
+  /** The project's total, shown when earlier directions spent too. */
+  protected readonly projectSpend = computed(() => {
+    const p = this.project();
+    const d = this.direction();
+    return p && d && p.spendUsd !== d.spendUsd ? dollars(p.spendUsd) : null;
+  });
+
+  protected readonly budgetReached = 'Budget reached';
+
+  protected budgetReachedText(spendUsd: number, budgetUsd: number): string {
+    return `Spend hit ${dollars(spendUsd)} of ${dollars(budgetUsd)} after the current model call. Nothing more runs until an Owner raises the budget. This is a safety stop, not an approval.`;
+  }
+
   protected readonly title = directionTitle;
   protected readonly clockTime = clockTime;
   protected readonly logTime = logTime;
@@ -304,6 +327,25 @@ export class ProjectPage {
     ),
     { initialValue: '' },
   );
+
+  constructor() {
+    // L2-053 AC2: the 80% warning, pushed live. The meter keeps showing it after the toast leaves.
+    const toasts = inject(Toasts);
+    this.events$
+      .pipe(
+        filter((event) => event.type === 'BudgetWarning'),
+        takeUntilDestroyed(),
+      )
+      .subscribe((event) =>
+        toasts.show(
+          budgetWarningToast(
+            this.project()?.name ?? 'This project',
+            event.payload['spendUsd'] as number,
+            event.payload['budgetUsd'] as number,
+          ),
+        ),
+      );
+  }
 
   protected duration(startedAt: string | null, endedAt: string | null): string {
     return formatDuration(startedAt, endedAt, endedAt ? 0 : this.now());

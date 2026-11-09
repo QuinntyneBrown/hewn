@@ -33,6 +33,10 @@ export interface Direction {
   /** For a feature direction, stage 1's recorded decision on whether the user interface changes. */
   hasUiChange?: boolean | null;
   uiDecision?: string | null;
+  /** Spend to date (L2-052 AC2), whether the 80% warning was sent (L2-053 AC2), and why it paused (AC3). */
+  spendUsd: number;
+  budgetWarned: boolean;
+  pauseReason: string | null;
 }
 
 export interface Project {
@@ -45,6 +49,8 @@ export interface Project {
   createdAt: string;
   lastSequence: number;
   directions: Direction[];
+  /** Spend to date across the project's directions (L2-052 AC2). */
+  spendUsd: number;
 }
 
 export interface SubmitProductDirectionRequest {
@@ -53,6 +59,11 @@ export interface SubmitProductDirectionRequest {
   stackPreference: string | null;
   repositoryUrl: string | null;
   budgetUsd: number;
+}
+
+/** What every new direction starts with, set by an Owner in Settings (L2-053 AC1). */
+export interface DirectionDefaults {
+  defaultBudgetUsd: number;
 }
 
 /** A project in the list; a feature for one whose first direction isn't Complete queues behind it. */

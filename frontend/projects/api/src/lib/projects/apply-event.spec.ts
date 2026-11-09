@@ -12,6 +12,7 @@ const project = (): Project => ({
   status: 'Running',
   createdAt: '2026-11-08T00:00:00Z',
   lastSequence: 1,
+  spendUsd: 0,
   directions: [
     {
       id: 'd',
@@ -22,6 +23,9 @@ const project = (): Project => ({
       submittedBy: 'q',
       submittedAt: '2026-11-08T00:00:00Z',
       completedAt: null,
+      spendUsd: 0,
+      budgetWarned: false,
+      pauseReason: null,
       stages: [0, 1].map((number) => ({
         number,
         name: `S${number}`,
@@ -176,5 +180,43 @@ describe('applyEvent', () => {
 
     expect(done.directions[0]!.stages[0]!.step).toBeNull();
     expect(done.directions[0]!.stages[0]!.latestLine).toBeNull();
+  });
+
+  it('shows spend to date on the direction and project from SpendUpdated (L2-052 AC2)', () => {
+    const next = applyEvent(
+      project(),
+      event(2, 'SpendUpdated', {
+        directionId: 'd',
+        directionSpendUsd: 184.2,
+        projectSpendUsd: 190.5,
+        budgetUsd: 300,
+      }),
+    );
+
+    expect(next.spendUsd).toBe(190.5);
+    expect(next.directions[0]).toMatchObject({ spendUsd: 184.2, budgetUsd: 300 });
+  });
+
+  it('marks the budget warned from BudgetWarning (L2-053 AC2)', () => {
+    const next = applyEvent(
+      project(),
+      event(2, 'BudgetWarning', { directionId: 'd', spendUsd: 240, budgetUsd: 300 }),
+    );
+
+    expect(next.directions[0]).toMatchObject({ budgetWarned: true, spendUsd: 240 });
+  });
+
+  it('keeps why a direction paused from DirectionChanged (L2-053 AC3)', () => {
+    const next = applyEvent(
+      project(),
+      event(2, 'DirectionChanged', {
+        directionId: 'd',
+        status: 'Paused',
+        completedAt: null,
+        pauseReason: 'Budget reached',
+      }),
+    );
+
+    expect(next.directions[0]).toMatchObject({ status: 'Paused', pauseReason: 'Budget reached' });
   });
 });

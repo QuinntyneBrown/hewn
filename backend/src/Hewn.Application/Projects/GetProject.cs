@@ -30,7 +30,10 @@ public sealed record DirectionDto(
     DateTimeOffset? CompletedAt,
     IReadOnlyList<StageDto> Stages,
     bool? HasUiChange,
-    string? UiDecision);
+    string? UiDecision,
+    decimal SpendUsd,
+    bool BudgetWarned,
+    string? PauseReason);
 
 public sealed record ProjectDto(
     Guid Id,
@@ -41,7 +44,8 @@ public sealed record ProjectDto(
     string Status,
     DateTimeOffset CreatedAt,
     long LastSequence,
-    IReadOnlyList<DirectionDto> Directions);
+    IReadOnlyList<DirectionDto> Directions,
+    decimal SpendUsd);
 
 public sealed class GetProjectHandler(IAppDbContext db) : IRequestHandler<GetProjectQuery, ProjectDto>
 {
@@ -94,7 +98,8 @@ public sealed class GetProjectHandler(IAppDbContext db) : IRequestHandler<GetPro
         project.Status.ToString(),
         project.CreatedAt,
         lastSequence,
-        project.Directions.OrderBy(d => d.SubmittedAt).Select(ToDto).ToList());
+        project.Directions.OrderBy(d => d.SubmittedAt).Select(ToDto).ToList(),
+        project.Directions.Sum(d => d.SpendUsd));
 
     public static DirectionDto ToDto(Direction d) => new(
         d.Id,
@@ -109,5 +114,8 @@ public sealed class GetProjectHandler(IAppDbContext db) : IRequestHandler<GetPro
             .Select(s => new StageDto(s.Number, s.Name, s.Status.ToString(), s.StartedAt, s.EndedAt))
             .ToList(),
         d.HasUiChange,
-        d.UiDecision);
+        d.UiDecision,
+        d.SpendUsd,
+        d.BudgetWarned,
+        d.PauseReason);
 }

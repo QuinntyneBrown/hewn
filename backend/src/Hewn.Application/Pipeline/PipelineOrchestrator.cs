@@ -81,6 +81,20 @@ public sealed class PipelineOrchestrator(IAppDbContext db, EventAppender events,
         await AppendProjectAsync(project, cancellationToken);
     }
 
+    /// <summary>
+    /// L2-053 AC3: spend reached the budget. The run releases its lease and keeps its checkpoint, the stage and
+    /// direction pause with "Budget reached", and the project shows Paused. A safety stop, not an approval (L2-028).
+    /// </summary>
+    public async Task OnBudgetReachedAsync(Run run, Project project, Direction direction, CancellationToken cancellationToken)
+    {
+        run.Pause();
+        var stage = direction.Pause(run.Stage, Direction.BudgetReached);
+        await AppendStageAsync(direction, stage, cancellationToken);
+        await AppendDirectionAsync(direction, cancellationToken);
+        project.ChangeStatus(ProjectStatus.Paused);
+        await AppendProjectAsync(project, cancellationToken);
+    }
+
     public Task OnRepositoryAttachedAsync(Project project, CancellationToken cancellationToken) =>
         AppendProjectAsync(project, cancellationToken);
 
@@ -101,6 +115,7 @@ public sealed class PipelineOrchestrator(IAppDbContext db, EventAppender events,
             directionId = direction.Id,
             status = direction.Status.ToString(),
             completedAt = direction.CompletedAt,
+            pauseReason = direction.PauseReason,
         }, cancellationToken);
 
     private Task AppendProjectAsync(Project project, CancellationToken cancellationToken) =>

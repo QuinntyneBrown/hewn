@@ -47,6 +47,7 @@ internal sealed class DirectionConfiguration : IEntityTypeConfiguration<Directio
         b.Property(d => d.Idea).HasMaxLength(Project.MaxIdeaLength);
         b.Property(d => d.SubmittedBy).HasMaxLength(39);
         b.Property(d => d.UiDecision).HasMaxLength(2000);
+        b.Property(d => d.PauseReason).HasMaxLength(100);
         b.HasIndex(d => new { d.ProjectId, d.SubmittedAt });
         b.OwnsMany(d => d.Stages, s =>
         {
@@ -129,6 +130,30 @@ internal sealed class RunDecisionConfiguration : IEntityTypeConfiguration<RunDec
         b.Property(d => d.Answer).HasMaxLength(RunDecision.MaxAnswerLength);
         b.Property(d => d.Rationale).HasMaxLength(RunDecision.MaxRationaleLength);
         b.HasIndex(d => new { d.DirectionId, d.Stage });
+    }
+}
+
+internal sealed class ModelCallConfiguration : IEntityTypeConfiguration<ModelCall>
+{
+    public void Configure(EntityTypeBuilder<ModelCall> b)
+    {
+        b.ToTable("model_calls");
+        b.HasKey(c => c.Id);
+        b.Property(c => c.CallId).HasMaxLength(ModelCall.MaxCallIdLength);
+        b.Property(c => c.Model).HasMaxLength(ModelCall.MaxModelLength);
+        b.HasIndex(c => new { c.RunId, c.CallId }).IsUnique();
+        b.HasIndex(c => new { c.ProjectId, c.DirectionId });
+    }
+}
+
+internal sealed class DirectionDefaultsConfiguration : IEntityTypeConfiguration<DirectionDefaults>
+{
+    public void Configure(EntityTypeBuilder<DirectionDefaults> b)
+    {
+        b.ToTable("direction_defaults");
+        b.HasKey(d => d.Id);
+        b.Property(d => d.Id).ValueGeneratedNever();
+        b.Property(d => d.UpdatedBy).HasMaxLength(39);
     }
 }
 

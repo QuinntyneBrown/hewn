@@ -15,7 +15,7 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
         string? Idea,
         string? StackPreference,
         string? RepositoryUrl,
-        decimal BudgetUsd);
+        decimal? BudgetUsd);
 
     [HttpPost]
     [Authorize(Policy = AuthSetup.OwnerPolicy)]
@@ -28,7 +28,7 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
         return Created($"/api/projects/{result.ProjectId}", result);
     }
 
-    public sealed record SubmitFeatureDirectionRequest(string? Idea, decimal BudgetUsd);
+    public sealed record SubmitFeatureDirectionRequest(string? Idea, decimal? BudgetUsd);
 
     [HttpGet]
     public Task<IReadOnlyList<ProjectSummaryDto>> List(CancellationToken cancellationToken) =>

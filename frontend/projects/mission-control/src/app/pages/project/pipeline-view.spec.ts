@@ -8,6 +8,8 @@ import {
   logWindow,
   mergeLines,
   selectedStage,
+  spendView,
+  budgetWarningToast,
   stageNotice,
 } from './pipeline-view';
 
@@ -159,5 +161,39 @@ describe('mergeLines', () => {
   it('returns the same array when nothing is new', () => {
     const existing = lines(1, 2);
     expect(mergeLines(existing, lines(2))).toBe(existing);
+  });
+});
+
+describe('spendView', () => {
+  it('shows spend of budget like the mock, with the bar at the share spent', () => {
+    expect(spendView(184.2, 400, false, null)).toEqual({
+      spent: '$184.20',
+      budget: '$400.00',
+      percent: 46,
+      warn: false,
+      text: '$184.20 of $400.00 budget',
+    });
+  });
+
+  it('turns to warning once warned, and stays within 100% when spend passes the budget', () => {
+    expect(spendView(320, 400, true, null)).toMatchObject({ percent: 80, warn: true });
+    expect(spendView(412.5, 400, true, 'Budget reached')).toMatchObject({
+      percent: 100,
+      warn: true,
+    });
+  });
+
+  it('formats thousands like the mocks', () => {
+    expect(spendView(1234.5, 10000, false, null).budget).toBe('$10,000.00');
+  });
+});
+
+describe('budgetWarningToast', () => {
+  it('reads like the live toast mock', () => {
+    expect(budgetWarningToast('Kiln Booking', 200, 250)).toEqual({
+      tone: 'warn',
+      title: 'Kiln Booking at 80% of budget',
+      text: '$200.00 of $250.00. It pauses at $250.00.',
+    });
   });
 });

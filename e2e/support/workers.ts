@@ -18,6 +18,9 @@ export interface WorkerOptions {
   executor?: 'stages' | 'scripted';
   /** Log lines a scripted stage writes in its main step. */
   logLines?: number;
+  /** Model calls a scripted stage makes in its main step, and input tokens per call (output is a tenth). */
+  modelCalls?: number;
+  callTokens?: number;
 }
 
 export function startWorkers(count: number, stepMs: number, options: WorkerOptions = {}): () => Promise<void> {
@@ -39,6 +42,8 @@ export function startWorkers(count: number, stepMs: number, options: WorkerOptio
         HEWN_EXECUTOR: options.executor ?? 'stages',
         HEWN_SCRIPTED_STEP_MS: String(stepMs),
         HEWN_SCRIPTED_LOG_LINES: String(options.logLines ?? 0),
+        HEWN_SCRIPTED_MODEL_CALLS: String(options.modelCalls ?? 0),
+        HEWN_SCRIPTED_CALL_TOKENS: String(options.callTokens ?? 10_000),
         HEWN_MAGIC_PATTERNS_URL: `http://127.0.0.1:${MAGIC_PATTERNS_PORT}/mcp`,
         HEWN_MAGIC_PATTERNS_TOKEN: MAGIC_PATTERNS_TOKEN,
         HEWN_MAGIC_PATTERNS_POLL_MS: '200',

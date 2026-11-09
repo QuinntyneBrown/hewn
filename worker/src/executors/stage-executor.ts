@@ -12,6 +12,13 @@ import type {
   PullRequest,
 } from '../api.ts';
 
+/** A model call's model and token counts, as the model API reported them. */
+export interface ModelCall {
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+}
+
 /** A step number, or a name for the steps inside a stage-10 increment (`i3/tests`); keys are `{run}/{step}/…`. */
 export type StepKey = number | string;
 
@@ -43,6 +50,11 @@ export interface RunContext {
   reportBacklog(report: BacklogReport): Promise<void>;
   /** The decisions this run committed to docs/decisions.md (L2-054), for the stage's Decisions tab. */
   recordDecisions(decisions: ReportedDecision[]): Promise<void>;
+  /**
+   * Reports a model call the moment it returns (L2-052 AC1). Throws BudgetReachedError when the call reached the
+   * direction's budget, so the stage stops before its next call (L2-053 AC3).
+   */
+  recordModelCall(call: ModelCall): Promise<void>;
   /** Stage 1 of a feature direction: tells Hewn whether stages 2 and 3 run. */
   reportScope(report: ScopeReport): Promise<void>;
   /** Squash-merges; keyed `{run}/{step}/merge`. */

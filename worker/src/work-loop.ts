@@ -1,7 +1,8 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { LeaseLostError, type HewnApi, type LeasedRun, type WorkerRegistration } from './api.ts';
+import { randomUUID } from 'node:crypto';
+import { BudgetReachedError, LeaseLostError, type HewnApi, type LeasedRun, type WorkerRegistration } from './api.ts';
 import type { RunContext, StageExecutor } from './executors/stage-executor.ts';
 import { LogBatcher } from './log-batcher.ts';
 import { sleep } from './sleep.ts';
@@ -109,6 +110,21 @@ export class WorkLoop {
       reportBacklog: (report) => this.api.reportBacklog(workerId, run, report),
       reportScope: (report) => this.api.reportScope(workerId, run, report),
       recordDecisions: (decisions) => this.api.recordDecisions(workerId, run, decisions),
+      recordModelCall: async (call) => {
+        const { verdict, directionSpendUsd, budgetUsd } = await this.api.recordModelCall(workerId, run, {
+          callId: randomUUID(),
+          ...call,
+        });
+        const spend = `${dollars(directionSpendUsd)} of ${dollars(budgetUsd)}`;
+        if (verdict === 'Warn') logs.add({ level: 'warn', text: `Spend at 80% of budget (${spend})` });
+        if (verdict === 'Stop') {
+          // Hewn has paused the direction and released the lease; nothing more of this run may reach it.
+          this.log('Budget reached; the direction is Paused', { runId: run.runId, spend });
+          const reached = new BudgetReachedError(`Budget reached (${spend}).`);
+          lease.abort(reached);
+          throw reached;
+        }
+      },
       mergePullRequest: (step, number) =>
         this.api.mergePullRequest(workerId, run, `${run.runId}/${step}/merge`, number),
       protectDefaultBranch: (step, checks) =>
@@ -144,6 +160,10 @@ export class WorkLoop {
       rmSync(workspace, { recursive: true, force: true });
     }
   }
+}
+
+function dollars(amount: number): string {
+  return `$${amount.toFixed(2)}`;
 }
 
 function messageOf(error: unknown): string {
