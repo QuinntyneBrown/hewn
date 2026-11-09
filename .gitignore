@@ -28,3 +28,4 @@ e2e/blob-report/
 # Video tooling (model files, virtualenv, build cache)
 .cache/
 tools/video-audio/.venv/
+backend/.e2e/

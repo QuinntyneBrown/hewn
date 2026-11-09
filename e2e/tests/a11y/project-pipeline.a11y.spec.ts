@@ -5,7 +5,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { expect, signIn, test, uniqueName } from '../../fixtures/test';
-import { startScriptedWorkers } from '../../support/scripted-workers';
+import { startWorkers } from '../../support/workers';
 
 async function violations(page: Page): Promise<string[]> {
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
@@ -18,7 +18,7 @@ test.describe('Project pipeline', () => {
   let stopWorkers: () => Promise<void>;
 
   test.beforeAll(() => {
-    stopWorkers = startScriptedWorkers(3, 400);
+    stopWorkers = startWorkers(3, 400);
   });
 
   test.afterAll(async () => {

@@ -42,6 +42,9 @@ export function applyEvent(project: Project, event: ProjectEvent): Project {
       break;
     case 'ProjectChanged':
       next.status = p['status'] as ProjectStatus;
+      if (typeof p['repository'] === 'string') {
+        next.repository = p['repository'];
+      }
       break;
   }
 

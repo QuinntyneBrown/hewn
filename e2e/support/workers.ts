@@ -5,10 +5,11 @@ import { join } from 'node:path';
 export const E2E_WORKER_TOKEN = 'e2e-worker-token-not-a-secret';
 
 /**
- * Starts real worker processes with the scripted executor against the e2e API, so pipeline behaviour is
- * deterministic: every stage prepares, runs and commits in `stepMs` each, with no agent or GitHub call.
+ * Starts real worker processes against the e2e API. Stages implemented so far run for real against the
+ * fake GitHub and the Greenlit fixture; the rest use the scripted executor (three steps of `stepMs` each),
+ * so pipeline behaviour stays deterministic.
  */
-export function startScriptedWorkers(count: number, stepMs: number): () => Promise<void> {
+export function startWorkers(count: number, stepMs: number): () => Promise<void> {
   const main = join(import.meta.dirname, '..', '..', 'worker', 'src', 'main.ts');
   const workers: ChildProcess[] = Array.from({ length: count }, (_, i) =>
     spawn(process.execPath, [main], {
@@ -18,7 +19,7 @@ export function startScriptedWorkers(count: number, stepMs: number): () => Promi
         HEWN_WORKER_TOKEN: E2E_WORKER_TOKEN,
         HEWN_LOCATION: 'Local',
         HEWN_WORKER_NAME: `e2e-worker-${i + 1}`,
-        HEWN_EXECUTOR: 'scripted',
+        HEWN_EXECUTOR: 'stages',
         HEWN_SCRIPTED_STEP_MS: String(stepMs),
       },
       stdio: process.env['HEWN_E2E_WORKER_LOGS'] ? 'inherit' : 'ignore',

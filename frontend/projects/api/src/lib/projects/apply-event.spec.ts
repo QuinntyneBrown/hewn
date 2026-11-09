@@ -69,6 +69,15 @@ describe('applyEvent', () => {
     expect(next.status).toBe('Idle');
   });
 
+  it('records the repository stage 0 created', () => {
+    const next = applyEvent(
+      project(),
+      event(2, 'ProjectChanged', { status: 'Running', repository: 'hewn-builds/ledgerline' }),
+    );
+
+    expect(next.repository).toBe('hewn-builds/ledgerline');
+  });
+
   it('ignores an event it has already applied', () => {
     const before = { ...project(), lastSequence: 5 };
 

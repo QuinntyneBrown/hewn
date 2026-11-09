@@ -13,7 +13,7 @@ const repo = resolve(here, '../../../..');
 const { chromium } = createRequire(join(repo, 'e2e/package.json'))('@playwright/test');
 const { NewDirectionPage } = await import(join(repo, 'e2e/pages/new-direction.page.ts'));
 const { ProjectPage } = await import(join(repo, 'e2e/pages/project.page.ts'));
-const { startScriptedWorkers } = await import(join(repo, 'e2e/support/scripted-workers.ts'));
+const { startWorkers } = await import(join(repo, 'e2e/support/workers.ts'));
 
 const base = process.env.APP_URL ?? 'http://localhost:4300';
 const screens = resolve(here, '../screens');
@@ -49,7 +49,7 @@ async function submitAndWaitFor(nd, project, name, stageName) {
 
 const browser = await chromium.launch();
 // Slow steps for stills (a stage runs about 2.4 s); the clip uses its own pace below.
-let stopWorkers = startScriptedWorkers(2, 800);
+let stopWorkers = startWorkers(2, 800);
 try {
   for (const [width, height, label] of [[1280, 900, 'desktop'], [390, 844, 'phone']]) {
     for (const dark of [false, true]) {
@@ -72,7 +72,7 @@ try {
   await stopWorkers();
 
   // Clip: submit, then the pipeline runs live to Complete (1408x792).
-  stopWorkers = startScriptedWorkers(1, 350);
+  stopWorkers = startWorkers(1, 350);
   const raw = join(here, '.raw');
   rmSync(raw, { recursive: true, force: true });
   const { ctx, page, nd, project } = await context(browser, { width: 1408, height: 792, video: raw });
