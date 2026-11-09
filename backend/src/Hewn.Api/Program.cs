@@ -38,6 +38,15 @@ app.MapControllers();
 app.MapHub<MissionControlHub>(MissionControlHub.Path);
 app.MapGet("/health/live", () => Results.Ok(new { status = "Healthy" })).AllowAnonymous();
 
+if (app.Configuration.GetValue<bool>("Hewn:Fakes:Enabled"))
+{
+    // The e2e stack and demos only: what the fake GitHub holds, so a test can see a pull request's labels.
+    app.MapGet("/api/fakes/github/{owner}/{name}/pulls", (string owner, string name, Hewn.Infrastructure.Fakes.InMemoryGitHub gitHub) =>
+        gitHub.Repository(owner, name) is { } repository
+            ? Results.Ok(repository.PullRequests.Select(p => new { p.Number, p.Title, p.Head, p.Open, p.Merged, Labels = p.Labels.ToList() }).ToList())
+            : Results.NotFound());
+}
+
 app.Run();
 
 public partial class Program;

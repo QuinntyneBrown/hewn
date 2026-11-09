@@ -12,7 +12,7 @@ import {
 } from '../../src/api.ts';
 
 export interface Call {
-  method: 'register' | 'lease' | 'heartbeat' | 'step' | 'checkpoint' | 'result';
+  method: 'register' | 'lease' | 'heartbeat' | 'step' | 'checkpoint' | 'result' | 'control';
   at: number;
   runId?: string;
   step?: number;
@@ -39,6 +39,16 @@ export class FakeHewnApi implements HewnApi {
   readonly commits: { runId: string; idempotencyKey: string; message: string; paths: string[] }[] = [];
   private readonly queue: LeasedRun[] = [];
   private nextId = 1;
+  private readonly cancelled = new Set<string>();
+  private readonly held = new Map<string, () => void>();
+
+  /** Cancels the runs whose control poll is held now, as an Owner's Cancel does (L2-029 AC3). */
+  cancel(): void {
+    for (const [runId, wake] of this.held) {
+      this.cancelled.add(runId);
+      wake();
+    }
+  }
 
   enqueueStage(stage: number, checkpointStep = 0, lastStage = 10): LeasedRun {
     const run: LeasedRun = {
@@ -88,6 +98,23 @@ export class FakeHewnApi implements HewnApi {
     const fault = this.heartbeatFaults.shift();
     if (fault === 'lost') throw new LeaseLostError();
     if (fault === 'down') throw new Error('connect ECONNREFUSED');
+  }
+
+  async control(_workerId: string, run: LeasedRun, waitSeconds: number, signal: AbortSignal): Promise<'Cancel' | null> {
+    this.record({ method: 'control', runId: run.runId });
+    if (this.cancelled.has(run.runId)) return 'Cancel';
+    await new Promise<void>((resolve) => {
+      const done = () => {
+        clearTimeout(timer);
+        signal.removeEventListener('abort', done);
+        this.held.delete(run.runId);
+        resolve();
+      };
+      const timer = setTimeout(done, waitSeconds * 1000);
+      signal.addEventListener('abort', done, { once: true });
+      this.held.set(run.runId, done);
+    });
+    return this.cancelled.has(run.runId) ? 'Cancel' : null;
   }
 
   async startStep(_workerId: string, run: LeasedRun, step: number, name: string): Promise<void> {

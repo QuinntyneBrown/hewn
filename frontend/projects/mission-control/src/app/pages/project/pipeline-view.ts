@@ -73,7 +73,8 @@ export function selectedStage(
   const asked = requested === undefined ? NaN : Number(requested);
   if (stages.some((s) => s.number === asked)) return asked;
   return (
-    stages.find((s) => s.status === 'Running' || s.status === 'Paused')?.number ??
+    stages.find((s) => s.status === 'Running' || s.status === 'Paused' || s.status === 'Cancelled')
+      ?.number ??
     stages.find((s) => s.status === 'Pending')?.number ??
     stages.at(-1)?.number ??
     0

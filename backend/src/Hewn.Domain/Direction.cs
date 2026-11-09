@@ -61,6 +61,23 @@ public sealed class Direction
 
     public DateTimeOffset? PausedAt { get; private set; }
 
+    /// <summary>Who cancelled the direction and when (L2-029 AC3), for "Cancelled by … on … at …".</summary>
+    public string? CancelledBy { get; private set; }
+
+    public DateTimeOffset? CancelledAt { get; private set; }
+
+    /// <summary>True from a Cancel until the worker that held the run confirms it stopped.</summary>
+    public bool AwaitingStop { get; private set; }
+
+    /// <summary>Seconds from Cancel to the worker stopping its run; null when no worker held a run.</summary>
+    public int? StoppedWithinSeconds { get; private set; }
+
+    /// <summary>Open pull requests labelled <c>hewn:cancelled</c>, comma-separated.</summary>
+    public string? LabelledPullRequests { get; private set; }
+
+    public IReadOnlyList<int> LabelledPullRequestNumbers =>
+        string.IsNullOrEmpty(LabelledPullRequests) ? [] : [.. LabelledPullRequests.Split(',').Select(int.Parse)];
+
     public DirectionStatus Status { get; private set; }
 
     public string SubmittedBy { get; private set; }
@@ -284,6 +301,39 @@ public sealed class Direction
         stage.Resume();
         return stage;
     }
+
+    /// <summary>
+    /// Cancel (L2-029 AC3): the direction is Cancelled for good and its running or paused stage with it. Returns the
+    /// stage when its status changed.
+    /// </summary>
+    public StageState? Cancel(string cancelledBy, DateTimeOffset now, bool awaitingStop)
+    {
+        if (!IsActive)
+        {
+            throw new InvalidOperationException($"Direction {Id} is {Status}; only an active direction cancels.");
+        }
+
+        Status = DirectionStatus.Cancelled;
+        CancelledBy = cancelledBy;
+        CancelledAt = now;
+        AwaitingStop = awaitingStop;
+        PauseRequestedBy = null;
+        PauseReason = null;
+        var stage = _stages.FirstOrDefault(s => s.Status is StageStatus.Running or StageStatus.Paused);
+        stage?.End(StageStatus.Cancelled, now);
+        return stage;
+    }
+
+    /// <summary>The worker heard Cancel and stopped; records how long that took, in whole seconds, at least one.</summary>
+    public void RecordStop(DateTimeOffset now)
+    {
+        var seconds = CancelledAt is { } at ? (int)Math.Ceiling((now - at).TotalSeconds) : 1;
+        StoppedWithinSeconds = Math.Max(1, seconds);
+        AwaitingStop = false;
+    }
+
+    public void RecordLabelled(IReadOnlyList<int> numbers) =>
+        LabelledPullRequests = numbers.Count == 0 ? null : string.Join(',', numbers);
 
     public void FailStage(int number, DateTimeOffset now)
     {

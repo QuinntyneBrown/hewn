@@ -81,6 +81,10 @@ describe('selectedStage', () => {
       (status, number) => ({ number, status }) as { number: number; status: StageStatus },
     );
 
+  it('opens on the stage a cancel stopped, not the next pending one (L2-029 AC3)', () => {
+    expect(selectedStage(stages(['Succeeded', 'Cancelled', 'Pending']), undefined)).toBe(1);
+  });
+
   it('uses the stage the user asked for when it exists', () => {
     expect(selectedStage(stages(['Succeeded', 'Running', 'Pending']), '0')).toBe(0);
   });

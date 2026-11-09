@@ -1,0 +1,259 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:06.01
+This is journey seven of Hewn, the software factory: cancel a direction.
+
+00:00:06.01 --> 00:00:09.83
+Sometimes the work in progress is simply not wanted any more.
+
+00:00:09.83 --> 00:00:13.77
+An Owner needs to stop it quickly, keep what is already merged,
+
+00:00:13.77 --> 00:00:16.65
+and leave a clear mark on anything still open.
+
+00:00:16.65 --> 00:00:21.03
+This video walks through how it was built: the flow, the control poll,
+
+00:00:21.03 --> 00:00:25.48
+the cancel itself, the labelled pull requests, the page, and the tests.
+
+00:00:26.63 --> 00:00:32.26
+An Owner presses Cancel on a running or paused direction, and confirms in a dialog.
+
+00:00:32.26 --> 00:00:37.15
+The active run stops within ten seconds, and the direction is Cancelled.
+
+00:00:37.15 --> 00:00:41.22
+Open pull requests stay open, with the label hewn cancelled.
+
+00:00:41.22 --> 00:00:45.02
+If another direction is waiting in the queue, it starts.
+
+00:00:45.02 --> 00:00:49.43
+Viewers never see the control, and the API answers four oh three.
+
+00:00:50.58 --> 00:00:52.12
+Here is the whole flow.
+
+00:00:52.12 --> 00:00:56.99
+While a run executes, the worker holds a control request open to the API.
+
+00:00:56.99 --> 00:01:02.33
+When the Owner confirms, the API labels the open pull requests, cancels the run,
+
+00:01:02.33 --> 00:01:07.87
+the stage and the direction, and starts the next queued direction, all in one save.
+
+00:01:07.87 --> 00:01:09.94
+Then it wakes the held request.
+
+00:01:09.94 --> 00:01:14.95
+The worker hears Cancel, stops the step in progress, and the dialog closes.
+
+00:01:16.10 --> 00:01:21.10
+Workers only ever call out to Hewn, so a Local worker needs no open port.
+
+00:01:21.10 --> 00:01:26.71
+To hear a cancel within seconds, the worker keeps one request open while it works,
+
+00:01:26.71 --> 00:01:28.42
+twenty seconds at a time.
+
+00:01:28.42 --> 00:01:32.88
+The API answers the moment the run is cancelled, or with nothing,
+
+00:01:32.88 --> 00:01:34.66
+and the worker asks again.
+
+00:01:35.01 --> 00:01:39.69
+On the API side, the poll checks that this worker still holds this run.
+
+00:01:39.69 --> 00:01:44.18
+If the run is still leased, it waits for a signal, then looks again.
+
+00:01:44.18 --> 00:01:48.53
+A cancelled run is answered with Cancel, and the stop is recorded.
+
+00:01:48.88 --> 00:01:53.56
+In the worker, the Cancel answer aborts the step in progress at once.
+
+00:01:53.56 --> 00:01:56.95
+No further step, checkpoint or result is reported.
+
+00:01:58.10 --> 00:02:00.78
+The cancel command takes the project's lock.
+
+00:02:00.78 --> 00:02:05.85
+It sends a Direction cancelled event, writes Cancel requested by, into the run log,
+
+00:02:05.85 --> 00:02:07.62
+and labels the pull requests.
+
+00:02:07.62 --> 00:02:11.71
+Then the orchestrator cancels the run, its stage and the direction,
+
+00:02:11.71 --> 00:02:13.97
+and starts the next queued direction.
+
+00:02:13.97 --> 00:02:16.54
+Only after saving does it wake the worker,
+
+00:02:16.54 --> 00:02:19.10
+and wait up to ten seconds for it to hear.
+
+00:02:19.10 --> 00:02:24.17
+If the worker never answers, the direction is Cancelled anyway: its lease no longer
+
+00:02:24.17 --> 00:02:25.57
+lets it write anything.
+
+00:02:26.72 --> 00:02:28.81
+Which pull requests are open?
+
+00:02:28.81 --> 00:02:33.71
+The mutation ledger already records every pull request a run opened.
+
+00:02:33.71 --> 00:02:38.98
+Each one that is not merged gets the hewn cancelled label through GitHub,
+
+00:02:38.98 --> 00:02:43.01
+and the run log shows the matching g h p r edit command.
+
+00:02:43.01 --> 00:02:44.81
+Merged work stays merged.
+
+00:02:45.96 --> 00:02:50.26
+On the project page, Owners see Cancel beside Pause or Resume.
+
+00:02:50.26 --> 00:02:54.82
+It opens a confirmation dialog: Keep running, or Cancel direction.
+
+00:02:54.82 --> 00:02:58.98
+While Hewn waits for the worker, the button says Cancelling.
+
+00:02:59.33 --> 00:03:04.43
+If the worker has stopped answering, the dialog names it, and offers Try again.
+
+00:03:04.43 --> 00:03:08.17
+The page behind says the worker hasn't confirmed the stop,
+
+00:03:08.17 --> 00:03:11.01
+and that Hewn refuses anything more from it.
+
+00:03:11.01 --> 00:03:15.92
+The cancelled page says who cancelled and when, how quickly the run stopped,
+
+00:03:15.92 --> 00:03:18.76
+and which pull request is open and labelled.
+
+00:03:18.76 --> 00:03:21.15
+It works in dark mode and on a phone.
+
+00:03:22.30 --> 00:03:25.08
+Each slice began with its tests failing.
+
+00:03:25.08 --> 00:03:30.70
+The backend gained seven tests against the real API: stopping a running direction
+
+00:03:30.70 --> 00:03:35.56
+within ten seconds, a worker that does not answer, a paused direction,
+
+00:03:35.56 --> 00:03:41.39
+the next queued direction, the labelled pull request, the Viewer, and the conflicts.
+
+00:03:41.39 --> 00:03:46.32
+The worker gained five tests against a fake API and a real HTTP server.
+
+00:03:46.67 --> 00:03:50.39
+All green, the backend has one hundred and eighty five tests,
+
+00:03:50.39 --> 00:03:55.32
+the worker one hundred and thirty eight, and the frontend seventy one unit tests.
+
+00:03:55.32 --> 00:03:58.85
+End to end, three new pipeline tests cancel a real worker.
+
+00:03:58.85 --> 00:04:03.72
+One checks the stop within ten seconds and the labelled pull request in the fake
+
+00:04:03.72 --> 00:04:08.83
+GitHub, one checks that the queued direction starts, and one stops the worker first,
+
+00:04:08.83 --> 00:04:10.35
+to see the failed dialog.
+
+00:04:10.35 --> 00:04:12.78
+There are fifty end to end tests in all.
+
+00:04:13.93 --> 00:04:16.92
+Here is a direction running Detailed designs.
+
+00:04:16.92 --> 00:04:21.62
+Its Scaffold stage opened pull request number one, which is still open.
+
+00:04:21.62 --> 00:04:25.40
+The Owner presses Cancel, and the dialog asks to confirm.
+
+00:04:25.40 --> 00:04:26.53
+Cancel direction.
+
+00:04:26.53 --> 00:04:29.05
+Cancelling, while the worker hears it.
+
+00:04:29.05 --> 00:04:31.03
+Then the page shows Cancelled.
+
+00:04:31.03 --> 00:04:35.74
+The log reads Cancel requested, the label command for pull request one,
+
+00:04:35.74 --> 00:04:36.80
+and Run stopped.
+
+00:04:36.80 --> 00:04:40.05
+The callout says the run stopped within a second.
+
+00:04:40.40 --> 00:04:45.09
+In the fake GitHub, pull request number one is still open, not merged,
+
+00:04:45.09 --> 00:04:47.56
+and carries the hewn cancelled label.
+
+00:04:47.91 --> 00:04:52.10
+Now a second project, with a feature direction waiting in the queue.
+
+00:04:52.10 --> 00:04:57.15
+The Owner cancels the running direction, and the feature direction starts straight
+
+00:04:57.15 --> 00:04:59.24
+away, with its Idea stage running.
+
+00:04:59.59 --> 00:05:05.00
+And when the worker has gone silent, the dialog says Cancel didn't reach the worker,
+
+00:05:05.00 --> 00:05:06.99
+names it, and offers Try again.
+
+00:05:06.99 --> 00:05:11.05
+A Viewer sees the cancelled direction, with no controls at all.
+
+00:05:12.20 --> 00:05:14.02
+Journey seven is complete.
+
+00:05:14.02 --> 00:05:17.30
+Cancel stops the active run within ten seconds,
+
+00:05:17.30 --> 00:05:19.89
+over a request the worker holds open.
+
+00:05:19.89 --> 00:05:23.66
+Open pull requests stay open, labelled hewn cancelled,
+
+00:05:23.66 --> 00:05:26.25
+and the next queued direction starts.
+
+00:05:26.25 --> 00:05:28.07
+And only Owners can do it.
+
+00:05:28.07 --> 00:05:31.91
+Next comes journey eight: stop and restart all workers.

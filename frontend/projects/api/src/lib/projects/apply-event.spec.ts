@@ -29,6 +29,11 @@ const project = (): Project => ({
       pauseRequested: false,
       pausedBy: null,
       pausedAt: null,
+      cancelledBy: null,
+      cancelledAt: null,
+      stoppedWithinSeconds: null,
+      awaitingStop: false,
+      labelledPullRequests: [],
       stages: [0, 1].map((number) => ({
         number,
         name: `S${number}`,
@@ -283,6 +288,31 @@ describe('applyEvent', () => {
       status: 'Running',
       pausedBy: null,
       pausedAt: null,
+    });
+  });
+
+  it('records who cancelled, how fast the run stopped and the labelled pull requests (L2-029 AC3)', () => {
+    const cancelled = applyEvent(
+      project(),
+      event(2, 'DirectionChanged', {
+        directionId: 'd',
+        status: 'Cancelled',
+        completedAt: null,
+        pauseReason: null,
+        cancelledBy: 'quinntynebrown',
+        cancelledAt: '2026-11-08T17:01:36Z',
+        stoppedWithinSeconds: 4,
+        awaitingStop: false,
+        labelledPullRequests: [9],
+      }),
+    );
+    expect(cancelled.directions[0]).toMatchObject({
+      status: 'Cancelled',
+      cancelledBy: 'quinntynebrown',
+      cancelledAt: '2026-11-08T17:01:36Z',
+      stoppedWithinSeconds: 4,
+      awaitingStop: false,
+      labelledPullRequests: [9],
     });
   });
 });

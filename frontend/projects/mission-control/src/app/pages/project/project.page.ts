@@ -40,7 +40,11 @@ import { Toasts } from '../../core/toasts';
 import { LiveLogComponent } from './live-log.component';
 import { RaiseBudgetDialog, RaiseBudgetData } from './raise-budget.dialog';
 import { suggestedBudget } from './raise-budget';
+import { CancelDirectionData, CancelDirectionDialog } from './cancel-direction.dialog';
 import {
+  canCancel,
+  cancelledBody,
+  cancelledTitle,
   controlFailure,
   directionControl,
   PAUSED_BY_OWNER,
@@ -329,6 +333,28 @@ export class ProjectPage {
 
   protected readonly control = directionControl;
   protected readonly pausedTitle = pausedTitle;
+  protected readonly canCancel = canCancel;
+  protected readonly cancelledTitle = cancelledTitle;
+  protected readonly cancelledBody = cancelledBody;
+
+  /** "8 Nov", for the cancelled direction's meta line. */
+  protected shortDate(at: string | null): string {
+    return at ? new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
+  }
+
+  /** Cancel (L2-029 AC3), confirmed in a dialog. The page updates from the events the command sends. */
+  protected cancelDirection(direction: { id: string }): void {
+    const project = this.project();
+    if (!project || !this.session.isOwner()) return;
+    this.dialog.open<unknown, CancelDirectionData>(CancelDirectionDialog, {
+      data: { projectId: project.id, projectName: project.name, directionId: direction.id },
+      role: 'alertdialog',
+      ariaLabelledBy: 'cancel-title',
+      ariaDescribedBy: 'cancel-desc',
+      backdropClass: 'backdrop',
+      autoFocus: 'first-tabbable',
+    });
+  }
   protected readonly pausedByOwner = PAUSED_BY_OWNER;
   /** True while a Pause or Resume request is on its way. */
   protected readonly controlSending = signal(false);

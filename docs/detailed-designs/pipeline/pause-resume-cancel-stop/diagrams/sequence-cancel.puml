@@ -20,30 +20,32 @@ box "Frontend — Mission Control application" #E0F2FE
   participant "CancelDirectionDialog" as dlg
 end box
 box "Backend — Hewn API application" #D1FADF
-  participant "DirectionControlsController" as dc
-  participant "WorkerControlChannel" as chan
+  participant "ProjectsController" as dc
+  participant "WorkerController" as wc
 end box
 box "Backend — Hewn Infrastructure" #FFF4E5
-  participant "PullRequestLabeler" as labeler
   database "Hewn database" as db
 end box
 box "Backend — Worker application" #D1FADF
-  participant "RunSupervisor" as sup
+  participant "WorkLoop" as loop
 end box
 box "External systems" #F2F4F7
   participant "GitHub" as gh
 end box
+loop -> wc : GET runs/{id}/control?waitSeconds=20 (held open)
 owner -> dlg : Confirm Cancel direction
-dlg -> dc : POST /api/directions/{id}/cancel
-dc -> chan : CancelRun(run)
-chan -> sup : CancelRun
-sup -> sup : Cancel agent; kill run container if still alive at 10 s
-sup --> chan : Stopped
-alt no acknowledgement within 10 s
-  chan -> db : Expire lease; run will not resume
+dlg -> dc : POST /api/projects/{p}/directions/{d}/cancel
+dc -> dc : Require Owner, else 403 (L2-029 AC5)
+dc -> gh : Label each open PR the direction opened hewn:cancelled
+dc -> db : DirectionCancelled; run, stage, direction Cancelled;\nnext queued direction starts, else project Cancelled (L2-004 AC4)
+dc -> wc : Wake the held poll
+wc -> db : Stop acknowledged; "Run stopped at step n"
+wc --> loop : 200 {control: Cancel}
+loop -> loop : Abort the step in progress; report nothing more
+alt the worker answers within 10 s
+  dc --> dlg : 200 {stopped: true, stoppedWithinSeconds}; dialog closes
+else no answer within 10 s
+  dc --> dlg : 200 {stopped: false, worker}; "Cancel didn't reach the worker", Try again
 end
-dc -> db : Direction Cancelled; active stage Cancelled
-dc -> labeler : LabelOpenAsync(direction, hewn:cancelled)
-labeler -> gh : Add label to each open PR (L2-029 AC3)
-dc --> dlg : Close; header shows Cancelled
+db --> dlg : Events: Cancelled by … on … at …; PR #n labelled (L2-029 AC3)
 @enduml

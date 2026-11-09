@@ -9,6 +9,7 @@ import {
   type ModelCallReport,
   type ModelCallVerdict,
   type CheckpointVerdict,
+  type RunControl,
   type ReportedDecision,
   type CommitFile,
   type HewnApi,
@@ -41,6 +42,19 @@ export class HttpHewnApi implements HewnApi {
 
   async heartbeat(workerId: string, run: LeasedRun): Promise<void> {
     await this.post(`/api/worker/runs/${run.runId}/heartbeat`, { workerId, epoch: run.epoch });
+  }
+
+  async control(
+    workerId: string,
+    run: LeasedRun,
+    waitSeconds: number,
+    signal: AbortSignal,
+  ): Promise<RunControl | null> {
+    const query = new URLSearchParams({ workerId, epoch: String(run.epoch), waitSeconds: String(waitSeconds) });
+    const answer = (await this.send('GET', `/api/worker/runs/${run.runId}/control?${query}`, undefined, signal)) as {
+      control?: RunControl;
+    } | null;
+    return answer?.control ?? null;
   }
 
   async checkpoint(workerId: string, run: LeasedRun, step: number, sha?: string): Promise<CheckpointVerdict> {
@@ -185,15 +199,26 @@ export class HttpHewnApi implements HewnApi {
     return this.send('POST', path, body);
   }
 
-  private async send(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown): Promise<unknown> {
-    const response = await this.fetch(method, path, body);
+  private async send(
+    method: 'GET' | 'POST' | 'PUT',
+    path: string,
+    body?: unknown,
+    signal?: AbortSignal,
+  ): Promise<unknown> {
+    const response = await this.fetch(method, path, body, signal);
     if (response.status === 204) return null;
     return response.json();
   }
 
-  private async fetch(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown): Promise<Response> {
+  private async fetch(
+    method: 'GET' | 'POST' | 'PUT',
+    path: string,
+    body?: unknown,
+    signal?: AbortSignal,
+  ): Promise<Response> {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method,
+      signal,
       headers: { authorization: `Bearer ${this.token}`, 'content-type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
     });

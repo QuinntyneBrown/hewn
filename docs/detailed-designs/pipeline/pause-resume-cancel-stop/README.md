@@ -67,7 +67,7 @@ Pause waits for the current step to finish and checkpoint (L2-029 AC1): the chec
 
 ### Behaviour — cancel a direction
 
-The run stops within 10 seconds, the direction is Cancelled, and open pull requests stay open with `hewn:cancelled` (L2-029 AC3).
+The run stops within 10 seconds, the direction is Cancelled, and open pull requests stay open with `hewn:cancelled` (L2-029 AC3). The worker hears the cancel on its held control poll, and the next queued direction starts (L2-004 AC4).
 
 ![Sequence diagram: cancel a direction](diagrams/sequence-cancel.png)
 
@@ -101,4 +101,34 @@ Journey 6 built Pause and Resume (L2-029 AC1, AC2, AC5). Cancel and Stop all com
   ("Pausing…", `aria-busy`), so no new mock was needed. `DirectionControlsComponent` is part of the project page's
   header rather than a component of its own. Cancel is not shown until journey 7 builds it.
 - **Not built yet:** audit entries for Pause and Resume (the audit log is journey 32).
+
+## Decisions made while building Cancel
+
+Journey 7 built Cancel (L2-029 AC3, AC5, L2-004 AC4).
+
+- **Cancel reaches the worker on a held control poll, not SignalR** ([ADR 0012](../../../adr/0012-cancel-reaches-the-worker-on-a-held-control-poll.md)).
+  While a run executes the worker holds `GET /api/worker/runs/{id}/control` open for 20 seconds at a time; it
+  answers `{control: "Cancel"}` the moment the run is cancelled, and the worker aborts the step in progress.
+  `WorkerControlChannel` and `RunSupervisor` remain unbuilt; `WorkLoop` plays the supervisor's part.
+- **Cancel commits first, then waits up to 10 seconds** for the worker to hear. In one save:
+  - `DirectionCancelled` and "Cancel requested by {login}" in the run log;
+  - the run, its running or paused stage, and the direction are Cancelled;
+  - the next queued direction starts, or the project shows Cancelled.
+  The run's lease stops fencing at once, so the worker's writes are refused even before it hears.
+- **The answer reports the stop:** `{directionId, status, stopped, stoppedWithinSeconds, worker}`. When the worker
+  does not answer in time, the dialog's failed state names it ("{worker} stopped answering…"), and Try again waits
+  again. The direction records `cancelledBy`, `cancelledAt`, `stoppedWithinSeconds`, `labelledPullRequests` and
+  `awaitingStop` (true until the worker confirms) for the callout "Cancelled by {login} on {date} at {time}".
+- **`PullRequestLabeler` is part of the cancel handler.** It reads the pull requests the direction's runs opened
+  from the mutation ledger, labels each unmerged one through the new `IGitHubRepositories.AddLabelAsync`, and logs
+  `gh pr edit {n} --add-label hewn:cancelled`. A label GitHub refuses is logged as a warning, and the cancel still
+  completes.
+- **Routes sit under the project:** `POST .../directions/{id}/cancel` on `ProjectsController`. Refusals: 403 for
+  Viewers, 409 `not_active` for a Complete direction, 404 for another project's direction. Cancel on a direction
+  already Cancelled answers 200 and only waits for the worker again.
+- **The header** shows Cancel beside Pause or Resume on a queued, running or paused direction. The dialog follows
+  the mocks' default, busy and failed states, except its text says "Merged work stays merged" because the read
+  model does not count merged increments yet. A cancelled direction's stage stays selected, so its log shows how
+  it ended.
+- **Not built yet:** audit entries for Cancel (the audit log is journey 32).
 

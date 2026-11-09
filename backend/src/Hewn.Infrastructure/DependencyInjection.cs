@@ -60,6 +60,11 @@ public static class DependencyInjection
             {
                 o.MaxIterations = iterations;
             }
+
+            if (int.TryParse(configuration["Hewn:Control:StopDeadlineSeconds"], out var deadline) && deadline > 0)
+            {
+                o.StopDeadlineSeconds = deadline;
+            }
         });
 
         if (configuration.GetValue<bool>("Hewn:Fakes:Enabled"))
