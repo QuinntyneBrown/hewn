@@ -49,7 +49,7 @@ public sealed class SubmitFeatureDirectionHandler(
         await events.AppendAsync(
             project.Id,
             "DirectionQueued",
-            new { directionId = direction.Id, kind = direction.Kind.ToString(), stage = direction.FirstStage, stageStatus = StageStatus.Pending.ToString(), startsNow },
+            new { directionId = direction.Id, kind = direction.Kind.ToString(), stage = direction.FirstStage, stageStatus = StageStatus.Pending.ToString(), startsNow, direction = GetProjectHandler.ToDto(direction) },
             cancellationToken);
         if (startsNow)
         {

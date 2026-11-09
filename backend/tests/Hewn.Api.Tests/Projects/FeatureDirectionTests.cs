@@ -96,6 +96,9 @@ public sealed class FeatureDirectionTests : IAsyncLifetime
         var events = (await HewnClient.ReadJsonAsync(await owner.GetAsync($"/api/projects/{projectId}/events?after=0"))).EnumerateArray().ToList();
         var queued = events.Last(e => e.GetProperty("type").GetString() == "DirectionQueued").GetProperty("payload");
         Assert.Equal("Feature", queued.GetProperty("kind").GetString());
+        // The full direction, so a page that loaded before the feature was submitted can show it.
+        Assert.Equal(Feature, queued.GetProperty("direction").GetProperty("idea").GetString());
+        Assert.Equal("Skipped", queued.GetProperty("direction").GetProperty("stages")[4].GetProperty("status").GetString());
         Assert.Equal("ProjectChanged", events[^1].GetProperty("type").GetString());
     }
 

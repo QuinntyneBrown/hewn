@@ -37,3 +37,27 @@ export function headerStatus(
 
   return direction === 'Queued' ? 'Running' : direction;
 }
+
+/** A direction's short title: its first clause, as the header and the queue callout show it. */
+export function directionTitle(idea: string): string {
+  const first = (idea.split(/(?<=\.)\s/)[0] ?? idea).split(',')[0] ?? idea;
+  return first.replace(/\.$/, '').trim();
+}
+
+/** "14:12": when a queued direction was submitted, in the viewer's time zone. */
+export function clockTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+/** The explanation in the "Feature direction complete" callout (L2-005 AC1, AC2). */
+export function featureOutcome(
+  projectName: string,
+  hasUiChange: boolean | null | undefined,
+  uiDecision: string | null | undefined,
+): string {
+  const designs =
+    hasUiChange === false
+      ? ` Designs and design system were skipped too: ${(uiDecision ?? 'the agent recorded no user interface change').replace(/\.?$/, '.')}`
+      : '';
+  return `Bootstrap, stack and scaffold were skipped.${designs} ${projectName} is Idle until the next direction.`;
+}

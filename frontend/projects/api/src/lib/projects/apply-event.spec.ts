@@ -83,4 +83,40 @@ describe('applyEvent', () => {
 
     expect(applyEvent(before, event(5, 'ProjectChanged', { status: 'Idle' }))).toBe(before);
   });
+
+  it('adds a direction queued after the snapshot, once', () => {
+    const queued = {
+      ...project().directions[0]!,
+      id: 'f',
+      kind: 'Feature' as const,
+      idea: 'CSV export',
+    };
+    const once = applyEvent(
+      project(),
+      event(2, 'DirectionQueued', { directionId: 'f', direction: queued }),
+    );
+    const twice = applyEvent(
+      once,
+      event(3, 'DirectionQueued', { directionId: 'f', direction: queued }),
+    );
+
+    expect(twice.directions.map((d) => d.id)).toEqual(['d', 'f']);
+    expect(twice.directions[1]!.kind).toBe('Feature');
+  });
+
+  it('records the UI change decision a feature direction reports', () => {
+    const next = applyEvent(
+      project(),
+      event(2, 'DirectionScoped', {
+        directionId: 'd',
+        hasUiChange: false,
+        uiDecision: 'No screen changes.',
+      }),
+    );
+
+    expect(next.directions[0]).toMatchObject({
+      hasUiChange: false,
+      uiDecision: 'No screen changes.',
+    });
+  });
 });

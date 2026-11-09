@@ -16,7 +16,11 @@
           </div>
           <div class="phead__meta">
             @if (direction(); as d) {
-              <span>{{ d.kind }} direction · submitted by {{ d.submittedBy }}</span>
+              @if (d.kind === 'Feature') {
+                <span>Feature direction · {{ title(d.idea) }}</span>
+              } @else {
+                <span>{{ d.kind }} direction · submitted by {{ d.submittedBy }}</span>
+              }
             }
             @if (p.repository) {
               <a class="phead__repo" [href]="'https://github.com/' + p.repository"
@@ -42,7 +46,10 @@
                 ><span class="stage__row"
                   ><svg hw-status-icon [status]="stage.status"></svg
                   ><span class="stage__n">{{ stage.number }}</span
-                  ><span class="stage__name">{{ stage.name }}</span
+                  ><span
+                    class="stage__name"
+                    [class.stage__name--skip]="stage.status === 'Skipped'"
+                    >{{ stage.name }}</span
                   ><span class="stage__dur tabular">{{
                     duration(stage.startedAt, stage.endedAt)
                   }}</span></span
@@ -51,7 +58,40 @@
             </li>
           }
         </ol>
-        @if (d.status === 'Complete') {
+        @if (queued(); as waiting) {
+          @if (waiting.length > 0) {
+            <section aria-label="Queued directions">
+              <div class="callout callout--info" role="status">
+                <svg hw-icon name="info" class="icon--lg"></svg>
+                <div>
+                  <p class="callout__title">
+                    {{ waiting.length }}
+                    {{ waiting.length === 1 ? 'direction' : 'directions' }} queued
+                  </p>
+                  <p class="callout__body">
+                    {{ waiting[0].kind }} direction “{{ title(waiting[0].idea) }}”, submitted by
+                    {{ waiting[0].submittedBy }} at {{ clockTime(waiting[0].submittedAt) }}, starts
+                    when this direction is Complete or Cancelled. One direction runs per project,
+                    first in, first out.
+                  </p>
+                </div>
+              </div>
+            </section>
+          }
+        }
+        @if (d.status === 'Complete' && d.kind === 'Feature') {
+          <section aria-label="Direction result">
+            <div class="callout callout--info" role="status">
+              <svg hw-icon name="info" class="icon--lg"></svg>
+              <div>
+                <p class="callout__title">Feature direction complete</p>
+                <p class="callout__body">
+                  {{ featureOutcome(p.name, d.hasUiChange, d.uiDecision) }}
+                </p>
+              </div>
+            </div>
+          </section>
+        } @else if (d.status === 'Complete') {
           <section aria-label="Direction result">
             <div class="callout callout--ok" role="status">
               <svg hw-icon name="checkCircle" class="icon--lg"></svg>

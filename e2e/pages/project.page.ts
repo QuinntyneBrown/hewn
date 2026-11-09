@@ -7,6 +7,9 @@ export class ProjectPage {
   readonly projectStatus: Locator;
   readonly repository: Locator;
   readonly completeCallout: Locator;
+  readonly featureCompleteCallout: Locator;
+  readonly queuedCallout: Locator;
+  readonly directionMeta: Locator;
   readonly announcer: Locator;
   /** Any dialog asking the user for something; a run never needs one (L2-028). */
   readonly dialogs: Locator;
@@ -20,6 +23,9 @@ export class ProjectPage {
     this.projectStatus = page.locator('.phead .status');
     this.repository = page.locator('.phead__repo');
     this.completeCallout = page.locator('.callout--ok', { hasText: 'Direction complete' });
+    this.featureCompleteCallout = page.locator('.callout', { hasText: 'Feature direction complete' });
+    this.queuedCallout = page.locator('.callout', { hasText: /direction(s)? queued/ });
+    this.directionMeta = page.locator('.phead__meta > span').first();
     this.announcer = page.locator('[data-testid="pipeline-announcer"]');
     this.dialogs = page.locator('[role="dialog"], [role="alertdialog"]');
   }
@@ -48,6 +54,11 @@ export class ProjectPage {
   /** The current stage, marked aria-current="step". */
   currentStage(): Locator {
     return this.pipeline.locator('[aria-current="step"]');
+  }
+
+  /** Stage names struck through as skipped. */
+  async skippedStageNames(): Promise<string[]> {
+    return this.pipeline.locator('.stage__name--skip').allTextContents();
   }
 
   /** Each stage's status label, in pipeline order. */

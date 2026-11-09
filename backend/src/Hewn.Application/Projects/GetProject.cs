@@ -59,18 +59,20 @@ public sealed class GetProjectHandler(IAppDbContext db) : IRequestHandler<GetPro
         project.Status.ToString(),
         project.CreatedAt,
         lastSequence,
-        project.Directions.OrderBy(d => d.SubmittedAt).Select(d => new DirectionDto(
-            d.Id,
-            d.Kind.ToString(),
-            d.Status.ToString(),
-            d.Idea,
-            d.BudgetUsd,
-            d.SubmittedBy,
-            d.SubmittedAt,
-            d.CompletedAt,
-            d.Stages.OrderBy(s => s.Number)
-                .Select(s => new StageDto(s.Number, s.Name, s.Status.ToString(), s.StartedAt, s.EndedAt))
-                .ToList(),
-            d.HasUiChange,
-            d.UiDecision)).ToList());
+        project.Directions.OrderBy(d => d.SubmittedAt).Select(ToDto).ToList());
+
+    public static DirectionDto ToDto(Direction d) => new(
+        d.Id,
+        d.Kind.ToString(),
+        d.Status.ToString(),
+        d.Idea,
+        d.BudgetUsd,
+        d.SubmittedBy,
+        d.SubmittedAt,
+        d.CompletedAt,
+        d.Stages.OrderBy(s => s.Number)
+            .Select(s => new StageDto(s.Number, s.Name, s.Status.ToString(), s.StartedAt, s.EndedAt))
+            .ToList(),
+        d.HasUiChange,
+        d.UiDecision);
 }

@@ -1,5 +1,5 @@
 import { ProjectEvent } from '../live/project-event';
-import { DirectionStatus, Project, ProjectStatus, StageStatus } from './models';
+import { Direction, DirectionStatus, Project, ProjectStatus, StageStatus } from './models';
 
 /** Folds one live event into a project snapshot. Events at or below lastSequence are already applied. */
 export function applyEvent(project: Project, event: ProjectEvent): Project {
@@ -37,6 +37,25 @@ export function applyEvent(project: Project, event: ProjectEvent): Project {
               ...d,
               status: p['status'] as DirectionStatus,
               completedAt: (p['completedAt'] as string | null) ?? null,
+            },
+      );
+      break;
+    case 'DirectionQueued': {
+      // A direction submitted after the snapshot carries itself, so the page can show it at once.
+      const direction = p['direction'] as Direction | undefined;
+      if (direction && !project.directions.some((d) => d.id === direction.id)) {
+        next.directions = [...project.directions, direction];
+      }
+      break;
+    }
+    case 'DirectionScoped':
+      next.directions = project.directions.map((d) =>
+        d.id !== p['directionId']
+          ? d
+          : {
+              ...d,
+              hasUiChange: p['hasUiChange'] as boolean,
+              uiDecision: (p['uiDecision'] as string | null) ?? null,
             },
       );
       break;
