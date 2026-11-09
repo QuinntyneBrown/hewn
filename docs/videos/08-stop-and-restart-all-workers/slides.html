@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 08 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="08" data-video-title="Stop and restart all workers" data-parts="Introduction|Goal|Flow|Switch|Halt|Worker|Page|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 8</div>
+  <h1>Stop and restart all workers</h1>
+  <p class="lead">One switch that halts every run within ten seconds, and holds until you say go.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video walks through how it was built">
+  <figure><img src="screens/workers-stopped-desktop.png" alt="The Workers page with the banner All workers stopped by quinntynebrown, two workers holding at checkpoint, and Start workers in the sidebar"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="An Owner presses Stop all workers and confirms.">
+  <div class="cols cols--wide">
+    <figure><img src="screens/workers-running-desktop.png" alt="Two workers leased, on Ledgerline and Tidewater, with Stop all workers in the sidebar"></figure>
+    <ul class="bullets small">
+      <li>Halt within 10 s</li>
+      <li>Nothing leased until Start</li>
+      <li>Resume from checkpoints</li>
+      <li>Viewers: banner, no control, 403</li>
+    </ul>
+  </div>
+</section>
+
+<section id="flow" data-part="2" data-cue="Here is the whole flow.">
+  <figure class="diagram"><img src="../../detailed-designs/pipeline/pause-resume-cancel-stop/diagrams/sequence-stop-all.png" alt="Sequence diagram: Stop saves the leasing switch, halts each leased run, and the held control poll answers Halt; Start releases the halted runs and switches leasing on"></figure>
+</section>
+
+<section id="switch" data-part="3" data-cue="The lease is granted in a single update">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/LeaseService.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="4,5">            var granted = await db.Runs
+                .Where(r =&gt; r.Id == candidate.Id &amp;&amp; r.Status == RunStatus.Queued)
+                .Where(r =&gt; !db.Runs.Any(o =&gt; o.ProjectId == candidate.ProjectId &amp;&amp; o.Status == RunStatus.Leased))
+                // Checked in the same statement, so nothing is leased once Stop all workers has saved the switch.
+                .Where(r =&gt; !db.LeasingSwitches.Any(s =&gt; s.Stopped))
+                .ExecuteUpdateAsync(set =&gt; set
+                    .SetProperty(r =&gt; r.Status, RunStatus.Leased)
+                    .SetProperty(r =&gt; r.WorkerId, workerId)
+                    .SetProperty(r =&gt; r.RanBy, workerId)
+                    .SetProperty(r =&gt; r.StartedAt, r =&gt; r.StartedAt ?? now)
+                    .SetProperty(r =&gt; r.LeaseEpoch, r =&gt; r.LeaseEpoch + 1)
+                    .SetProperty(r =&gt; r.LeaseExpiresAt, expires),</pre>
+</section>
+
+<section id="restart" data-part="3" data-cue="Once Stop has saved it, no worker can be granted a run">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Workers/StopAllWorkersTests.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="6,8,9,10,13,14">    public async Task Leasing_stays_stopped_after_a_server_restart()
+    {
+        // Nobody polls here, so a 1-second deadline keeps the test quick.
+        _factory.WithSettings(("Hewn:Control:StopDeadlineSeconds", "1"));
+        var (owner, _) = await TwoRunningAsync();
+        Assert.Equal(HttpStatusCode.OK, (await StopAsync(owner)).StatusCode);
+
+        var restarted = _factory.Restart();
+        await _factory.DisposeAsync();
+        _factory = restarted;
+
+        var after = await _factory.SignInAsync("quinntynebrown", Role.Owner);
+        Assert.True((await WorkersAsync(after)).GetProperty("leasing").GetProperty("stopped").GetBoolean());
+        Assert.Null(await (await _factory.RegisterWorkerAsync("hewn-cloud-eus-02")).LeaseAsync());</pre>
+</section>
+
+<section id="halt" data-part="4" data-cue="The stop command saves the switch">
+  <div class="code-file">backend/src/Hewn.Application/Workers/StopAndStartWorkers.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="3,5,14,15">    public async Task&lt;StopWorkersResult&gt; Handle(StopWorkersCommand command, CancellationToken cancellationToken)
+    {
+        await Leasing.SetAsync(db, true, user.Login, clock.GetUtcNow(), cancellationToken);
+
+        // A lease granted before the switch was saved shows up here; none is granted after it.
+        var leased = await db.Runs.AsNoTracking().Where(r =&gt; r.Status == RunStatus.Leased).Select(r =&gt; new { r.Id, r.ProjectId }).ToListAsync(cancellationToken);
+        var halted = 0;
+        foreach (var project in leased.GroupBy(r =&gt; r.ProjectId))
+        {
+            await events.LockAsync(project.Key, cancellationToken);
+            var ids = project.Select(r =&gt; r.Id).ToList();
+            foreach (var run in await db.Runs.Where(r =&gt; ids.Contains(r.Id) &amp;&amp; r.Status == RunStatus.Leased).ToListAsync(cancellationToken))
+            {
+                run.Halt();
+                await RunLog.InfoAsync(db, events, run, $"Halted: all workers stopped by {user.Login}; resumes from step {run.CheckpointStep + 1}", clock.GetUtcNow(), cancellationToken);
+                halted++;</pre>
+</section>
+
+<section id="run" data-part="4" data-cue="A halted run keeps its worker">
+  <div class="code-file">backend/src/Hewn.Domain/Run.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="2,3,7,8">    /// &lt;summary&gt;
+    /// Stop all workers (L2-029 AC4): the lease no longer fences anything, so the worker's writes are refused, and the
+    /// checkpoint is kept. The worker and epoch stay so its control poll can still hear the halt.
+    /// &lt;/summary&gt;
+    public void Halt()
+    {
+        Status = RunStatus.Halted;
+        LeaseExpiresAt = null;
+        StopAcknowledgedAt = null;
+    }</pre>
+</section>
+
+<section id="poll" data-part="4" data-cue="On the API side, the control poll now answers Halt">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/CancelDirection.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="4,9">            status = await StatusAsync(query, cancellationToken);
+        }
+
+        if (status is not (RunStatus.Cancelled or RunStatus.Halted))
+        {
+            return null;
+        }
+
+        await AcknowledgeAsync(query.RunId, cancellationToken);</pre>
+</section>
+
+<section id="worker" data-part="5" data-cue="In the worker, a Halt answer aborts the step in progress">
+  <div class="code-file">worker/src/work-loop.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="9-12">    while (!lease.signal.aborted) {
+      try {
+        const control = await this.api.control(workerId, run, this.controlWaitSeconds, lease.signal);
+        if (control === 'Cancel') {
+          this.log('Cancelled; the run stops now', { runId: run.runId });
+          lease.abort(new Error('Cancelled by an Owner.'));
+          return;
+        }
+        if (control === 'Halt') {
+          this.log('Halted: all workers stopped; the run waits at its checkpoint', { runId: run.runId });
+          lease.abort(new Error('All workers stopped by an Owner.'));
+          return;
+        }
+      } catch (error) {
+        // A lost lease is the heartbeat's to handle; otherwise wait a little and poll again.
+        if (lease.signal.aborted || error instanceof LeaseLostError) return;</pre>
+</section>
+
+<section id="start" data-part="5" data-cue="After Start workers, the same run is leased again">
+  <div class="code-file">backend/src/Hewn.Application/Workers/StopAndStartWorkers.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="3,10,11">    public async Task&lt;LeasingDto&gt; Handle(StartWorkersCommand command, CancellationToken cancellationToken)
+    {
+        var halted = await db.Runs.AsNoTracking().Where(r =&gt; r.Status == RunStatus.Halted).Select(r =&gt; new { r.Id, r.ProjectId }).ToListAsync(cancellationToken);
+        foreach (var project in halted.GroupBy(r =&gt; r.ProjectId))
+        {
+            await events.LockAsync(project.Key, cancellationToken);
+            var ids = project.Select(r =&gt; r.Id).ToList();
+            foreach (var run in await db.Runs.Where(r =&gt; ids.Contains(r.Id) &amp;&amp; r.Status == RunStatus.Halted).ToListAsync(cancellationToken))
+            {
+                run.Release();
+                await RunLog.InfoAsync(db, events, run, $"Queued again: workers started by {user.Login}", clock.GetUtcNow(), cancellationToken);
+            }
+
+            await db.SaveChangesAsync(cancellationToken);
+            await events.PublishAsync(cancellationToken);
+        }</pre>
+</section>
+
+<section id="dialog" data-part="6" data-cue="Owners get Stop all workers at the foot of the sidebar.">
+  <figure><img src="screens/stop-dialog-desktop.png" alt="The dialog Stop all workers? listing e2e-worker-1 on Tidewater and e2e-worker-2 on Ledgerline"></figure>
+</section>
+
+<section id="busy" data-part="6" data-cue="While Hewn waits, the button counts">
+  <figure><img src="screens/stop-busy-desktop.png" alt="The dialog's button reads Stopping 2 workers…"></figure>
+</section>
+
+<section id="banner" data-part="6" data-cue="Once they have stopped, a banner on every page">
+  <figure><img src="screens/workers-stopped-desktop.png" alt="The stopped banner and two workers holding at checkpoint"></figure>
+</section>
+
+<section id="failed" data-part="6" data-cue="If a worker doesn't answer">
+  <figure><img src="screens/stop-failed-desktop.png" alt="2 workers didn't confirm, naming them, with Try again"></figure>
+</section>
+
+<section id="themes" data-part="6" data-cue="It works in dark mode and on a phone">
+  <div class="cols">
+    <figure><img src="screens/workers-stopped-desktop-dark.png" alt="The stopped Workers page in dark mode"></figure>
+    <figure class="phone"><img src="screens/workers-stopped-phone.png" alt="The stopped Workers page on a phone"></figure>
+  </div>
+</section>
+
+<section id="red" data-part="7" data-cue="Each slice began with its tests failing.">
+  <div class="code-file">worker/test/halt.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1,5,11,15">    api.halt();
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(finished).toEqual(['s3.1']);
+    expect(logs).toContain('Halted: all workers stopped; the run waits at its checkpoint');
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(finished).toEqual(['s3.1']);
+    expect(api.count('result')).toBe(0);
+
+    // Start workers: the same run is leased again with a new epoch and carries on from step 2.
+    api.requeue({ ...run, epoch: 2, checkpointStep: 1 });
+    await vi.advanceTimersByTimeAsync(40_000);
+
+    expect(finished).toEqual(['s3.1', 's3.2', 's3.3']);
+    expect(api.calls.filter((c) =&gt; c.method === 'step').map((c) =&gt; c.step)).toEqual([1, 2, 2, 3]);
+    expect(api.count('result')).toBe(1);</pre>
+  <div class="result red">✘ 5 failed · StopAllWorkersTests · ✘ 1 failed · halt.spec.ts</div>
+</section>
+
+<section id="tests" data-part="7" data-cue="All green, the backend has one hundred and ninety tests">
+  <div class="cols cols--3">
+    <div class="card"><h3>190 backend</h3><p class="small">5 new, real API</p></div>
+    <div class="card"><h3>139 worker · 81 frontend</h3><p class="small">1 and 10 new</p></div>
+    <div class="card"><h3>52 e2e</h3><p class="small">2 new pipeline tests with real workers</p></div>
+  </div>
+</section>
+
+<section id="e2e" data-part="7" data-cue="One stops two running projects">
+  <div class="code-file">e2e/tests/pipeline/stop-and-restart-all-workers.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2,5,7-9,12">    await workers.stopAllButton.click();
+    const pressed = Date.now();
+    await workers.stopConfirm.click();
+    await expect(workers.stopDialog).toHaveCount(0, { timeout: 10_000 });
+    expect(Date.now() - pressed, 'every worker halted within 10 seconds').toBeLessThan(10_000);
+
+    await expect(workers.stoppedBanner).toHaveText(
+      /All workers stopped by quinntynebrown at \d\d:\d\d\. Nothing new will be leased until you start them again\./,
+    );
+    await expect(workers.startWorkersButton).toBeVisible();
+    await expect(workers.stopAllButton).toHaveCount(0);
+    await expect(workers.rows.filter({ hasText: 'Holding at checkpoint' })).toHaveCount(2);</pre>
+  <div class="result green">✓ halted within 10 s · banner · Holding at checkpoint · resumed after the checkpoint</div>
+</section>
+
+<section id="clip-stop" data-part="8" data-cue="Here are two projects, Ledgerline and Tidewater" data-clip="clips/stop.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Stop all workers, confirm, Stopping 2 workers…, then the banner and both workers holding</aside>
+</section>
+
+<section id="halted" data-part="8" data-cue="On Ledgerline's page, the log shows the halt">
+  <figure><img src="screens/project-halted-desktop.png" alt="Ledgerline's log: Halted: all workers stopped by quinntynebrown; resumes from step 1, then Run halted at step 1"></figure>
+</section>
+
+<section id="clip-start" data-part="8" data-cue="Now the Owner presses Start workers." data-clip="clips/start.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Start workers: the banner goes, Queued again, and the run carries on</aside>
+</section>
+
+<section id="viewer" data-part="8" data-cue="And when the workers have gone silent">
+  <div class="cols">
+    <figure><img src="screens/stop-failed-desktop.png" alt="The failed dialog naming the silent workers"></figure>
+    <figure><img src="screens/workers-stopped-viewer-desktop.png" alt="A Viewer sees the banner and no controls"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="9" data-cue="Journey eight is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Halts every run within 10 s</li>
+    <li>Stored switch: nothing leased until Start</li>
+    <li>Halted runs resume from checkpoints</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>
