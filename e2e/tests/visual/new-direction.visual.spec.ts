@@ -1,0 +1,48 @@
+// Acceptance Test
+// Traces to: L2-001
+// Description: New direction matches docs/mocks region by region (form and stage plan) in the default and repo-no-access states
+
+import { expect, signIn, test } from '../../fixtures/test';
+import { compare, mockRegion, region } from '../../support/mocks';
+
+const mockIdea =
+  'A web app for small accounting teams (2–10 people) to reconcile bank and card statements against receipts. Connect a bank feed or import a CSV, match each transaction to a receipt photo, split transactions across categories, and close a month once a second person reviews it. Export the closed period to the general ledger.';
+
+const tolerance = 0.02;
+
+test.beforeEach(async ({ page }) => {
+  await signIn(page, 'quinntynebrown');
+});
+
+test('default: the form and "What runs next" match the mock', async ({ page, newDirection }) => {
+  await newDirection.open();
+  await newDirection.fill({ name: 'Ledgerline', idea: mockIdea, budget: '400.00' });
+  await page.locator('h1').click();
+
+  for (const selector of ['form.form-col', 'aside.rail']) {
+    const diff = compare(
+      await region(page.locator(selector)),
+      await mockRegion(page, 'pages/new-direction/default.html', selector),
+    );
+    expect(diff.ratio, `${selector} differs from the mock`).toBeLessThan(tolerance);
+  }
+});
+
+test('repo-no-access: the form with the repository error matches the mock', async ({ page, newDirection }) => {
+  await newDirection.open();
+  await newDirection.fill({
+    name: 'Ledgerline',
+    idea: mockIdea,
+    repository: 'https://github.com/northwind/handover',
+    budget: '400.00',
+  });
+  await newDirection.submit();
+  await expect(newDirection.errorFor('repo')).toBeVisible();
+  await page.locator('h1').click();
+
+  const diff = compare(
+    await region(newDirection.form),
+    await mockRegion(page, 'pages/new-direction/repo-no-access.html', 'form.form-col'),
+  );
+  expect(diff.ratio).toBeLessThan(tolerance);
+});

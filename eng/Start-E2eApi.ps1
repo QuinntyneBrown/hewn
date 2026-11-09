@@ -2,7 +2,7 @@
 # Starts the API for Playwright: a fresh SQLite database, a seeded allow list, dev sign-in,
 # and fake GitHub (and, as later slices add them, a fake worker, model and Magic Patterns).
 param(
-    [int]$Port = 5200
+    [int]$Port = 5300
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -16,6 +16,8 @@ $env:Hewn__Fakes__Enabled = 'true'
 $env:Hewn__Fakes__GitHub__NoAccess = 'northwind/handover'
 $env:Hewn__Fakes__GitHub__NotFound = 'northwind/missing'
 $env:HEWN_ALLOWED_GITHUB_USERS = 'quinntynebrown:Owner,ada:Viewer'
+$env:HEWN_GITHUB_OWNER = 'hewn-builds'
+$env:HEWN_DEFAULT_BUDGET_USD = '300'
 
 $cli = Join-Path $root 'backend/src/Hewn.Cli'
 dotnet run --project $cli -- reset --yes

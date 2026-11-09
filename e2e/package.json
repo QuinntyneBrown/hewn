@@ -1,0 +1,24 @@
+{
+  "name": "e2e",
+  "version": "1.0.0",
+  "description": "Playwright suite for Mission Control: behaviour, accessibility and visual parity with docs/mocks",
+  "scripts": {
+    "test": "playwright test",
+    "test:behavior": "playwright test tests/behavior",
+    "test:a11y": "playwright test tests/a11y",
+    "test:visual": "playwright test tests/visual",
+    "typecheck": "tsc --noEmit"
+  },
+  "license": "MIT",
+  "type": "commonjs",
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.65.0",
+    "@types/node": "^26.6.6",
+    "@types/pngjs": "^6.0.5",
+    "pixelmatch": "^8.0.0",
+    "pngjs": "^7.0.0",
+    "typescript": "^7.0.2"
+  },
+  "private": true
+}
