@@ -38,11 +38,11 @@ export class ScriptedStageAgent implements StageAgent {
         const features = featuresFrom(run.project.idea);
         write(
           'docs/brief.md',
-          `# ${run.project.name} brief\n\n## Problem\n${run.project.idea}\n\n## Users\nPeople who ${lowerFirst(features[0]!)} today by hand.\n\n## Core features\n${features.map((f) => `- ${f}`).join('\n')}\n\n## Out of scope\n- Native mobile apps\n- Integrations beyond CSV import and export\n\n## Assumptions\n- Users work in a modern desktop or phone browser.\n- One team per account in the first release.\n`,
+          `# ${run.project.name} brief\n\n## Problem\n${run.project.idea}\n\n## Users\nThe people the direction describes: ${lowerFirst(firstSentence(run.project.idea))}\n\n## Core features\n${features.map((f) => `- ${f}`).join('\n')}\n\n## Out of scope\n- Native mobile apps\n- Integrations beyond CSV import and export\n\n## Assumptions\n- Users work in a modern desktop or phone browser.\n- One team per account in the first release.\n`,
         );
         decide(
           'Who is the primary user?',
-          `The people the idea names: ${firstSentence(run.project.idea)}`,
+          `The people the direction describes: ${lowerFirst(firstSentence(run.project.idea))}`,
           'The direction names its audience; a narrower first user keeps the brief testable.',
         );
         return;
@@ -62,8 +62,11 @@ export class ScriptedStageAgent implements StageAgent {
         return;
       }
       case 5: {
-        const features = sectionList(read('docs/brief.md'), 'Core features');
-        const l1 = features.map((f, i) => `## L1-${pad(i + 1)}: ${f}\n${f}.\n`).join('\n');
+        const bullets = sectionList(read('docs/brief.md'), 'Core features');
+        const features = bullets.map((b) => b.split(' — ')[0]!);
+        const l1 = bullets
+          .map((b, i) => `## L1-${pad(i + 1)}: ${features[i]}\n${b.replace(' — ', ': ')}.\n`)
+          .join('\n');
         const l2 = features
           .map(
             (f, i) =>
@@ -120,14 +123,8 @@ export class ScriptedStageAgent implements StageAgent {
 }
 
 function featuresFrom(idea: string): string[] {
-  const subject = firstSentence(idea)
-    .replace(/^an?\s+/i, '')
-    .replace(/\.$/, '');
-  return [`Sign in`, `Record ${shorten(subject)}`, `Review history`];
-}
-
-function shorten(text: string): string {
-  return text.split(/\s+/).slice(0, 6).join(' ');
+  const workflow = (firstSentence(idea).split(',')[0] ?? idea).replace(/\.$/, '').trim();
+  return ['Sign in', `Main workflow — ${lowerFirst(workflow)}`, 'Review history'];
 }
 
 function firstSentence(text: string): string {
