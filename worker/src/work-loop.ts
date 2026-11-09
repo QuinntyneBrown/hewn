@@ -93,7 +93,15 @@ export class WorkLoop {
       log: (level, text) => this.api.log(workerId, run, [{ level, text }]),
       listSkillFolders: () => this.api.listSkillFolders(workerId, run),
       downloadRepository: () => this.api.downloadRepository(workerId, run),
-      commit: (step, message, files) => this.api.commit(workerId, run, `${run.runId}/${step}/commit`, message, files),
+      commit: (step, message, files, branch) =>
+        this.api.commit(workerId, run, `${run.runId}/${step}/commit`, message, files, branch),
+      openPullRequest: (step, request) =>
+        this.api.openPullRequest(workerId, run, `${run.runId}/${step}/pull-request`, request),
+      pullRequestChecks: (number) => this.api.pullRequestChecks(workerId, run, number),
+      mergePullRequest: (step, number) =>
+        this.api.mergePullRequest(workerId, run, `${run.runId}/${step}/merge`, number),
+      protectDefaultBranch: (step, checks) =>
+        this.api.protectDefaultBranch(workerId, run, `${run.runId}/${step}/protect`, checks),
     };
 
     try {

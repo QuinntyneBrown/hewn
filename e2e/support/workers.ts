@@ -34,6 +34,7 @@ export function startWorkers(count: number, stepMs: number): () => Promise<void>
         HEWN_MAGIC_PATTERNS_URL: `http://127.0.0.1:${MAGIC_PATTERNS_PORT}/mcp`,
         HEWN_MAGIC_PATTERNS_TOKEN: MAGIC_PATTERNS_TOKEN,
         HEWN_MAGIC_PATTERNS_POLL_MS: '200',
+        HEWN_CHECK_POLL_MS: '200',
       },
       stdio: output,
     }),

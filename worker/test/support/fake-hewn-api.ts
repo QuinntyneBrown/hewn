@@ -89,6 +89,20 @@ export class FakeHewnApi implements HewnApi {
     return Buffer.alloc(0);
   }
 
+  async openPullRequest(): Promise<{ number: number; url: string }> {
+    return { number: 1, url: 'https://github.com/o/r/pull/1' };
+  }
+
+  async pullRequestChecks(): Promise<{ name: string; status: string; conclusion: string | null }[]> {
+    return [];
+  }
+
+  async mergePullRequest(): Promise<string> {
+    return 'm3rge';
+  }
+
+  async protectDefaultBranch(): Promise<void> {}
+
   async listSkillFolders(): Promise<Record<string, string[]>> {
     return { '.claude/skills': [], '.agents/skills': [] };
   }

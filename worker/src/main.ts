@@ -3,6 +3,8 @@ import type { WorkerLocation } from './api.ts';
 import { ScriptedStageAgent } from './agents/scripted-agent.ts';
 import { BootstrapStageExecutor } from './executors/bootstrap-executor.ts';
 import { DOCUMENT_STAGES, DocumentStageExecutor } from './executors/document-executor.ts';
+import { ScaffoldStageExecutor } from './executors/scaffold-executor.ts';
+import { dotnetAngularTemplate } from './scaffold/dotnet-angular-template.ts';
 import { ScriptedStageExecutor } from './executors/scripted-executor.ts';
 import { StageRouter, type StageExecutor } from './executors/stage-executor.ts';
 import { HttpHewnApi } from './http-api.ts';
@@ -51,12 +53,17 @@ const magicPatterns =
 
 // Only the scripted agent exists so far; the Claude Agent SDK agent arrives with run isolation.
 const documents = new DocumentStageExecutor(new ScriptedStageAgent(), magicPatterns);
+// Templates for stacks other than the default are still to be supplied (scaffold-solution design).
+const scaffold = new ScaffoldStageExecutor([dotnetAngularTemplate], {
+  pollMs: Number(process.env.HEWN_CHECK_POLL_MS ?? 30_000),
+});
 const executor: StageExecutor =
   executorName === 'scripted'
     ? scripted
     : new StageRouter(
         new Map<number, StageExecutor>([
           [0, new BootstrapStageExecutor()],
+          [6, scaffold],
           ...[...DOCUMENT_STAGES.keys()].map((stage) => [stage, documents] as const),
         ]),
         scripted,
