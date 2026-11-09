@@ -48,6 +48,8 @@ internal sealed class DirectionConfiguration : IEntityTypeConfiguration<Directio
         b.Property(d => d.SubmittedBy).HasMaxLength(39);
         b.Property(d => d.UiDecision).HasMaxLength(2000);
         b.Property(d => d.PauseReason).HasMaxLength(100);
+        b.Property(d => d.PauseRequestedBy).HasMaxLength(39);
+        b.Property(d => d.PausedBy).HasMaxLength(39);
         b.HasIndex(d => new { d.ProjectId, d.SubmittedAt });
         b.OwnsMany(d => d.Stages, s =>
         {

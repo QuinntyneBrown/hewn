@@ -83,11 +83,8 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost("runs/{runId:guid}/checkpoints")]
-    public async Task<IActionResult> Checkpoint(Guid runId, CheckpointRequest request, CancellationToken cancellationToken)
-    {
-        await mediator.Send(new ReportCheckpointCommand(runId, request.WorkerId, request.Epoch, request.Step, request.Sha), cancellationToken);
-        return NoContent();
-    }
+    public Task<CheckpointVerdict> Checkpoint(Guid runId, CheckpointRequest request, CancellationToken cancellationToken) =>
+        mediator.Send(new ReportCheckpointCommand(runId, request.WorkerId, request.Epoch, request.Step, request.Sha), cancellationToken);
 
     [HttpPost("runs/{runId:guid}/result")]
     public async Task<IActionResult> Result(Guid runId, ResultRequest request, CancellationToken cancellationToken)

@@ -143,7 +143,14 @@ public sealed class HeartbeatHandler(IAppDbContext db, LeaseService leases, Time
     }
 }
 
-public sealed record ReportCheckpointCommand(Guid RunId, string WorkerId, long Epoch, int Step, string? Sha) : IRequest;
+public sealed record ReportCheckpointCommand(Guid RunId, string WorkerId, long Epoch, int Step, string? Sha) : IRequest<CheckpointVerdict>;
+
+/// <summary>What the worker does after a checkpoint: carry on, or stop there because an Owner pressed Pause (L2-029 AC1).</summary>
+public sealed record CheckpointVerdict(string Verdict)
+{
+    public static readonly CheckpointVerdict Continue = new("Continue");
+    public static readonly CheckpointVerdict Pause = new("Pause");
+}
 
 public sealed class ReportCheckpointValidator : AbstractValidator<ReportCheckpointCommand>
 {
@@ -154,14 +161,37 @@ public sealed class ReportCheckpointValidator : AbstractValidator<ReportCheckpoi
     }
 }
 
-public sealed class ReportCheckpointHandler(IAppDbContext db, LeaseService leases, TimeProvider clock) : IRequestHandler<ReportCheckpointCommand>
+public sealed class ReportCheckpointHandler(
+    IAppDbContext db,
+    LeaseService leases,
+    PipelineOrchestrator pipeline,
+    EventAppender events,
+    TimeProvider clock) : IRequestHandler<ReportCheckpointCommand, CheckpointVerdict>
 {
-    public async Task Handle(ReportCheckpointCommand command, CancellationToken cancellationToken)
+    public async Task<CheckpointVerdict> Handle(ReportCheckpointCommand command, CancellationToken cancellationToken)
     {
         var run = await leases.FenceAsync(command.RunId, command.WorkerId, command.Epoch, cancellationToken);
+        var now = clock.GetUtcNow();
         run.Checkpoint(command.Step, command.Sha);
-        run.Renew(clock.GetUtcNow());
+        run.Renew(now);
+
+        var pending = await db.Directions.AnyAsync(d => d.Id == run.DirectionId && d.PauseRequestedBy != null, cancellationToken);
+        if (!pending)
+        {
+            await FencedSave.SaveAsync(db, cancellationToken);
+            return CheckpointVerdict.Continue;
+        }
+
+        // The step in progress has finished and is checkpointed: this is where the requested pause takes effect.
+        await events.LockAsync(run.ProjectId, cancellationToken);
+        var project = await db.Projects.Include(p => p.Directions).SingleAsync(p => p.Id == run.ProjectId, cancellationToken);
+        var direction = project.Directions.Single(d => d.Id == run.DirectionId);
+        var sha = command.Sha is null ? string.Empty : $" {command.Sha[..7]}";
+        await RunLog.InfoAsync(db, events, run, $"Step {command.Step} finished · checkpoint{sha} · direction Paused", now, cancellationToken);
+        await pipeline.OnPauseTakesEffectAsync(run, project, direction, cancellationToken);
         await FencedSave.SaveAsync(db, cancellationToken);
+        await events.PublishAsync(cancellationToken);
+        return CheckpointVerdict.Pause;
     }
 }
 

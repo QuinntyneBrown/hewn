@@ -39,7 +39,7 @@ public sealed class RaiseAndResumeTests : IAsyncLifetime
 
         var worker = await _factory.RegisterWorkerAsync();
         var run = await worker.LeaseAsync();
-        Assert.Equal(HttpStatusCode.NoContent, (await worker.CheckpointAsync(run!, 1)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await worker.CheckpointAsync(run!, 1)).StatusCode);
         var stop = await CallAsync(worker, run!, "c1", 3_000_000); // $12.00 on Opus: over the $10 budget
         Assert.Equal("Stop", (await HewnClient.ReadJsonAsync(stop)).GetProperty("verdict").GetString());
         return new Paused(owner, worker, projectId, directionId, run!);
@@ -179,6 +179,18 @@ public sealed class RaiseAndResumeTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Equal("not_budget_paused", (await HewnClient.ReadJsonAsync(response)).GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Resume_alone_does_not_continue_a_direction_paused_at_its_budget()
+    {
+        var paused = await PausedAtBudgetAsync();
+
+        var response = await paused.Owner.PostAsync($"/api/projects/{paused.ProjectId}/directions/{paused.DirectionId}/resume", new { });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("budget_reached", (await HewnClient.ReadJsonAsync(response)).GetProperty("code").GetString());
+        await AssertStillPausedAsync(paused);
     }
 
     [Fact]

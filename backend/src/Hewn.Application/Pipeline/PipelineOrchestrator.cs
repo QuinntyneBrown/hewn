@@ -57,7 +57,14 @@ public sealed class PipelineOrchestrator(IAppDbContext db, EventAppender events,
 
         if (next is int stage)
         {
-            db.Runs.Add(new Run(project.Id, direction.Id, stage, now));
+            var nextRun = new Run(project.Id, direction.Id, stage, now);
+            db.Runs.Add(nextRun);
+            if (direction.PauseRequestedBy is not null)
+            {
+                // Pause was pressed during the stage that just finished: the next one waits for Resume (L2-029 AC1).
+                await OnPauseTakesEffectAsync(nextRun, project, direction, cancellationToken);
+            }
+
             return;
         }
 
@@ -106,6 +113,37 @@ public sealed class PipelineOrchestrator(IAppDbContext db, EventAppender events,
         await AppendProjectAsync(project, cancellationToken);
     }
 
+    /// <summary>
+    /// L2-029 AC1: the pause an Owner requested takes effect at a checkpoint, or before a run starts. The run releases
+    /// its lease and keeps its checkpoint; the direction, a running stage and the project show Paused.
+    /// </summary>
+    public async Task OnPauseTakesEffectAsync(Run run, Project project, Direction direction, CancellationToken cancellationToken)
+    {
+        run.Pause();
+        if (direction.PauseAsRequested(run.Stage, clock.GetUtcNow()) is { } stage)
+        {
+            await AppendStageAsync(direction, stage, cancellationToken);
+        }
+
+        await AppendDirectionAsync(direction, cancellationToken);
+        project.ChangeStatus(ProjectStatus.Paused);
+        await AppendProjectAsync(project, cancellationToken);
+    }
+
+    /// <summary>L2-029 AC2: Resume queues the paused run again, so its next lease carries on after its checkpoint.</summary>
+    public async Task OnResumedAsync(Run run, Project project, Direction direction, CancellationToken cancellationToken)
+    {
+        run.Resume();
+        if (direction.Resume(run.Stage) is { } stage)
+        {
+            await AppendStageAsync(direction, stage, cancellationToken);
+        }
+
+        await AppendDirectionAsync(direction, cancellationToken);
+        project.ChangeStatus(ProjectStatus.Running);
+        await AppendProjectAsync(project, cancellationToken);
+    }
+
     public Task OnRepositoryAttachedAsync(Project project, CancellationToken cancellationToken) =>
         AppendProjectAsync(project, cancellationToken);
 
@@ -127,6 +165,9 @@ public sealed class PipelineOrchestrator(IAppDbContext db, EventAppender events,
             status = direction.Status.ToString(),
             completedAt = direction.CompletedAt,
             pauseReason = direction.PauseReason,
+            pauseRequested = direction.PauseRequestedBy is not null,
+            pausedBy = direction.PausedBy,
+            pausedAt = direction.PausedAt,
         }, cancellationToken);
 
     private Task AppendProjectAsync(Project project, CancellationToken cancellationToken) =>
