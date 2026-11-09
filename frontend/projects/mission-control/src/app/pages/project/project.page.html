@@ -55,6 +55,41 @@
                 <span class="meter__bar" [style.--value]="s.percent + '%'"></span>
               </div>
             </div>
+            @if (session.isOwner() && direction(); as d) {
+              @switch (control(d)) {
+                @case ('pause') {
+                  <div class="cluster">
+                    <button
+                      class="btn btn--sm"
+                      type="button"
+                      [disabled]="controlSending()"
+                      (click)="sendControl(d, 'pause')"
+                    >
+                      <svg hw-icon name="pause" class="icon--sm"></svg>Pause
+                    </button>
+                  </div>
+                }
+                @case ('pausing') {
+                  <div class="cluster">
+                    <button class="btn btn--sm" type="button" aria-busy="true" disabled>
+                      <svg hw-icon name="spinner" class="icon--sm icon--spin"></svg>Pausing…
+                    </button>
+                  </div>
+                }
+                @case ('resume') {
+                  <div class="cluster">
+                    <button
+                      class="btn btn--sm"
+                      type="button"
+                      [disabled]="controlSending()"
+                      (click)="sendControl(d, 'resume')"
+                    >
+                      <svg hw-icon name="play" class="icon--sm"></svg>Resume
+                    </button>
+                  </div>
+                }
+              }
+            }
           </div>
         }
       </div>
@@ -119,6 +154,18 @@
                   </div>
                 </div>
               }
+            }
+            @if (d.status === 'Paused' && d.pauseReason === pausedByOwner) {
+              <div class="callout callout--warn" role="status">
+                <svg hw-icon name="pauseCircle" class="icon--lg"></svg>
+                <div>
+                  <p class="callout__title">{{ pausedTitle(d.pausedBy, d.pausedAt) }}</p>
+                  <p class="callout__body">
+                    The step in progress finished and was checkpointed. Nothing new starts until
+                    Resume.
+                  </p>
+                </div>
+              </div>
             }
             @if (d.status === 'Paused' && d.pauseReason === budgetReached) {
               <div class="callout callout--warn" role="status">

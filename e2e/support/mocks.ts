@@ -27,16 +27,35 @@ export function compare(actual: Buffer, expected: Buffer): Difference {
   return { ratio: changed / (a.width * a.height), width: a.width, height: a.height };
 }
 
+export interface RegionOptions {
+  /**
+   * Crop to the element's whole-pixel box (its position and size rounded down). An element of the same size at a
+   * different sub-pixel position then gives an image of the same size, instead of one a pixel larger.
+   */
+  snap?: boolean;
+}
+
 /** Screenshots a region of a mock, in the same viewport as the app page. */
-export async function mockRegion(page: Page, mock: string, selector: string): Promise<Buffer> {
+export async function mockRegion(
+  page: Page,
+  mock: string,
+  selector: string,
+  options: RegionOptions = {},
+): Promise<Buffer> {
   const mockPage = await page.context().newPage();
   await mockPage.setViewportSize(page.viewportSize()!);
   await mockPage.goto(mockUrl(mock));
-  const shot = await mockPage.locator(selector).first().screenshot({ animations: 'disabled' });
+  const shot = await region(mockPage.locator(selector).first(), options);
   await mockPage.close();
   return shot;
 }
 
-export async function region(locator: Locator): Promise<Buffer> {
-  return locator.screenshot({ animations: 'disabled', caret: 'hide' });
+export async function region(locator: Locator, options: RegionOptions = {}): Promise<Buffer> {
+  if (!options.snap) return locator.screenshot({ animations: 'disabled', caret: 'hide' });
+  const box = (await locator.boundingBox())!;
+  return locator.page().screenshot({
+    animations: 'disabled',
+    caret: 'hide',
+    clip: { x: Math.floor(box.x), y: Math.floor(box.y), width: Math.floor(box.width), height: Math.floor(box.height) },
+  });
 }

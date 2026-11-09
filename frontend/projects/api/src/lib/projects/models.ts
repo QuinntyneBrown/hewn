@@ -37,6 +37,10 @@ export interface Direction {
   spendUsd: number;
   budgetWarned: boolean;
   pauseReason: string | null;
+  /** An Owner pressed Pause and the step in progress is finishing (L2-029 AC1). */
+  pauseRequested: boolean;
+  pausedBy: string | null;
+  pausedAt: string | null;
 }
 
 export interface Project {
@@ -141,4 +145,11 @@ export interface LogLine {
 export interface SubmitProductDirectionResult {
   projectId: string;
   directionId: string;
+}
+
+/** What Pause and Resume answer (L2-029 AC1, AC2). */
+export interface DirectionControlResult {
+  directionId: string;
+  status: DirectionStatus;
+  pauseRequested: boolean;
 }

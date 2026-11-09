@@ -25,6 +25,11 @@ export class ProjectPage {
   readonly spendMeter: Locator;
   readonly spendLabel: Locator;
   readonly budgetReachedCallout: Locator;
+  /** Pause and Resume in the header (L2-029 AC1, AC2), Owners only, and the callout of a paused direction. */
+  readonly pauseButton: Locator;
+  readonly pausingButton: Locator;
+  readonly resumeButton: Locator;
+  readonly pausedCallout: Locator;
   /** Raise and resume (L2-053 AC3): the callout's controls and the dialog they open. */
   readonly calloutNewBudget: Locator;
   readonly raiseBudget: Locator;
@@ -68,6 +73,11 @@ export class ProjectPage {
     this.spendLabel = page.locator('.phead__spend .phead__label');
     this.budgetReachedCallout = page.locator('.callout', { hasText: 'Paused · Budget reached' });
     this.toasts = page.locator('.toast-region .toast');
+    const header = page.locator('.phead');
+    this.pauseButton = header.getByRole('button', { name: 'Pause', exact: true });
+    this.pausingButton = header.getByRole('button', { name: 'Pausing…' });
+    this.resumeButton = header.getByRole('button', { name: 'Resume', exact: true });
+    this.pausedCallout = page.locator('.callout', { hasText: 'Nothing new starts until Resume' });
     this.calloutNewBudget = this.budgetReachedCallout.getByLabel('New budget');
     this.raiseBudget = this.budgetReachedCallout.getByRole('button', { name: 'Raise budget and resume' });
     this.raiseDialog = page.getByRole('dialog', { name: /^Raise .+’s budget$/ });
@@ -122,12 +132,13 @@ export class ProjectPage {
     return this.stage(name).locator('.stage__row + .visually-hidden');
   }
 
-  /** The running stage's live step and latest log line (L2-030 AC2). */
   /** Rests the pointer on the dialog's title and focus in its field, so its buttons show at rest as the mocks do. */
   async restInDialog(): Promise<void> {
     await this.raiseDialog.getByRole('heading').hover();
     await this.dialogBudget.focus();
   }
+
+  /** The running stage's live step and latest log line (L2-030 AC2). */
 
   liveStep(name: string): Locator {
     return this.stage(name).locator('.stage__live-step');
