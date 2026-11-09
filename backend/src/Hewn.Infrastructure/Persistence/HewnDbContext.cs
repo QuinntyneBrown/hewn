@@ -20,6 +20,8 @@ public sealed class HewnDbContext(DbContextOptions<HewnDbContext> options) : DbC
 
     public DbSet<RunLogLine> RunLogLines => Set<RunLogLine>();
 
+    public DbSet<RunDecision> RunDecisions => Set<RunDecision>();
+
     public DbSet<GitHubMutation> GitHubMutations => Set<GitHubMutation>();
 
     public DbSet<Increment> Increments => Set<Increment>();

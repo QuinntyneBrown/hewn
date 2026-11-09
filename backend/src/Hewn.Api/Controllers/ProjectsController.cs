@@ -48,6 +48,16 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
     public Task<ProjectDto> Get(Guid projectId, CancellationToken cancellationToken) =>
         mediator.Send(new GetProjectQuery(projectId), cancellationToken);
 
+    /// <summary>L2-030 AC3: a stage's runs, the files they committed and the decisions they recorded.</summary>
+    [HttpGet("{projectId:guid}/directions/{directionId:guid}/stages/{stage:int}")]
+    public Task<StageDetailDto> Stage(Guid projectId, Guid directionId, int stage, CancellationToken cancellationToken) =>
+        mediator.Send(new GetStageDetailQuery(projectId, directionId, stage), cancellationToken);
+
+    /// <summary>L2-033: a run's log lines after a line number, oldest first.</summary>
+    [HttpGet("{projectId:guid}/runs/{runId:guid}/logs")]
+    public Task<IReadOnlyList<LogLineDto>> Logs(Guid projectId, Guid runId, [FromQuery] long after, [FromQuery] int? limit, CancellationToken cancellationToken) =>
+        mediator.Send(new GetRunLogQuery(projectId, runId, after, limit ?? GetRunLogHandler.MaxPage), cancellationToken);
+
     [HttpGet("{projectId:guid}/events")]
     public Task<IReadOnlyList<ProjectEventDto>> Events(Guid projectId, [FromQuery] long after, CancellationToken cancellationToken) =>
         mediator.Send(new GetProjectEventsQuery(projectId, after), cancellationToken);

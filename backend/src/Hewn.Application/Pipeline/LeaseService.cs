@@ -29,13 +29,16 @@ public sealed class LeaseService(IAppDbContext db, TimeProvider clock)
                 return null;
             }
 
-            var expires = clock.GetUtcNow() + Run.LeaseDuration;
+            var now = clock.GetUtcNow();
+            var expires = now + Run.LeaseDuration;
             var granted = await db.Runs
                 .Where(r => r.Id == candidate.Id && r.Status == RunStatus.Queued)
                 .Where(r => !db.Runs.Any(o => o.ProjectId == candidate.ProjectId && o.Status == RunStatus.Leased))
                 .ExecuteUpdateAsync(set => set
                     .SetProperty(r => r.Status, RunStatus.Leased)
                     .SetProperty(r => r.WorkerId, workerId)
+                    .SetProperty(r => r.RanBy, workerId)
+                    .SetProperty(r => r.StartedAt, r => r.StartedAt ?? now)
                     .SetProperty(r => r.LeaseEpoch, r => r.LeaseEpoch + 1)
                     .SetProperty(r => r.LeaseExpiresAt, expires),
                     cancellationToken);

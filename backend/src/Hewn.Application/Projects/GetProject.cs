@@ -8,7 +8,16 @@ namespace Hewn.Application.Projects;
 
 public sealed record GetProjectQuery(Guid ProjectId) : IRequest<ProjectDto>;
 
-public sealed record StageDto(int Number, string Name, string Status, DateTimeOffset? StartedAt, DateTimeOffset? EndedAt);
+/// <summary>A stage of a direction. While it runs, Step and LatestLine come from its leased run (L2-030 AC2).</summary>
+public sealed record StageDto(
+    int Number,
+    string Name,
+    string Status,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? EndedAt,
+    string? Step = null,
+    string? LatestLine = null,
+    Guid? RunId = null);
 
 public sealed record DirectionDto(
     Guid Id,
@@ -47,8 +56,34 @@ public sealed class GetProjectHandler(IAppDbContext db) : IRequestHandler<GetPro
             .Select(e => (long?)e.Sequence)
             .MaxAsync(cancellationToken) ?? 0;
 
-        return ToDto(project, lastSequence);
+        var leased = await db.Runs.AsNoTracking()
+            .Where(r => r.ProjectId == project.Id && r.Status == RunStatus.Leased)
+            .Select(r => new { r.Id, r.DirectionId, r.Stage, r.CurrentStepName })
+            .ToListAsync(cancellationToken);
+        var live = new Dictionary<(Guid, int), LiveStage>();
+        foreach (var run in leased)
+        {
+            var latest = await db.RunLogLines.AsNoTracking()
+                .Where(l => l.RunId == run.Id)
+                .OrderByDescending(l => l.Sequence)
+                .Select(l => l.Text)
+                .FirstOrDefaultAsync(cancellationToken);
+            live[(run.DirectionId, run.Stage)] = new LiveStage(run.Id, run.CurrentStepName, latest);
+        }
+
+        var dto = ToDto(project, lastSequence);
+        return dto with
+        {
+            Directions = dto.Directions.Select(d => d with
+            {
+                Stages = d.Stages.Select(s => s.Status == nameof(StageStatus.Running) && live.TryGetValue((d.Id, s.Number), out var l)
+                    ? s with { Step = l.Step, LatestLine = l.LatestLine, RunId = l.RunId }
+                    : s).ToList(),
+            }).ToList(),
+        };
     }
+
+    private sealed record LiveStage(Guid RunId, string? Step, string? LatestLine);
 
     public static ProjectDto ToDto(Project project, long lastSequence) => new(
         project.Id,

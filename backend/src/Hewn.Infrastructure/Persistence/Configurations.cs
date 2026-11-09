@@ -82,6 +82,9 @@ internal sealed class RunConfiguration : IEntityTypeConfiguration<Run>
         b.Property(r => r.WorkerId).HasMaxLength(32);
         b.Property(r => r.CheckpointSha).HasMaxLength(64);
         b.Property(r => r.Error).HasMaxLength(2000);
+        b.Property(r => r.RanBy).HasMaxLength(32);
+        b.Property(r => r.CurrentStepName).HasMaxLength(Run.MaxStepNameLength);
+        b.HasIndex(r => new { r.DirectionId, r.Stage });
         b.Property(r => r.LeaseEpoch).IsConcurrencyToken();
         b.HasIndex(r => new { r.Status, r.CreatedAt });
         b.HasIndex(r => new { r.ProjectId, r.Status });
@@ -113,6 +116,19 @@ internal sealed class RunLogLineConfiguration : IEntityTypeConfiguration<RunLogL
         b.Property(l => l.Level).HasMaxLength(16);
         b.Property(l => l.Text).HasMaxLength(RunLogLine.MaxTextLength);
         b.HasIndex(l => new { l.RunId, l.Sequence }).IsUnique();
+    }
+}
+
+internal sealed class RunDecisionConfiguration : IEntityTypeConfiguration<RunDecision>
+{
+    public void Configure(EntityTypeBuilder<RunDecision> b)
+    {
+        b.ToTable("run_decisions");
+        b.HasKey(d => d.Id);
+        b.Property(d => d.Question).HasMaxLength(RunDecision.MaxQuestionLength);
+        b.Property(d => d.Answer).HasMaxLength(RunDecision.MaxAnswerLength);
+        b.Property(d => d.Rationale).HasMaxLength(RunDecision.MaxRationaleLength);
+        b.HasIndex(d => new { d.DirectionId, d.Stage });
     }
 }
 
