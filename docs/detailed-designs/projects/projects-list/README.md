@@ -71,3 +71,31 @@ The filter is written to the query string before the request, so a reload restor
 A persisted status change reaches the open list within 1 second and changes only the affected row (L2-002 AC4, L2-031).
 
 ![Sequence diagram: update a row in place](diagrams/sequence-live-row-update.png)
+
+## Decisions made while building the slice
+
+Journey 11 built L2-002 AC1–AC4 and L2-045 AC1–AC2.
+
+- **No read-model table** ([ADR 0016](../../../adr/0016-project-rows-are-read-on-request.md)). `ProjectSummaryReader`
+  builds the rows on request; `ProjectSummaryProjector` and `project_summaries` are not built. After events are
+  stored, the hub publisher reads each changed project's row and sends it as `ProjectSummary` to the hub's
+  `projects` group, which the page joins with `JoinProjects`. After a reconnect the page loads the list again.
+- **`ProjectSummaryDto`** is `{id, name, idea, repository, status, stage {number, name}, note, percentComplete,
+  spendUsd, lastActivityAt, firstDirectionComplete}`. `idea` reads "Feature: …" while a feature direction is the
+  current one. `note` is the running step (with "Increment n of m" in stage 10), the pause reason, or
+  "{Stage} failed after 3 retries".
+- **The filter is applied in the page.** `GET /api/projects` returns every project and has no `status` parameter,
+  because the tabs show a count for every status. The filter is `?status=running` and so on, read on load.
+- **Status is the project's own**: a finished project is Idle (L2-004 AC3); nothing sets Complete yet.
+- **Not in this slice:** the Archived tab and the per-row Archive and Delete actions belong to
+  [Archive and delete a project](../archive-and-delete-project/README.md) (L2-003), so every user gets the
+  `rows--projects-viewer` layout for now. The error state has no "Go to dashboard" link until a dashboard exists.
+  A filter with no projects shows "No {status} projects" with Show all projects, adapted from the Archived
+  no-results mock.
+- **Performance (L2-045).** `npm run test:perf` builds Mission Control for production, serves it gzipped with
+  the e2e API behind it, and runs Lighthouse's mobile profile on `/projects`: LCP measured 2.15 s with 125 KB of
+  initial JavaScript, gzipped. The build merges chunks (`NG_BUILD_OPTIMIZE_CHUNKS=1`), so the initial
+  JavaScript is one file; Angular preloads only ten, and the eleventh was found a round trip late. Start-up loads
+  the user and the config together, and Projects is the one eager route. The load test ensures 50 projects
+  and 20 workers, then sends 1,000 reads from 20 clients: p95 13 ms overall, 15 ms for the list.
+

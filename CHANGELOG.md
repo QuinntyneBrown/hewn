@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Find a project (journey 11, L2-002, L2-045 AC1–AC2): the Projects page lists every project with its stage,
+  status, percent complete, spend and last activity, newest first. A status filter in `?status=` survives a
+  reload, the empty state offers New product to Owners only, and rows update in place from the hub's
+  `ProjectSummary` stream (ADR 0016). `npm run test:perf` checks Lighthouse mobile LCP (2.15 s) and the initial
+  JavaScript (125 KB gzipped) on the production build, and the read APIs' p95 under load. The build now merges
+  chunks, and start-up loads the user and the config together.
+
 - Queue further directions (journey 10, L2-004 AC4, L2-005 AC4, L2-043 AC4): directions submitted on a project with
   an active one queue and start by themselves, first in, first out, now proven end to end with real workers. An
   Owner may submit at most 10 directions in any minute (`Hewn:RateLimit:DirectionsPerMinute`); the extra requests
