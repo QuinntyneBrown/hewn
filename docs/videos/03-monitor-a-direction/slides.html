@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 03 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="03" data-video-title="Monitor a direction" data-parts="Introduction|Goal|Events|Worker|Page|Log|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 3</div>
+  <h1>Monitor a direction</h1>
+  <p class="lead">Follow every stage, step and log line live, and see what each stage ran, wrote and decided.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video walks through how it was built">
+  <figure><img src="screens/running-desktop.png" alt="A running stage with its step and latest log line, and the live log"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="Journey three is for Owners and Viewers alike.">
+  <div class="cols cols--wide">
+    <figure><img src="screens/past-decisions-desktop.png" alt="The Decisions tab of a finished stage"></figure>
+    <ul class="bullets small">
+      <li>Status as icon and text</li>
+      <li>Live step and latest line</li>
+      <li>Runs, log, artifacts, decisions</li>
+    </ul>
+  </div>
+</section>
+
+<section id="goal-log" data-part="1" data-cue="The log follows new lines as they arrive.">
+  <figure><img src="screens/log-scrolled-desktop.png" alt="The log scrolled up with the jump to latest button"></figure>
+</section>
+
+<section id="flow" data-part="2" data-cue="Everything on the page comes from one stream.">
+  <figure class="diagram"><img src="../../detailed-designs/mission-control/real-time-events/diagrams/sequence-deliver.png" alt="Sequence diagram: an event is stored with its sequence number, broadcast to the hub group and applied by the client"></figure>
+</section>
+
+<section id="events" data-part="2" data-cue="Journey three adds three events">
+  <h2>New events</h2>
+  <ul class="bullets">
+    <li>StepStarted · the step a run begins</li>
+    <li>LogLines · one batch of numbered lines</li>
+    <li>DecisionRecorded · question, answer, rationale</li>
+  </ul>
+</section>
+
+<section id="loop" data-part="3" data-cue="Before each step, the worker names it">
+  <div class="code-file">worker/src/work-loop.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3,6">      const steps = this.executor.plan(run, context);
+      for (let index = run.checkpointStep; index &lt; steps.length; index++) {
+        await this.api.startStep(workerId, run, index + 1, steps[index]!.name);
+        await steps[index]!.execute(lease.signal);
+        if (lease.signal.aborted) return;
+        await logs.flush();
+        await this.api.checkpoint(workerId, run, index + 1);</pre>
+</section>
+
+<section id="batch" data-part="3" data-cue="Log lines no longer go one request at a time.">
+  <div class="code-file">worker/src/log-batcher.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="4,6">  flush(): Promise&lt;void&gt; {
+    this.sending = this.sending.then(async () =&gt; {
+      while (this.pending.length &gt; 0) {
+        const batch = this.pending.splice(0, this.maxBatch);
+        try {
+          await this.send(batch);
+        } catch (error) {
+          this.onError(error);
+        }
+      }
+    });
+    return this.sending;
+  }</pre>
+</section>
+
+<section id="handler" data-part="3" data-cue="Each batch becomes one event.">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/RepositoryCommands.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,3-5,15">        var lines = command.Lines.Select(line =&gt; new RunLogLine(run.Id, ++last, line.Level, SecretRedactor.Redact(line.Text), now)).ToList();
+        db.RunLogLines.AddRange(lines);
+        await events.AppendAsync(
+            run.ProjectId,
+            "LogLines",
+            new
+            {
+                directionId = run.DirectionId,
+                stage = run.Stage,
+                runId = run.Id,
+                lines = lines.Select(l =&gt; new { line = l.Sequence, at = l.At, level = l.Level, text = l.Text }),
+            },
+            cancellationToken);
+        await FencedSave.SaveAsync(db, cancellationToken);
+        await events.PublishAsync(cancellationToken);</pre>
+</section>
+
+<section id="decisions" data-part="3" data-cue="After a document stage commits">
+  <figure><img src="screens/past-decisions-desktop.png" alt="Decisions recorded in stage 1, each with its rationale"></figure>
+</section>
+
+<section id="apply" data-part="4" data-cue="The page loads the project once">
+  <div class="code-file">frontend/projects/api/src/lib/projects/apply-event.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="4,14">    case 'StepStarted':
+      next.directions = updateStage(project, p['directionId'], p['stage'], (s) =&gt; ({
+        ...s,
+        step: p['name'] as string,
+        runId: p['runId'] as string,
+      }));
+      break;
+    case 'LogLines': {
+      const lines = (p['lines'] as { text: string }[] | undefined) ?? [];
+      const last = lines.at(-1);
+      if (last) {
+        next.directions = updateStage(project, p['directionId'], p['stage'], (s) =&gt; ({
+          ...s,
+          latestLine: last.text,
+          runId: p['runId'] as string,
+        }));
+      }</pre>
+</section>
+
+<section id="watch" data-part="4" data-cue="Selecting a stage loads its runs, artifacts and decisions">
+  <figure class="diagram"><img src="../../detailed-designs/mission-control/project-page-and-live-log/diagrams/sequence-watch-stage.png" alt="Sequence diagram: watch the running stage and select a stage"></figure>
+</section>
+
+<section id="merge" data-part="5" data-cue="The log loads every stored line in pages">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/project/pipeline-view.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3,6-10">export function mergeLines(existing: LogLine[], incoming: readonly LogLine[]): LogLine[] {
+  const last = existing.at(-1)?.line ?? 0;
+  if (incoming.every((l) =&gt; l.line &gt; last)) {
+    return incoming.length === 0 ? existing : [...existing, ...incoming];
+  }
+  const byLine = new Map(existing.map((l) =&gt; [l.line, l]));
+  const before = byLine.size;
+  for (const l of incoming) if (!byLine.has(l.line)) byLine.set(l.line, l);
+  if (byLine.size === before) return existing;
+  return [...byLine.values()].sort((a, b) =&gt; a.line - b.line);
+}</pre>
+</section>
+
+<section id="window" data-part="5" data-cue="Above five hundred lines, the log renders only a window">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/project/pipeline-view.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="8,11-13">export function logWindow(
+  total: number,
+  scrollTop: number,
+  viewportHeight: number,
+  rowHeight: number,
+  following = false,
+): { start: number; end: number } {
+  if (total &lt;= MAX_RENDERED_LINES) return { start: 0, end: total };
+  const inView = Math.ceil(viewportHeight / rowHeight);
+  const size = Math.min(MAX_RENDERED_LINES, inView + 2 * OVERSCAN);
+  if (following) return { start: total - size, end: total };
+  const first = Math.floor(scrollTop / rowHeight) - OVERSCAN;
+  const start = Math.max(0, Math.min(first, total - size));
+  return { start, end: start + size };
+}</pre>
+</section>
+
+<section id="red" data-part="6" data-cue="The backend gained fourteen tests">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Pipeline/MonitorDirectionTests.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,2,10">        var batches = (await EventsAsync(owner, projectId)).Where(e =&gt; e.GetProperty("type").GetString() == "LogLines").ToList();
+        Assert.Equal(2, batches.Count);
+        var first = batches[0].GetProperty("payload");
+        Assert.Equal(directionId, first.GetProperty("directionId").GetGuid());
+        Assert.Equal(0, first.GetProperty("stage").GetInt32());
+        Assert.Equal(run!.RunId, first.GetProperty("runId").GetGuid());
+        var lines = first.GetProperty("lines").EnumerateArray().ToList();
+        Assert.Equal([1L, 2L], lines.Select(l =&gt; l.GetProperty("line").GetInt64()));
+        Assert.Equal(["info", "warn"], lines.Select(l =&gt; l.GetProperty("level").GetString()));
+        Assert.Equal(["Copied 14 skills", "[redacted]"], lines.Select(l =&gt; l.GetProperty("text").GetString()));</pre>
+  <div class="result red">✘ 13 failed · MonitorDirectionTests</div>
+  <div class="result green">✓ 147 passed · backend</div>
+</section>
+
+<section id="tests" data-part="6" data-cue="The frontend has thirty five unit tests.">
+  <div class="cols cols--3">
+    <div class="card"><h3>147 backend</h3><p class="small">14 new, real API</p></div>
+    <div class="card"><h3>126 worker</h3><p class="small">6 new, fake API</p></div>
+    <div class="card"><h3>34 e2e</h3><p class="small">Pipeline 11 · behaviour 12 · a11y 7 · visual 4</p></div>
+  </div>
+</section>
+
+<section id="clip-stages" data-part="7" data-cue="Here is a direction starting with one worker." data-clip="clips/stages.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Step and latest line live; Bootstrap turns Succeeded and Idea starts</aside>
+</section>
+
+<section id="clip-log" data-part="7" data-cue="Here is the live log." data-clip="clips/log.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Following, scrolled up with the count of new lines, then Jump to latest</aside>
+</section>
+
+<section id="clip-past" data-part="7" data-cue="Now a stage that has finished." data-clip="clips/past-stage.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Idea: Log, Runs, Artifacts, Decisions</aside>
+</section>
+
+<section id="themes" data-part="7" data-cue="The same page works in dark mode and on a phone.">
+  <div class="cols">
+    <figure><img src="screens/past-decisions-desktop-dark.png" alt="The Decisions tab in dark mode"></figure>
+    <figure class="phone"><img src="screens/past-decisions-phone-dark.png" alt="The Decisions tab on a phone in dark mode"></figure>
+  </div>
+</section>
+
+<section id="waiting" data-part="7" data-cue="And before any worker has picked up a direction">
+  <figure><img src="screens/waiting-desktop.png" alt="Stage 0 detail: Waiting for a worker"></figure>
+</section>
+
+<section id="recap" data-part="8" data-cue="Journey three is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>One numbered stream, applied in order</li>
+    <li>A log that follows, holds and stays light</li>
+    <li>Every stage's runs, files and decisions</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>
