@@ -29,6 +29,8 @@ export class NewDirectionPage {
   readonly start: Locator;
   readonly errorSummary: Locator;
   readonly failure: Locator;
+  /** More directions in a minute than the limit (L2-043 AC4). */
+  readonly rateLimited: Locator;
   readonly forbidden: Locator;
   readonly productMode: Locator;
   readonly featureMode: Locator;
@@ -54,6 +56,7 @@ export class NewDirectionPage {
     this.start = page.getByRole('button', { name: /Start direction|Queuing direction/ });
     this.errorSummary = page.locator('.form-summary');
     this.failure = page.getByRole('alert').filter({ hasText: 'couldn’t queue' });
+    this.rateLimited = page.getByRole('alert').filter({ hasText: 'Too many directions in a minute' });
     this.forbidden = page.getByRole('heading', { name: 'You don’t have permission' });
     this.productMode = page.getByRole('radio', { name: 'New product' });
     this.featureMode = page.getByRole('radio', { name: 'Feature for a product' });

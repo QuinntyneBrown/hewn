@@ -3,7 +3,8 @@ import { NewDirectionPage } from '../pages/new-direction.page';
 import { ProjectPage } from '../pages/project.page';
 import { SettingsPage } from '../pages/settings.page';
 
-export type Login = 'quinntynebrown' | 'ada';
+/** Owners quinntynebrown and grace (grace only for the rate-limit test), and the Viewer ada (eng/Start-E2eApi.ps1). */
+export type Login = 'quinntynebrown' | 'ada' | 'grace';
 
 /** Signs the browser context in through the dev sign-in endpoint (the e2e API enables it). */
 export async function signIn(page: Page, login: Login): Promise<void> {
