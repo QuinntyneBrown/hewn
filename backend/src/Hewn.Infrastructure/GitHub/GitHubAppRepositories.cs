@@ -66,6 +66,15 @@ public sealed class GitHubAppRepositories(GitHubAppClient client) : IGitHubRepos
             .ToList();
     }
 
+    public async Task<Stream> DownloadArchiveAsync(string owner, string name, CancellationToken cancellationToken)
+    {
+        var token = await RepositoryTokenAsync(owner, name, cancellationToken);
+        // GitHub answers with a redirect to a short-lived codeload URL; the client follows it without the token.
+        var response = await client.SendAsRepositoryAsync(HttpMethod.Get, $"repos/{owner}/{name}/tarball", token, cancellationToken);
+        Ensure(response, $"download {owner}/{name}");
+        return await response.Content.ReadAsStreamAsync(cancellationToken);
+    }
+
     public async Task<string> CommitAsync(string owner, string name, string message, IReadOnlyList<RepositoryFile> files, CancellationToken cancellationToken)
     {
         var token = await RepositoryTokenAsync(owner, name, cancellationToken);

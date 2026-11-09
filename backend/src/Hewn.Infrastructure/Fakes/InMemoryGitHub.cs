@@ -1,3 +1,5 @@
+using System.Formats.Tar;
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using Hewn.Application.Abstractions;
@@ -100,6 +102,27 @@ public class InMemoryGitHub(IConfiguration? configuration) : IGitHubRepositoryPr
         }
     }
 
+    public Task<Stream> DownloadArchiveAsync(string owner, string name, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            var repository = Existing(owner, name);
+            var top = $"{name}-{repository.Commits[^1].Sha[..7]}";
+            var output = new MemoryStream();
+            using (var gzip = new GZipStream(output, CompressionLevel.Fastest, leaveOpen: true))
+            using (var tar = new TarWriter(gzip, TarEntryFormat.Pax, leaveOpen: true))
+            {
+                foreach (var (path, content) in repository.Files.OrderBy(f => f.Key, StringComparer.Ordinal))
+                {
+                    tar.WriteEntry(new PaxTarEntry(TarEntryType.RegularFile, $"{top}/{path}") { DataStream = new MemoryStream(content) });
+                }
+            }
+
+            output.Position = 0;
+            return Task.FromResult<Stream>(output);
+        }
+    }
+
     public Task<string> CommitAsync(string owner, string name, string message, IReadOnlyList<RepositoryFile> files, CancellationToken cancellationToken)
     {
         lock (_lock)
@@ -135,6 +158,10 @@ public sealed class FakeRepository(string owner, string name, bool isPrivate, Li
     public GitHubRepositoryInfo Info => new(Owner, Name, IsPrivate, [.. Topics], Commits.Count);
 
     public string? Read(string path) => Files.TryGetValue(path, out var bytes) ? Encoding.UTF8.GetString(bytes) : null;
+
+    /// <summary>Commits one file, as someone pushing outside Hewn would.</summary>
+    public string Write(string path, string content) =>
+        Commit($"Update {path}", [new RepositoryFile(path, Encoding.UTF8.GetBytes(content))]);
 
     internal string Commit(string message, IReadOnlyList<RepositoryFile> files)
     {

@@ -18,6 +18,9 @@ public interface IGitHubRepositories
     /// <summary>Names of the directories directly under <paramref name="path"/> on the default branch; empty when the path is absent.</summary>
     Task<IReadOnlyList<string>> ListDirectoriesAsync(string owner, string name, string path, CancellationToken cancellationToken);
 
+    /// <summary>The default branch as a gzipped tarball with one top-level folder, as GitHub serves it.</summary>
+    Task<Stream> DownloadArchiveAsync(string owner, string name, CancellationToken cancellationToken);
+
     /// <summary>Commits the files to the default branch and returns the new commit SHA.</summary>
     Task<string> CommitAsync(string owner, string name, string message, IReadOnlyList<RepositoryFile> files, CancellationToken cancellationToken);
 }

@@ -29,6 +29,20 @@ public sealed class ListSkillFoldersHandler(IAppDbContext db, LeaseService lease
     }
 }
 
+public sealed record GetRepositoryArchiveQuery(Guid RunId, string WorkerId, long Epoch) : IRequest<Stream>;
+
+/// <summary>The product repository's default branch, so a stage can work on the files earlier stages wrote.</summary>
+public sealed class GetRepositoryArchiveHandler(IAppDbContext db, LeaseService leases, IGitHubRepositories gitHub)
+    : IRequestHandler<GetRepositoryArchiveQuery, Stream>
+{
+    public async Task<Stream> Handle(GetRepositoryArchiveQuery query, CancellationToken cancellationToken)
+    {
+        var run = await leases.FenceAsync(query.RunId, query.WorkerId, query.Epoch, cancellationToken);
+        var project = await RunProject.RequireRepositoryAsync(db, run, cancellationToken);
+        return await gitHub.DownloadArchiveAsync(project.RepositoryOwner!, project.RepositoryName!, cancellationToken);
+    }
+}
+
 public sealed record CommitFile(string Path, string ContentBase64);
 
 public sealed record CommitFilesCommand(Guid RunId, string WorkerId, long Epoch, string IdempotencyKey, string Message, IReadOnlyList<CommitFile> Files)
