@@ -110,12 +110,22 @@ export interface DirectionDefaults {
   defaultBudgetUsd: number;
 }
 
-/** A project in the list; a feature for one whose first direction isn't Complete queues behind it. */
+/** A project's row on the Projects page (L2-002); also sent live as each project changes. */
 export interface ProjectSummary {
   id: string;
   name: string;
+  /** The product's idea, or "Feature: …" while a feature direction is the current one. */
+  idea: string;
   repository: string | null;
   status: ProjectStatus;
+  /** The current direction's current stage. */
+  stage: { number: number; name: string };
+  /** What the stage is doing, or why it stopped; null when there is nothing to add. */
+  note: string | null;
+  percentComplete: number;
+  spendUsd: number;
+  lastActivityAt: string;
+  /** A feature for a project whose first direction isn't Complete queues behind it. */
   firstDirectionComplete: boolean;
 }
 

@@ -24,6 +24,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 08 | [Stop and restart all workers](08-stop-and-restart-all-workers/README.md) | ~5:08 | Journey 8 |
 | 09 | [Recover a failed stage](09-recover-a-failed-stage/README.md) | ~5:28 | Journey 9 |
 | 10 | [Queue further directions](10-queue-further-directions/README.md) | ~5:09 | Journey 10 |
+| 11 | [Find a project](11-find-a-project/README.md) | ~6:14 | Journey 11 |
 
 ## Voice
 

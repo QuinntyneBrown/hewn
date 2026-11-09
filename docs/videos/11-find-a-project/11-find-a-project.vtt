@@ -1,0 +1,292 @@
+WEBVTT
+
+00:00:00.00 --> 00:00:04.26
+This is journey eleven of Hewn, the software factory: find a project.
+
+00:00:04.26 --> 00:00:07.16
+Once Hewn is building several products at once,
+
+00:00:07.16 --> 00:00:11.49
+Owners and Viewers need one place to see them all: what each is doing,
+
+00:00:11.49 --> 00:00:15.50
+how far along it is, what it has cost, and which needs attention.
+
+00:00:15.50 --> 00:00:19.83
+This video walks through how it was built: the rows, the live updates,
+
+00:00:19.83 --> 00:00:24.15
+the page and its filter, the empty states, performance, and the tests.
+
+00:00:25.30 --> 00:00:30.94
+Projects lists every project with its name, current stage, status, percent complete,
+
+00:00:30.94 --> 00:00:34.03
+spend to date and last activity, newest first.
+
+00:00:34.03 --> 00:00:37.73
+A status filter narrows the list and survives a reload.
+
+00:00:37.73 --> 00:00:40.21
+Rows update in place within a second.
+
+00:00:40.21 --> 00:00:44.85
+With no projects, Owners are offered New product and Viewers are not.
+
+00:00:44.85 --> 00:00:50.49
+And the page has to load fast on a phone, with read APIs that stay quick under load.
+
+00:00:51.64 --> 00:00:52.78
+Here is the flow.
+
+00:00:52.78 --> 00:00:57.21
+The page puts the filter in the query string, loads the list once,
+
+00:00:57.21 --> 00:01:00.23
+and then joins the projects group on the hub,
+
+00:01:00.23 --> 00:01:02.84
+so each changed row arrives on its own.
+
+00:01:03.99 --> 00:01:07.89
+Each row is built on request by the project summary reader.
+
+00:01:07.89 --> 00:01:13.30
+It reads the projects with their directions, the leased runs for the current step,
+
+00:01:13.30 --> 00:01:18.65
+the increments for stage ten, and each project's latest stored event for its last
+
+00:01:18.65 --> 00:01:19.25
+activity.
+
+00:01:19.25 --> 00:01:24.27
+The row describes the current direction: the active one, or else the latest.
+
+00:01:24.27 --> 00:01:27.24
+Its stage is the first one not yet succeeded,
+
+00:01:27.24 --> 00:01:31.93
+and percent complete is the share of its planned stages that succeeded,
+
+00:01:31.93 --> 00:01:35.69
+with stage ten's merged increments counted as a fraction.
+
+00:01:36.04 --> 00:01:40.08
+The list handler sorts those rows newest activity first.
+
+00:01:40.08 --> 00:01:45.28
+There is no separate summary table to keep in step: with fifty projects,
+
+00:01:45.28 --> 00:01:48.39
+reading on request answers in milliseconds.
+
+00:01:48.39 --> 00:01:50.70
+ADR sixteen records that choice.
+
+00:01:51.85 --> 00:01:55.07
+For live updates, the hub gained a projects group.
+
+00:01:55.07 --> 00:01:59.33
+After events are stored and broadcast to each project's own group,
+
+00:01:59.33 --> 00:02:04.69
+the publisher reads every changed project's row and sends it to the projects group.
+
+00:02:04.69 --> 00:02:09.41
+Log lines and decisions never change a row, so they don't trigger a read.
+
+00:02:09.41 --> 00:02:13.86
+A brand new project arrives the same way, so the page simply adds it.
+
+00:02:15.01 --> 00:02:20.32
+In the page, a live row replaces the project's old one, or is added if it's new,
+
+00:02:20.32 --> 00:02:22.25
+and the list is sorted again.
+
+00:02:22.25 --> 00:02:26.43
+The filter is read from the query string, so a reload keeps it,
+
+00:02:26.43 --> 00:02:30.02
+and each tab shows how many projects have that status.
+
+00:02:30.02 --> 00:02:35.60
+After a reconnect, the page loads the whole list again, in case it missed something.
+
+00:02:36.75 --> 00:02:41.98
+The requirement is a largest contentful paint of two and a half seconds or less on
+
+00:02:41.98 --> 00:02:45.94
+Lighthouse's mobile profile, a mid-tier phone on throttled 4G,
+
+00:02:45.94 --> 00:02:49.97
+with no more than five hundred kilobytes of initial JavaScript.
+
+00:02:49.97 --> 00:02:53.41
+The first measurement was about two point six seconds,
+
+00:02:53.41 --> 00:02:56.61
+because each request waited for the one before it.
+
+00:02:56.61 --> 00:03:01.27
+Angular preloads only ten files, and the build had eleven initial chunks,
+
+00:03:01.27 --> 00:03:03.50
+so one was found a round trip late.
+
+00:03:03.50 --> 00:03:07.59
+Start-up fetched the user, then the config, one after the other.
+
+00:03:07.59 --> 00:03:10.97
+And the list itself waited until the page was routed.
+
+00:03:10.97 --> 00:03:14.42
+Now the build merges its chunks into one initial file,
+
+00:03:14.42 --> 00:03:17.87
+and start-up fetches the user and the config together.
+
+00:03:17.87 --> 00:03:22.53
+When the app opens on Projects, the list is requested at the same moment,
+
+00:03:22.53 --> 00:03:25.53
+and the page takes that response when it loads.
+
+00:03:25.88 --> 00:03:30.98
+Lighthouse now measures a largest contentful paint of one point four four seconds
+
+00:03:30.98 --> 00:03:36.21
+with a hundred and forty six projects, and one hundred and twenty five kilobytes of
+
+00:03:36.21 --> 00:03:37.41
+initial JavaScript.
+
+00:03:37.41 --> 00:03:42.39
+The load test makes sure there are fifty projects and twenty connected workers,
+
+00:03:42.39 --> 00:03:45.91
+then sends a thousand reads from twenty clients at once.
+
+00:03:45.91 --> 00:03:49.25
+The ninety fifth percentile is thirteen milliseconds,
+
+00:03:49.25 --> 00:03:51.33
+against a limit of three hundred.
+
+00:03:52.48 --> 00:03:56.47
+The backend tests came first, and failed: there was no stage,
+
+00:03:56.47 --> 00:04:00.07
+percent or activity in the list, and no projects group.
+
+00:04:00.07 --> 00:04:04.45
+Now four tests cover the columns and their order, percent complete,
+
+00:04:04.45 --> 00:04:07.73
+a blocked project's note, and a row arriving live.
+
+00:04:07.73 --> 00:04:12.04
+The frontend gained unit tests for sorting, live rows, the filter,
+
+00:04:12.04 --> 00:04:15.05
+the activity times and the early list request.
+
+00:04:15.40 --> 00:04:18.70
+All green, the backend has two hundred and two tests,
+
+00:04:18.70 --> 00:04:23.86
+the worker one hundred and forty, and the frontend one hundred and four unit tests.
+
+00:04:23.86 --> 00:04:28.66
+End to end, there are eleven new tests: the list, the filter across a reload,
+
+00:04:28.66 --> 00:04:32.26
+both empty states, a row updating live with a real worker,
+
+00:04:32.26 --> 00:04:36.68
+three visual comparisons with the mocks, and four accessibility checks.
+
+00:04:36.68 --> 00:04:40.04
+The two performance tests run on their own, in CI too.
+
+00:04:41.19 --> 00:04:44.78
+Here is the list, with projects in every state: running,
+
+00:04:44.78 --> 00:04:48.95
+paused at an Owner's request, blocked with the stage that failed,
+
+00:04:48.95 --> 00:04:51.70
+idle at one hundred percent, and cancelled.
+
+00:04:51.70 --> 00:04:56.96
+Each row shows the stage, what it is doing, how far along it is, what it has cost,
+
+00:04:56.96 --> 00:04:58.94
+and when it last did something.
+
+00:04:59.29 --> 00:05:01.66
+It works in dark mode and on a phone.
+
+00:05:02.01 --> 00:05:03.00
+Now the filter.
+
+00:05:03.00 --> 00:05:06.69
+The Owner chooses Blocked, and only Parcel Post is left,
+
+00:05:06.69 --> 00:05:09.00
+with the filter in the address bar.
+
+00:05:09.00 --> 00:05:11.64
+A reload, and the filter is still there.
+
+00:05:11.64 --> 00:05:13.62
+Then Running, and back to All.
+
+00:05:13.97 --> 00:05:17.37
+And here the list stays open while the workers run.
+
+00:05:17.37 --> 00:05:20.72
+Ledgerline and Tidewater move from stage to stage,
+
+00:05:20.72 --> 00:05:25.53
+their percentages climbing and their activity staying a few seconds old,
+
+00:05:25.53 --> 00:05:26.93
+all without a reload.
+
+00:05:26.93 --> 00:05:31.48
+Then an Owner submits Northwind Ops, and its row appears at the top.
+
+00:05:31.83 --> 00:05:35.23
+With no projects at all, an Owner sees New product,
+
+00:05:35.23 --> 00:05:40.82
+and a Viewer sees the same empty state, explaining that projects appear here once an
+
+00:05:40.82 --> 00:05:42.75
+Owner gives Hewn a direction.
+
+00:05:43.10 --> 00:05:46.41
+And here is the Lighthouse report for the production build.
+
+00:05:47.56 --> 00:05:49.42
+Journey eleven is complete.
+
+00:05:49.42 --> 00:05:53.68
+Projects lists every project with its stage, status, progress,
+
+00:05:53.68 --> 00:05:56.30
+spend and last activity, newest first.
+
+00:05:56.30 --> 00:06:00.01
+The filter lives in the address bar, rows change live,
+
+00:06:00.01 --> 00:06:02.35
+and the empty state fits the role.
+
+00:06:02.35 --> 00:06:07.51
+And the page meets its performance budgets, with the numbers checked in CI.
+
+00:06:07.51 --> 00:06:09.30
+Next comes journey twelve.

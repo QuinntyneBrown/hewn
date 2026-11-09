@@ -12,12 +12,13 @@ export class SessionStore {
   readonly isOwner = computed(() => this.me()?.role === 'Owner');
   readonly signedIn = computed(() => this.me() !== null);
 
+  /** Loads the user and the public config together, so start-up waits for one round trip, not two (L2-045 AC1). */
   async load(): Promise<void> {
-    try {
-      this.me.set(await firstValueFrom(this.api.me()));
-      this.config.set(await firstValueFrom(this.api.config()));
-    } catch {
-      this.me.set(null);
-    }
+    const [me, config] = await Promise.allSettled([
+      firstValueFrom(this.api.me()),
+      firstValueFrom(this.api.config()),
+    ]);
+    this.me.set(me.status === 'fulfilled' ? me.value : null);
+    if (me.status === 'fulfilled' && config.status === 'fulfilled') this.config.set(config.value);
   }
 }

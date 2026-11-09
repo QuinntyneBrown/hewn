@@ -19,3 +19,4 @@ Read the ADRs that cover an area before changing it. New ADRs take the next numb
 | [0013](0013-stop-all-workers-halts-runs-on-the-control-poll.md) | Stop all workers halts runs on the control poll and a stored leasing switch | Accepted |
 | [0014](0014-a-retry-is-a-new-run-leasable-after-its-backoff.md) | A retry is a new run, leasable once its backoff has passed | Accepted |
 | [0015](0015-the-submission-limit-counts-stored-directions.md) | The direction submission limit counts stored directions | Accepted |
+| [0016](0016-project-rows-are-read-on-request.md) | Project rows are read on request and pushed to a projects group | Accepted |

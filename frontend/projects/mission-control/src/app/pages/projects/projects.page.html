@@ -1,0 +1,164 @@
+<div class="page-header">
+  <div class="truncate">
+    <h1>Projects</h1>
+    @if (loaded()) {
+      @if (total() > 0) {
+        <p class="page-header__desc">
+          {{ total() }} {{ total() === 1 ? 'project' : 'projects' }} · sorted by last activity
+        </p>
+      }
+    } @else if (!failure()) {
+      <p class="page-header__desc">Loading projects…</p>
+    }
+  </div>
+  @if (session.isOwner() && total() > 0) {
+    <div class="cluster">
+      <a class="btn btn--primary btn--sm" routerLink="/projects/new"
+        ><svg hw-icon name="plus"></svg>New product</a
+      >
+    </div>
+  }
+</div>
+
+@if (failure(); as message) {
+  <div class="pad">
+    <div class="empty empty--error" role="alert">
+      <svg hw-icon name="warning"></svg>
+      <div>
+        <h2 class="empty__title">Projects couldn’t load</h2>
+        <p class="empty__text">{{ message }}</p>
+      </div>
+      <div class="cluster">
+        <button class="btn" type="button" (click)="load()">
+          <svg hw-icon name="refresh"></svg>Try again
+        </button>
+      </div>
+    </div>
+  </div>
+} @else if (loaded() && total() === 0) {
+  <div class="pad">
+    <div class="empty">
+      <svg hw-icon name="folderOpen"></svg>
+      <div>
+        <h2 class="empty__title">No projects yet</h2>
+        @if (session.isOwner()) {
+          <p class="empty__text">
+            Describe a product in plain language. Hewn takes it from brief to merged pull requests
+            without stopping to ask.
+          </p>
+        } @else {
+          <p class="empty__text">
+            Nothing is being built yet. When an Owner gives Hewn a direction, the project appears
+            here and you can watch it live.
+          </p>
+        }
+      </div>
+      @if (session.isOwner()) {
+        <a class="btn btn--primary" routerLink="/projects/new"
+          ><svg hw-icon name="plus"></svg>New product</a
+        >
+      }
+    </div>
+  </div>
+} @else {
+  <div class="pad">
+    <nav aria-label="Filter by status">
+      <div class="tabs">
+        <a
+          class="tab"
+          routerLink="/projects"
+          [attr.aria-current]="filter() === null ? 'page' : null"
+          >All</a
+        >
+        @for (status of filters; track status) {
+          <a
+            class="tab"
+            routerLink="/projects"
+            [queryParams]="{ status: status.toLowerCase() }"
+            [attr.aria-current]="filter() === status ? 'page' : null"
+            >{{ status }}
+            @if (loaded() && counts()[status] > 0) {
+              <span class="count">{{ counts()[status] }}</span>
+            }
+          </a>
+        }
+      </div>
+    </nav>
+  </div>
+  <div class="pad" style="padding-bottom: var(--space-10)">
+    @if (!loaded()) {
+      <div aria-busy="true" aria-live="polite">
+        <p class="visually-hidden">Loading projects</p>
+        <div class="rows rows--projects-viewer">
+          <div class="rows__head" aria-hidden="true">
+            <span>Project</span><span>Stage</span><span>Status</span><span>Complete</span
+            ><span class="row__end">Spend</span><span class="row__end">Activity</span>
+          </div>
+          <ul>
+            @for (i of [1, 2, 3, 4, 5]; track i) {
+              <li class="row" aria-hidden="true">
+                <span class="stack stack--sm"
+                  ><span class="skeleton skeleton--w33"></span
+                  ><span class="skeleton skeleton--w66 skeleton--sm"></span></span
+                ><span class="skeleton skeleton--w75"></span
+                ><span class="lg-only"><span class="skeleton skeleton--line"></span></span
+                ><span class="lg-only"><span class="skeleton skeleton--line"></span></span
+                ><span class="lg-only"><span class="skeleton skeleton--line"></span></span
+                ><span class="lg-only"><span class="skeleton skeleton--line"></span></span>
+              </li>
+            }
+          </ul>
+        </div>
+      </div>
+    } @else if (rows().length === 0) {
+      <div class="empty empty--tight">
+        <svg hw-icon name="folderOpen"></svg>
+        <div>
+          <h2 class="empty__title">No {{ filter()!.toLowerCase() }} projects</h2>
+          <p class="empty__text">
+            No project is {{ filter() }} right now. The count beside each status shows how many are.
+          </p>
+        </div>
+        <a class="btn" routerLink="/projects">Show all projects</a>
+      </div>
+    } @else {
+      <div class="rows rows--projects-viewer">
+        <div class="rows__head" aria-hidden="true">
+          <span>Project</span><span>Stage</span><span>Status</span><span>Complete</span
+          ><span class="row__end">Spend</span><span class="row__end">Activity</span>
+        </div>
+        <ul aria-label="Projects">
+          @for (p of rows(); track p.id) {
+            <li class="row">
+              <span class="truncate"
+                ><a class="row__title" [routerLink]="['/projects', p.id]">{{ p.name }}</a
+                ><span class="row__sub">{{ p.idea }}</span></span
+              >
+              <span class="row__end lg-hide"><hw-status [status]="p.status" /></span>
+              <span class="row__span truncate"
+                ><span>{{ p.stage.number }} · {{ p.stage.name }}</span>
+                @if (p.note) {
+                  <span class="row__note">{{ p.note }}</span>
+                }
+              </span>
+              <span class="lg-only"><hw-status [status]="p.status" /></span>
+              <span class="pct"
+                ><span
+                  class="meter meter--muted meter--inline"
+                  role="meter"
+                  [attr.aria-label]="p.name + ' complete'"
+                  [attr.aria-valuenow]="p.percentComplete"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  ><span class="meter__bar" [style.--value]="p.percentComplete + '%'"></span></span
+                >{{ p.percentComplete }}%</span
+              >
+              <span class="row__end tabular">{{ p.spend }}</span>
+              <span class="row__end text-subtle lg-only">{{ p.activity }}</span>
+            </li>
+          }
+        </ul>
+      </div>
+    }
+  </div>
+}

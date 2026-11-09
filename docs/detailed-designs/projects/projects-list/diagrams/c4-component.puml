@@ -4,18 +4,20 @@ LAYOUT_WITH_LEGEND()
 title Components — Projects list
 
 Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
-ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+ContainerDb(db, "Hewn database", "SQLite", "Projects, directions, runs, increments, events, spend")
 Container_Boundary(api_b, "Hewn API") {
   Component(ctrl, "ProjectsController", "ASP.NET Core controller", "GET /api/projects")
-  Component(query, "ProjectSummaryQuery", "Query handler", "Filters and sorts summaries")
-  Component(proj, "ProjectSummaryProjector", "Event projector", "Keeps summaries current")
-  Component(hub, "MissionControlHub", "SignalR hub", "Pushes ProjectChanged to subscribers")
+  Component(handler, "ListProjectsHandler", "Query handler", "Sorts rows by last activity")
+  Component(reader, "ProjectSummaryReader", "Read service", "Builds rows on request (ADR 0016)")
+  Component(pub, "SignalRProjectEventPublisher", "Event publisher", "Sends changed rows after events are stored")
+  Component(hub, "MissionControlHub", "SignalR hub", "Group projects, for the list")
 }
 
 Rel(spa, ctrl, "Loads list", "JSON/HTTPS")
-Rel(ctrl, query, "Runs")
-Rel(query, db, "Reads project_summaries", "SQL")
-Rel(proj, db, "Updates project_summaries", "SQL")
-Rel(proj, hub, "Publishes ProjectChanged")
+Rel(ctrl, handler, "Sends ListProjectsQuery")
+Rel(handler, reader, "Reads all rows")
+Rel(pub, reader, "Reads changed rows")
+Rel(reader, db, "Reads projects, runs, increments, events", "SQL")
+Rel(pub, hub, "ProjectSummary")
 Rel(hub, spa, "Pushes row update", "SignalR")
 @enduml

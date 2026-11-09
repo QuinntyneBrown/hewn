@@ -7,6 +7,7 @@ import {
   LogLevel,
 } from '@microsoft/signalr';
 import { firstValueFrom, Observable } from 'rxjs';
+import type { ProjectSummary } from '../projects/models';
 import { ProjectEvent } from './project-event';
 
 /**
@@ -15,7 +16,14 @@ import { ProjectEvent } from './project-event';
  */
 export interface ProjectEvents {
   follow(projectId: string, afterSequence: number): Observable<ProjectEvent>;
+  /**
+   * Every project's row as it changes (L2-002 AC4). After a reconnect it emits `resync`, since rows may have
+   * changed while the connection was down; the list then loads again.
+   */
+  followProjects(): Observable<ProjectsUpdate>;
 }
+
+export type ProjectsUpdate = { kind: 'row'; row: ProjectSummary } | { kind: 'resync' };
 
 export const PROJECT_EVENTS = new InjectionToken<ProjectEvents>('ProjectEvents');
 
@@ -90,6 +98,34 @@ export class SignalRProjectEvents implements ProjectEvents, OnDestroy {
         this.connection.off('ProjectEvent', onEvent);
         if (this.connection.state === HubConnectionState.Connected) {
           void this.connection.invoke('LeaveProject', projectId).catch(() => undefined);
+        }
+      };
+    });
+  }
+
+  followProjects(): Observable<ProjectsUpdate> {
+    return new Observable<ProjectsUpdate>((subscriber) => {
+      let closed = false;
+      const onRow = (row: ProjectSummary) => subscriber.next({ kind: 'row', row });
+      const join = () => this.connection.invoke('JoinProjects');
+      const onReconnected = () => {
+        if (closed) return;
+        join()
+          .then(() => subscriber.next({ kind: 'resync' }))
+          .catch((error: unknown) => subscriber.error(error));
+      };
+
+      this.connection.on('ProjectSummary', onRow);
+      this.connection.onreconnected(onReconnected);
+      this.ensureStarted()
+        .then(() => (closed ? undefined : join()))
+        .catch((error: unknown) => subscriber.error(error));
+
+      return () => {
+        closed = true;
+        this.connection.off('ProjectSummary', onRow);
+        if (this.connection.state === HubConnectionState.Connected) {
+          void this.connection.invoke('LeaveProjects').catch(() => undefined);
         }
       };
     });

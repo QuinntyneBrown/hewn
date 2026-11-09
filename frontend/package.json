@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve mission-control",
-    "build": "ng build mission-control",
+    "build": "NG_BUILD_OPTIMIZE_CHUNKS=1 ng build mission-control",
     "watch": "ng build --watch --configuration development",
     "test": "ng test api --watch=false && ng test mission-control --watch=false",
     "lint": "ng lint",

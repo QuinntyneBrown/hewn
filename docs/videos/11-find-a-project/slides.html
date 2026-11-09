@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 11 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="11" data-video-title="Find a project" data-parts="Introduction|Goal|Rows|Live|Page|Performance|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 11</div>
+  <h1>Find a project</h1>
+  <p class="lead">Every project on one page: what it is doing, how far along, what it has cost.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video walks through how it was built">
+  <figure><img src="screens/list-desktop.png" alt="Projects with seven rows: running, paused, blocked, idle and cancelled projects with stage, percent, spend and last activity"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="Projects lists every project with its name">
+  <div class="cols cols--wide">
+    <figure><img src="screens/filtered-desktop.png" alt="Projects filtered to Blocked, showing Parcel Post"></figure>
+    <ul class="bullets small">
+      <li>Newest activity first</li>
+      <li>Filter in <code>?status=</code></li>
+      <li>Live rows within 1 s</li>
+      <li>LCP ≤ 2.5 s, JS ≤ 500 KB</li>
+      <li>Read APIs p95 ≤ 300 ms</li>
+    </ul>
+  </div>
+</section>
+
+<section id="flow" data-part="1" data-cue="Here is the flow.">
+  <figure class="diagram"><img src="../../detailed-designs/projects/projects-list/diagrams/sequence-load-and-filter.png" alt="Sequence diagram: the page reads the filter from the query string, loads GET /api/projects through the summary reader, and filters the rows"></figure>
+</section>
+
+<section id="rows" data-part="2" data-cue="Each row is built on request by the project summary reader.">
+  <div class="code-file">backend/src/Hewn.Application/Projects/ListProjects.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="2-4,7-10,13">        // The active direction, else the latest one: the one the row describes.
+        var direction = project.ActiveDirection ?? project.Directions.OrderByDescending(d =&gt; d.SubmittedAt).First();
+        var planned = direction.Stages.Where(s =&gt; s.Status != StageStatus.Skipped).OrderBy(s =&gt; s.Number).ToList();
+        var stage = planned.FirstOrDefault(s =&gt; s.Status != StageStatus.Succeeded) ?? planned[^1];
+        var (merged, total) = increments.GetValueOrDefault(direction.Id);
+
+        var done = (double)planned.Count(s =&gt; s.Status == StageStatus.Succeeded);
+        if (stage.Number == Stages.Count - 1 &amp;&amp; stage.Status != StageStatus.Succeeded &amp;&amp; total &gt; 0)
+        {
+            done += (double)merged / total;
+        }
+
+        var percent = direction.Status == DirectionStatus.Complete ? 100 : (int)Math.Floor(100 * done / planned.Count);</pre>
+</section>
+
+<section id="sort" data-part="2" data-cue="The list handler sorts those rows newest activity first.">
+  <div class="code-file">backend/src/Hewn.Application/Projects/ListProjects.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="4-6">public sealed class ListProjectsHandler(ProjectSummaryReader reader) : IRequestHandler&lt;ListProjectsQuery, IReadOnlyList&lt;ProjectSummaryDto&gt;&gt;
+{
+    public async Task&lt;IReadOnlyList&lt;ProjectSummaryDto&gt;&gt; Handle(ListProjectsQuery query, CancellationToken cancellationToken) =&gt;
+        (await reader.ReadAsync(null, cancellationToken))
+            .OrderByDescending(p =&gt; p.LastActivityAt)
+            .ThenBy(p =&gt; p.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+}</pre>
+  <div class="result green">✓ ADR 0016 · no summary table, p95 15 ms for the list</div>
+</section>
+
+<section id="live" data-part="3" data-cue="For live updates, the hub gained a projects group.">
+  <div class="code-file">backend/src/Hewn.Api/Hubs/SignalRProjectEventPublisher.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="2,8-9,12,14">        // The Projects page gets each changed project's row, read after the events were stored (L2-002 AC4, ADR 0016).
+        var changed = events.Where(e =&gt; !RowNeutral.Contains(e.Type)).Select(e =&gt; e.ProjectId).Distinct().ToList();
+        if (changed.Count == 0)
+        {
+            return;
+        }
+
+        await using var scope = scopes.CreateAsyncScope();
+        var reader = scope.ServiceProvider.GetRequiredService&lt;ProjectSummaryReader&gt;();
+        foreach (var projectId in changed)
+        {
+            foreach (var row in await reader.ReadAsync(projectId, cancellationToken))
+            {
+                await hub.Clients.Group(MissionControlHub.ProjectsGroup).SendAsync("ProjectSummary", row, cancellationToken);
+            }
+        }</pre>
+</section>
+
+<section id="live-diagram" data-part="3" data-cue="A brand new project arrives the same way">
+  <figure class="diagram"><img src="../../detailed-designs/projects/projects-list/diagrams/sequence-live-row-update.png" alt="Sequence diagram: the page joins the projects group; after events are stored the publisher reads the changed row and sends ProjectSummary"></figure>
+</section>
+
+<section id="page" data-part="4" data-cue="In the page, a live row replaces the project's old one">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/projects/projects-list.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2-3,7-8">/** Applies a live row: replaces the project's row, or adds a project not seen yet (L2-002 AC4). */
+export function upsertRow(rows: readonly ProjectSummary[], row: ProjectSummary): ProjectSummary[] {
+  return byActivity([...rows.filter((r) =&gt; r.id !== row.id), row]);
+}
+
+/** The status in `?status=`, or null for All; anything else is ignored. */
+export function parseStatusFilter(value: string | null): ProjectStatus | null {
+  return STATUS_FILTERS.find((s) =&gt; s.toLowerCase() === value?.toLowerCase()) ?? null;
+}</pre>
+</section>
+
+<section id="page-live" data-part="4" data-cue="After a reconnect, the page loads the whole list again">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/projects/projects.page.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3-6">
+  constructor() {
+    const tick = setInterval(() =&gt; this.now.set(new Date()), 1_000);
+    const updates = this.live.followProjects().subscribe({
+      next: (update) =&gt; {
+        if (update.kind === 'resync') this.load();
+        else if (this.all()) this.all.update((rows) =&gt; upsertRow(rows ?? [], update.row));
+      },
+      // The list still works without live rows; a reload brings them back.
+      error: () =&gt; undefined,</pre>
+</section>
+
+<section id="budget" data-part="5" data-cue="The requirement is a largest contentful paint">
+  <div class="code-file">e2e/tests/perf/projects-page.perf.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1,5">    const result = await lighthouse(`http://localhost:${port}/projects`, {
+      port: debuggingPort,
+      output: ['json', 'html'],
+      logLevel: 'error',
+      onlyCategories: ['performance'],
+      disableStorageReset: true,</pre>
+  <div class="code-file">e2e/tests/perf/projects-page.perf.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1-3">    expect(lhr.configSettings.formFactor).toBe('mobile');
+    expect(lcpMs, 'Largest Contentful Paint (ms)').toBeLessThanOrEqual(2_500);
+    expect(js.gzipBytes, 'initial JavaScript, gzipped (bytes)').toBeLessThanOrEqual(500 * 1_000);</pre>
+</section>
+
+<section id="startup" data-part="5" data-cue="Start-up fetched the user, then the config">
+  <div class="code-file">frontend/projects/mission-control/src/app/core/session-store.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3-6">  /** Loads the user and the public config together, so start-up waits for one round trip, not two (L2-045 AC1). */
+  async load(): Promise&lt;void&gt; {
+    const [me, config] = await Promise.allSettled([
+      firstValueFrom(this.api.me()),
+      firstValueFrom(this.api.config()),
+    ]);
+    this.me.set(me.status === 'fulfilled' ? me.value : null);
+    if (me.status === 'fulfilled' &amp;&amp; config.status === 'fulfilled') this.config.set(config.value);</pre>
+  <div class="result green">✓ <code>NG_BUILD_OPTIMIZE_CHUNKS=1</code> · one initial file instead of eleven</div>
+</section>
+
+<section id="prefetch" data-part="5" data-cue="When the app opens on Projects, the list is requested at the same moment">
+  <div class="code-file">frontend/projects/mission-control/src/app/app.config.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3">    provideAppInitializer(() =&gt; {
+      // Opening on Projects, its list is requested alongside the session, not after it (L2-045 AC1).
+      if (location.pathname === '/projects') inject(ProjectsPrefetch).start();
+      return inject(SessionStore).load();
+    }),</pre>
+  <div class="code-file">frontend/projects/mission-control/src/app/core/projects-prefetch.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2,8-9">  start(): void {
+    this.pending = this.api.listProjects().pipe(shareReplay(1));
+    // Started now; a failure surfaces when the page takes it.
+    this.pending.subscribe({ error: () =&gt; undefined });
+  }
+
+  list(): Observable&lt;ProjectSummary[]&gt; {
+    const pending = this.pending ?? this.api.listProjects();
+    this.pending = null;
+    return pending;
+  }</pre>
+</section>
+
+<section id="lighthouse" data-part="5" data-cue="Lighthouse now measures a largest contentful paint">
+  <figure><img src="screens/lighthouse.png" alt="The Lighthouse mobile report for Projects: performance score and a Largest Contentful Paint of about 1.4 seconds"></figure>
+</section>
+
+<section id="load" data-part="5" data-cue="The load test makes sure there are fifty projects">
+  <div class="code-file">e2e/tests/perf/read-api-load.perf.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1-2,5,8">  await Promise.all(
+    Array.from({ length: concurrency }, async () =&gt; {
+      while (next &lt; requests) {
+        const which = next++ % endpoints.length;
+        const path = endpoints[which]!();
+        const at = performance.now();
+        const response = await page.request.get(`${api}${path}`);
+        const ms = performance.now() - at;
+        expect(response.status(), path).toBe(200);
+        const key = path.replace(/[0-9a-f-]{36}/, '{id}');
+        samples.set(key, [...(samples.get(key) ?? []), ms]);
+      }</pre>
+  <div class="result green">✓ 50 projects · 20+ workers · 1,000 reads · p95 13 ms</div>
+</section>
+
+<section id="red" data-part="6" data-cue="The backend tests came first, and failed">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Projects/ProjectsListTests.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,8-10">        // Stages 0 to 2 succeed: 3 of 11.
+        for (var i = 0; i &lt; 3; i++)
+        {
+            var run = await worker.LeaseAsync();
+            (await worker.SucceedAsync(run!)).EnsureSuccessStatusCode();
+        }
+
+        var row = Row(await ListAsync(owner), "Ledgerline");
+        Assert.Equal(27, row.GetProperty("percentComplete").GetInt32());
+        Assert.Equal(3, row.GetProperty("stage").GetProperty("number").GetInt32());
+        Assert.Equal("Design system", row.GetProperty("stage").GetProperty("name").GetString());</pre>
+  <div class="result red">✘ 4 failed · ProjectsListTests</div>
+</section>
+
+<section id="tests" data-part="6" data-cue="All green, the backend has">
+  <div class="cols cols--3">
+    <div class="card"><h3>202 backend</h3><p class="small">4 new, real API and hub</p></div>
+    <div class="card"><h3>140 worker · 104 frontend</h3><p class="small">7 new frontend</p></div>
+    <div class="card"><h3>11 new e2e</h3><p class="small">+ 2 performance tests</p></div>
+  </div>
+</section>
+
+<section id="e2e" data-part="6" data-cue="a row updating live with a real worker">
+  <div class="code-file">e2e/tests/pipeline/find-a-project-live.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2-4,14-16">    // Scripted stages of three 1-second steps, so each stage shows for about 3 seconds.
+    stopWorkers = startWorkers(1, 1_000, { executor: 'scripted', logLines: 1 });
+    await expect(row.stage).toHaveText('3 · Design system', { timeout: 60_000 });
+    await expect(row.percent).toHaveText('27%');
+
+    // Once the API reports the direction finished, the row says Idle at 100% within a second.
+    await expect
+      .poll(
+        async () =&gt;
+          ((await (await page.request.get(`/api/projects/${projectId}`)).json()) as { status: string }).status,
+        { timeout: 120_000 },
+      )
+      .toBe('Idle');
+    await expect(row.status).toHaveText('Idle', { timeout: 1_000 });
+    await expect(row.percent).toHaveText('100%', { timeout: 1_000 });
+    await expect(row.stage).toHaveText('10 · Increments');</pre>
+  <div class="result green">✓ each change on screen within 1 s, no reload</div>
+</section>
+
+<section id="list" data-part="7" data-cue="Here is the list, with projects in every state">
+  <figure><img src="screens/list-desktop.png" alt="Projects with running, paused, blocked, idle and cancelled rows"></figure>
+</section>
+
+<section id="themes" data-part="7" data-cue="It works in dark mode and on a phone.">
+  <div class="cols">
+    <figure><img src="screens/list-desktop-dark.png" alt="Projects in dark mode"></figure>
+    <figure class="phone"><img src="screens/list-phone.png" alt="Projects on a phone"></figure>
+  </div>
+</section>
+
+<section id="clip-filter" data-part="7" data-cue="Now the filter." data-clip="clips/filter.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Blocked, a reload with the filter kept, Running, then All</aside>
+</section>
+
+<section id="clip-live" data-part="7" data-cue="And here the list stays open while the workers run." data-clip="clips/live.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Rows move on as the workers run; a new project's row appears at the top</aside>
+</section>
+
+<section id="empty" data-part="7" data-cue="With no projects at all">
+  <div class="cols">
+    <figure><img src="screens/empty-owner-desktop.png" alt="The Owner's empty state with New product"></figure>
+    <figure><img src="screens/empty-viewer-desktop.png" alt="The Viewer's empty state without New product"></figure>
+  </div>
+</section>
+
+<section id="lighthouse-report" data-part="7" data-cue="And here is the Lighthouse report for the production build.">
+  <figure><img src="screens/lighthouse.png" alt="The Lighthouse report for the production build of Projects"></figure>
+</section>
+
+<section id="recap" data-part="8" data-cue="Journey eleven is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Every project, newest activity first</li>
+    <li>Filter in the address bar; rows change live</li>
+    <li>Empty state fits the role</li>
+    <li>LCP 1.44 s · 125 KB JS · p95 13 ms</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

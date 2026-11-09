@@ -1,6 +1,7 @@
 import { test as base, expect, Page } from '@playwright/test';
 import { NewDirectionPage } from '../pages/new-direction.page';
 import { ProjectPage } from '../pages/project.page';
+import { ProjectsPage } from '../pages/projects.page';
 import { SettingsPage } from '../pages/settings.page';
 
 /** Owners quinntynebrown and grace (grace only for the rate-limit test), and the Viewer ada (eng/Start-E2eApi.ps1). */
@@ -20,12 +21,14 @@ export function uniqueName(prefix: string): string {
 interface Pages {
   newDirection: NewDirectionPage;
   project: ProjectPage;
+  projects: ProjectsPage;
   settings: SettingsPage;
 }
 
 export const test = base.extend<Pages>({
   newDirection: async ({ page }, use) => use(new NewDirectionPage(page)),
   project: async ({ page }, use) => use(new ProjectPage(page)),
+  projects: async ({ page }, use) => use(new ProjectsPage(page)),
   settings: async ({ page }, use) => use(new SettingsPage(page)),
 });
 

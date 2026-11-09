@@ -119,6 +119,9 @@ jobs:
         working-directory: e2e
       - run: npm run test:pipeline
         working-directory: e2e
+      # L2-045: Lighthouse on the production build of Projects, and the read-API load test.
+      - run: npm run test:perf
+        working-directory: e2e
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

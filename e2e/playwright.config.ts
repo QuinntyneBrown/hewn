@@ -15,7 +15,17 @@ export default defineConfig({
     trace: 'retain-on-failure',
     viewport: { width: 1280, height: 900 },
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } } }],
+  projects: [
+    {
+      name: 'chromium',
+      testIgnore: '**/perf/**',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } },
+    },
+    // L2-045: Lighthouse and the read-API load test, only with `npm run test:perf` (HEWN_PERF=1), never in a full run.
+    ...(process.env['HEWN_PERF']
+      ? [{ name: 'perf', testMatch: '**/perf/**/*.perf.spec.ts', use: { ...devices['Desktop Chrome'] } }]
+      : []),
+  ],
   webServer: [
     {
       command: 'pwsh ../eng/Start-E2eApi.ps1',
