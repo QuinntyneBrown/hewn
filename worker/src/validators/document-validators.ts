@@ -209,3 +209,54 @@ function designFolders(workspace: string): string[] {
   }
   return folders.sort();
 }
+
+/** The text of a file before the stage's agent ran, by path; absent when the file did not exist. */
+export type Baseline = ReadonlyMap<string, string>;
+
+/**
+ * L2-005 AC3, L2-014, L2-017 AC3: numbered items a later direction must keep. Every item the file had before is
+ * still there, and every new item takes a number above the highest existing one.
+ */
+export function validateKeptNumbers(
+  directory: string,
+  baseline: Baseline,
+  path: string,
+  pattern: RegExp,
+  label: (n: string) => string,
+): Problems {
+  const before = baseline.get(path);
+  if (before === undefined) return [];
+  const after = read(directory, path) ?? '';
+  const numbers = (text: string) => [...text.matchAll(pattern)].map((m) => m[1]!);
+  const old = numbers(before);
+  const now = numbers(after);
+  const highest = Math.max(0, ...old.map(Number));
+  const width = old[0]?.length ?? 1;
+  return [
+    ...old.filter((n) => !now.includes(n)).map((n) => `${path} dropped ${label(n)}`),
+    ...now
+      .filter((n) => !old.includes(n) && Number(n) <= highest)
+      .map(
+        (n) =>
+          `${path} numbers new ${label(n)} below the next free number, ${label(String(highest + 1).padStart(width, '0'))}`,
+      ),
+  ];
+}
+
+/** L2-010 AC6: a feature direction updates or adds designs; it never drops one from the manifest. */
+export function validateKeptDesigns(directory: string, baseline: Baseline): Problems {
+  const path = 'docs/mocks/manifest.json';
+  const screens = (text: string | null | undefined) => {
+    try {
+      return ((JSON.parse(text ?? '{}') as { screens?: { screen: string }[] }).screens ?? []).map((s) => s.screen);
+    } catch {
+      return [];
+    }
+  };
+  const before = baseline.get(path);
+  if (before === undefined) return [];
+  const now = screens(read(directory, path));
+  return screens(before)
+    .filter((s) => !now.includes(s))
+    .map((s) => `${path} dropped the ${s} design`);
+}

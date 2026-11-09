@@ -111,3 +111,22 @@ export function readDecisions(directory: string): string {
   const path = join(directory, DECISIONS);
   return existsSync(path) ? readFileSync(path, 'utf8') : '';
 }
+
+/** The question stage 1 of a feature direction answers, so Hewn knows whether stages 2 and 3 run (L2-005 AC2). */
+export const UI_CHANGE_QUESTION = 'Does this feature change the user interface?';
+
+/**
+ * The latest answer to {@link UI_CHANGE_QUESTION} among the entries after `skip`: an answer starting "No" means no
+ * UI change. Null when the agent recorded none.
+ */
+export function uiChangeDecision(directory: string, skip = 0): { hasUiChange: boolean; rationale: string } | null {
+  const entry = readDecisions(directory)
+    .split(/^## /m)
+    .slice(1 + skip)
+    .filter((e) => /\*\*Question:\*\*\s*(.+)/.exec(e)?.[1]?.trim() === UI_CHANGE_QUESTION)
+    .at(-1);
+  if (!entry) return null;
+  const answer = /\*\*Answer:\*\*\s*(.+)/.exec(entry)?.[1]?.trim() ?? '';
+  const rationale = /\*\*Rationale:\*\*\s*(.+)/.exec(entry)?.[1]?.trim() ?? answer;
+  return { hasUiChange: !/^no\b/i.test(answer), rationale };
+}

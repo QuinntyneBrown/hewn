@@ -107,6 +107,8 @@ export class FakeHewnApi implements HewnApi {
 
   async reportBacklog(): Promise<void> {}
 
+  async reportScope(): Promise<void> {}
+
   async nextIncrement(): Promise<null> {
     return null;
   }

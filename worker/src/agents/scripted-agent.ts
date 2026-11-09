@@ -1,9 +1,9 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { StageAgent, StageAgentTask } from './stage-agent.ts';
-import { appendDecision } from './decision-log.ts';
+import { appendDecision, UI_CHANGE_QUESTION } from './decision-log.ts';
 import { colorsIn } from '../validators/colors.ts';
-import { designFolders } from '../estimates/backlog-planner.ts';
+import { designFolders, readEstimateRows } from '../estimates/backlog-planner.ts';
 import { scriptedImplementation } from '../increments/scripted-gate.ts';
 import { execFileSync } from 'node:child_process';
 
@@ -43,8 +43,31 @@ export class ScriptedStageAgent implements StageAgent {
         ...(architecture ? { architecture } : {}),
       });
 
+    const feature = run.direction?.kind === 'Feature' ? run.direction.idea : null;
+
     switch (run.stage) {
       case 1: {
+        if (feature) {
+          // A feature direction adds one core feature to the existing brief and decides whether the UI changes.
+          const title = featureTitle(feature);
+          const brief = read('docs/brief.md');
+          write(
+            'docs/brief.md',
+            brief.replace(
+              /(^## Core features\s*\n(?:-.*\n)*)/m,
+              `$1- ${title} — ${lowerFirst(firstSentence(feature))}\n`,
+            ),
+          );
+          const ui = /\b(page|screen|view|form|button|dialog|tab|ui)\b/i.test(feature);
+          decide(
+            UI_CHANGE_QUESTION,
+            ui ? `Yes. ${title} needs a new or changed screen.` : `No. ${title} changes no screen or state.`,
+            ui
+              ? `The feature names a screen: ${lowerFirst(firstSentence(feature))}`
+              : 'The feature adds no screen or state; it changes behaviour behind the existing pages.',
+          );
+          return;
+        }
         const features = featuresFrom(run.project.idea);
         write(
           'docs/brief.md',
@@ -60,8 +83,14 @@ export class ScriptedStageAgent implements StageAgent {
       case 2: {
         const magicPatterns = task.magicPatterns;
         if (!magicPatterns) throw new Error('Stage 2 needs Magic Patterns.');
-        const screens = [];
-        for (const feature of sectionList(read('docs/brief.md'), 'Core features').map((f) => f.split(' — ')[0]!)) {
+        const existing = read('docs/mocks/manifest.json');
+        const screens: { screen: string; [field: string]: unknown }[] = existing
+          ? (JSON.parse(existing) as { screens: { screen: string }[] }).screens
+          : [];
+        const designed = new Set(screens.map((s) => s.screen));
+        for (const feature of sectionList(read('docs/brief.md'), 'Core features')
+          .map((f) => f.split(' — ')[0]!)
+          .filter((f) => !designed.has(slug(f)))) {
           const design = await magicPatterns.createDesign({
             name: feature,
             prompt: `The ${feature} screen of ${run.project.name}, responsive from 375 px, light and dark, as raw HTML files default.html, loading.html, empty.html and error.html.`,
@@ -132,19 +161,25 @@ export class ScriptedStageAgent implements StageAgent {
         return;
       }
       case 5: {
-        const bullets = sectionList(read('docs/brief.md'), 'Core features');
-        const features = bullets.map((b) => b.split(' — ')[0]!);
-        const l1 = bullets
-          .map((b, i) => `## L1-${pad(i + 1)}: ${features[i]}\n${b.replace(' — ', ': ')}.\n`)
-          .join('\n');
-        const l2 = features
-          .map(
-            (f, i) =>
-              `## L2-${pad(i + 1)}: ${f}\n**Traces to:** L1-${pad(i + 1)}\n\n**Acceptance Criteria:**\n1. Given a signed-in user on the ${f} page, when they complete the main action, then the page shows the result.\n`,
-          )
-          .join('\n');
-        write('docs/specs/L1.md', `# L1 - High-Level Requirements\n\n${l1}`);
-        write('docs/specs/L2.md', `# L2 - Detailed Requirements\n\n${l2}`);
+        // Existing requirements keep their IDs; features without one take the next free numbers (L2-005 AC3).
+        const oldL1 = read('docs/specs/L1.md') || '# L1 - High-Level Requirements\n';
+        const oldL2 = read('docs/specs/L2.md') || '# L2 - Detailed Requirements\n';
+        const known = new Set(requirements(oldL2).map((r) => r.title));
+        const next = (text: string, level: string) =>
+          Math.max(0, ...[...text.matchAll(new RegExp(`^## ${level}-(\\d+)`, 'gm'))].map((m) => Number(m[1]))) + 1;
+        let l1Next = next(oldL1, 'L1');
+        let l2Next = next(oldL2, 'L2');
+        let l1 = '';
+        let l2 = '';
+        for (const bullet of sectionList(read('docs/brief.md'), 'Core features')) {
+          const f = bullet.split(' — ')[0]!;
+          if (known.has(f)) continue;
+          const l1Id = `L1-${pad(l1Next++)}`;
+          l1 += `\n## ${l1Id}: ${f}\n${bullet.replace(' — ', ': ')}.\n`;
+          l2 += `\n## L2-${pad(l2Next++)}: ${f}\n**Traces to:** ${l1Id}\n\n**Acceptance Criteria:**\n1. Given a signed-in user on the ${f} page, when they complete the main action, then the page shows the result.\n`;
+        }
+        write('docs/specs/L1.md', `${oldL1.trimEnd()}\n${l1}`);
+        write('docs/specs/L2.md', `${oldL2.trimEnd()}\n${l2}`);
         decide(
           'How fine-grained are the first requirements?',
           'One L1 and one L2 per core feature in the brief.',
@@ -154,6 +189,7 @@ export class ScriptedStageAgent implements StageAgent {
       }
       case 7: {
         for (const { id, title } of requirements(read('docs/specs/L2.md'))) {
+          if (read(`docs/detailed-designs/product/${slug(title)}/README.md`)) continue;
           write(
             `docs/detailed-designs/product/${slug(title)}/README.md`,
             `# ${title}\n\n## Description\nOne page, one API endpoint and one table.\n\n## Requirements\n- ${id}\n`,
@@ -200,6 +236,7 @@ export class ScriptedStageAgent implements StageAgent {
         return;
       }
       case 9: {
+        const estimates = readEstimateRows(directory);
         const bySubsystem = new Map<string, string[]>();
         for (const design of designFolders(directory)) {
           const [subsystem, feature] = design.split('/') as [string, string];
@@ -209,7 +246,10 @@ export class ScriptedStageAgent implements StageAgent {
           write(
             `docs/estimates/${subsystem}.md`,
             `# ${subsystem}\n\n| Design | Estimate (days) | Complete |\n|---|---:|---:|\n${features
-              .map((f) => `| [${f}](../detailed-designs/${subsystem}/${f}/README.md) | 2 | 0% |`)
+              .map((f) => {
+                const kept = estimates.get(`${subsystem}/${f}`);
+                return `| [${f}](../detailed-designs/${subsystem}/${f}/README.md) | ${kept?.days ?? 2} | ${kept?.complete ?? 0}% |`;
+              })
               .join('\n')}\n`,
           );
         }
@@ -262,6 +302,16 @@ export class ScriptedStageAgent implements StageAgent {
 function featuresFrom(idea: string): string[] {
   const workflow = (firstSentence(idea).split(',')[0] ?? idea).replace(/\.$/, '').trim();
   return ['Sign in', `Main workflow — ${lowerFirst(workflow)}`, 'Review history'];
+}
+
+/** "Add a CSV export of the shift report, one row per shift" → "CSV export of the shift report". */
+function featureTitle(text: string): string {
+  const title = (firstSentence(text).split(',')[0] ?? text)
+    .replace(/\.$/, '')
+    .replace(/^(add|build|let|allow|support)\s+(an?|the)?\s*/i, '')
+    .split(/\s+with\s+/)[0]!
+    .trim();
+  return title.charAt(0).toUpperCase() + title.slice(1);
 }
 
 function firstSentence(text: string): string {

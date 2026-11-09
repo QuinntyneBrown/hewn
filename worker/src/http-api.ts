@@ -5,6 +5,7 @@ import {
   type Increment,
   type IncrementUpdate,
   type BacklogReport,
+  type ScopeReport,
   type CommitFile,
   type HewnApi,
   type LeasedRun,
@@ -119,6 +120,10 @@ export class HttpHewnApi implements HewnApi {
 
   async reportBacklog(workerId: string, run: LeasedRun, report: BacklogReport): Promise<void> {
     await this.send('PUT', `/api/worker/runs/${run.runId}/backlog`, { workerId, epoch: run.epoch, ...report });
+  }
+
+  async reportScope(workerId: string, run: LeasedRun, report: ScopeReport): Promise<void> {
+    await this.send('PUT', `/api/worker/runs/${run.runId}/scope`, { workerId, epoch: run.epoch, ...report });
   }
 
   async mergePullRequest(workerId: string, run: LeasedRun, idempotencyKey: string, number: number): Promise<string> {

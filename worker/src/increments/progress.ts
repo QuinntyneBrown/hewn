@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { planBacklog } from '../estimates/backlog-planner.ts';
+import { refreshEstimatesReadme } from '../estimates/backlog-planner.ts';
 
 const ESTIMATES = 'docs/estimates';
 
@@ -27,7 +27,7 @@ export function markComplete(directory: string, designs: string[], thresholdDays
     if (updated !== text) writeFileSync(path, updated);
   }
 
-  planBacklog(directory, thresholdDays);
+  refreshEstimatesReadme(directory, thresholdDays);
   const after = snapshot(root);
   return [...after.keys()].filter((f) => after.get(f) !== before.get(f)).map((f) => `${ESTIMATES}/${f}`);
 }

@@ -12,12 +12,14 @@ export const noPullRequests: Pick<
   | 'mergePullRequest'
   | 'protectDefaultBranch'
   | 'reportBacklog'
+  | 'reportScope'
   | 'nextIncrement'
   | 'updateIncrement'
 > = {
   nextIncrement: unexpected('nextIncrement'),
   updateIncrement: unexpected('updateIncrement'),
   reportBacklog: unexpected('reportBacklog'),
+  reportScope: unexpected('reportScope'),
   openPullRequest: unexpected('openPullRequest'),
   pullRequestChecks: unexpected('pullRequestChecks'),
   mergePullRequest: unexpected('mergePullRequest'),

@@ -75,7 +75,7 @@ describe('planBacklog', () => {
       ['waitlist', 4],
     ]);
     estimates('accounts', [
-      ['sign-in', 1, 100],
+      ['sign-in', 1, 50],
       ['payroll', 1],
       ['theme', 0.5],
     ]);
@@ -145,7 +145,7 @@ describe('planBacklog', () => {
 
     const readme = read('docs/estimates/README.md');
     expect(readme).toContain('**Overall estimate:** 5.5 ideal days across 3 designs');
-    expect(readme).toContain('**Percent complete:** 41%');
+    expect(readme).toContain('**Percent complete:** 32%');
     expect(readme).toMatch(/## Roadmap[\s\S]*\| 3 \| Book a slot \(part 2 of 2\) \| 2 \| L2-001 \| 2 \| 2 \|/);
     expect(readme).toMatch(/## Deferred[\s\S]*\| Waitlist \| L2-003 \| 4 \| Estimated at 4 days/);
   });

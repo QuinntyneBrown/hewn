@@ -101,6 +101,7 @@ export class WorkLoop {
         this.api.openPullRequest(workerId, run, `${run.runId}/${step}/pull-request`, request),
       pullRequestChecks: (number) => this.api.pullRequestChecks(workerId, run, number),
       reportBacklog: (report) => this.api.reportBacklog(workerId, run, report),
+      reportScope: (report) => this.api.reportScope(workerId, run, report),
       mergePullRequest: (step, number) =>
         this.api.mergePullRequest(workerId, run, `${run.runId}/${step}/merge`, number),
       protectDefaultBranch: (step, checks) =>
