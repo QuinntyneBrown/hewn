@@ -86,8 +86,22 @@ public sealed class MergePullRequestHandler(IAppDbContext db, LeaseService lease
 
         CommitPolicy.EnsurePullRequestsAllowed(run.Stage);
         var project = await RunProject.RequireRepositoryAsync(db, run, cancellationToken);
-        await ScaffoldPullRequest.RequireAsync(gitHub, project, command.Number, cancellationToken);
-        var sha = await gitHub.MergePullRequestAsync(project.RepositoryOwner!, project.RepositoryName!, command.Number, "Scaffold the solution", cancellationToken);
+        var pull = await OwnPullRequest.RequireAsync(gitHub, project, run.Stage, command.Number, cancellationToken);
+        string sha;
+        try
+        {
+            sha = await gitHub.MergePullRequestAsync(project.RepositoryOwner!, project.RepositoryName!, command.Number, pull.Title, cancellationToken);
+        }
+        catch (GitHubBranchBehindException)
+        {
+            // Nothing is recorded, so the worker can rebase and merge again under a new key (L2-025 AC2).
+            throw new FieldValidationException(
+                [new FieldError("number", $"The branch of pull request #{command.Number} is behind the default branch; rebase it first.", "The branch is behind the default branch")],
+                "branch_behind");
+        }
+
+        // L2-025 AC1: the branch is deleted once merged.
+        await gitHub.DeleteBranchAsync(project.RepositoryOwner!, project.RepositoryName!, pull.Head, cancellationToken);
         await MutationLedger.RecordAsync(db, run, command.IdempotencyKey, "merge_pull_request", new { sha }, clock, cancellationToken);
         return sha;
     }
@@ -105,7 +119,7 @@ public sealed class ProtectDefaultBranchHandler(IAppDbContext db, LeaseService l
             return;
         }
 
-        CommitPolicy.EnsurePullRequestsAllowed(run.Stage);
+        CommitPolicy.EnsureProtectAllowed(run.Stage);
         var project = await RunProject.RequireRepositoryAsync(db, run, cancellationToken);
         await gitHub.ProtectDefaultBranchAsync(project.RepositoryOwner!, project.RepositoryName!, command.Checks, cancellationToken);
         await MutationLedger.RecordAsync(db, run, command.IdempotencyKey, "protect_branch", new { checks = command.Checks }, clock, cancellationToken);
@@ -120,24 +134,27 @@ public sealed class GetPullRequestChecksHandler(IAppDbContext db, LeaseService l
         var run = await leases.FenceAsync(query.RunId, query.WorkerId, query.Epoch, cancellationToken);
         CommitPolicy.EnsurePullRequestsAllowed(run.Stage);
         var project = await RunProject.RequireRepositoryAsync(db, run, cancellationToken);
-        await ScaffoldPullRequest.RequireAsync(gitHub, project, query.Number, cancellationToken);
+        await OwnPullRequest.RequireAsync(gitHub, project, run.Stage, query.Number, cancellationToken);
         var checks = await gitHub.ListChecksAsync(project.RepositoryOwner!, project.RepositoryName!, query.Number, cancellationToken);
         return [.. checks.Select(c => new CheckDto(c.Name, c.Status, c.Conclusion))];
     }
 }
 
-internal static class ScaffoldPullRequest
+internal static class OwnPullRequest
 {
-    /// <summary>Stage 6 touches only the pull request from its own branch.</summary>
-    public static async Task RequireAsync(IGitHubRepositories gitHub, Project project, int number, CancellationToken cancellationToken)
+    /// <summary>Stage 6 touches only the pull request from its own branch, and stage 10 only those from feature branches.</summary>
+    public static async Task<PullRequestInfo> RequireAsync(IGitHubRepositories gitHub, Project project, int stage, int number, CancellationToken cancellationToken)
     {
         var pull = await gitHub.GetPullRequestAsync(project.RepositoryOwner!, project.RepositoryName!, number, cancellationToken);
-        if (pull is null || pull.Head != CommitPolicy.ScaffoldBranch)
+        var own = pull is not null && (stage == CommitPolicy.ScaffoldStage ? pull.Head == CommitPolicy.ScaffoldBranch : CommitPolicy.IsFeatureBranch(pull.Head));
+        if (!own)
         {
             throw new FieldValidationException(
-                [new FieldError("number", $"Pull request #{number} is not the scaffold pull request.", "Not the scaffold pull request")],
+                [new FieldError("number", $"Pull request #{number} is not one stage {stage} opened.", "Not this stage's pull request")],
                 "mutation_not_allowed");
         }
+
+        return pull!;
     }
 }
 

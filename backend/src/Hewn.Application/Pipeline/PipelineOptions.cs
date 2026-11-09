@@ -10,4 +10,7 @@ public sealed class PipelineOptions
 
     /// <summary>Designs estimated above this many ideal days are split or descoped (HEWN_DESCOPE_THRESHOLD_DAYS; Settings later).</summary>
     public decimal DescopeThresholdDays { get; set; } = 3m;
+
+    /// <summary>Implement-and-test iterations before an increment is Blocked (HEWN_MAX_ITERATIONS; L2-022 AC2).</summary>
+    public int MaxIterations { get; set; } = 10;
 }
