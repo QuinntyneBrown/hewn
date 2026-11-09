@@ -192,7 +192,9 @@ npm start                             # Mission Control on http://localhost:4200
 docker compose -f deploy/docker-compose.yml up worker
 ```
 
-Sign in with a GitHub account on the allow list (`HEWN_ALLOWED_GITHUB_USERS`). Open
+Sign in with a GitHub account on the allow list (`HEWN_ALLOWED_GITHUB_USERS`). Until GitHub sign-in
+lands, the local stack enables a development sign-in (`POST /api/auth/dev/sign-in`) for allow-listed
+logins; see [ADR 0001](docs/adr/0001-sessions-and-dev-sign-in.md). Open
 **Workers → New worker token** to register additional workers.
 
 ### Give your first direction
@@ -233,8 +235,10 @@ Secrets are never written to configuration files in the repository.
 
 ## Running the tests
 
-No database server is required. Backend tests run on in-memory SQLite; Playwright runs against
-the API started by `eng/Start-E2eApi.ps1` with fake GitHub, model and Magic Patterns services.
+No database server is required. Backend tests run on in-memory SQLite; Playwright starts the API
+with `eng/Start-E2eApi.ps1` on http://localhost:5300 (fake GitHub, model and Magic Patterns services,
+seeded Owner `quinntynebrown` and Viewer `ada`) and Mission Control on http://localhost:4300, so it
+never reuses a development server on 4200 or 5200.
 
 ```powershell
 # Backend, as CI runs it

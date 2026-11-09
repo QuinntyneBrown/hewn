@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 01 part 1 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="01 · part 1" data-video-title="Build a new product, part one" data-parts="Introduction|What we built|Design|Code|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 1 · Part 1</div>
+  <h1>Submit a product direction</h1>
+  <p class="lead">An Owner gives direction once. Hewn creates the project, queues the direction and opens the project page.</p>
+</section>
+
+<section id="built" data-part="1" data-cue="The slice runs top to bottom through the stack.">
+  <h2>One vertical slice</h2>
+  <div class="cols cols--wide">
+    <figure><img src="screens/new-direction-desktop.png" alt="New direction page"></figure>
+    <div class="card">
+      <h3>L2-001</h3>
+      <ul class="bullets small">
+        <li>Name, idea, stack, repository, budget</li>
+        <li><span class="file">POST /api/projects</span></li>
+        <li>Project + direction in one commit</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="foundations" data-part="1" data-cue="There was no code in the repository yet">
+  <h2>Foundations this slice needed</h2>
+  <ul class="steps">
+    <li class="done">Hewn.Domain</li><li class="done">Hewn.Application</li><li class="done">Hewn.Infrastructure</li><li class="done">Hewn.Api</li><li class="done">Hewn.Cli</li>
+    <li class="done">Sessions + allow list</li><li class="done">Event store</li><li class="done">Angular workspace</li><li class="done">Playwright</li><li class="done">CI</li><li class="done">Video tooling</li>
+  </ul>
+</section>
+
+<section id="sequence" data-part="2" data-cue="Here is the sequence from the detailed design.">
+  <figure class="diagram"><img src="../../detailed-designs/projects/submit-product-direction/diagrams/sequence-submit.png" alt="Sequence diagram: submit a product direction"><figcaption>docs/detailed-designs/projects/submit-product-direction</figcaption></figure>
+</section>
+
+<section id="event" data-part="2" data-cue="That commit also writes the first event for the project">
+  <h2>The first event</h2>
+  <pre class="code" data-lang="cs" data-mark="3-6">db.Projects.Add(project);
+await events.AppendAsync(
+    project.Id,
+    "DirectionQueued",
+    new { directionId = direction.Id, kind = direction.Kind.ToString(), stage = 0, stageStatus = StageStatus.Pending.ToString() },
+    cancellationToken);</pre>
+  <p class="muted small">Sequence 1 for the project; every later event takes the next number.</p>
+</section>
+
+<section id="handler" data-part="3" data-cue="The handler is short on purpose.">
+  <div class="code-file">backend/src/Hewn.Application/Projects/SubmitProductDirection.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="4-9,11">public async Task&lt;SubmitProductDirectionResult&gt; Handle(SubmitProductDirectionCommand command, CancellationToken cancellationToken)
+{
+    RepositoryRef? repository = null;
+    if (!string.IsNullOrWhiteSpace(command.RepositoryUrl))
+    {
+        GitHubRepositoryUrl.TryParse(command.RepositoryUrl, out var parsed);
+        repository = parsed;
+        await EnsureWritableAsync(parsed, cancellationToken);
+    }
+
+    var project = Project.CreateWithProductDirection(
+        command.Name!,
+        command.Idea!,
+        string.IsNullOrWhiteSpace(command.StackPreference) ? null : command.StackPreference.Trim(),
+        repository,
+        command.BudgetUsd,</pre>
+</section>
+
+<section id="validator" data-part="3" data-cue="Field rules live in one validator.">
+  <div class="code-file">backend/src/Hewn.Application/Projects/SubmitProductDirection.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="2-3,7-8">RuleFor(c =&gt; c.Idea)
+    .Must(i =&gt; i is { Length: &gt;= Project.MinIdeaLength and &lt;= Project.MaxIdeaLength })
+    .WithMessage(c =&gt; $"The idea must be 10 to 20,000 characters. This one has {c.Idea?.Length ?? 0:N0}.")
+    .WithState(_ =&gt; "The idea must be 10 to 20,000 characters");
+
+RuleFor(c =&gt; c.RepositoryUrl)
+    .Must(u =&gt; string.IsNullOrWhiteSpace(u) || GitHubRepositoryUrl.TryParse(u, out _))
+    .WithMessage("Use a https://github.com/{owner}/{repo} URL.")
+    .WithState(_ =&gt; "Existing repository must be a GitHub URL");</pre>
+  <p class="muted small">Inline message · summary line</p>
+</section>
+
+<section id="controller" data-part="3" data-cue="The controller stays thin.">
+  <div class="code-file">backend/src/Hewn.Api/Controllers/ProjectsController.cs</div>
+  <pre class="code" data-lang="cs" data-mark="2,9">[HttpPost]
+[Authorize(Policy = AuthSetup.OwnerPolicy)]
+[ProducesResponseType&lt;SubmitProductDirectionResult&gt;(StatusCodes.Status201Created)]
+public async Task&lt;IActionResult&gt; Submit(SubmitProductDirectionRequest request, CancellationToken cancellationToken)
+{
+    var result = await mediator.Send(
+        new SubmitProductDirectionCommand(request.Name, request.Idea, request.StackPreference, request.RepositoryUrl, request.BudgetUsd),
+        cancellationToken);
+    return Created($"/api/projects/{result.ProjectId}", result);
+}</pre>
+</section>
+
+<section id="red" data-part="4" data-cue="Every acceptance test file starts with the requirement it traces to.">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Projects/SubmitProductDirectionTests.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="1-3">// Acceptance Test
+// Traces to: L2-001, L2-039, L2-043
+// Description: An Owner submits a product direction; invalid input, an unwritable repository and a Viewer create nothing</pre>
+  <div class="result red">Failed Owner_submits_a_valid_direction… — Response status code does not indicate success: 404 (Not Found).</div>
+</section>
+
+<section id="green" data-part="4" data-cue="Once the endpoints were in, they found two real bugs">
+  <h2>Red, then green</h2>
+  <div class="result red">Assert.Equal() Failure — Expected: 11 · Actual: 0 (stages)</div>
+  <div class="result red">SQLite Error 19: NOT NULL constraint failed: stage_states.Number</div>
+  <div class="result green">Passed! — Failed: 0, Passed: 25 · Hewn.Api.Tests</div>
+  <div class="result green">14 passed — behaviour, axe-core, visual parity</div>
+</section>
+
+<section id="clip" data-part="5" data-cue="Here is the real app." data-clip="clips/submit.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">An inline error, the fix, then the project page</aside>
+</section>
+
+<section id="invalid" data-part="5" data-cue="When something is wrong, the summary at the top names each problem">
+  <figure><img src="screens/new-direction-invalid.png" alt="New direction with three errors"></figure>
+</section>
+
+<section id="repo" data-part="5" data-cue="If the repository belongs to someone who has not installed">
+  <figure><img src="screens/new-direction-repo-no-access.png" alt="Repository Hewn cannot write to"></figure>
+</section>
+
+<section id="viewer" data-part="5" data-cue="A Viewer who opens the page sees that they don't have permission">
+  <figure><img src="screens/new-direction-forbidden.png" alt="You don't have permission"></figure>
+</section>
+
+<section id="phone" data-part="5" data-cue="On a phone the same form stacks into one column">
+  <div class="cols cols--3">
+    <figure class="phone"><img src="screens/new-direction-phone.png" alt="New direction on a phone"></figure>
+    <figure class="phone"><img src="screens/project-phone.png" alt="Project page on a phone"></figure>
+    <figure class="phone"><img src="screens/project-phone-dark.png" alt="Project page, dark theme"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="6" data-cue="One page, one endpoint, one unit of work">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>The project and direction exist before the API answers</li>
+    <li>Foundations in place</li>
+    <li>Next: a worker runs stages 0 to 10</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

@@ -5,3 +5,26 @@ __pycache__/
 
 # Design-system harvest and screenshots
 docs/design-system/.cache/
+
+# .NET
+bin/
+obj/
+*.db
+*.db-shm
+*.db-wal
+TestResults/
+
+# Node
+node_modules/
+dist/
+.angular/
+coverage/
+
+# Playwright
+e2e/test-results/
+e2e/playwright-report/
+e2e/blob-report/
+
+# Video tooling (model files, virtualenv, build cache)
+.cache/
+tools/video-audio/.venv/

@@ -458,7 +458,7 @@ a.wordmark:hover { color: var(--color-brand-body); }
 .form-actions--inline { margin-top: var(--space-4); padding-top: 0; border-top: 0; }
 .inline-label { display: inline-flex; align-items: center; gap: var(--space-2); font: var(--text-body-sm); color: var(--color-fg-muted); }
 .form-summary ul { margin-top: var(--space-2); padding-left: var(--space-4); list-style: disc; }
-.form-summary a { color: inherit; }
+.form-summary a { display: inline-block; min-height: 1.5rem; color: inherit; } /* 24px target (WCAG 2.5.8) */
 
 /* ---------- Alert: callout (inline) and strip (page banner) --------------- */
 .callout { --callout-bg: var(--color-bg-surface-raised); --callout-fg: var(--color-fg-muted); --callout-ring: var(--color-border-default); --callout-icon: var(--color-fg-subtle); --callout-title: var(--color-fg-default);
