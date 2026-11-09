@@ -68,3 +68,29 @@ Attempts 2–4 wait 30 s, 2 min and 10 min (L2-006 AC1). After the third retry f
 The failed stage restarts from its beginning with the counter reset (L2-006 AC3).
 
 ![Sequence diagram: Owner presses Retry stage](diagrams/sequence-retry-stage.png)
+
+## Decisions made while building retries and Retry stage
+
+Journey 9 built L2-006.
+
+- **Each attempt is a new run, leasable once its backoff has passed** ([ADR 0014](../../../adr/0014-a-retry-is-a-new-run-leasable-after-its-backoff.md)).
+  `Run.Attempt` (1 to 4) and `Run.NotBefore` replace `RetryPolicy` and `RunFailureHandler`:
+  `PipelineOrchestrator.OnFailedAsync` queues the next attempt with `NotBefore = now + backoff`, and the lease
+  skips runs whose time has not come. The waits are `Hewn:Retry:BackoffSeconds` (default `30,120,600`).
+- **While a retry waits** the stage and direction stay Running. The run log reads "Attempt {n} failed: {reason}.
+  Retry {n} of 3 in {wait}.", `RunRetryScheduled` carries the attempt and wait, and the project read model's
+  `retry` lets the stage's live line count down ("Retry 1 of 3 in 0:24"). This reuses the live line, so no new mock
+  was needed.
+- **Blocked** is a new direction status with `failureReason`, `failedStage` and `failedAt`. `StageBlocked` carries
+  `{directionId, stage, stageName, runId, attempts, reason, lastLogLines}`; the lines were redacted when stored. A
+  Blocked direction keeps the project's turn and can be cancelled, as the blocked mock shows.
+- **The route sits under the project**: `POST /api/projects/{projectId}/directions/{directionId}/retry-stage`
+  (Owner policy), like Pause, Resume and Cancel; 409 `not_blocked`, 403 for Viewers, 404 for another project's
+  direction. It queues attempt 1 from step 0 and records "Retry stage requested by {login}" and `StageRetried`.
+- **The page** follows `pages/project-pipeline/blocked.html`: Blocked status, Retry stage and Cancel in the header,
+  the danger callout "Stage failed after 3 retries" with the reason and the waits Hewn used, and the Failed stage
+  selected by default. The Log tab shows the last attempt's log; the Runs tab lists every attempt. A stage that
+  blocks while the page is open raises the danger toast from `notifications/live-toast/with-action.html`, which
+  stays until dismissed and offers Open log and, for Owners, Retry stage.
+- **Not built yet:** Retry stage on the dashboard's Needs attention tile (the dashboard is a later journey), and the
+  toast on pages other than the project's.
