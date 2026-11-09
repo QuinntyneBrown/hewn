@@ -60,3 +60,12 @@ Recording and validation are separate, so a too-long or caption-less video count
 A valid video is saved with its script (L2-023 AC1) and linked from the PR (AC2). After one failed retry the increment continues with the failure in Notes (AC3).
 
 ![Sequence diagram: record or fail the video](diagrams/sequence-record.png)
+
+## Decisions made while building the slice
+
+- The agent runs `creating-videos`; the worker then checks `docs/videos/{slug}/` for `{slug}.mp4`, `{slug}.vtt`
+  and `script.md`, and with `ffprobe` that the MP4 is 1920x1080 and at most 3 minutes.
+- A failure is retried once (two attempts); after that the partial files are removed, the pull request's Notes
+  say "Video failed: {reason}", and the increment continues (L2-023 AC3).
+- The scripted agent records a 3-second title card with ffmpeg, so the e2e stack exercises the real check.
+- **Deferred:** playing the video on the increment page (L2-023 AC2, journey 13).

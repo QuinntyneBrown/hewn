@@ -40,6 +40,9 @@ Stages built so far:
   default branch. `node src/scaffold/generate-cli.ts <dir>` writes the default template for inspection.
 - **Stage 9, Estimates**: runs `estimating-designs`, then descopes and plans the backlog with the leased threshold,
   writes `docs/estimates/README.md` and `backlog.json`, marks deferred L2s, commits and reports the backlog to Hewn.
+- **Stage 10, Increments**: for each runnable increment, traced acceptance tests first (red recorded), then
+  implement-and-test iterations until the stack's gate passes, a video, a pull request, checks, a squash-merge
+  (rebasing when needed) and a progress commit. `HEWN_GATE=scripted` swaps the gate for the scripted stand-in.
 - `node src/magic-patterns/fake-server-main.ts` (with `PORT` and `MAGIC_PATTERNS_TOKEN`) runs the fake Magic
   Patterns MCP server the e2e stack uses.
 

@@ -230,6 +230,8 @@ Secrets are never written to configuration files in the repository.
 | `HEWN_SKILLS_SOURCE`            | API     | Skill library repository; defaults to `QuinntyneBrown/greenlit`          |
 | `HEWN_DEFAULT_BUDGET_USD`       | API     | Default spend cap per direction                                          |
 | `HEWN_DESCOPE_THRESHOLD_DAYS`   | API     | Designs estimated above this are split or deferred; defaults to `3`      |
+| `HEWN_MAX_ITERATIONS`           | API     | Implement-and-test iterations before an increment is Blocked; `10`       |
+| `HEWN_GATE`                     | Worker  | `stack` (default) runs the stack's tests; `scripted` stands in for e2e   |
 | `HEWN_WORKER_TOKEN`             | API, Worker | Worker token (secret). For now one shared value set on both; Mission Control will issue tokens |
 | `HEWN_API_URL`                  | Worker  | Where the worker connects                                                |
 | `HEWN_LOCATION`                 | Worker  | `Local` or `Cloud`                                                       |
