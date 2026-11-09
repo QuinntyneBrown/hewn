@@ -28,6 +28,22 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
         return Created($"/api/projects/{result.ProjectId}", result);
     }
 
+    public sealed record SubmitFeatureDirectionRequest(string? Idea, decimal BudgetUsd);
+
+    [HttpGet]
+    public Task<IReadOnlyList<ProjectSummaryDto>> List(CancellationToken cancellationToken) =>
+        mediator.Send(new ListProjectsQuery(), cancellationToken);
+
+    /// <summary>L2-005: adds a feature direction to an existing product.</summary>
+    [HttpPost("{projectId:guid}/directions")]
+    [Authorize(Policy = AuthSetup.OwnerPolicy)]
+    [ProducesResponseType<SubmitProductDirectionResult>(StatusCodes.Status201Created)]
+    public async Task<IActionResult> SubmitFeature(Guid projectId, SubmitFeatureDirectionRequest request, CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(new SubmitFeatureDirectionCommand(projectId, request.Idea, request.BudgetUsd), cancellationToken);
+        return Created($"/api/projects/{result.ProjectId}", result);
+    }
+
     [HttpGet("{projectId:guid}")]
     public Task<ProjectDto> Get(Guid projectId, CancellationToken cancellationToken) =>
         mediator.Send(new GetProjectQuery(projectId), cancellationToken);

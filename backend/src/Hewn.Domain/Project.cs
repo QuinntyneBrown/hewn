@@ -71,6 +71,30 @@ public sealed class Project
         RepositoryName = name;
     }
 
+    /// <summary>The direction now running or paused, or the oldest still queued; null when the project is idle.</summary>
+    public Direction? ActiveDirection =>
+        _directions.Where(d => d.IsActive).OrderBy(d => d.Status == DirectionStatus.Queued).ThenBy(d => d.SubmittedAt).FirstOrDefault();
+
+    /// <summary>True once the first product direction is Complete; a feature submitted earlier waits behind it.</summary>
+    public bool FirstDirectionComplete =>
+        _directions.OrderBy(d => d.SubmittedAt).FirstOrDefault()?.Status == DirectionStatus.Complete;
+
+    /// <summary>
+    /// Adds a feature direction (L2-005). Returns true when it can start now; false when another direction is
+    /// active and it waits in the queue, first in, first out (L2-004 AC4).
+    /// </summary>
+    public bool AddFeatureDirection(string idea, decimal budgetUsd, string submittedBy, DateTimeOffset now, out Direction direction)
+    {
+        var startsNow = ActiveDirection is null;
+        direction = Direction.Feature(Id, idea, budgetUsd, submittedBy, now);
+        _directions.Add(direction);
+        return startsNow;
+    }
+
+    /// <summary>The oldest queued direction, to start once the active one ends; null when none waits.</summary>
+    public Direction? NextQueuedDirection(Guid endedDirectionId) =>
+        _directions.Where(d => d.Id != endedDirectionId && d.Status == DirectionStatus.Queued).OrderBy(d => d.SubmittedAt).FirstOrDefault();
+
     public static string Normalize(string name) => name.Trim().ToUpperInvariant();
 
     /// <summary>Creates a project with its first product direction queued and stage 0 Pending.</summary>

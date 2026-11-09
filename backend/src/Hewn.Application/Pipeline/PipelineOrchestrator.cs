@@ -18,6 +18,17 @@ public sealed class PipelineOrchestrator(IAppDbContext db, EventAppender events,
     public void QueueFirstRun(Direction direction) =>
         db.Runs.Add(new Run(direction.ProjectId, direction.Id, direction.FirstStage, clock.GetUtcNow()));
 
+    /// <summary>Starts a direction that waited for none or whose turn came: queues its first run and sets the project Running.</summary>
+    public async Task StartDirectionAsync(Project project, Direction direction, CancellationToken cancellationToken)
+    {
+        QueueFirstRun(direction);
+        if (project.Status != ProjectStatus.Running)
+        {
+            project.ChangeStatus(ProjectStatus.Running);
+            await AppendProjectAsync(project, cancellationToken);
+        }
+    }
+
     /// <summary>A worker leased the run. On the first lease the stage starts; a resumed run changes nothing visible.</summary>
     public async Task OnLeasedAsync(Run run, Direction direction, CancellationToken cancellationToken)
     {
@@ -51,6 +62,13 @@ public sealed class PipelineOrchestrator(IAppDbContext db, EventAppender events,
         }
 
         await AppendDirectionAsync(direction, cancellationToken);
+        if (project.NextQueuedDirection(direction.Id) is { } queued)
+        {
+            // One direction per project, first in, first out (L2-004 AC4, L2-005 AC4).
+            await StartDirectionAsync(project, queued, cancellationToken);
+            return;
+        }
+
         project.ChangeStatus(ProjectStatus.Idle);
         await AppendProjectAsync(project, cancellationToken);
     }
@@ -66,7 +84,7 @@ public sealed class PipelineOrchestrator(IAppDbContext db, EventAppender events,
     public Task OnRepositoryAttachedAsync(Project project, CancellationToken cancellationToken) =>
         AppendProjectAsync(project, cancellationToken);
 
-    private Task AppendStageAsync(Direction direction, StageState stage, CancellationToken cancellationToken) =>
+    public Task AppendStageAsync(Direction direction, StageState stage, CancellationToken cancellationToken) =>
         events.AppendAsync(direction.ProjectId, StageChanged, new
         {
             directionId = direction.Id,

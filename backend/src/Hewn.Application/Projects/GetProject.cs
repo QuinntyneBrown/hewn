@@ -19,7 +19,9 @@ public sealed record DirectionDto(
     string SubmittedBy,
     DateTimeOffset SubmittedAt,
     DateTimeOffset? CompletedAt,
-    IReadOnlyList<StageDto> Stages);
+    IReadOnlyList<StageDto> Stages,
+    bool? HasUiChange,
+    string? UiDecision);
 
 public sealed record ProjectDto(
     Guid Id,
@@ -68,5 +70,7 @@ public sealed class GetProjectHandler(IAppDbContext db) : IRequestHandler<GetPro
             d.CompletedAt,
             d.Stages.OrderBy(s => s.Number)
                 .Select(s => new StageDto(s.Number, s.Name, s.Status.ToString(), s.StartedAt, s.EndedAt))
-                .ToList())).ToList());
+                .ToList(),
+            d.HasUiChange,
+            d.UiDecision)).ToList());
 }
