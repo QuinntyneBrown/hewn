@@ -17,6 +17,8 @@ export interface WorkLoopOptions {
   /** Idle polling interval; L2-026 allows no more often than every 15 seconds. */
   pollIntervalMs?: number;
   heartbeatIntervalMs?: number;
+  /** How long each control poll is held open by the API. */
+  controlWaitSeconds?: number;
 }
 
 /**
@@ -30,6 +32,7 @@ export class WorkLoop {
   private readonly log: Log;
   private readonly pollIntervalMs: number;
   private readonly heartbeatIntervalMs: number;
+  private readonly controlWaitSeconds: number;
 
   constructor(options: WorkLoopOptions) {
     this.api = options.api;
@@ -38,6 +41,7 @@ export class WorkLoop {
     this.log = options.log;
     this.pollIntervalMs = Math.max(options.pollIntervalMs ?? 15_000, 15_000);
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 10_000;
+    this.controlWaitSeconds = options.controlWaitSeconds ?? 20;
   }
 
   async run(signal: AbortSignal): Promise<void> {
@@ -87,6 +91,8 @@ export class WorkLoop {
         }
       }
     }, this.heartbeatIntervalMs);
+
+    void this.listenForControl(workerId, run, lease);
 
     const logs = new LogBatcher(
       (lines) => this.api.log(workerId, run, lines),
@@ -160,10 +166,33 @@ export class WorkLoop {
         .result(workerId, run, { outcome: 'Failed', error: messageOf(error) })
         .catch((reportError: unknown) => this.log('Could not report the failure', { error: messageOf(reportError) }));
     } finally {
+      // Ends the control poll as well.
+      if (!lease.signal.aborted) lease.abort(new Error('The run ended.'));
       clearInterval(heartbeat);
       void logs.close();
       stop.removeEventListener('abort', onStop);
       rmSync(workspace, { recursive: true, force: true });
+    }
+  }
+
+  /**
+   * Holds the control poll open while the run executes. Cancel (L2-029 AC3) aborts the step in progress at once;
+   * the API has already ended the run, so nothing more is reported.
+   */
+  private async listenForControl(workerId: string, run: LeasedRun, lease: AbortController): Promise<void> {
+    while (!lease.signal.aborted) {
+      try {
+        const control = await this.api.control(workerId, run, this.controlWaitSeconds, lease.signal);
+        if (control === 'Cancel') {
+          this.log('Cancelled; the run stops now', { runId: run.runId });
+          lease.abort(new Error('Cancelled by an Owner.'));
+          return;
+        }
+      } catch (error) {
+        // A lost lease is the heartbeat's to handle; otherwise wait a little and poll again.
+        if (lease.signal.aborted || error instanceof LeaseLostError) return;
+        await sleep(1_000, lease.signal);
+      }
     }
   }
 }

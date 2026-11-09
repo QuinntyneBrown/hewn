@@ -139,6 +139,9 @@ export interface CheckRun {
 /** What to do after a checkpoint: carry on, or stop the run there because an Owner pressed Pause. */
 export type CheckpointVerdict = 'Continue' | 'Pause';
 
+/** What the control poll can tell a running worker. */
+export type RunControl = 'Cancel';
+
 export interface HewnApi {
   register(registration: WorkerRegistration): Promise<string>;
   lease(workerId: string): Promise<LeasedRun | null>;
@@ -147,6 +150,11 @@ export interface HewnApi {
   startStep(workerId: string, run: LeasedRun, step: number, name: string): Promise<void>;
   /** Reports a completed step; the answer is Pause when an Owner pressed Pause (L2-029 AC1). */
   checkpoint(workerId: string, run: LeasedRun, step: number, sha?: string): Promise<CheckpointVerdict>;
+  /**
+   * The control poll, held open up to `waitSeconds` while the run executes: Cancel when an Owner cancelled the
+   * direction (L2-029 AC3), null to poll again. Aborting `signal` ends the poll.
+   */
+  control(workerId: string, run: LeasedRun, waitSeconds: number, signal: AbortSignal): Promise<RunControl | null>;
   result(workerId: string, run: LeasedRun, outcome: RunOutcome): Promise<void>;
   /** Skill folder names already in the product repository, by skill root. */
   listSkillFolders(workerId: string, run: LeasedRun): Promise<Record<string, string[]>>;
