@@ -10,7 +10,7 @@ export interface Decision {
   answer: string;
   rationale: string;
   /** Set when the decision changes architecture; it is then also recorded as an ADR (L2-054 AC2). */
-  architecture?: { context: string; consequences: string };
+  architecture?: { context: string; consequences: string; alternatives?: string };
 }
 
 /**
@@ -61,7 +61,7 @@ function writeAdr(directory: string, decision: Decision): string {
   const name = `${String(number).padStart(4, '0')}-${slug}`;
   writeFileSync(
     join(folder, `${name}.md`),
-    `# ${number}. ${title}\n\n**Status:** Accepted · ${decision.date} · Stage ${decision.stage} ${decision.stageName}\n\n## Context\n\n${decision.architecture!.context}\n\n## Decision\n\n${decision.answer} ${decision.rationale}\n\n## Consequences\n\n${decision.architecture!.consequences}\n`,
+    `# ${number}. ${title}\n\n**Status:** Accepted · ${decision.date} · Stage ${decision.stage} ${decision.stageName}\n\n## Context\n\n${decision.architecture!.context}\n\n## Decision\n\n${decision.answer} ${decision.rationale}\n\n## Alternatives\n\n${decision.architecture!.alternatives ?? 'None recorded.'}\n\n## Consequences\n\n${decision.architecture!.consequences}\n`,
   );
   return name;
 }

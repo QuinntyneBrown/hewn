@@ -31,7 +31,7 @@ export class ScriptedStageAgent implements StageAgent {
       question: string,
       answer: string,
       rationale: string,
-      architecture?: { context: string; consequences: string },
+      architecture?: { context: string; consequences: string; alternatives?: string },
     ) =>
       appendDecision(directory, {
         date: this.today(),
@@ -171,6 +171,8 @@ export class ScriptedStageAgent implements StageAgent {
             'The scaffold already serves a REST API and an Angular client; nothing in the brief needs push updates.',
             {
               context: 'Every design pairs a page with an endpoint, so the two apps need one contract.',
+              alternatives:
+                'GraphQL, rejected as more machinery than one client needs; SignalR, not needed without push updates.',
               consequences: 'Each design names its endpoints; real-time features would need a new decision.',
             },
           );

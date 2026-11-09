@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Decisions and no approval steps (journey 1, L2-054 AC1-AC2, L2-028):
+  - every agent session decides for itself under one shared instruction, with no tool for asking;
+  - decisions are checked for their fields, and a decision that changes the architecture is recorded as a numbered ADR;
+  - a pipeline e2e test proves a submitted direction reaches Complete with no human input.
 - Stage 10, Increments (journey 1, L2-021 to L2-025, L2-023 AC1 and AC3, L2-024 AC1-AC2): each increment is
   delivered test first on `feature/{slug}` with red recorded, implemented until the stack's gate is green or
   Blocked after `HEWN_MAX_ITERATIONS`, recorded on video, opened as a pull request with the six-section body,

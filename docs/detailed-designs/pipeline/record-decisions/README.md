@@ -68,3 +68,19 @@ The agent answers and carries on (L2-054 AC1). The entry goes to `docs/decisions
 Decisions are listed newest first, filtered by stage, each linked to its commit (L2-054 AC3).
 
 ![Sequence diagram: list decisions](diagrams/sequence-list.png)
+
+## Decisions made while building the slice
+
+- **Instructions, not interception, for now.** Only the scripted agent exists, so every agent session (stages 1 to
+  10) carries the shared `AUTONOMY` instruction from `worker/src/agents/decision-log.ts`, and no session is given
+  a question tool. The `UserQuestionInterceptor` arrives with the Claude Agent SDK agent.
+- **Format.** Each entry is `## {date} · Stage {n} {name}` with `**Question:**`, `**Answer:**` and
+  `**Rationale:**`, plus `**ADR:** [NNNN-slug](adr/NNNN-slug.md)` for an architecture decision. `validateDecisions`
+  fails a document stage before it commits, and keeps an increment from going green, when an entry lacks a field
+  or links a missing ADR.
+- **ADRs.** `appendDecision` with `architecture` writes the next numbered `docs/adr/NNNN-{slug}.md` (Context,
+  Decision, Alternatives, Consequences), and the stage commits the files the log links. The API lets any stage
+  that may write `docs/decisions.md` write numbered ADRs.
+- **Commits.** Decisions are committed with the stage's own commit, so the commit link (AC3) is that commit.
+- **Deferred:** `DecisionIndex`, `GET /api/projects/{id}/decisions` and the Decisions page (L2-054 AC3,
+  journey 19).

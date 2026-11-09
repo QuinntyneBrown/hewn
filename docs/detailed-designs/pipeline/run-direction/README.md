@@ -95,3 +95,9 @@ Journey 1, part 2 built L2-004 AC1-AC3. These choices refine the design above.
   while queued or running, Complete when done; a Blocked project always reads Blocked.
 - **Not built yet:** the direction queue for a second direction (AC4, with journey 2), `StagePlan` for
   feature directions, skipping stages 2 and 3, and the no-approval end-to-end test (part 9).
+
+## No approval steps (L2-028)
+
+`e2e/tests/pipeline/no-approval.spec.ts` submits a small direction and then only watches. It passes when the
+direction reaches Complete with all eleven stages Succeeded, no dialog or browser prompt ever appears, and every
+increment stage 9 planned has an `IncrementChanged` Merged event with a pull request number, and none is Blocked.
