@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   signal,
@@ -93,8 +94,12 @@ export class NewDirectionPage {
   protected readonly submitting = signal(false);
   protected readonly problem = signal<FieldErrorsProblem | null>(null);
   protected readonly failure = signal<string | null>(null);
-  /** L2-043 AC4: more than the allowed directions in a minute; the form keeps everything typed. */
+  /**
+   * L2-043 AC4: more than the allowed directions in a minute. The form keeps everything typed, and Start direction
+   * stays disabled until the Owner can submit again.
+   */
   protected readonly rateLimited = signal<string | null>(null);
+  private rateLimitTimer: ReturnType<typeof setTimeout> | undefined;
 
   private readonly values = toSignal(this.form.valueChanges, {
     initialValue: this.form.getRawValue(),
@@ -163,8 +168,12 @@ export class NewDirectionPage {
     group?.querySelector<HTMLElement>(`[data-mode="${mode}"]`)?.focus();
   }
 
+  constructor() {
+    inject(DestroyRef).onDestroy(() => clearTimeout(this.rateLimitTimer));
+  }
+
   protected submit(): void {
-    if (this.submitting()) {
+    if (this.submitting() || this.rateLimited()) {
       return;
     }
     const v = this.form.getRawValue();
@@ -202,6 +211,11 @@ export class NewDirectionPage {
         this.problem.set(null);
         if (error instanceof RateLimitedProblem) {
           this.rateLimited.set(rateLimitedText(error.limit, error.retryAfterSeconds));
+          clearTimeout(this.rateLimitTimer);
+          this.rateLimitTimer = setTimeout(
+            () => this.rateLimited.set(null),
+            error.retryAfterSeconds * 1000,
+          );
           return;
         }
         const status = (error as { status?: number }).status;

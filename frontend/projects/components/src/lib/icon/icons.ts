@@ -24,6 +24,7 @@ export const ICONS = {
   spinner: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
   checkCircle: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
   info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
   close: '<path d="M18 6 6 18M6 6l12 12"/>',
   play: '<polygon points="6 3 20 12 6 21 6 3"/>',
   stop: '<rect x="3" y="3" width="18" height="18" rx="2"/>',

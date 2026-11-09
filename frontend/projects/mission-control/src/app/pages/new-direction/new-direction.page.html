@@ -39,14 +39,6 @@
           >
         </div>
         <div class="stack mt-8" style="gap: var(--space-6)">
-          @if (rateLimited(); as message) {
-            <div class="callout callout--warn" role="alert">
-              <div>
-                <p class="callout__title">Too many directions in a minute</p>
-                <p class="callout__body">{{ message }}</p>
-              </div>
-            </div>
-          }
           @if (failure(); as message) {
             <div class="callout callout--danger" role="alert">
               <svg hw-icon name="warning" class="icon--lg"></svg>
@@ -57,6 +49,16 @@
             </div>
           }
           <hw-error-summary [items]="summary()" purpose="before Hewn can start" />
+          <!-- After the (usually empty) summary, so the callout's spacing reaches the first field, as in the mock. -->
+          @if (rateLimited(); as message) {
+            <div class="callout callout--warn" role="alert">
+              <svg hw-icon name="clock" class="icon--lg"></svg>
+              <div>
+                <p class="callout__title">Too many directions in a minute</p>
+                <p class="callout__body">{{ message }}</p>
+              </div>
+            </div>
+          }
           @if (mode() === 'feature') {
             <hw-field
               controlId="product"
@@ -190,7 +192,7 @@
               <svg hw-icon name="spinner"></svg>Queuing direction…
             </button>
           } @else {
-            <button class="btn btn--primary" type="submit">
+            <button class="btn btn--primary" type="submit" [disabled]="rateLimited() !== null">
               <svg hw-icon name="arrowRight"></svg>Start direction
             </button>
           }
