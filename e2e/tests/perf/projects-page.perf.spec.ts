@@ -30,7 +30,7 @@ test('Projects loads within the LCP and initial JavaScript budgets', async () =>
     // Lighthouse's default profile is mobile: an emulated mid-tier phone with simulated slow 4G and a 4x slower CPU.
     const result = await lighthouse(`http://localhost:${port}/projects`, {
       port: debuggingPort,
-      output: 'json',
+      output: ['json', 'html'],
       logLevel: 'error',
       onlyCategories: ['performance'],
       disableStorageReset: true,
@@ -49,7 +49,7 @@ test('Projects loads within the LCP and initial JavaScript budgets', async () =>
     };
     mkdirSync('perf-results', { recursive: true });
     writeFileSync('perf-results/lighthouse.json', JSON.stringify(report, null, 2));
-    writeFileSync('perf-results/lhr.json', JSON.stringify(lhr));
+    writeFileSync('perf-results/lighthouse-report.html', (result!.report as string[])[1]!);
     console.log(JSON.stringify(report));
 
     expect(lhr.configSettings.formFactor).toBe('mobile');
