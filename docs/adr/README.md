@@ -9,3 +9,4 @@ Read the ADRs that cover an area before changing it. New ADRs take the next numb
 | [0003](0003-mission-control-uses-design-system-css.md) | Mission Control loads the design system's CSS and keeps the mocks' markup | Accepted |
 | [0004](0004-video-tooling.md) | Journey videos: Greenlit's tooling, Kokoro narration, music under the voice | Accepted |
 | [0005](0005-leases-on-sqlite.md) | Leases on SQLite: one conditional update, the epoch as a concurrency token, a shared worker token | Accepted |
+| [0006](0006-commit-mutation-before-git-proxy.md) | Workers commit through the API's commit mutation until the git push proxy exists | Accepted |
