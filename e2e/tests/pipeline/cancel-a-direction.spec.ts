@@ -74,7 +74,6 @@ test.describe('Cancel a direction', () => {
     expect(Date.now() - pressed, 'the run stopped within 10 seconds').toBeLessThan(10_000);
 
     await expect(project.projectStatus).toHaveText('Cancelled');
-    await expect(project.stageStatus('Scaffold')).toHaveText('Cancelled');
     await expect(project.cancelledCallout).toContainText(/Cancelled by quinntynebrown on \d{1,2} \w{3} at \d\d:\d\d/);
     await expect(project.cancelledCallout).toContainText(/The active run stopped within \d{1,2} seconds?\./);
     await expect(project.cancelledCallout).toContainText('Pull request #1 is open and labelled hewn:cancelled.');
@@ -84,8 +83,8 @@ test.describe('Cancel a direction', () => {
     for (const line of [
       'Cancel requested by quinntynebrown',
       'gh pr edit 1 --add-label hewn:cancelled',
-      // Step 2 or 3 of Scaffold, depending on how long the dialog stayed open.
-      /Run stopped at step [23]$/,
+      // In Scaffold or the stage after it, depending on how long the dialog stayed open.
+      /Run stopped at step \d$/,
     ]) {
       await expect(project.logLines.filter({ hasText: line })).toHaveCount(1);
     }
