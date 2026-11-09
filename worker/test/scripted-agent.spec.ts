@@ -81,4 +81,13 @@ describe('ScriptedStageAgent', () => {
     expect(existsSync(join(directory, scriptedImplementation('e2e/tests/review-history.spec.ts')))).toBe(false);
     expect(existsSync(join(directory, scriptedImplementation('e2e/tests/sign-in.spec.ts')))).toBe(true);
   });
+
+  it('takes its time on each increment session when told to, so a run can be watched', async () => {
+    const agent = new ScriptedStageAgent(undefined, { incrementDelayMs: 300 });
+    const started = Date.now();
+
+    await agent.run(task(10, 'Studio time booking.', increment(1, 'Sign in')));
+
+    expect(Date.now() - started).toBeGreaterThanOrEqual(290);
+  });
 });

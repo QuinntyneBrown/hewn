@@ -15,6 +15,8 @@ import { execFileSync } from 'node:child_process';
 export interface ScriptedAgentOptions {
   /** An increment whose title contains this is never implemented, so its tests stay red and it blocks (L2-022 AC2). */
   blockIncrement?: string;
+  /** Waits this long in each stage 10 session, so a run can be watched increment by increment (e2e, videos). */
+  incrementDelayMs?: number;
 }
 
 export class ScriptedStageAgent implements StageAgent {
@@ -270,6 +272,7 @@ export class ScriptedStageAgent implements StageAgent {
       case 10: {
         const increment = task.increment;
         if (!increment) throw new Error('Stage 10 sessions name their increment.');
+        if (this.options.incrementDelayMs) await new Promise((done) => setTimeout(done, this.options.incrementDelayMs));
         const test = `e2e/tests/${increment.slug}.spec.ts`;
         switch (increment.phase) {
           case 'tests':
