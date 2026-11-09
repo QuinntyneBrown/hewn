@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Hewn.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(HewnDbContext))]
-    [Migration("20261109024228_Initial")]
+    [Migration("20261109025649_Initial")]
     partial class Initial
     {
         /// <inheritdoc />

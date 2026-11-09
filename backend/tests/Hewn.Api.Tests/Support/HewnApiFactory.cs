@@ -18,7 +18,16 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
 
+    private readonly List<(string Key, string Value)> _settings = [];
+
     public FakeGitHub GitHub { get; } = new();
+
+    /// <summary>Adds configuration settings. Call before the first request.</summary>
+    public HewnApiFactory WithSettings(params (string Key, string Value)[] settings)
+    {
+        _settings.AddRange(settings);
+        return this;
+    }
 
     public HewnApiFactory()
     {
@@ -30,6 +39,11 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Testing");
         builder.UseSetting("Hewn:Auth:DevSignIn", "true");
         builder.UseSetting("ConnectionStrings:Hewn", "DataSource=:memory:");
+        foreach (var (key, value) in _settings)
+        {
+            builder.UseSetting(key, value);
+        }
+
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<HewnDbContext>>();
@@ -37,11 +51,6 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
             services.RemoveAll<IGitHubRepositoryProbe>();
             services.AddSingleton<IGitHubRepositoryProbe>(GitHub);
         });
-    }
-
-    protected override void ConfigureClient(HttpClient client)
-    {
-        base.ConfigureClient(client);
     }
 
     public async Task SeedAsync(Action<HewnDbContext> seed)

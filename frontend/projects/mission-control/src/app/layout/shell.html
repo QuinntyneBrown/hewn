@@ -1,0 +1,47 @@
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="shell">
+  <aside class="shell__sidebar" aria-label="Sidebar">
+    <div class="sidebar">
+      <div class="sidebar__brand"><hw-wordmark /></div>
+      @if (session.isOwner()) {
+        <div class="sidebar__cta">
+          <a class="btn btn--primary" routerLink="/projects/new" style="width: 100%"
+            ><svg hw-icon name="plus"></svg>New direction</a
+          >
+        </div>
+      }
+      <nav class="sidebar__nav" aria-label="Primary">
+        @for (item of nav; track item.link) {
+          <a
+            class="nav-link"
+            [routerLink]="item.link"
+            routerLinkActive
+            #rla="routerLinkActive"
+            [routerLinkActiveOptions]="{ exact: false }"
+            [attr.aria-current]="rla.isActive ? 'page' : null"
+            ><svg hw-icon [name]="item.icon" class="icon--lg"></svg>{{ item.label }}</a
+          >
+        }
+      </nav>
+      <div class="sidebar__foot">
+        @if (session.me(); as me) {
+          <div class="user">
+            <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+            <div class="truncate">
+              <div class="user__name truncate">{{ me.login }}</div>
+              <div class="user__role">{{ me.role }}</div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </aside>
+  <div class="shell__body">
+    <header class="topbar">
+      <hw-wordmark [small]="true" />
+    </header>
+    <main id="main" class="shell__main">
+      <router-outlet />
+    </main>
+  </div>
+</div>

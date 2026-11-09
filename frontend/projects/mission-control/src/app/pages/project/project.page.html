@@ -1,0 +1,65 @@
+@if (project.value(); as p) {
+  <header class="phead">
+    <div class="phead__top">
+      <nav aria-label="Breadcrumb">
+        <ol class="breadcrumb">
+          <li><a routerLink="/projects">Projects</a></li>
+          <li aria-hidden="true"><svg hw-icon name="chevronRight"></svg></li>
+          <li aria-current="page">{{ p.name }}</li>
+        </ol>
+      </nav>
+      <div class="phead__row">
+        <div class="truncate">
+          <div class="cluster cluster--lg">
+            <h1>{{ p.name }}</h1>
+            <hw-status [status]="p.status" />
+          </div>
+          <div class="phead__meta">
+            @if (direction(); as d) {
+              <span>{{ d.kind }} direction · submitted by {{ d.submittedBy }}</span>
+            }
+            @if (p.repository) {
+              <a class="phead__repo" [href]="'https://github.com/' + p.repository"
+                ><svg hw-icon name="github" class="icon--xs"></svg> {{ p.repository }}</a
+              >
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+  <div class="pad section">
+    <div class="split split--pipeline">
+      @if (direction(); as d) {
+        <ol class="stages" aria-label="Pipeline">
+          @for (stage of d.stages; track stage.number) {
+            <li>
+              <span class="stage" [attr.data-stage]="stage.number" [attr.data-status]="stage.status"
+                ><span class="stage__row"
+                  ><svg hw-status-icon [status]="stage.status"></svg
+                  ><span class="stage__n">{{ stage.number }}</span
+                  ><span class="stage__name">{{ stage.name }}</span
+                  ><span class="stage__dur tabular">{{
+                    duration(stage.startedAt, stage.endedAt)
+                  }}</span></span
+                ><span class="visually-hidden">{{ stage.status }}</span></span
+              >
+            </li>
+          }
+        </ol>
+      }
+    </div>
+  </div>
+} @else if (project.error()) {
+  <div class="pad" style="padding-block: var(--space-16)">
+    <div class="stack" style="align-items: flex-start">
+      <h1>Project not found</h1>
+      <p class="text-sm text-muted max-measure">
+        This project doesn’t exist, or you don’t have access to it.
+      </p>
+      <a class="btn" routerLink="/projects/new">Back to Hewn</a>
+    </div>
+  </div>
+} @else {
+  <div class="pad section" aria-busy="true"><p class="text-sm text-muted">Loading project…</p></div>
+}

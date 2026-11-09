@@ -42,6 +42,7 @@ public sealed class SubmitProductDirectionTests : IAsyncLifetime
 
         var project = await HewnClient.ReadJsonAsync(await owner.GetAsync($"/api/projects/{projectId}"));
         Assert.Equal("Ledgerline", project.GetProperty("name").GetString());
+        Assert.Equal("Running", project.GetProperty("status").GetString());
         var direction = project.GetProperty("directions")[0];
         Assert.Equal("Product", direction.GetProperty("kind").GetString());
         Assert.Equal("Queued", direction.GetProperty("status").GetString());

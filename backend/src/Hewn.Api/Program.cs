@@ -26,6 +26,7 @@ app.UseStatusCodePages();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapGet("/health/live", () => Results.Ok(new { status = "Healthy" })).AllowAnonymous();
 
 app.Run();
 

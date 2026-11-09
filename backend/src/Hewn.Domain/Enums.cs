@@ -34,6 +34,10 @@ public enum StageStatus
 
 public enum ProjectStatus
 {
+    Running,
     Idle,
-    Active,
+    Paused,
+    Blocked,
+    Cancelled,
+    Complete,
 }

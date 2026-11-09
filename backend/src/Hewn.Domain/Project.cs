@@ -28,7 +28,7 @@ public sealed class Project
         RepositoryName = repository?.Name;
         CreatedBy = createdBy;
         CreatedAt = now;
-        Status = ProjectStatus.Active;
+        Status = ProjectStatus.Running;
     }
 
     public Guid Id { get; private set; }

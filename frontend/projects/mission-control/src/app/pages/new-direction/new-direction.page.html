@@ -1,0 +1,161 @@
+@if (!session.isOwner()) {
+  <div class="pad" style="padding-block: var(--space-16)">
+    <div class="stack" style="align-items: flex-start">
+      <svg hw-icon name="lock" class="icon--xl text-subtle"></svg>
+      <h1>You don’t have permission</h1>
+      <p class="text-sm text-muted max-measure">
+        Viewers can watch every project but can’t give direction. Ask an Owner to change your role.
+      </p>
+      <a class="btn" routerLink="/projects">Back to projects</a>
+    </div>
+  </div>
+} @else {
+  <div class="pad" style="padding-block: var(--space-6) var(--space-12)">
+    <div class="split split--form">
+      <form class="form-col" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <h1>New direction</h1>
+        <p class="text-sm text-muted mt-1">
+          Once you submit, Hewn runs to merged code without asking you anything.
+        </p>
+        <div class="segmented segmented--lg mt-8" role="radiogroup" aria-label="Direction type">
+          <span class="segmented__opt" role="radio" aria-checked="true" tabindex="0"
+            >New product</span
+          ><span
+            class="segmented__opt"
+            role="radio"
+            aria-checked="false"
+            aria-disabled="true"
+            tabindex="-1"
+            title="Feature directions arrive with journey 2"
+            >Feature for a product</span
+          >
+        </div>
+        <div class="stack mt-8" style="gap: var(--space-6)">
+          @if (failure(); as message) {
+            <div class="callout callout--danger" role="alert">
+              <svg hw-icon name="warning" class="icon--lg"></svg>
+              <div>
+                <p class="callout__title">Hewn couldn’t queue this direction</p>
+                <p class="callout__body">{{ message }}</p>
+              </div>
+            </div>
+          }
+          <hw-error-summary [items]="summary()" purpose="before Hewn can start" />
+          <hw-field
+            controlId="name"
+            label="Name"
+            hint="1–100 characters, unique among your projects"
+            [error]="error('name')"
+          >
+            <input
+              class="input"
+              id="name"
+              formControlName="name"
+              autocomplete="off"
+              [readOnly]="submitting()"
+              [attr.aria-invalid]="error('name') ? 'true' : null"
+              [attr.aria-describedby]="describedBy('name', error('name'))"
+            />
+          </hw-field>
+          <hw-field
+            controlId="idea"
+            label="Idea"
+            [hint]="ideaCount() + ' of 20,000 characters'"
+            [error]="error('idea')"
+          >
+            <textarea
+              class="textarea"
+              id="idea"
+              rows="7"
+              formControlName="idea"
+              [readOnly]="submitting()"
+              [attr.aria-invalid]="error('idea') ? 'true' : null"
+              [attr.aria-describedby]="describedBy('idea', error('idea'))"
+            ></textarea>
+          </hw-field>
+          <div class="form-grid form-grid--2">
+            <hw-field
+              controlId="stack"
+              label="Stack"
+              [optional]="true"
+              hint="Default: .NET backend, Angular frontend"
+              [error]="error('stackPreference')"
+            >
+              <input
+                class="input"
+                id="stack"
+                formControlName="stack"
+                placeholder=".NET + Angular"
+                [readOnly]="submitting()"
+                [attr.aria-invalid]="error('stackPreference') ? 'true' : null"
+                [attr.aria-describedby]="describedBy('stack', error('stackPreference'))"
+              />
+            </hw-field>
+            <hw-field
+              controlId="repo"
+              label="Existing repository"
+              [optional]="true"
+              hint="https://github.com/{owner}/{repo}"
+              [error]="error('repositoryUrl')"
+            >
+              <input
+                class="input"
+                id="repo"
+                formControlName="repo"
+                [placeholder]="repoPlaceholder()"
+                [readOnly]="submitting()"
+                [attr.aria-invalid]="error('repositoryUrl') ? 'true' : null"
+                [attr.aria-describedby]="describedBy('repo', error('repositoryUrl'))"
+              />
+            </hw-field>
+          </div>
+          <hw-field
+            controlId="budget"
+            label="Budget"
+            [hint]="budgetHint()"
+            [error]="error('budgetUsd')"
+          >
+            <div class="prefix prefix--money">
+              <span class="prefix__sym" aria-hidden="true">$</span
+              ><input
+                class="input"
+                id="budget"
+                inputmode="decimal"
+                formControlName="budget"
+                [readOnly]="submitting()"
+                [attr.aria-invalid]="error('budgetUsd') ? 'true' : null"
+                [attr.aria-describedby]="describedBy('budget', error('budgetUsd'))"
+              />
+            </div>
+          </hw-field>
+        </div>
+        <div class="form-actions">
+          @if (submitting()) {
+            <button class="btn btn--primary" type="submit" aria-busy="true" disabled>
+              <svg hw-icon name="spinner"></svg>Queuing direction…
+            </button>
+          } @else {
+            <button class="btn btn--primary" type="submit">
+              <svg hw-icon name="arrowRight"></svg>Start direction
+            </button>
+          }
+          <a class="btn btn--ghost" routerLink="/projects">Cancel</a>
+        </div>
+      </form>
+      <aside class="rail" aria-labelledby="plan-title">
+        <h2 id="plan-title" style="font: var(--text-h3)">What runs next</h2>
+        <p class="text-sm text-muted mt-1">
+          All eleven stages, in order. The first pull request lands after scaffold.
+        </p>
+        <ol class="plan mt-4">
+          @for (stage of plan; track stage.name) {
+            <li>
+              <svg hw-status-icon status="Pending"></svg><span>{{ stage.name }}</span
+              ><span class="out">{{ stage.output }}</span>
+            </li>
+          }
+        </ol>
+      </aside>
+    </div>
+  </div>
+}
