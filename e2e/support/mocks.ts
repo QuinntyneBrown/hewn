@@ -3,7 +3,7 @@ import path from 'node:path';
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 
-const mocksRoot = path.resolve(__dirname, '../../docs/mocks');
+const mocksRoot = path.resolve(import.meta.dirname, '../../docs/mocks');
 
 /** URL of a mock page with its mock chrome hidden. */
 export function mockUrl(relative: string): string {

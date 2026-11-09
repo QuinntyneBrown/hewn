@@ -1,4 +1,4 @@
-import { Locator, Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 export interface DirectionInput {
   name: string;
@@ -24,7 +24,10 @@ export class NewDirectionPage {
   readonly failure: Locator;
   readonly forbidden: Locator;
 
-  constructor(private readonly page: Page) {
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
     this.heading = page.getByRole('heading', { level: 1 });
     this.form = page.locator('form.form-col');
     this.plan = page.locator('aside.rail');

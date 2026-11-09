@@ -1,4 +1,4 @@
-import { Locator, Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 /** Project page (/projects/{id}). */
 export class ProjectPage {
@@ -7,7 +7,10 @@ export class ProjectPage {
   readonly projectStatus: Locator;
   readonly repository: Locator;
 
-  constructor(private readonly page: Page) {
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
     this.heading = page.getByRole('heading', { level: 1 });
     this.pipeline = page.getByRole('list', { name: 'Pipeline' });
     this.projectStatus = page.locator('.phead .status');

@@ -51,9 +51,9 @@ ul.bullets li::marker { color: var(--color-accent); }
 .steps li.done { border-color: var(--color-success-border); color: var(--color-success-fg); background: var(--color-success-bg); }
 
 /* Code excerpts: <pre class="code" data-lang="cs" data-mark="2,5-6"> */
-pre.code { margin: 0; padding: 32px 40px; border-radius: 24px; background: #15171c; color: #e7e9ee; font: 28px/1.5 var(--font-family-mono); white-space: pre; overflow: hidden; counter-reset: line; position: relative; }
+pre.code { margin: 0; padding: 32px 40px; border-radius: 24px; background: #15171c; color: #e7e9ee; font: 28px/1.5 var(--font-family-mono); white-space: pre-wrap; overflow-wrap: anywhere; overflow: hidden; counter-reset: line; position: relative; }
 pre.code.tight { font-size: 23px; line-height: 1.45; padding: 26px 34px; }
-pre.code .ln { display: block; padding: 0 12px; margin: 0 -12px; border-radius: 6px; }
+pre.code .ln { display: block; padding: 0 12px 0 calc(12px + 2ch); text-indent: -2ch; margin: 0 -12px; border-radius: 6px; }
 pre.code .ln.mark { background: rgba(255, 196, 0, 0.18); box-shadow: inset 6px 0 0 #ffc400; }
 pre.code[data-lang]::after { content: attr(data-lang); position: absolute; top: 14px; right: 22px; font: 600 20px/1 var(--font-family-sans); color: #8a90a0; text-transform: uppercase; }
 .code-file { font: 600 26px/1 var(--font-family-mono); color: var(--color-fg-muted); margin-bottom: -18px; }
@@ -61,7 +61,8 @@ pre.code[data-lang]::after { content: attr(data-lang); position: absolute; top: 
 /* Screens, diagrams and recordings */
 figure { margin: 0; display: grid; gap: 14px; justify-items: center; }
 figure img { display: block; max-width: 100%; max-height: 700px; border-radius: 18px; border: 2px solid var(--color-border-default); box-shadow: var(--shadow-3); background: #fff; }
-figure.diagram img { max-height: 760px; box-shadow: none; }
+figure.diagram img { max-height: 660px; box-shadow: none; }
+.cols figure img { max-height: 620px; }
 figure.phone img { max-height: 760px; border-radius: 36px; }
 figcaption { font-size: 26px; color: var(--color-fg-muted); }
 .clip { display: block; width: 1408px; height: 792px; margin: 0 auto; border-radius: 18px; background: var(--color-bg-surface); border: 2px solid var(--color-border-default); box-shadow: var(--shadow-3); }

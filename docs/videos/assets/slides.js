@@ -5,6 +5,8 @@
 // and turns <pre class="code" data-mark="2,5-6"> into numbered lines with the marked ones highlighted.
 (function () {
   const body = document.body;
+  // Decks are always light, whatever the renderer's OS preference.
+  document.documentElement.setAttribute('data-theme', 'light');
   const slides = Array.from(document.querySelectorAll('body > section'));
   const params = new URLSearchParams(location.search);
   const parts = (body.dataset.parts || '').split('|').filter(Boolean);
