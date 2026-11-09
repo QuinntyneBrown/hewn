@@ -11,6 +11,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 01 · 3 | [Build a new product, part three: bootstrap the repository](01-build-a-new-product-part-3/README.md) | ~3:23 | Journey 1, part 3 |
 | 01 · 4 | [Build a new product, part four: the document stages](01-build-a-new-product-part-4/README.md) | ~3:32 | Journey 1, part 4 |
 | 01 · 5 | [Build a new product, part five: designs and the design system](01-build-a-new-product-part-5/README.md) | ~3:26 | Journey 1, part 5 |
+| 01 · 6 | [Build a new product, part six: the scaffold](01-build-a-new-product-part-6/README.md) | ~3:11 | Journey 1, part 6 |
 
 ## Voice
 

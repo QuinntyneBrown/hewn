@@ -22,6 +22,7 @@ import {
   validateRequirements,
   validateStackDecision,
 } from '../validators/document-validators.ts';
+import { checkOut } from './checkout.ts';
 import type { RunContext, StageExecutor, StageStep } from './stage-executor.ts';
 
 const run = promisify(execFile);
@@ -276,15 +277,6 @@ function instructionsFor(leased: LeasedRun, definition: StageDefinition): string
     `Nobody will answer questions. When a skill or this task asks one meant for the user, answer it yourself from the direction, docs/brief.md and the existing documents, and append it to ${DECISIONS} as "## {date} · Stage ${leased.stage} ${leased.stageName}" with **Question:**, **Answer:** and **Rationale:** lines.`,
     'Change no other files.',
   ].join('\n\n');
-}
-
-async function checkOut(context: RunContext, directory: string): Promise<void> {
-  await rm(directory, { recursive: true, force: true });
-  await mkdir(directory, { recursive: true });
-  const archive = join(context.workspace, 'repository.tar.gz');
-  await writeFile(archive, await context.downloadRepository());
-  await run('tar', ['-xzf', archive, '-C', directory, '--strip-components=1']);
-  await rm(archive, { force: true });
 }
 
 async function snapshot(directory: string): Promise<Map<string, string>> {

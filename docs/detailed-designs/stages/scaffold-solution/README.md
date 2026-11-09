@@ -60,3 +60,29 @@ The template supplies both the generators and the list of required checks, so br
 The scaffold merges through a pull request (L2-015 AC1) only after CI passes (AC2). `README.md` documents structure and commands (AC3). A CI failure fails the run for retry (AC4).
 
 ![Sequence diagram: scaffold, wait for CI and merge](diagrams/sequence-scaffold.png)
+
+## Decisions made while building the slice
+
+- **No agent.** Stage 6 is template-driven: `ScaffoldStageExecutor` reads the Decision section of
+  `docs/adr/0001-stack.md`, picks the first `StackTemplate` whose `matches` accepts it, and fails with "No scaffold
+  template for the chosen stack: {decision}" otherwise.
+- **Static default template.** `dotnetAngularTemplate` writes files rather than running `dotnet new` and `ng new`,
+  so it is deterministic, needs no toolchain on the worker and no network at generation time. Its versions match
+  Hewn's own toolchain, and the `Scaffold template` CI job generates it and runs the scaffold's own CI commands on
+  every change, which proves L2-015 AC2 outside GitHub. The frontend uses `npm install` because a static template
+  has no lock file; the first increment that adds dependencies commits one.
+- **Four steps.** "Generate scaffold", "Open pull request" (commit to `hewn/scaffold` keyed `{run}/2/commit`, open
+  the pull request keyed `{run}/2/pull-request`), "Wait for checks" and "Merge and protect" (keyed `{run}/4/merge`
+  and `{run}/4/protect`). Later steps reopen the pull request with the same key to recover its number after a
+  resume, which returns the first pull request rather than opening another.
+- **`CheckWaiter`.** Polls `GET /api/worker/runs/{id}/pull-requests/{n}/checks` (default every 30 s,
+  `HEWN_CHECK_POLL_MS`) until every template check has completed. A conclusion other than success, neutral or
+  skipped fails the run with the failed check names; 60 minutes without finishing fails it too. The webhook-driven
+  wait from the increments design replaces polling when that slice lands.
+- **`BranchProtectionConfigurer`.** A `protect_branch` mutation from the worker after the merge, rather than a
+  hook on stage success, so it stays inside the stage's lease and retry semantics. It requires the template's
+  check names (`backend`, `frontend`, `e2e`) with strict status checks.
+- **API rules.** Only stage 6 may commit to a branch (only `hewn/scaffold`), open, read and merge pull requests
+  (only the one from `hewn/scaffold`), and protect the default branch; others get 400 `branch_not_allowed` or
+  `mutation_not_allowed`. The scaffold may not write `docs/`, `.claude/`, `.agents/` or `.hewn/`.
+- **Deferred.** Templates for other stacks; retries after failed CI (L2-006); the git push proxy (ADR 0006).

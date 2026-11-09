@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { LeasedRun } from '../src/api.ts';
 import { BootstrapStageExecutor } from '../src/executors/bootstrap-executor.ts';
 import type { RunContext } from '../src/executors/stage-executor.ts';
+import { noPullRequests } from './support/no-pull-requests.ts';
 
 let root: string;
 let source: string;
@@ -67,6 +68,7 @@ function context(existing: Record<string, string[]> = {}): RunContext & Recorded
     ...recorded,
     workspace: join(root, 'workspace'),
     log: async (_level, text) => void recorded.logs.push(text),
+    ...noPullRequests,
     downloadRepository: async () => Buffer.alloc(0),
     listSkillFolders: async () => ({ '.claude/skills': [], '.agents/skills': [], ...existing }),
     commit: async (step, message, files) => {

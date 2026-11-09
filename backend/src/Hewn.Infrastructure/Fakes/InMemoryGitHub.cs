@@ -131,6 +131,115 @@ public class InMemoryGitHub(IConfiguration? configuration) : IGitHubRepositoryPr
         }
     }
 
+    /// <summary>Makes the named check fail on every pull request in the repository.</summary>
+    public void FailCheck(string owner, string name, string check)
+    {
+        lock (_lock)
+        {
+            Existing(owner, name).FailingChecks.Add(check);
+        }
+    }
+
+    public Task<string> CommitToBranchAsync(string owner, string name, string branch, string message, IReadOnlyList<RepositoryFile> files, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            return Task.FromResult(Existing(owner, name).CommitToBranch(branch, message, files));
+        }
+    }
+
+    public Task<PullRequestInfo> OpenPullRequestAsync(string owner, string name, string head, string title, string body, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            var repository = Existing(owner, name);
+            if (!repository.Branches.ContainsKey(head))
+            {
+                throw new GitHubException($"GitHub refused to open a pull request: 422 No commits on {head}");
+            }
+
+            var pull = new FakePullRequest(repository.PullRequests.Count + 1, head, title, body);
+            repository.PullRequests.Add(pull);
+            return Task.FromResult(repository.PullRequestInfo(pull));
+        }
+    }
+
+    public Task<PullRequestInfo?> GetPullRequestAsync(string owner, string name, int number, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            var repository = Existing(owner, name);
+            var pull = repository.PullRequests.SingleOrDefault(p => p.Number == number);
+            return Task.FromResult(pull is null ? null : repository.PullRequestInfo(pull));
+        }
+    }
+
+    public Task<IReadOnlyList<CheckRunInfo>> ListChecksAsync(string owner, string name, int number, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            var repository = Existing(owner, name);
+            var pull = repository.PullRequests.Single(p => p.Number == number);
+            // The fake "runs" CI instantly: one check per job in the head branch's workflow.
+            var workflow = repository.Branches[pull.Head].TryGetValue(".github/workflows/ci.yml", out var bytes) ? Encoding.UTF8.GetString(bytes) : string.Empty;
+            IReadOnlyList<CheckRunInfo> checks = [.. WorkflowJobs(workflow).Select(job =>
+                new CheckRunInfo(job, "completed", repository.FailingChecks.Contains(job) ? "failure" : "success"))];
+            return Task.FromResult(checks);
+        }
+    }
+
+    public Task<string> MergePullRequestAsync(string owner, string name, int number, string title, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            var repository = Existing(owner, name);
+            var pull = repository.PullRequests.Single(p => p.Number == number);
+            if (pull.Merged)
+            {
+                throw new GitHubException("GitHub refused to merge: 405 Pull Request is not mergeable");
+            }
+
+            var files = repository.Branches[pull.Head].Select(f => new RepositoryFile(f.Key, f.Value)).ToList();
+            pull.Merged = true;
+            return Task.FromResult(repository.Commit($"{title} (#{number})", files));
+        }
+    }
+
+    public Task ProtectDefaultBranchAsync(string owner, string name, IReadOnlyList<string> checks, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            var repository = Existing(owner, name);
+            repository.RequiredChecks.Clear();
+            repository.RequiredChecks.AddRange(checks);
+            return Task.CompletedTask;
+        }
+    }
+
+    private static IEnumerable<string> WorkflowJobs(string workflow)
+    {
+        var inJobs = false;
+        foreach (var line in workflow.Split('\n'))
+        {
+            if (line.TrimEnd() == "jobs:")
+            {
+                inJobs = true;
+                continue;
+            }
+
+            if (inJobs && line.Length > 0 && !char.IsWhiteSpace(line[0]))
+            {
+                yield break;
+            }
+
+            var match = System.Text.RegularExpressions.Regex.Match(line, @"^  ([A-Za-z0-9_-]+):\s*$");
+            if (inJobs && match.Success)
+            {
+                yield return match.Groups[1].Value;
+            }
+        }
+    }
+
     // A repository the probe allowed (an Owner's existing repository) exists on first use.
     private FakeRepository Existing(string owner, string name) =>
         _repositories.GetValueOrDefault($"{owner}/{name}") ?? Seed(owner, name, []);
@@ -155,6 +264,15 @@ public sealed class FakeRepository(string owner, string name, bool isPrivate, Li
 
     public List<FakeCommit> Commits { get; } = [];
 
+    /// <summary>Branches other than the default, each with its full file set.</summary>
+    public Dictionary<string, Dictionary<string, byte[]>> Branches { get; } = new(StringComparer.Ordinal);
+
+    public List<FakePullRequest> PullRequests { get; } = [];
+
+    public List<string> RequiredChecks { get; } = [];
+
+    public HashSet<string> FailingChecks { get; } = new(StringComparer.Ordinal);
+
     public GitHubRepositoryInfo Info => new(Owner, Name, IsPrivate, [.. Topics], Commits.Count);
 
     public string? Read(string path) => Files.TryGetValue(path, out var bytes) ? Encoding.UTF8.GetString(bytes) : null;
@@ -162,6 +280,25 @@ public sealed class FakeRepository(string owner, string name, bool isPrivate, Li
     /// <summary>Commits one file, as someone pushing outside Hewn would.</summary>
     public string Write(string path, string content) =>
         Commit($"Update {path}", [new RepositoryFile(path, Encoding.UTF8.GetBytes(content))]);
+
+    internal PullRequestInfo PullRequestInfo(FakePullRequest pull) =>
+        new(pull.Number, $"https://github.com/{Owner}/{Name}/pull/{pull.Number}", pull.Head, pull.Merged);
+
+    internal string CommitToBranch(string branch, string message, IReadOnlyList<RepositoryFile> files)
+    {
+        if (!Branches.TryGetValue(branch, out var tree))
+        {
+            tree = new Dictionary<string, byte[]>(Files, StringComparer.Ordinal);
+            Branches[branch] = tree;
+        }
+
+        foreach (var file in files)
+        {
+            tree[file.Path] = file.Content;
+        }
+
+        return Convert.ToHexStringLower(SHA1.HashData(Encoding.UTF8.GetBytes($"{branch}\n{message}\n{string.Join('\n', files.Select(f => f.Path))}")));
+    }
 
     internal string Commit(string message, IReadOnlyList<RepositoryFile> files)
     {
@@ -178,3 +315,16 @@ public sealed class FakeRepository(string owner, string name, bool isPrivate, Li
 }
 
 public sealed record FakeCommit(string Sha, string Message, IReadOnlyList<string> Paths);
+
+public sealed class FakePullRequest(int number, string head, string title, string body)
+{
+    public int Number { get; } = number;
+
+    public string Head { get; } = head;
+
+    public string Title { get; } = title;
+
+    public string Body { get; } = body;
+
+    public bool Merged { get; set; }
+}

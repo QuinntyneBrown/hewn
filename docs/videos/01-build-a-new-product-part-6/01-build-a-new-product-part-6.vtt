@@ -1,0 +1,148 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:05.82
+Part five designed the screens and extracted the design system.
+
+00:00:05.82 --> 00:00:08.29
+Part six is stage six, the scaffold.
+
+00:00:08.29 --> 00:00:12.06
+Hewn generates a working solution for the chosen stack,
+
+00:00:12.06 --> 00:00:16.72
+merges it through a pull request once continuous integration passes,
+
+00:00:16.72 --> 00:00:20.76
+and then makes those checks required on the default branch.
+
+00:00:21.91 --> 00:00:23.54
+Stage six has no agent.
+
+00:00:23.54 --> 00:00:28.56
+It reads the stack decision from stage four and picks a stack template.
+
+00:00:28.56 --> 00:00:32.73
+The default template is a dot net ten API with xUnit tests,
+
+00:00:32.73 --> 00:00:36.97
+an Angular twenty-one workspace with linting and unit tests,
+
+00:00:36.97 --> 00:00:42.77
+an empty Playwright suite, and a GitHub Actions workflow with three jobs: backend,
+
+00:00:42.77 --> 00:00:44.46
+frontend and end to end.
+
+00:00:44.81 --> 00:00:49.85
+The executor has four steps: generate the scaffold, open the pull request,
+
+00:00:49.85 --> 00:00:52.58
+wait for checks, then merge and protect.
+
+00:00:53.73 --> 00:00:56.82
+The worker still holds no GitHub credential.
+
+00:00:56.82 --> 00:01:01.18
+The API gained three mutations: open a pull request, merge it,
+
+00:01:01.18 --> 00:01:06.66
+and protect the default branch, plus an endpoint that reads the pull request's
+
+00:01:06.66 --> 00:01:07.16
+checks.
+
+00:01:07.16 --> 00:01:12.64
+Only stage six may use them, and only for its own branch, hewn slash scaffold.
+
+00:01:12.64 --> 00:01:14.68
+Every other stage is refused.
+
+00:01:15.03 --> 00:01:17.49
+Every write is keyed by run and step.
+
+00:01:17.49 --> 00:01:23.15
+After a resume, the later steps ask to open the pull request again with the same key,
+
+00:01:23.15 --> 00:01:27.15
+and get the first one back, so nothing is ever opened twice.
+
+00:01:28.30 --> 00:01:33.45
+The check waiter reads the pull request's checks until every template check has
+
+00:01:33.45 --> 00:01:34.10
+completed.
+
+00:01:34.10 --> 00:01:38.53
+Anything other than success fails the run, naming the failed checks,
+
+00:01:38.53 --> 00:01:39.97
+and nothing is merged.
+
+00:01:39.97 --> 00:01:44.27
+After the merge, branch protection requires the same three checks,
+
+00:01:44.27 --> 00:01:46.81
+so no later change merges without them.
+
+00:01:47.16 --> 00:01:51.21
+The template writes files rather than running generators,
+
+00:01:51.21 --> 00:01:53.49
+so it is fast and deterministic.
+
+00:01:53.49 --> 00:01:59.10
+To prove it really builds, a new CI job in Hewn generates the scaffold on every
+
+00:01:59.10 --> 00:02:02.44
+change and runs the scaffold's own CI commands.
+
+00:02:03.59 --> 00:02:07.60
+The backend gained eight tests: the branch and path rules,
+
+00:02:07.60 --> 00:02:12.30
+opening twice with one key, a failing check, merging and protecting.
+
+00:02:12.30 --> 00:02:17.35
+The worker gained six, covering the steps, a failed or unfinished CI run,
+
+00:02:17.35 --> 00:02:19.36
+and a stack with no template.
+
+00:02:19.36 --> 00:02:23.93
+And the generated scaffold built, linted and passed its own tests,
+
+00:02:23.93 --> 00:02:25.52
+both locally and in CI.
+
+00:02:26.67 --> 00:02:30.65
+Here is the real app, with one worker and the fake GitHub,
+
+00:02:30.65 --> 00:02:33.33
+which runs each workflow job instantly.
+
+00:02:33.33 --> 00:02:34.56
+The Owner submits.
+
+00:02:34.56 --> 00:02:39.71
+The stages run as before, and stage six commits the scaffold to its branch,
+
+00:02:39.71 --> 00:02:44.52
+opens the pull request, sees CI pass, merges, and protects the branch,
+
+00:02:44.52 --> 00:02:46.37
+all in a couple of seconds.
+
+00:02:46.37 --> 00:02:48.36
+Then the direction completes.
+
+00:02:48.71 --> 00:02:53.34
+And this is the scaffold's own Angular app, built from the generated files.
+
+00:02:54.49 --> 00:02:59.46
+Stage six now merges a real, tested scaffold through a pull request,
+
+00:02:59.46 --> 00:03:03.56
+and the default branch requires its checks from then on.
+
+00:03:03.56 --> 00:03:07.36
+Next, stage nine: estimates and automatic descoping.

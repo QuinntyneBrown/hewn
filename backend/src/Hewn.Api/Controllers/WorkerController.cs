@@ -23,7 +23,20 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
 
     public sealed record ResultRequest(string WorkerId, long Epoch, string Outcome, string? Error);
 
-    public sealed record MutationRequest(string WorkerId, long Epoch, string Kind, string IdempotencyKey, string Message, IReadOnlyList<CommitFile> Files);
+    /// <summary>One broker mutation; which fields apply depends on the kind.</summary>
+    public sealed record MutationRequest(
+        string WorkerId,
+        long Epoch,
+        string Kind,
+        string IdempotencyKey,
+        string? Message = null,
+        IReadOnlyList<CommitFile>? Files = null,
+        string? Branch = null,
+        string? Head = null,
+        string? Title = null,
+        string? Body = null,
+        int? Number = null,
+        IReadOnlyList<string>? Checks = null);
 
     public sealed record LogRequest(string WorkerId, long Epoch, IReadOnlyList<RunLogEntry> Lines);
 
@@ -74,14 +87,28 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
     [HttpPost("runs/{runId:guid}/github/mutations")]
     public async Task<IActionResult> Mutate(Guid runId, MutationRequest request, CancellationToken cancellationToken)
     {
-        if (request.Kind != "commit")
+        var (worker, epoch, key) = (request.WorkerId, request.Epoch, request.IdempotencyKey);
+        switch (request.Kind)
         {
-            return Problem(statusCode: StatusCodes.Status400BadRequest, title: $"Unknown mutation kind {request.Kind}.");
+            case "commit":
+                var sha = await mediator.Send(new CommitFilesCommand(runId, worker, epoch, key, request.Message ?? string.Empty, request.Files ?? [], request.Branch), cancellationToken);
+                return Ok(new { sha });
+            case "open_pull_request":
+                return Ok(await mediator.Send(new OpenPullRequestCommand(runId, worker, epoch, key, request.Head ?? string.Empty, request.Title ?? string.Empty, request.Body ?? string.Empty), cancellationToken));
+            case "merge_pull_request":
+                return Ok(new { sha = await mediator.Send(new MergePullRequestCommand(runId, worker, epoch, key, request.Number ?? 0), cancellationToken) });
+            case "protect_branch":
+                await mediator.Send(new ProtectDefaultBranchCommand(runId, worker, epoch, key, request.Checks ?? []), cancellationToken);
+                return Ok(new { });
+            default:
+                return Problem(statusCode: StatusCodes.Status400BadRequest, title: $"Unknown mutation kind {request.Kind}.");
         }
-
-        var sha = await mediator.Send(new CommitFilesCommand(runId, request.WorkerId, request.Epoch, request.IdempotencyKey, request.Message, request.Files), cancellationToken);
-        return Ok(new { sha });
     }
+
+    /// <summary>Checks on a pull request's head commit, for the scaffold stage's CI wait.</summary>
+    [HttpGet("runs/{runId:guid}/pull-requests/{number:int}/checks")]
+    public async Task<IActionResult> Checks(Guid runId, int number, [FromQuery] string workerId, [FromQuery] long epoch, CancellationToken cancellationToken) =>
+        Ok(new { checks = await mediator.Send(new GetPullRequestChecksQuery(runId, workerId, epoch, number), cancellationToken) });
 
     [HttpPost("runs/{runId:guid}/logs")]
     public async Task<IActionResult> Logs(Guid runId, LogRequest request, CancellationToken cancellationToken)

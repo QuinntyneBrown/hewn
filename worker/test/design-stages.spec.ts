@@ -15,6 +15,7 @@ import type { RunContext } from '../src/executors/stage-executor.ts';
 import { startFakeMagicPatterns, type FakeMagicPatterns } from '../src/magic-patterns/fake-server.ts';
 import { McpMagicPatterns } from '../src/magic-patterns/magic-patterns.ts';
 import { closeBrowser } from '../src/validators/mock-validator.ts';
+import { noPullRequests } from './support/no-pull-requests.ts';
 
 let root: string;
 let repo: string;
@@ -66,6 +67,7 @@ function context() {
   const ctx: RunContext = {
     workspace,
     log: async (_level, text) => void logs.push(text),
+    ...noPullRequests,
     listSkillFolders: async () => ({}),
     downloadRepository: async () => execFileSync('tar', ['-czf', '-', '-C', root, 'kiln-abc1234']),
     commit: async (_step: number, _message: string, files: CommitFile[]) => {

@@ -1,4 +1,4 @@
-import type { CommitFile, LeasedRun, LogLevel } from '../api.ts';
+import type { CheckRun, CommitFile, LeasedRun, LogLevel, PullRequest } from '../api.ts';
 
 export interface StageStep {
   name: string;
@@ -14,7 +14,14 @@ export interface RunContext {
   /** The product repository's default branch as a gzipped tarball with one top-level folder. */
   downloadRepository(): Promise<Buffer>;
   /** Commits as step `step`; the idempotency key is `{run}/{step}/commit`, so a resumed step cannot commit twice. */
-  commit(step: number, message: string, files: CommitFile[]): Promise<string>;
+  commit(step: number, message: string, files: CommitFile[], branch?: string): Promise<string>;
+  /** Opens a pull request into the default branch; keyed `{run}/{step}/pull-request`, so repeating it returns the first. */
+  openPullRequest(step: number, request: { head: string; title: string; body: string }): Promise<PullRequest>;
+  pullRequestChecks(number: number): Promise<CheckRun[]>;
+  /** Squash-merges; keyed `{run}/{step}/merge`. */
+  mergePullRequest(step: number, number: number): Promise<string>;
+  /** Requires the checks on the default branch; keyed `{run}/{step}/protect`. */
+  protectDefaultBranch(step: number, checks: string[]): Promise<void>;
 }
 
 export interface StageExecutor {

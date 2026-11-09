@@ -12,6 +12,7 @@ import type { StageAgent, StageAgentTask } from '../src/agents/stage-agent.ts';
 import { ScriptedStageAgent } from '../src/agents/scripted-agent.ts';
 import { DocumentStageExecutor } from '../src/executors/document-executor.ts';
 import type { RunContext } from '../src/executors/stage-executor.ts';
+import { noPullRequests } from './support/no-pull-requests.ts';
 
 let root: string;
 let repo: string;
@@ -67,6 +68,7 @@ function context(): RunContext & Recorded {
     ...recorded,
     workspace,
     log: async (_level, text) => void recorded.logs.push(text),
+    ...noPullRequests,
     listSkillFolders: async () => ({}),
     downloadRepository: async () => archive(),
     commit: async (step: number, message: string, files: CommitFile[]) => {

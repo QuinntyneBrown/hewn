@@ -6,6 +6,8 @@ import {
   type LogLevel,
   type RunOutcome,
   type WorkerRegistration,
+  type CheckRun,
+  type PullRequest,
 } from './api.ts';
 
 /** The worker protocol over HTTP. The token is sent only in the Authorization header and never logged. */
@@ -64,6 +66,7 @@ export class HttpHewnApi implements HewnApi {
     idempotencyKey: string,
     message: string,
     files: CommitFile[],
+    branch?: string,
   ): Promise<string> {
     const body = (await this.post(`/api/worker/runs/${run.runId}/github/mutations`, {
       workerId,
@@ -72,8 +75,56 @@ export class HttpHewnApi implements HewnApi {
       idempotencyKey,
       message,
       files: files.map((f) => ({ path: f.path, contentBase64: f.content.toString('base64') })),
+      ...(branch === undefined ? {} : { branch }),
     })) as { sha: string };
     return body.sha;
+  }
+
+  async openPullRequest(
+    workerId: string,
+    run: LeasedRun,
+    idempotencyKey: string,
+    request: { head: string; title: string; body: string },
+  ): Promise<PullRequest> {
+    return (await this.mutate(workerId, run, 'open_pull_request', idempotencyKey, request)) as PullRequest;
+  }
+
+  async pullRequestChecks(workerId: string, run: LeasedRun, number: number): Promise<CheckRun[]> {
+    const query = new URLSearchParams({ workerId, epoch: String(run.epoch) });
+    const body = (await this.send('GET', `/api/worker/runs/${run.runId}/pull-requests/${number}/checks?${query}`)) as {
+      checks: CheckRun[];
+    };
+    return body.checks;
+  }
+
+  async mergePullRequest(workerId: string, run: LeasedRun, idempotencyKey: string, number: number): Promise<string> {
+    return ((await this.mutate(workerId, run, 'merge_pull_request', idempotencyKey, { number })) as { sha: string })
+      .sha;
+  }
+
+  async protectDefaultBranch(
+    workerId: string,
+    run: LeasedRun,
+    idempotencyKey: string,
+    checks: string[],
+  ): Promise<void> {
+    await this.mutate(workerId, run, 'protect_branch', idempotencyKey, { checks });
+  }
+
+  private mutate(
+    workerId: string,
+    run: LeasedRun,
+    kind: string,
+    idempotencyKey: string,
+    fields: object,
+  ): Promise<unknown> {
+    return this.post(`/api/worker/runs/${run.runId}/github/mutations`, {
+      workerId,
+      epoch: run.epoch,
+      kind,
+      idempotencyKey,
+      ...fields,
+    });
   }
 
   async log(workerId: string, run: LeasedRun, lines: { level: LogLevel; text: string }[]): Promise<void> {

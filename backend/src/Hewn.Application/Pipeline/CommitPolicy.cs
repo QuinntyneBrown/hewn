@@ -20,6 +20,38 @@ public static class CommitPolicy
         [8] = ([], ["docs/journeys.md", Decisions]),
     };
 
+    /// <summary>The only branch a stage writes to other than the default; stage 6 merges it through a pull request.</summary>
+    public const string ScaffoldBranch = "hewn/scaffold";
+
+    public const int ScaffoldStage = 6;
+
+    /// <summary>Folders that belong to other stages; the scaffold writes everything else.</summary>
+    private static readonly string[] NotScaffold = ["docs/", ".claude/", ".agents/", ".hewn/"];
+
+    public static void EnsureAllowed(int stage, string? branch, IEnumerable<string> paths)
+    {
+        var expected = stage == ScaffoldStage ? ScaffoldBranch : null;
+        if (!string.Equals(branch, expected, StringComparison.Ordinal))
+        {
+            throw new FieldValidationException(
+                [new FieldError("branch", expected is null ? $"Stage {stage} commits to the default branch only." : $"Stage {stage} commits to {expected} only.", "The branch is not one this stage may write")],
+                "branch_not_allowed");
+        }
+
+        EnsureAllowed(stage, paths);
+    }
+
+    /// <summary>Only the scaffold stage opens, reads and merges pull requests and protects the default branch.</summary>
+    public static void EnsurePullRequestsAllowed(int stage)
+    {
+        if (stage != ScaffoldStage)
+        {
+            throw new FieldValidationException(
+                [new FieldError("kind", $"Stage {stage} may not manage pull requests or branch protection.", "This stage may not make that change")],
+                "mutation_not_allowed");
+        }
+    }
+
     public static void EnsureAllowed(int stage, IEnumerable<string> paths)
     {
         foreach (var path in paths)
@@ -35,6 +67,11 @@ public static class CommitPolicy
 
     private static bool IsAllowed(int stage, string path)
     {
+        if (stage == ScaffoldStage)
+        {
+            return IsPlainRelative(path) && !NotScaffold.Any(p => path.StartsWith(p, StringComparison.Ordinal));
+        }
+
         if (!ByStage.TryGetValue(stage, out var rule) || !IsPlainRelative(path))
         {
             return false;

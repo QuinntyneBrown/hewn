@@ -65,6 +65,26 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  scaffold:
+    name: Scaffold template
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: backend/global.json
+      # Stage 6's default template must pass the same commands its own CI runs (L2-015 AC2).
+      - run: node worker/src/scaffold/generate-cli.ts "$RUNNER_TEMP/scaffold"
+      - run: dotnet build *.slnx && dotnet test *.slnx --no-build
+        working-directory: ${{ runner.temp }}/scaffold/backend
+      - run: npm install && npm run lint && npm run build && npm test
+        working-directory: ${{ runner.temp }}/scaffold/frontend
+      - run: npm install && CI=1 npm test
+        working-directory: ${{ runner.temp }}/scaffold/e2e
+
   e2e:
     name: End to end
     runs-on: ubuntu-latest
