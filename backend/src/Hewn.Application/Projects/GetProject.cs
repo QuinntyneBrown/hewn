@@ -44,7 +44,11 @@ public sealed record DirectionDto(
     IReadOnlyList<int> LabelledPullRequests,
     string? FailureReason,
     int? FailedStage,
-    DateTimeOffset? FailedAt);
+    DateTimeOffset? FailedAt,
+    PendingRetryDto? Retry = null);
+
+/// <summary>An automatic retry waiting out its backoff (L2-006 AC1).</summary>
+public sealed record PendingRetryDto(int Stage, int Attempt, int MaxAttempts, DateTimeOffset NotBefore, string? Reason);
 
 public sealed record ProjectDto(
     Guid Id,
@@ -58,7 +62,7 @@ public sealed record ProjectDto(
     IReadOnlyList<DirectionDto> Directions,
     decimal SpendUsd);
 
-public sealed class GetProjectHandler(IAppDbContext db) : IRequestHandler<GetProjectQuery, ProjectDto>
+public sealed class GetProjectHandler(IAppDbContext db, Microsoft.Extensions.Options.IOptions<Hewn.Application.Pipeline.PipelineOptions> options) : IRequestHandler<GetProjectQuery, ProjectDto>
 {
     public async Task<ProjectDto> Handle(GetProjectQuery query, CancellationToken cancellationToken)
     {
@@ -86,11 +90,28 @@ public sealed class GetProjectHandler(IAppDbContext db) : IRequestHandler<GetPro
             live[(run.DirectionId, run.Stage)] = new LiveStage(run.Id, run.CurrentStepName, latest);
         }
 
+        var maxAttempts = options.Value.RetryBackoffSeconds.Count + 1;
+        var waiting = await db.Runs.AsNoTracking()
+            .Where(r => r.ProjectId == project.Id && r.Status == RunStatus.Queued && r.NotBefore != null)
+            .Select(r => new { r.DirectionId, r.Stage, r.Attempt, r.NotBefore })
+            .ToListAsync(cancellationToken);
+        var retries = new Dictionary<Guid, PendingRetryDto>();
+        foreach (var retry in waiting)
+        {
+            var reason = await db.Runs.AsNoTracking()
+                .Where(r => r.DirectionId == retry.DirectionId && r.Stage == retry.Stage && r.Attempt == retry.Attempt - 1 && r.Status == RunStatus.Failed)
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => r.Error)
+                .FirstOrDefaultAsync(cancellationToken);
+            retries[retry.DirectionId] = new PendingRetryDto(retry.Stage, retry.Attempt, maxAttempts, retry.NotBefore!.Value, reason);
+        }
+
         var dto = ToDto(project, lastSequence);
         return dto with
         {
             Directions = dto.Directions.Select(d => d with
             {
+                Retry = retries.GetValueOrDefault(d.Id),
                 Stages = d.Stages.Select(s => s.Status == nameof(StageStatus.Running) && live.TryGetValue((d.Id, s.Number), out var l)
                     ? s with { Step = l.Step, LatestLine = l.LatestLine, RunId = l.RunId }
                     : s).ToList(),

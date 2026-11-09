@@ -85,7 +85,20 @@ public sealed class RetryFailedStageTests : IAsyncLifetime
         var run = await LeaseAsync(worker);
         Assert.Equal(1, run.Body.GetProperty("attempt").GetInt32());
         var runs = new List<Guid> { run.RunId };
-        foreach (var (wait, attempt) in new[] { (30, 2), (120, 3), (600, 4) })
+        (await worker.FailAsync(run, "Skills source unreachable")).EnsureSuccessStatusCode();
+
+        // The page reads the pending retry: which attempt, when, and why.
+        var waiting = (await ProjectAsync(owner, projectId)).GetProperty("directions")[0].GetProperty("retry");
+        Assert.Equal(0, waiting.GetProperty("stage").GetInt32());
+        Assert.Equal(2, waiting.GetProperty("attempt").GetInt32());
+        Assert.Equal(4, waiting.GetProperty("maxAttempts").GetInt32());
+        Assert.Equal(_factory.Clock.GetUtcNow().AddSeconds(30), waiting.GetProperty("notBefore").GetDateTimeOffset());
+        Assert.Equal("Skills source unreachable", waiting.GetProperty("reason").GetString());
+        _factory.Clock.Advance(TimeSpan.FromSeconds(30));
+        run = await LeaseAsync(worker);
+        Assert.Equal(JsonValueKind.Null, (await ProjectAsync(owner, projectId)).GetProperty("directions")[0].GetProperty("retry").ValueKind);
+        runs.Add(run.RunId);
+        foreach (var (wait, attempt) in new[] { (120, 3), (600, 4) })
         {
             (await worker.FailAsync(run, "Skills source unreachable")).EnsureSuccessStatusCode();
 
