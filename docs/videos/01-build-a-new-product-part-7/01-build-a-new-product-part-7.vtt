@@ -1,0 +1,136 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:03.62
+Part six merged the scaffold.
+
+00:00:03.62 --> 00:00:06.25
+Part seven is stage nine, estimates.
+
+00:00:06.25 --> 00:00:11.73
+Hewn sizes every detailed design, defers what is too big or not needed yet,
+
+00:00:11.73 --> 00:00:15.53
+and plans the rest as a backlog of small increments,
+
+00:00:15.53 --> 00:00:18.82
+in an order that respects their dependencies.
+
+00:00:19.97 --> 00:00:22.15
+Stage nine runs in two halves.
+
+00:00:22.15 --> 00:00:25.78
+First the agent runs the estimating designs skill.
+
+00:00:25.78 --> 00:00:31.59
+It writes one table per subsystem, giving each design an estimate in ideal days,
+
+00:00:31.59 --> 00:00:36.02
+and it splits any design that is above the descope threshold.
+
+00:00:36.37 --> 00:00:38.67
+Then deterministic code takes over.
+
+00:00:38.67 --> 00:00:44.01
+The descoper and the backlog planner write the estimates read me, a backlog file,
+
+00:00:44.01 --> 00:00:48.70
+and a deferred status line on every requirement that will not be built.
+
+00:00:49.85 --> 00:00:53.34
+A design is deferred for one of four reasons, in order.
+
+00:00:53.34 --> 00:00:56.90
+It is still above the threshold after the split attempt.
+
+00:00:56.90 --> 00:01:00.14
+The brief lists it as out of scope or nice to have.
+
+00:01:00.14 --> 00:01:03.20
+None of its requirements appears in any journey.
+
+00:01:03.20 --> 00:01:06.50
+Or it depends on a design that was already deferred.
+
+00:01:06.50 --> 00:01:11.08
+Each deferred design keeps its reason, and the reason is copied into the
+
+00:01:11.08 --> 00:01:11.84
+requirement.
+
+00:01:12.19 --> 00:01:14.95
+The threshold defaults to three ideal days.
+
+00:01:14.95 --> 00:01:19.19
+The API sends it with every lease, so the worker never guesses it.
+
+00:01:20.34 --> 00:01:22.99
+Increments follow the journeys in order.
+
+00:01:22.99 --> 00:01:27.76
+Within a journey, each design is placed after the designs it depends on,
+
+00:01:27.76 --> 00:01:32.01
+and then the journey is cut into parts of at most the threshold.
+
+00:01:32.01 --> 00:01:35.66
+A dependency cycle fails the run and names the designs.
+
+00:01:36.01 --> 00:01:41.42
+When the commit lands, the worker reports the backlog to a new stage nine only
+
+00:01:41.42 --> 00:01:42.04
+endpoint.
+
+00:01:42.04 --> 00:01:47.59
+The API replaces the direction's backlog in a new increments table and records a
+
+00:01:47.59 --> 00:01:49.12
+backlog planned event.
+
+00:01:49.12 --> 00:01:52.79
+It refuses any increment that depends on a later one.
+
+00:01:53.94 --> 00:01:57.89
+The backend gained thirteen tests: the threshold in the lease,
+
+00:01:57.89 --> 00:02:03.25
+recording and replacing the backlog, the dependency rules, the stage nine only rule,
+
+00:02:03.25 --> 00:02:05.16
+and stage nine's commit paths.
+
+00:02:05.16 --> 00:02:10.19
+The worker gained eleven, covering each descope reason, the ordering and parts,
+
+00:02:10.19 --> 00:02:15.28
+the read me, the status lines, a cycle, and a missing estimate that fails before
+
+00:02:15.28 --> 00:02:16.69
+anything is committed.
+
+00:02:17.84 --> 00:02:20.33
+Here is the real app with one worker.
+
+00:02:20.33 --> 00:02:24.12
+The Owner submits, and stages zero to nine run for real.
+
+00:02:24.12 --> 00:02:28.37
+Stage nine estimates, plans three increments, and reports them,
+
+00:02:28.37 --> 00:02:32.56
+and then the scripted increments stage finishes the direction.
+
+00:02:32.91 --> 00:02:36.80
+And this is the estimates read me for a pottery kiln example.
+
+00:02:36.80 --> 00:02:41.72
+Three increments, in order, and three deferred designs, each with its reason.
+
+00:02:42.87 --> 00:02:48.60
+Every design now has an estimate, oversized and unneeded work is deferred with a
+
+00:02:48.60 --> 00:02:52.97
+reason, and the backlog is ordered by journey and dependency.
+
+00:02:52.97 --> 00:02:55.84
+Next, stage ten builds those increments.
