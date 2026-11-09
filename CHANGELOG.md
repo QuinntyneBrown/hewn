@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Stages 2 and 3 (journey 1, L2-010 AC1-AC5, L2-012 AC1-AC3): screens designed in Magic Patterns over MCP and
+  exported to `docs/mocks/` with a manifest, validated for coverage, states, parsing and horizontal scroll; the
+  design system extracted to `docs/design-system/`, validated for token groups and mock colour coverage, with
+  Magic Patterns mismatches logged. A fake Magic Patterns MCP server backs tests and the e2e stack.
 - Document stages 1, 4, 5, 7 and 8 (journey 1, L2-009, L2-013, L2-014, L2-016, L2-017): the worker checks out
   the product repository through `GET /api/worker/runs/{id}/repository/archive`, runs the stage's agent,
   validates the brief, stack decision, requirements, design coverage and journeys, and commits only the

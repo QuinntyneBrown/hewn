@@ -62,3 +62,20 @@ The agent designs through MCP tools; the exporter and validator run after the ag
 Designs are made through MCP (L2-010 AC1), recorded with URLs (AC2), exported (AC3) and validated (AC4). An unreachable server fails the run without fallback (AC5).
 
 ![Sequence diagram: design, export and validate](diagrams/sequence-design-export-validate.png)
+
+## Decisions made while building the slice
+
+- **One executor.** Stage 2 is a definition in `DocumentStageExecutor` with two hooks, a required Magic Patterns
+  connection and an export step, rather than a separate `DesignStageExecutor`.
+- **Fail before the agent.** The executor pings Magic Patterns before the agent starts. An unconfigured,
+  unreachable or refused server fails the run with "Magic Patterns unavailable: not configured | unreachable |
+  credential rejected", never the server's own message, and the agent never runs, so no mock is hand-written.
+- **Export format (ADR 0007).** Each design holds `default.html`, `loading.html`, `empty.html` and `error.html` as
+  raw HTML; `MockExporter` reads them with `read_artifact_files` and writes `docs/mocks/{screen}/{state}.html`.
+- **Manifest.** `docs/mocks/manifest.json`: `{ screens: [{ screen, feature, magicPatternsUrl, editorId, states,
+  notApplicable }] }`. A feature is covered when a screen names it; the brief's feature title is the text before
+  " — ".
+- **Validation.** parse5 parse errors fail a file; Chromium (playwright-core) loads each file at 375, 768 and
+  1280 px and fails it when `scrollWidth > clientWidth`. All problems are reported together.
+- **Credential.** `HEWN_MAGIC_PATTERNS_URL` and `HEWN_MAGIC_PATTERNS_TOKEN` on the worker until L2-040's store.
+- **Deferred.** L2-010 AC6 (feature directions update existing designs) with journey 2.
