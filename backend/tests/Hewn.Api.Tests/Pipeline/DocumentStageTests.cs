@@ -1,5 +1,5 @@
 // Acceptance Test
-// Traces to: L2-009, L2-013, L2-014, L2-016, L2-017
+// Traces to: L2-009, L2-010, L2-012, L2-013, L2-014, L2-016, L2-017
 // Description: Document stages read the repository as an archive and may write only their own documents and the decision log
 
 using System.Formats.Tar;
@@ -86,6 +86,10 @@ public sealed class DocumentStageTests : IAsyncLifetime
 
     [Theory]
     [InlineData(1, "docs/brief.md")]
+    [InlineData(2, "docs/mocks/manifest.json")]
+    [InlineData(2, "docs/mocks/sign-in/default.html")]
+    [InlineData(3, "docs/design-system/tokens.json")]
+    [InlineData(3, "docs/design-system/components/button.html")]
     [InlineData(4, "docs/adr/0001-stack.md")]
     [InlineData(5, "docs/specs/L1.md")]
     [InlineData(5, "docs/specs/L2.md")]
@@ -104,6 +108,8 @@ public sealed class DocumentStageTests : IAsyncLifetime
 
     [Theory]
     [InlineData(1, "docs/specs/L1.md")]
+    [InlineData(2, "docs/design-system/tokens.json")]
+    [InlineData(3, "docs/mocks/sign-in/default.html")]
     [InlineData(4, "docs/brief.md")]
     [InlineData(5, "src/app.ts")]
     [InlineData(7, "docs/journeys.md")]

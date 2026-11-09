@@ -11,6 +11,8 @@ lease (409 `lease_lost`, or two missed heartbeats) stops the run, and the worker
 | `HEWN_LOCATION` | `Local` (default) or `Cloud` |
 | `HEWN_WORKER_NAME` | Display name; defaults to the host name |
 | `HEWN_EXECUTOR` | `stages` (default: stages built so far run for real, the rest scripted) or `scripted` |
+| `HEWN_MAGIC_PATTERNS_URL`, `HEWN_MAGIC_PATTERNS_TOKEN` | Magic Patterns MCP endpoint and credential for stages 2 and 3 |
+| `HEWN_MAGIC_PATTERNS_POLL_MS` | Generation poll interval; defaults to 60000, as Magic Patterns asks |
 | `HEWN_SCRIPTED_STEP_MS` | Time each scripted step takes (default 1000) |
 | `HEWN_SCRIPTED_FAIL_STAGE` | Stage whose main step fails, for failure demos |
 
@@ -25,6 +27,15 @@ Stages built so far:
   agent answered for itself, validates the output and commits only the stage's documents and
   `docs/decisions.md`. The agent is `ScriptedStageAgent` until the Claude Agent SDK agent lands with run
   isolation.
+
+- **Stage 2, Designs**: fails with "Magic Patterns unavailable: {reason}" unless Magic Patterns answers, has the
+  agent design every core feature there, exports each design's `{state}.html` files to `docs/mocks/` with
+  `manifest.json`, then checks coverage, states, parsing and horizontal scroll at 375, 768 and 1280 px in
+  Chromium (`npx playwright-core install chromium`).
+- **Stage 3, Design system**: extracts `docs/design-system/tokens.json` and component pages, fails on mock colours
+  with no token, and logs Magic Patterns design-system colours it does not match.
+- `node src/magic-patterns/fake-server-main.ts` (with `PORT` and `MAGIC_PATTERNS_TOKEN`) runs the fake Magic
+  Patterns MCP server the e2e stack uses.
 
 Every other stage runs the scripted executor: three steps (prepare, run, commit) with no agent, model or
 GitHub call, until its real executor lands.

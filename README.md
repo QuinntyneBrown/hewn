@@ -234,6 +234,8 @@ Secrets are never written to configuration files in the repository.
 | `HEWN_API_URL`                  | Worker  | Where the worker connects                                                |
 | `HEWN_LOCATION`                 | Worker  | `Local` or `Cloud`                                                       |
 | `HEWN_EXECUTOR`                 | Worker  | `stages` (default: built stages run for real, the rest scripted) or `scripted` |
+| `HEWN_MAGIC_PATTERNS_URL`       | Worker  | Magic Patterns MCP endpoint (streamable HTTP); stage 2 fails without it   |
+| `HEWN_MAGIC_PATTERNS_TOKEN`     | Worker  | Magic Patterns credential (secret); moves to the credential store with L2-040 |
 
 ## Running the tests
 

@@ -61,3 +61,18 @@ Two validators can fail the run; the Magic Patterns comparison only logs, as L2-
 Tokens and component pages are produced (L2-012 AC1). Unmatched mock colours fail the run (AC2). Magic Patterns mismatches are logged (AC3).
 
 ![Sequence diagram: extract and validate](diagrams/sequence-extract-and-validate.png)
+
+## Decisions made while building the slice
+
+- **Tokens file.** `docs/design-system/tokens.json` in DTCG form. `DesignSystemOutputValidator` requires
+  non-empty `color.light`, `color.dark`, `typography`, `spacing`, `radius`, `elevation` and `motion` groups and at
+  least one page under `docs/design-system/components/`. Matching pages to the mocks' components is left to the
+  skill until components can be identified in exported HTML.
+- **Colour coverage.** `TokenCoverageValidator` normalises hex (3, 4, 6, 8 digits), `rgb()` and `hsl()` to
+  `#rrggbb[aa]` in both the mocks and the colour tokens, and lists each unmatched colour once per file. Named
+  colours are not checked.
+- **Magic Patterns comparison.** Optional: when Magic Patterns is reachable and the project has an active custom
+  design system, `MagicPatternsTokenComparer` reads its `index.css` custom properties (light values) and logs
+  each colour no extracted token matches. Without Magic Patterns the stage logs that the comparison was skipped
+  and continues; the run does not fail on mismatches (L2-012 AC3 asks only that they are listed).
+- **Deferred.** L2-012 AC4 (browse the design system in Mission Control) with journey 15.

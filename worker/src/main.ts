@@ -6,6 +6,7 @@ import { DOCUMENT_STAGES, DocumentStageExecutor } from './executors/document-exe
 import { ScriptedStageExecutor } from './executors/scripted-executor.ts';
 import { StageRouter, type StageExecutor } from './executors/stage-executor.ts';
 import { HttpHewnApi } from './http-api.ts';
+import { McpMagicPatterns } from './magic-patterns/magic-patterns.ts';
 import { WorkLoop } from './work-loop.ts';
 
 const VERSION = '0.1.0';
@@ -39,8 +40,17 @@ const scripted = new ScriptedStageExecutor({
   stepMs: Number(process.env.HEWN_SCRIPTED_STEP_MS ?? 1000),
   failStage: failStage === undefined ? undefined : Number(failStage),
 });
+// Magic Patterns' MCP endpoint and credential; without them the design stages fail as not configured.
+const magicPatternsUrl = process.env.HEWN_MAGIC_PATTERNS_URL;
+const magicPatternsToken = process.env.HEWN_MAGIC_PATTERNS_TOKEN;
+const pollMs = Number(process.env.HEWN_MAGIC_PATTERNS_POLL_MS ?? 60_000);
+const magicPatterns =
+  magicPatternsUrl && magicPatternsToken
+    ? () => new McpMagicPatterns(magicPatternsUrl, magicPatternsToken, { pollMs })
+    : undefined;
+
 // Only the scripted agent exists so far; the Claude Agent SDK agent arrives with run isolation.
-const documents = new DocumentStageExecutor(new ScriptedStageAgent());
+const documents = new DocumentStageExecutor(new ScriptedStageAgent(), magicPatterns);
 const executor: StageExecutor =
   executorName === 'scripted'
     ? scripted
