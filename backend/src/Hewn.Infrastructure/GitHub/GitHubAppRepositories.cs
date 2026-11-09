@@ -78,8 +78,85 @@ public sealed class GitHubAppRepositories(GitHubAppClient client) : IGitHubRepos
     public async Task<string> CommitAsync(string owner, string name, string message, IReadOnlyList<RepositoryFile> files, CancellationToken cancellationToken)
     {
         var token = await RepositoryTokenAsync(owner, name, cancellationToken);
+        var branch = await DefaultBranchAsync(token, owner, name, cancellationToken);
+        return await CommitToRefAsync(token, owner, name, branch, message, files, cancellationToken);
+    }
+
+    public async Task<string> CommitToBranchAsync(string owner, string name, string branch, string message, IReadOnlyList<RepositoryFile> files, CancellationToken cancellationToken)
+    {
+        var token = await RepositoryTokenAsync(owner, name, cancellationToken);
         var repo = $"repos/{owner}/{name}";
-        var branch = (await GetJsonAsync(token, repo, cancellationToken))!.Value.GetProperty("default_branch").GetString()!;
+        if (await GetJsonAsync(token, $"{repo}/git/ref/heads/{branch}", cancellationToken) is null)
+        {
+            var main = await DefaultBranchAsync(token, owner, name, cancellationToken);
+            var from = (await GetJsonAsync(token, $"{repo}/git/ref/heads/{main}", cancellationToken))!.Value.GetProperty("object").GetProperty("sha").GetString();
+            await PostJsonAsync(token, $"{repo}/git/refs", new { @ref = $"refs/heads/{branch}", sha = from }, cancellationToken);
+        }
+
+        return await CommitToRefAsync(token, owner, name, branch, message, files, cancellationToken);
+    }
+
+    public async Task<PullRequestInfo> OpenPullRequestAsync(string owner, string name, string head, string title, string body, CancellationToken cancellationToken)
+    {
+        var token = await RepositoryTokenAsync(owner, name, cancellationToken);
+        var main = await DefaultBranchAsync(token, owner, name, cancellationToken);
+        return ToPullRequest(await PostJsonAsync(token, $"repos/{owner}/{name}/pulls", new { title, body, head, @base = main }, cancellationToken));
+    }
+
+    public async Task<PullRequestInfo?> GetPullRequestAsync(string owner, string name, int number, CancellationToken cancellationToken)
+    {
+        var token = await RepositoryTokenAsync(owner, name, cancellationToken);
+        var pull = await GetJsonAsync(token, $"repos/{owner}/{name}/pulls/{number}", cancellationToken);
+        return pull is null ? null : ToPullRequest(pull.Value);
+    }
+
+    public async Task<IReadOnlyList<CheckRunInfo>> ListChecksAsync(string owner, string name, int number, CancellationToken cancellationToken)
+    {
+        var token = await RepositoryTokenAsync(owner, name, cancellationToken);
+        var pull = await GetJsonAsync(token, $"repos/{owner}/{name}/pulls/{number}", cancellationToken)
+            ?? throw new GitHubException($"Pull request #{number} does not exist.");
+        var sha = pull.GetProperty("head").GetProperty("sha").GetString();
+        var runs = (await GetJsonAsync(token, $"repos/{owner}/{name}/commits/{sha}/check-runs?per_page=100", cancellationToken))!.Value;
+        return [.. runs.GetProperty("check_runs").EnumerateArray().Select(r => new CheckRunInfo(
+            r.GetProperty("name").GetString()!,
+            r.GetProperty("status").GetString()!,
+            r.GetProperty("conclusion").ValueKind == JsonValueKind.Null ? null : r.GetProperty("conclusion").GetString()))];
+    }
+
+    public async Task<string> MergePullRequestAsync(string owner, string name, int number, string title, CancellationToken cancellationToken)
+    {
+        var token = await RepositoryTokenAsync(owner, name, cancellationToken);
+        using var response = await client.SendAsRepositoryAsync(HttpMethod.Put, $"repos/{owner}/{name}/pulls/{number}/merge", token, cancellationToken, new { merge_method = "squash", commit_title = $"{title} (#{number})" });
+        var merged = await Ensure(response, $"merge #{number}").Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
+        return merged.GetProperty("sha").GetString()!;
+    }
+
+    public async Task ProtectDefaultBranchAsync(string owner, string name, IReadOnlyList<string> checks, CancellationToken cancellationToken)
+    {
+        var token = await RepositoryTokenAsync(owner, name, cancellationToken);
+        var main = await DefaultBranchAsync(token, owner, name, cancellationToken);
+        using var response = await client.SendAsRepositoryAsync(HttpMethod.Put, $"repos/{owner}/{name}/branches/{main}/protection", token, cancellationToken, new
+        {
+            required_status_checks = new { strict = true, contexts = checks },
+            enforce_admins = false,
+            required_pull_request_reviews = (object?)null,
+            restrictions = (object?)null,
+        });
+        Ensure(response, $"protect {main}");
+    }
+
+    private static PullRequestInfo ToPullRequest(JsonElement pull) => new(
+        pull.GetProperty("number").GetInt32(),
+        pull.GetProperty("html_url").GetString()!,
+        pull.GetProperty("head").GetProperty("ref").GetString()!,
+        pull.TryGetProperty("merged", out var merged) && merged.ValueKind == JsonValueKind.True);
+
+    private async Task<string> DefaultBranchAsync(string token, string owner, string name, CancellationToken cancellationToken) =>
+        (await GetJsonAsync(token, $"repos/{owner}/{name}", cancellationToken))!.Value.GetProperty("default_branch").GetString()!;
+
+    private async Task<string> CommitToRefAsync(string token, string owner, string name, string branch, string message, IReadOnlyList<RepositoryFile> files, CancellationToken cancellationToken)
+    {
+        var repo = $"repos/{owner}/{name}";
         var head = (await GetJsonAsync(token, $"{repo}/git/ref/heads/{branch}", cancellationToken))!.Value.GetProperty("object").GetProperty("sha").GetString()!;
         var baseTree = (await GetJsonAsync(token, $"{repo}/git/commits/{head}", cancellationToken))!.Value.GetProperty("tree").GetProperty("sha").GetString()!;
 

@@ -45,7 +45,8 @@ public sealed class GetRepositoryArchiveHandler(IAppDbContext db, LeaseService l
 
 public sealed record CommitFile(string Path, string ContentBase64);
 
-public sealed record CommitFilesCommand(Guid RunId, string WorkerId, long Epoch, string IdempotencyKey, string Message, IReadOnlyList<CommitFile> Files)
+/// <param name="Branch">Null for the default branch; only stage 6 commits to a branch, and only to <c>hewn/scaffold</c>.</param>
+public sealed record CommitFilesCommand(Guid RunId, string WorkerId, long Epoch, string IdempotencyKey, string Message, IReadOnlyList<CommitFile> Files, string? Branch = null)
     : IRequest<string>;
 
 public sealed class CommitFilesValidator : AbstractValidator<CommitFilesCommand>
@@ -82,14 +83,12 @@ public sealed class CommitFilesHandler(IAppDbContext db, LeaseService leases, IG
             return Sha(done.Result);
         }
 
-        CommitPolicy.EnsureAllowed(run.Stage, command.Files.Select(f => f.Path));
+        CommitPolicy.EnsureAllowed(run.Stage, command.Branch, command.Files.Select(f => f.Path));
         var project = await RunProject.RequireRepositoryAsync(db, run, cancellationToken);
-        var sha = await gitHub.CommitAsync(
-            project.RepositoryOwner!,
-            project.RepositoryName!,
-            command.Message,
-            command.Files.Select(f => new RepositoryFile(f.Path, Convert.FromBase64String(f.ContentBase64))).ToList(),
-            cancellationToken);
+        var files = command.Files.Select(f => new RepositoryFile(f.Path, Convert.FromBase64String(f.ContentBase64))).ToList();
+        var sha = command.Branch is null
+            ? await gitHub.CommitAsync(project.RepositoryOwner!, project.RepositoryName!, command.Message, files, cancellationToken)
+            : await gitHub.CommitToBranchAsync(project.RepositoryOwner!, project.RepositoryName!, command.Branch, command.Message, files, cancellationToken);
 
         db.GitHubMutations.Add(new GitHubMutation(run.Id, command.IdempotencyKey, Kind, JsonSerializer.Serialize(new { sha }), clock.GetUtcNow()));
         await FencedSave.SaveAsync(db, cancellationToken);
