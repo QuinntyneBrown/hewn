@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddSingleton<Projects.DirectionSubmissionGate>();
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly, includeInternalTypes: true);
         services.AddScoped<EventAppender>();
+        services.AddScoped<Projects.ProjectSummaryReader>();
         services.AddScoped<PipelineOrchestrator>();
         services.AddScoped<LeaseService>();
         services.AddSingleton<RunControlSignals>();
