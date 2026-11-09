@@ -87,6 +87,17 @@ public sealed class Run
         LeaseExpiresAt = null;
     }
 
+    /// <summary>Queues a paused run again; its next lease carries on after the checkpoint it kept.</summary>
+    public void Resume()
+    {
+        if (Status != RunStatus.Paused)
+        {
+            throw new InvalidOperationException($"Run {Id} is {Status}; only a paused run resumes.");
+        }
+
+        Status = RunStatus.Queued;
+    }
+
     public void Succeed(DateTimeOffset now) => End(RunStatus.Succeeded, null, now);
 
     public void Fail(string error, DateTimeOffset now) => End(RunStatus.Failed, error, now);

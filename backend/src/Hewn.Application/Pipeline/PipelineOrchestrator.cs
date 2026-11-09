@@ -95,6 +95,17 @@ public sealed class PipelineOrchestrator(IAppDbContext db, EventAppender events,
         await AppendProjectAsync(project, cancellationToken);
     }
 
+    /// <summary>Raise and resume (L2-053 AC3): the paused run is queued again and its stage, direction and project run.</summary>
+    public async Task OnBudgetRaisedAsync(Run run, Project project, Direction direction, decimal budgetUsd, CancellationToken cancellationToken)
+    {
+        run.Resume();
+        var stage = direction.RaiseBudgetAndResume(budgetUsd, run.Stage);
+        await AppendStageAsync(direction, stage, cancellationToken);
+        await AppendDirectionAsync(direction, cancellationToken);
+        project.ChangeStatus(ProjectStatus.Running);
+        await AppendProjectAsync(project, cancellationToken);
+    }
+
     public Task OnRepositoryAttachedAsync(Project project, CancellationToken cancellationToken) =>
         AppendProjectAsync(project, cancellationToken);
 

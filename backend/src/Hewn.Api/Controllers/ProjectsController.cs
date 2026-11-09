@@ -1,5 +1,6 @@
 using Hewn.Api.Auth;
 using Hewn.Application.Projects;
+using Hewn.Application.Spend;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -43,6 +44,14 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
         var result = await mediator.Send(new SubmitFeatureDirectionCommand(projectId, request.Idea, request.BudgetUsd), cancellationToken);
         return Created($"/api/projects/{result.ProjectId}", result);
     }
+
+    public sealed record RaiseAndResumeRequest(decimal BudgetUsd, decimal CurrentBudgetUsd);
+
+    /// <summary>L2-053 AC3: raises a budget-reached direction's budget above its spend and resumes it, in one action.</summary>
+    [HttpPost("{projectId:guid}/directions/{directionId:guid}/raise-and-resume")]
+    [Authorize(Policy = AuthSetup.OwnerPolicy)]
+    public Task<RaiseAndResumeResult> RaiseAndResume(Guid projectId, Guid directionId, RaiseAndResumeRequest request, CancellationToken cancellationToken) =>
+        mediator.Send(new RaiseAndResumeCommand(projectId, directionId, request.BudgetUsd, request.CurrentBudgetUsd), cancellationToken);
 
     [HttpGet("{projectId:guid}")]
     public Task<ProjectDto> Get(Guid projectId, CancellationToken cancellationToken) =>
