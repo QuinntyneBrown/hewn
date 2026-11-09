@@ -15,6 +15,12 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'projects/new' },
       {
+        path: 'projects',
+        pathMatch: 'full',
+        title: 'Projects · Hewn',
+        loadComponent: () => import('./pages/projects/projects.page').then((m) => m.ProjectsPage),
+      },
+      {
         path: 'projects/new',
         title: 'New direction · Hewn',
         loadComponent: () =>
