@@ -127,7 +127,12 @@ export class IncrementStageExecutor implements StageExecutor {
       if (problems.length) throw new Blocked(problems.map((p) => `Test commit: ${p}`));
       await commitChanges(key('tests'), `Add acceptance tests for ${increment.title}`);
       const red = (await gate.acceptance(directory, testFiles, signal)).counts;
-      await context.updateIncrement(n, { status: 'InProgress', redFailing: red.failed, redPassing: red.passed });
+      await context.updateIncrement(n, {
+        status: 'InProgress',
+        testCount: red.failed + red.passed,
+        redFailing: red.failed,
+        redPassing: red.passed,
+      });
       await context.log(
         'info',
         red.failed > 0
@@ -139,6 +144,8 @@ export class IncrementStageExecutor implements StageExecutor {
       const implement = async (failing: string[]): Promise<GateResult> => {
         while (state.iterations < maxIterations) {
           state.iterations++;
+          // Each iteration is reported as it starts, so Mission Control shows "iteration n of 10" live.
+          await context.updateIncrement(n, { status: 'InProgress', iterations: state.iterations });
           await this.agent.run(
             this.agentTask(leased, directory, 'implementing-incrementally', task('implement', { failing })),
             signal,
@@ -157,7 +164,14 @@ export class IncrementStageExecutor implements StageExecutor {
             'info',
             `Increment ${n}: iteration ${state.iterations} of ${maxIterations} ${result.passed ? 'green' : 'failed'}`,
           );
-          if (result.passed) return result;
+          if (result.passed) {
+            await context.updateIncrement(n, {
+              status: 'InProgress',
+              iterations: state.iterations,
+              greenAfter: state.iterations,
+            });
+            return result;
+          }
           failing = result.failing;
         }
         throw new Blocked(failing);
@@ -171,6 +185,12 @@ export class IncrementStageExecutor implements StageExecutor {
         rmSync(join(directory, 'docs/videos', slug), { recursive: true, force: true });
         await context.log('warn', `Increment ${n}: video failed: ${video.failed}`);
       }
+      await context.updateIncrement(
+        n,
+        'path' in video
+          ? { status: 'InProgress', video: 'Recorded', videoNote: `docs/videos/${slug}/` }
+          : { status: 'InProgress', video: 'Failed', videoNote: video.failed.slice(0, 500) },
+      );
 
       // Pull request (L2-024 AC1, AC2); the key has no epoch, so a resumed run gets the same pull request.
       const journeyTitle = journeyTitleOf(directory, increment.journey) ?? increment.title;
@@ -194,6 +214,8 @@ export class IncrementStageExecutor implements StageExecutor {
         body: pullRequestBody(facts()),
       });
       await context.log('info', `Increment ${n}: opened #${pull.number} ${pull.url}`);
+      // L2-024 AC3: the increment shows its pull request, and the API follows its checks from now on.
+      await context.updateIncrement(n, { status: 'InProgress', pullRequestNumber: pull.number });
 
       // Checks and merge (L2-025).
       for (let attempt = 1; ; attempt++) {
