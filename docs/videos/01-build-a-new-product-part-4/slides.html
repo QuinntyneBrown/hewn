@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 01 part 4 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="01 · part 4" data-video-title="Build a new product, part four" data-parts="Introduction|What we built|Design|Code|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 1 · Part 4</div>
+  <h1>The document stages</h1>
+  <p class="lead">Brief, stack, requirements, detailed designs and user journeys: written, validated and committed.</p>
+</section>
+
+<section id="built" data-part="1" data-cue="One executor serves all five stages.">
+  <h2>One executor, five stages</h2>
+  <ul class="steps">
+    <li class="done">Check out</li><li class="done">Run agent</li><li class="done">Validate</li><li class="done">Commit</li>
+  </ul>
+</section>
+
+<section id="definitions" data-part="1" data-cue="Each stage has a definition">
+  <h2>Stage definitions</h2>
+  <div class="cols cols--3">
+    <div class="card"><h3>1 · Idea</h3><p class="small"><span class="file">grilling</span> → <span class="file">docs/brief.md</span></p></div>
+    <div class="card"><h3>4 · Stack</h3><p class="small">no skill → <span class="file">docs/adr/0001-stack.md</span></p></div>
+    <div class="card"><h3>5 · Requirements</h3><p class="small"><span class="file">engineering-requirements</span> → <span class="file">docs/specs/L1.md, L2.md</span></p></div>
+    <div class="card"><h3>7 · Detailed designs</h3><p class="small"><span class="file">writing-software-design-documents</span> → <span class="file">docs/detailed-designs/</span></p></div>
+    <div class="card"><h3>8 · User journeys</h3><p class="small">no skill → <span class="file">docs/journeys.md</span></p></div>
+    <div class="card"><h3>Every stage</h3><p class="small">may append to <span class="file">docs/decisions.md</span></p></div>
+  </div>
+</section>
+
+<section id="archive" data-part="2" data-cue="The worker still holds no GitHub credential.">
+  <h2>Through the API</h2>
+  <ul class="bullets small">
+    <li><span class="file">GET /api/worker/runs/{id}/repository/archive</span>: the default branch as a tarball, fenced by the lease</li>
+    <li><span class="file">POST …/github/mutations</span>: one keyed commit, <span class="file">{run}/2/commit</span></li>
+  </ul>
+</section>
+
+<section id="decisions" data-part="2" data-cue="Nobody answers questions during a run.">
+  <div class="code-file">docs/decisions.md</div>
+  <pre class="code" data-lang="md">## 2026-11-09 · Stage 4 Stack
+
+**Question:** Which stack should the product use?
+
+**Answer:** .NET 10 (LTS) backend with an Angular 21 frontend
+
+**Rationale:** No stack was named, so the default applies (L2-013).</pre>
+  <p class="muted small">Each question and answer is also written to the run log.</p>
+</section>
+
+<section id="diff" data-part="3" data-cue="After the agent finishes, the executor compares">
+  <div class="code-file">worker/src/executors/document-executor.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3-4,6">for (const [path, hash] of await snapshot(directory)) {
+  if (before.get(path) === hash) continue;
+  if (path === DECISIONS || definition.outputs.some((o) =&gt; (o.endsWith('/') ? path.startsWith(o) : path === o))) {
+    files.push({ path, content: await readFile(join(directory, path)) });
+  } else {
+    await context.log('warn', `Ignored a change outside this stage: ${path}`);
+  }
+}
+await context.commit(COMMIT_STEP, definition.commitMessage, files);</pre>
+</section>
+
+<section id="validator" data-part="3" data-cue="The validators are plain functions">
+  <div class="code-file">worker/test/validators.spec.ts</div>
+  <pre class="code tight" data-lang="ts">expect(validateRequirements(dir)).toEqual([
+  'Duplicate ID: L2-002',
+  'L2-004 traces to L1-009, which does not exist',
+  'L1-003 has no L2 requirement',
+  'L2-005 has no Given/When/Then criterion',
+  'L2-005 uses "should"',
+]);</pre>
+</section>
+
+<section id="brief" data-part="3" data-cue="For now a scripted agent stands in for the model.">
+  <div class="code-file">docs/brief.md · from the scripted agent</div>
+  <pre class="code tight" data-lang="md">## Core features
+- Sign in
+- Main workflow — booking firing slots for a shared pottery kiln
+- Review history
+
+## Out of scope
+- Native mobile apps</pre>
+</section>
+
+<section id="tests" data-part="4" data-cue="Seventeen validator tests">
+  <h2>Tests</h2>
+  <div class="cols cols--3">
+    <div class="card"><h3>67 backend</h3><p class="small">Archive, fencing, each stage's paths</p></div>
+    <div class="card"><h3>45 worker</h3><p class="small">17 validator, 6 executor</p></div>
+    <div class="card"><h3>18 Playwright</h3><p class="small">The pipeline runs the document stages for real</p></div>
+  </div>
+</section>
+
+<section id="clip" data-part="5" data-cue="Here is the real app, with one worker." data-clip="clips/documents.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Submit; the document stages run and the direction completes</aside>
+</section>
+
+<section id="screens" data-part="5" data-cue="The same view on a phone">
+  <div class="cols cols--wide">
+    <figure><img src="screens/documents-desktop.png" alt="Document stages succeeded, Estimates running"></figure>
+    <figure class="phone"><img src="screens/complete-phone-dark.png" alt="Direction complete on a phone, dark theme"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="6" data-cue="Five stages now write and validate real documents">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>One executor, five stage definitions, five validators</li>
+    <li>Decisions logged; only the stage's files committed</li>
+    <li>Next: stages 2 and 3 through Magic Patterns</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

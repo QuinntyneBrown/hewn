@@ -9,6 +9,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 01 · 1 | [Build a new product, part one: submit a direction](01-build-a-new-product-part-1/README.md) | ~4:27 | Journey 1, part 1 |
 | 01 · 2 | [Build a new product, part two: run the pipeline](01-build-a-new-product-part-2/README.md) | ~3:41 | Journey 1, part 2 |
 | 01 · 3 | [Build a new product, part three: bootstrap the repository](01-build-a-new-product-part-3/README.md) | ~3:23 | Journey 1, part 3 |
+| 01 · 4 | [Build a new product, part four: the document stages](01-build-a-new-product-part-4/README.md) | ~3:32 | Journey 1, part 4 |
 
 ## Voice
 
