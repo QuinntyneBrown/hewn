@@ -41,6 +41,13 @@ export interface Direction {
   pauseRequested: boolean;
   pausedBy: string | null;
   pausedAt: string | null;
+  /** Who cancelled the direction and when (L2-029 AC3). */
+  cancelledBy: string | null;
+  cancelledAt: string | null;
+  /** Seconds from Cancel to the worker stopping; null when no run was in progress. */
+  stoppedWithinSeconds: number | null;
+  /** Open pull requests labelled hewn:cancelled. */
+  labelledPullRequests: number[];
 }
 
 export interface Project {
@@ -148,6 +155,15 @@ export interface SubmitProductDirectionResult {
 }
 
 /** What Pause and Resume answer (L2-029 AC1, AC2). */
+/** Cancel's answer: stopped is false when the worker holding the run didn't answer in time; worker names it. */
+export interface CancelDirectionResult {
+  directionId: string;
+  status: DirectionStatus;
+  stopped: boolean;
+  stoppedWithinSeconds: number | null;
+  worker: string | null;
+}
+
 export interface DirectionControlResult {
   directionId: string;
   status: DirectionStatus;

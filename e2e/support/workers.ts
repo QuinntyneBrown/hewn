@@ -21,6 +21,8 @@ export interface WorkerOptions {
   /** Model calls a scripted stage makes in its main step, and input tokens per call (output is a tenth). */
   modelCalls?: number;
   callTokens?: number;
+  /** Stage whose scripted main step opens a pull request on hewn/scaffold (stage 6 allows it). */
+  pullRequestStage?: number;
 }
 
 export function startWorkers(count: number, stepMs: number, options: WorkerOptions = {}): () => Promise<void> {
@@ -44,6 +46,9 @@ export function startWorkers(count: number, stepMs: number, options: WorkerOptio
         HEWN_SCRIPTED_LOG_LINES: String(options.logLines ?? 0),
         HEWN_SCRIPTED_MODEL_CALLS: String(options.modelCalls ?? 0),
         HEWN_SCRIPTED_CALL_TOKENS: String(options.callTokens ?? 10_000),
+        ...(options.pullRequestStage === undefined
+          ? {}
+          : { HEWN_SCRIPTED_PULL_REQUEST_STAGE: String(options.pullRequestStage) }),
         HEWN_MAGIC_PATTERNS_URL: `http://127.0.0.1:${MAGIC_PATTERNS_PORT}/mcp`,
         HEWN_MAGIC_PATTERNS_TOKEN: MAGIC_PATTERNS_TOKEN,
         HEWN_MAGIC_PATTERNS_POLL_MS: '200',

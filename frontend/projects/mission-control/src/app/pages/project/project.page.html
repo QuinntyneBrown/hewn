@@ -16,7 +16,9 @@
           </div>
           <div class="phead__meta">
             @if (direction(); as d) {
-              @if (d.kind === 'Feature') {
+              @if (d.status === 'Cancelled') {
+                <span>{{ d.kind }} direction · cancelled {{ shortDate(d.cancelledAt) }}</span>
+              } @else if (d.kind === 'Feature') {
                 <span>Feature direction · {{ title(d.idea) }}</span>
               } @else {
                 <span>{{ d.kind }} direction · submitted by {{ d.submittedBy }}</span>
@@ -56,38 +58,45 @@
               </div>
             </div>
             @if (session.isOwner() && direction(); as d) {
-              @switch (control(d)) {
-                @case ('pause') {
-                  <div class="cluster">
+              @if (control(d) || canCancel(d)) {
+                <div class="cluster">
+                  @switch (control(d)) {
+                    @case ('pause') {
+                      <button
+                        class="btn btn--sm"
+                        type="button"
+                        [disabled]="controlSending()"
+                        (click)="sendControl(d, 'pause')"
+                      >
+                        <svg hw-icon name="pause" class="icon--sm"></svg>Pause
+                      </button>
+                    }
+                    @case ('pausing') {
+                      <button class="btn btn--sm" type="button" aria-busy="true" disabled>
+                        <svg hw-icon name="spinner" class="icon--sm icon--spin"></svg>Pausing…
+                      </button>
+                    }
+                    @case ('resume') {
+                      <button
+                        class="btn btn--sm"
+                        type="button"
+                        [disabled]="controlSending()"
+                        (click)="sendControl(d, 'resume')"
+                      >
+                        <svg hw-icon name="play" class="icon--sm"></svg>Resume
+                      </button>
+                    }
+                  }
+                  @if (canCancel(d)) {
                     <button
-                      class="btn btn--sm"
+                      class="btn btn--ghost btn--sm"
                       type="button"
-                      [disabled]="controlSending()"
-                      (click)="sendControl(d, 'pause')"
+                      (click)="cancelDirection(d)"
                     >
-                      <svg hw-icon name="pause" class="icon--sm"></svg>Pause
+                      <svg hw-icon name="stop" class="icon--sm"></svg>Cancel
                     </button>
-                  </div>
-                }
-                @case ('pausing') {
-                  <div class="cluster">
-                    <button class="btn btn--sm" type="button" aria-busy="true" disabled>
-                      <svg hw-icon name="spinner" class="icon--sm icon--spin"></svg>Pausing…
-                    </button>
-                  </div>
-                }
-                @case ('resume') {
-                  <div class="cluster">
-                    <button
-                      class="btn btn--sm"
-                      type="button"
-                      [disabled]="controlSending()"
-                      (click)="sendControl(d, 'resume')"
-                    >
-                      <svg hw-icon name="play" class="icon--sm"></svg>Resume
-                    </button>
-                  </div>
-                }
+                  }
+                </div>
               }
             }
           </div>
@@ -154,6 +163,17 @@
                   </div>
                 </div>
               }
+            }
+            @if (d.status === 'Cancelled') {
+              <div class="callout" role="status">
+                <svg hw-icon name="banCircle" class="icon--lg"></svg>
+                <div>
+                  <p class="callout__title">{{ cancelledTitle(d.cancelledBy, d.cancelledAt) }}</p>
+                  <p class="callout__body">
+                    {{ cancelledBody(d.stoppedWithinSeconds, d.labelledPullRequests) }}
+                  </p>
+                </div>
+              </div>
             }
             @if (d.status === 'Paused' && d.pauseReason === pausedByOwner) {
               <div class="callout callout--warn" role="status">

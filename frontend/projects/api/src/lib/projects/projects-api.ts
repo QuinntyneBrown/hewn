@@ -9,6 +9,7 @@ import {
   ProjectSummary,
   RaiseAndResumeRequest,
   RaiseAndResumeResult,
+  CancelDirectionResult,
   DirectionControlResult,
   SubmitFeatureDirectionRequest,
   SubmitProductDirectionRequest,
@@ -45,6 +46,8 @@ export interface ProjectsApi {
   pause(projectId: string, directionId: string): Observable<DirectionControlResult>;
   /** L2-029 AC2: the direction continues from its next step. */
   resume(projectId: string, directionId: string): Observable<DirectionControlResult>;
+  /** L2-029 AC3: answers once the worker stopped its run or 10 seconds passed. */
+  cancel(projectId: string, directionId: string): Observable<CancelDirectionResult>;
 }
 
 export const PROJECTS_API = new InjectionToken<ProjectsApi>('ProjectsApi');
@@ -113,6 +116,13 @@ export class HttpProjectsApi implements ProjectsApi {
 
   resume(projectId: string, directionId: string): Observable<DirectionControlResult> {
     return this.control(projectId, directionId, 'resume');
+  }
+
+  cancel(projectId: string, directionId: string): Observable<CancelDirectionResult> {
+    return this.http.post<CancelDirectionResult>(
+      `/api/projects/${encodeURIComponent(projectId)}/directions/${encodeURIComponent(directionId)}/cancel`,
+      {},
+    );
   }
 
   private control(

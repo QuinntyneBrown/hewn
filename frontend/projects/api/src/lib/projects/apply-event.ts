@@ -66,6 +66,10 @@ export function applyEvent(project: Project, event: ProjectEvent): Project {
               pauseRequested: (p['pauseRequested'] as boolean | undefined) ?? false,
               pausedBy: (p['pausedBy'] as string | null) ?? null,
               pausedAt: (p['pausedAt'] as string | null) ?? null,
+              cancelledBy: (p['cancelledBy'] as string | null) ?? null,
+              cancelledAt: (p['cancelledAt'] as string | null) ?? null,
+              stoppedWithinSeconds: (p['stoppedWithinSeconds'] as number | null) ?? null,
+              labelledPullRequests: (p['labelledPullRequests'] as number[] | undefined) ?? [],
             },
       );
       break;

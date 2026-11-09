@@ -26,6 +26,7 @@ export const ICONS = {
   info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
   close: '<path d="M18 6 6 18M6 6l12 12"/>',
   play: '<polygon points="6 3 20 12 6 21 6 3"/>',
+  stop: '<rect x="3" y="3" width="18" height="18" rx="2"/>',
   pause:
     '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
   arrowDown: '<path d="M12 5v14M19 12l-7 7-7-7"/>',

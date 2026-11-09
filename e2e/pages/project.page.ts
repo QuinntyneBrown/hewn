@@ -30,6 +30,17 @@ export class ProjectPage {
   readonly pausingButton: Locator;
   readonly resumeButton: Locator;
   readonly pausedCallout: Locator;
+  /** Cancel (L2-029 AC3): the header control, its confirmation dialog and the cancelled callout. */
+  readonly cancelButton: Locator;
+  readonly cancelDialog: Locator;
+  readonly cancelConfirm: Locator;
+  readonly cancelling: Locator;
+  readonly cancelTryAgain: Locator;
+  readonly keepRunning: Locator;
+  readonly cancelFailure: Locator;
+  readonly cancelledCallout: Locator;
+  readonly cancelDialogFooter: Locator;
+  readonly headerMeta: Locator;
   /** Raise and resume (L2-053 AC3): the callout's controls and the dialog they open. */
   readonly calloutNewBudget: Locator;
   readonly raiseBudget: Locator;
@@ -78,6 +89,16 @@ export class ProjectPage {
     this.pausingButton = header.getByRole('button', { name: 'Pausing…' });
     this.resumeButton = header.getByRole('button', { name: 'Resume', exact: true });
     this.pausedCallout = page.locator('.callout', { hasText: 'Nothing new starts until Resume' });
+    this.cancelButton = header.getByRole('button', { name: 'Cancel', exact: true });
+    this.cancelDialog = page.getByRole('alertdialog', { name: /^Cancel .+’s direction\?$/ });
+    this.cancelConfirm = this.cancelDialog.getByRole('button', { name: 'Cancel direction' });
+    this.cancelling = this.cancelDialog.getByRole('button', { name: 'Cancelling…' });
+    this.cancelTryAgain = this.cancelDialog.getByRole('button', { name: 'Try again' });
+    this.keepRunning = this.cancelDialog.getByRole('button', { name: 'Keep running' });
+    this.cancelFailure = this.cancelDialog.getByRole('alert');
+    this.cancelDialogFooter = this.cancelDialog.locator('.dialog__footer');
+    this.cancelledCallout = page.locator('.callout', { hasText: 'Submit a new direction to continue.' });
+    this.headerMeta = header.locator('.phead__meta');
     this.calloutNewBudget = this.budgetReachedCallout.getByLabel('New budget');
     this.raiseBudget = this.budgetReachedCallout.getByRole('button', { name: 'Raise budget and resume' });
     this.raiseDialog = page.getByRole('dialog', { name: /^Raise .+’s budget$/ });
@@ -88,6 +109,22 @@ export class ProjectPage {
     this.dialogConfirm = this.raiseDialog.getByRole('button', { name: /Raise and resume|Saving…/ });
     this.dialogCancel = this.raiseDialog.getByRole('button', { name: 'Cancel' });
     this.dialogFailure = this.raiseDialog.getByRole('alert').filter({ hasText: 'The budget wasn’t changed' });
+  }
+
+  /** Resolves once the cancel dialog's entrance animation has finished, so its colours are final. */
+  async cancelDialogSettled(): Promise<void> {
+    await this.cancelDialog
+      .locator('.dialog__panel')
+      .evaluate((panel) => Promise.all(panel.getAnimations().map((a) => a.finished)));
+  }
+
+  /** The pull requests the fake GitHub holds for the project's repository (e2e stack only). */
+  async pullRequests(
+    repository: string,
+  ): Promise<{ number: number; open: boolean; merged: boolean; labels: string[] }[]> {
+    const response = await this.page.request.get(`/api/fakes/github/${repository}/pulls`);
+    if (!response.ok()) throw new Error(`pulls: ${response.status()}`);
+    return (await response.json()) as { number: number; open: boolean; merged: boolean; labels: string[] }[];
   }
 
   /** The project's event stream from the start, as the API serves it to Mission Control. */
