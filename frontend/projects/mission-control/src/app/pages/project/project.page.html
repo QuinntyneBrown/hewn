@@ -38,11 +38,14 @@
         <ol class="stages" aria-label="Pipeline">
           @for (stage of d.stages; track stage.number) {
             <li>
-              <span
+              <a
                 class="stage"
+                routerLink="."
+                [queryParams]="{ stage: stage.number }"
+                replaceUrl
                 [attr.data-stage]="stage.number"
                 [attr.data-status]="stage.status"
-                [attr.aria-current]="stage.status === 'Running' ? 'step' : null"
+                [attr.aria-current]="stage.number === selected()?.number ? 'step' : null"
                 ><span class="stage__row"
                   ><svg hw-status-icon [status]="stage.status"></svg
                   ><span class="stage__n">{{ stage.number }}</span
@@ -53,52 +56,223 @@
                   ><span class="stage__dur tabular">{{
                     duration(stage.startedAt, stage.endedAt)
                   }}</span></span
-                ><span class="visually-hidden">{{ stage.status }}</span></span
-              >
+                ><span class="visually-hidden">{{ stage.status }}</span>
+                @if (stage.status === 'Running' && (stage.step || stage.latestLine)) {
+                  <span class="stage__live"
+                    ><span class="stage__live-step">{{ stage.step }}</span
+                    ><span class="stage__live-line">{{ stage.latestLine }}</span></span
+                  >
+                }
+              </a>
             </li>
           }
         </ol>
-        @if (queued(); as waiting) {
-          @if (waiting.length > 0) {
-            <section aria-label="Queued directions">
+        @if (selected(); as stage) {
+          <section
+            [attr.aria-label]="'Stage ' + stage.number + ' detail'"
+            class="truncate"
+            style="overflow: visible; white-space: normal"
+          >
+            @if (queued(); as waiting) {
+              @if (waiting.length > 0) {
+                <div class="callout callout--info" role="status">
+                  <svg hw-icon name="info" class="icon--lg"></svg>
+                  <div>
+                    <p class="callout__title">
+                      {{ waiting.length }}
+                      {{ waiting.length === 1 ? 'direction' : 'directions' }} queued
+                    </p>
+                    <p class="callout__body">
+                      {{ waiting[0].kind }} direction “{{ title(waiting[0].idea) }}”, submitted by
+                      {{ waiting[0].submittedBy }} at {{ clockTime(waiting[0].submittedAt) }},
+                      starts when this direction is Complete or Cancelled. One direction runs per
+                      project, first in, first out.
+                    </p>
+                  </div>
+                </div>
+              }
+            }
+            @if (d.status === 'Complete' && d.kind === 'Feature') {
               <div class="callout callout--info" role="status">
                 <svg hw-icon name="info" class="icon--lg"></svg>
                 <div>
-                  <p class="callout__title">
-                    {{ waiting.length }}
-                    {{ waiting.length === 1 ? 'direction' : 'directions' }} queued
-                  </p>
+                  <p class="callout__title">Feature direction complete</p>
                   <p class="callout__body">
-                    {{ waiting[0].kind }} direction “{{ title(waiting[0].idea) }}”, submitted by
-                    {{ waiting[0].submittedBy }} at {{ clockTime(waiting[0].submittedAt) }}, starts
-                    when this direction is Complete or Cancelled. One direction runs per project,
-                    first in, first out.
+                    {{ featureOutcome(p.name, d.hasUiChange, d.uiDecision) }}
                   </p>
                 </div>
               </div>
-            </section>
-          }
-        }
-        @if (d.status === 'Complete' && d.kind === 'Feature') {
-          <section aria-label="Direction result">
-            <div class="callout callout--info" role="status">
-              <svg hw-icon name="info" class="icon--lg"></svg>
-              <div>
-                <p class="callout__title">Feature direction complete</p>
-                <p class="callout__body">
-                  {{ featureOutcome(p.name, d.hasUiChange, d.uiDecision) }}
-                </p>
+            } @else if (d.status === 'Complete') {
+              <div class="callout callout--ok" role="status">
+                <svg hw-icon name="checkCircle" class="icon--lg"></svg>
+                <div>
+                  <p class="callout__title">Direction complete</p>
+                  <p class="callout__body">All {{ d.stages.length }} stages succeeded.</p>
+                </div>
               </div>
+            }
+
+            <div class="stage-title">
+              <h2>
+                <span class="n">{{ stage.number }}</span> {{ stage.name }}
+              </h2>
+              <hw-status [status]="stage.status" />
             </div>
-          </section>
-        } @else if (d.status === 'Complete') {
-          <section aria-label="Direction result">
-            <div class="callout callout--ok" role="status">
-              <svg hw-icon name="checkCircle" class="icon--lg"></svg>
+            <dl class="meta">
               <div>
-                <p class="callout__title">Direction complete</p>
-                <p class="callout__body">All {{ d.stages.length }} stages succeeded.</p>
+                <dt>Skill</dt>
+                <dd class="mono">{{ meta()?.skill }}</dd>
               </div>
+              <div>
+                <dt>Output</dt>
+                <dd class="mono">{{ meta()?.output }}</dd>
+              </div>
+              <div>
+                <dt>Duration</dt>
+                <dd>{{ duration(stage.startedAt, stage.endedAt) }}</dd>
+              </div>
+              <div>
+                <dt>Worker</dt>
+                <dd>{{ detail()?.runs?.[0]?.worker ?? 'Not leased yet' }}</dd>
+              </div>
+            </dl>
+
+            <div class="tabs mt-6" role="tablist" aria-label="Stage detail">
+              @for (t of tabs; track t.id; let i = $index) {
+                <button
+                  type="button"
+                  class="tab tab--sm"
+                  role="tab"
+                  [id]="'stage-tab-' + t.id"
+                  [attr.aria-selected]="tab() === t.id"
+                  [attr.aria-controls]="'stage-panel-' + t.id"
+                  [attr.tabindex]="tab() === t.id ? 0 : -1"
+                  (click)="tab.set(t.id)"
+                  (keydown)="onTabKey($event, i)"
+                >
+                  {{ t.label }}
+                </button>
+              }
+            </div>
+
+            <div
+              role="tabpanel"
+              [id]="'stage-panel-' + tab()"
+              [attr.aria-labelledby]="'stage-tab-' + tab()"
+            >
+              @switch (tab()) {
+                @case ('log') {
+                  @if (notice(); as n) {
+                    <div class="empty empty--tight mt-4">
+                      <svg hw-icon name="pending"></svg>
+                      <div>
+                        <h3 class="empty__title">{{ n.title }}</h3>
+                        <p class="empty__text">{{ n.text }}</p>
+                      </div>
+                    </div>
+                  } @else {
+                    <hw-live-log [lines]="logLines()" [live]="stage.status === 'Running'" />
+                  }
+                }
+                @case ('runs') {
+                  @if (detail()?.runs?.length) {
+                    <div class="table-wrap mt-4">
+                      <table class="table">
+                        <caption class="visually-hidden">
+                          Runs of stage
+                          {{
+                            stage.number
+                          }}
+                        </caption>
+                        <thead>
+                          <tr>
+                            <th scope="col">Run</th>
+                            <th scope="col">Status</th>
+                            <th scope="col" class="col-sm">Worker</th>
+                            <th scope="col" class="num">Duration</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (run of detail()!.runs; track run.id) {
+                            <tr>
+                              <td class="mono">{{ shortId(run.id) }}</td>
+                              <td><hw-status [status]="runStatus(run.status)" /></td>
+                              <td class="mono col-sm text-muted">{{ run.worker ?? '—' }}</td>
+                              <td class="num tabular text-muted">
+                                {{ duration(run.startedAt, run.endedAt) }}
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                    @for (run of detail()!.runs; track run.id) {
+                      @if (run.error) {
+                        <p class="text-caption mt-3">{{ shortId(run.id) }}: {{ run.error }}</p>
+                      }
+                    }
+                  } @else {
+                    <p class="text-sm text-muted mt-4">No runs yet.</p>
+                  }
+                }
+                @case ('artifacts') {
+                  @if (detail()?.artifacts?.length) {
+                    <ul class="files mt-4">
+                      @for (a of detail()!.artifacts; track a.path + a.sha) {
+                        <li class="file">
+                          <span class="file__path"
+                            ><svg
+                              hw-icon
+                              [name]="a.path.endsWith('/') ? 'folder' : 'file'"
+                              class="icon--sm"
+                            ></svg
+                            ><span class="truncate">{{ a.path }}</span></span
+                          >
+                          <span class="file__sha">{{ a.sha.slice(0, 7) }}</span>
+                          <span class="file__when">{{ clockTime(a.committedAt) }}</span>
+                          @if (detail()!.repository; as repo) {
+                            <a
+                              class="file__open"
+                              [href]="
+                                'https://github.com/' + repo + '/blob/' + a.sha + '/' + a.path
+                              "
+                              [attr.aria-label]="
+                                'Open ' + a.path + ' on GitHub at ' + a.sha.slice(0, 7)
+                              "
+                              ><svg hw-icon name="externalLink" class="icon--sm"></svg
+                            ></a>
+                          }
+                        </li>
+                      }
+                    </ul>
+                  } @else {
+                    <p class="text-sm text-muted mt-4">No files committed yet.</p>
+                  }
+                }
+                @case ('decisions') {
+                  @if (detail()?.decisions?.length) {
+                    <ol class="mt-4">
+                      @for (dec of detail()!.decisions; track $index) {
+                        <li class="decision">
+                          <div class="decision__when">
+                            <span class="text-muted">{{ clockTime(dec.recordedAt) }}</span
+                            ><span class="text-subtle">{{ stage.name }}</span>
+                          </div>
+                          <div class="truncate" style="white-space: normal">
+                            <p class="decision__q">{{ dec.question }}</p>
+                            <p class="decision__a">{{ dec.answer }}</p>
+                            @if (dec.rationale) {
+                              <p class="decision__why">{{ dec.rationale }}</p>
+                            }
+                          </div>
+                        </li>
+                      }
+                    </ol>
+                  } @else {
+                    <p class="text-sm text-muted mt-4">No decisions recorded in this stage.</p>
+                  }
+                }
+              }
             </div>
           </section>
         }
@@ -118,6 +292,43 @@
       <a class="btn" routerLink="/projects/new">Back to Hewn</a>
     </div>
   </div>
+} @else if (loaded().state === 'error') {
+  <div class="pad">
+    <div class="empty empty--error" role="alert">
+      <svg hw-icon name="errorCircle"></svg>
+      <div>
+        <h1 class="empty__title">The pipeline couldn’t load</h1>
+        <p class="empty__text">
+          The project’s stages didn’t load. Any run in progress is unaffected and keeps going.
+        </p>
+      </div>
+      <div class="cluster">
+        <button class="btn" type="button" (click)="retry()">
+          <svg hw-icon name="refresh"></svg>Try again
+        </button>
+        <a class="btn btn--ghost" routerLink="/projects/new">Back to Hewn</a>
+      </div>
+    </div>
+  </div>
 } @else {
-  <div class="pad section" aria-busy="true"><p class="text-sm text-muted">Loading project…</p></div>
+  <div class="pad section">
+    <div class="split split--pipeline">
+      <div aria-busy="true" aria-live="polite">
+        <p class="visually-hidden">Loading the pipeline</p>
+        <div class="stack" aria-hidden="true">
+          @for (row of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; track row) {
+            <div class="cluster"><span class="skeleton skeleton--w75"></span></div>
+          }
+        </div>
+      </div>
+      <section aria-label="Stage detail">
+        <div class="stack" aria-hidden="true">
+          <span class="skeleton skeleton--title"></span>
+          <span class="skeleton skeleton--w50"></span>
+          <span class="skeleton skeleton--block" style="height: 6rem"></span>
+          <span class="skeleton skeleton--log"></span>
+        </div>
+      </section>
+    </div>
+  </div>
 }

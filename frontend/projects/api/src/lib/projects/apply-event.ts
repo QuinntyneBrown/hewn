@@ -1,5 +1,19 @@
 import { ProjectEvent } from '../live/project-event';
-import { Direction, DirectionStatus, Project, ProjectStatus, StageStatus } from './models';
+import { Direction, DirectionStatus, Project, ProjectStatus, Stage, StageStatus } from './models';
+
+/** Applies `change` to one stage of one direction. */
+function updateStage(
+  project: Project,
+  directionId: unknown,
+  stage: unknown,
+  change: (s: Stage) => Stage,
+): Direction[] {
+  return project.directions.map((d) =>
+    d.id !== directionId
+      ? d
+      : { ...d, stages: d.stages.map((s) => (s.number !== stage ? s : change(s))) },
+  );
+}
 
 /** Folds one live event into a project snapshot. Events at or below lastSequence are already applied. */
 export function applyEvent(project: Project, event: ProjectEvent): Project {
@@ -11,24 +25,35 @@ export function applyEvent(project: Project, event: ProjectEvent): Project {
   const next: Project = { ...project, lastSequence: event.sequence };
   switch (event.type) {
     case 'StageChanged':
-      next.directions = project.directions.map((d) =>
-        d.id !== p['directionId']
-          ? d
-          : {
-              ...d,
-              stages: d.stages.map((s) =>
-                s.number !== p['stage']
-                  ? s
-                  : {
-                      ...s,
-                      status: p['status'] as StageStatus,
-                      startedAt: (p['startedAt'] as string | null) ?? null,
-                      endedAt: (p['endedAt'] as string | null) ?? null,
-                    },
-              ),
-            },
-      );
+      // A new status starts or ends a run, so the live step and line no longer apply.
+      next.directions = updateStage(project, p['directionId'], p['stage'], (s) => ({
+        ...s,
+        status: p['status'] as StageStatus,
+        startedAt: (p['startedAt'] as string | null) ?? null,
+        endedAt: (p['endedAt'] as string | null) ?? null,
+        step: null,
+        latestLine: null,
+      }));
       break;
+    case 'StepStarted':
+      next.directions = updateStage(project, p['directionId'], p['stage'], (s) => ({
+        ...s,
+        step: p['name'] as string,
+        runId: p['runId'] as string,
+      }));
+      break;
+    case 'LogLines': {
+      const lines = (p['lines'] as { text: string }[] | undefined) ?? [];
+      const last = lines.at(-1);
+      if (last) {
+        next.directions = updateStage(project, p['directionId'], p['stage'], (s) => ({
+          ...s,
+          latestLine: last.text,
+          runId: p['runId'] as string,
+        }));
+      }
+      break;
+    }
     case 'DirectionChanged':
       next.directions = project.directions.map((d) =>
         d.id !== p['directionId']

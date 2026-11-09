@@ -13,6 +13,11 @@ export interface Stage {
   status: StageStatus;
   startedAt: string | null;
   endedAt: string | null;
+  /** While Running: the step the worker is on and the latest log line (L2-030 AC2). */
+  step?: string | null;
+  latestLine?: string | null;
+  /** The run the live step and line come from. */
+  runId?: string | null;
 }
 
 export interface Direction {
@@ -62,6 +67,51 @@ export interface ProjectSummary {
 export interface SubmitFeatureDirectionRequest {
   idea: string;
   budgetUsd: number;
+}
+
+/** A run of a stage; Status is Queued, Running, Succeeded, Failed or Cancelled. */
+export interface RunSummary {
+  id: string;
+  status: string;
+  worker: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  error: string | null;
+}
+
+/** A file a run of the stage committed, with the commit that holds it. */
+export interface Artifact {
+  path: string;
+  sha: string;
+  committedAt: string;
+}
+
+/** A question a skill would have asked, answered by the agent (L2-054). */
+export interface Decision {
+  runId: string;
+  question: string;
+  answer: string;
+  rationale: string;
+  recordedAt: string;
+}
+
+/** A selected stage's runs (newest first), artifacts and decisions (L2-030 AC3). */
+export interface StageDetail {
+  stage: number;
+  repository: string | null;
+  runs: RunSummary[];
+  artifacts: Artifact[];
+  decisions: Decision[];
+}
+
+export type LogLevel = 'info' | 'warn' | 'error' | 'tool';
+
+/** One numbered line of a run's log. */
+export interface LogLine {
+  line: number;
+  at: string;
+  level: LogLevel | string;
+  text: string;
 }
 
 export interface SubmitProductDirectionResult {

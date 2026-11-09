@@ -119,4 +119,62 @@ describe('applyEvent', () => {
       uiDecision: 'No screen changes.',
     });
   });
+
+  it('shows the step a running stage started and its latest log line', () => {
+    let next = applyEvent(
+      project(),
+      event(2, 'StepStarted', {
+        directionId: 'd',
+        stage: 1,
+        runId: 'r1',
+        step: 2,
+        name: 'Write documents',
+      }),
+    );
+    next = applyEvent(
+      next,
+      event(3, 'LogLines', {
+        directionId: 'd',
+        stage: 1,
+        runId: 'r1',
+        lines: [
+          { line: 1, at: '2026-11-09T10:00:00Z', level: 'info', text: 'Checked out' },
+          { line: 2, at: '2026-11-09T10:00:01Z', level: 'info', text: 'Wrote docs/brief.md' },
+        ],
+      }),
+    );
+
+    const stage = next.directions[0]!.stages[1]!;
+    expect(stage.step).toBe('Write documents');
+    expect(stage.latestLine).toBe('Wrote docs/brief.md');
+    expect(stage.runId).toBe('r1');
+    expect(next.directions[0]!.stages[0]!.step).toBeUndefined();
+  });
+
+  it('clears the live step and line when the stage changes status', () => {
+    const running = applyEvent(
+      project(),
+      event(2, 'StepStarted', {
+        directionId: 'd',
+        stage: 0,
+        runId: 'r0',
+        step: 1,
+        name: 'Check out',
+      }),
+    );
+
+    const done = applyEvent(
+      running,
+      event(3, 'StageChanged', {
+        directionId: 'd',
+        stage: 0,
+        status: 'Succeeded',
+        startedAt: null,
+        endedAt: null,
+      }),
+    );
+
+    expect(done.directions[0]!.stages[0]!.step).toBeNull();
+    expect(done.directions[0]!.stages[0]!.latestLine).toBeNull();
+  });
 });

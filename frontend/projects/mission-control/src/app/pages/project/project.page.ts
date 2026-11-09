@@ -1,43 +1,84 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import {
   applyEvent,
   Direction,
+  LogLine,
   Project,
   PROJECT_EVENTS,
   ProjectEvent,
   PROJECTS_API,
+  StageDetail,
 } from '@hewn/api';
-import { IconComponent, StatusComponent, StatusIconComponent } from '@hewn/components';
+import { IconComponent, StatusComponent, StatusIconComponent, StatusName } from '@hewn/components';
 import {
+  asyncScheduler,
+  auditTime,
   catchError,
+  combineLatest,
+  distinctUntilChanged,
+  EMPTY,
+  expand,
   filter,
   map,
+  merge,
   Observable,
   of,
+  reduce,
   scan,
   shareReplay,
   startWith,
   switchMap,
   throttleTime,
-  asyncScheduler,
   timer,
 } from 'rxjs';
+import { LiveLogComponent } from './live-log.component';
 import {
   clockTime,
   directionTitle,
   featureOutcome,
   formatDuration,
   headerStatus,
+  logTime,
+  mergeLines,
+  selectedStage,
+  STAGE_META,
+  stageNotice,
 } from './pipeline-view';
 
-type Loaded = { state: 'loading' } | { state: 'missing' } | { state: 'ready'; project: Project };
+type Loaded =
+  | { state: 'loading' }
+  | { state: 'missing' }
+  | { state: 'error' }
+  | { state: 'ready'; project: Project };
 
-/** The project page: header and pipeline, kept current by the live event stream. */
+type Tab = 'log' | 'runs' | 'artifacts' | 'decisions';
+
+const TABS: readonly { id: Tab; label: string }[] = [
+  { id: 'log', label: 'Log' },
+  { id: 'runs', label: 'Runs' },
+  { id: 'artifacts', label: 'Artifacts' },
+  { id: 'decisions', label: 'Decisions' },
+];
+
+/** Events that change what a selected stage's detail lists. */
+const DETAIL_EVENTS = new Set(['StageChanged', 'StepStarted', 'DecisionRecorded']);
+
+/** Stage changes are announced at most once every 5 seconds per project (L2-047 AC3). */
+export const ANNOUNCE_EVERY_MS = 5000;
+
+/** A page of a log; the API returns at most this many lines a request. */
+const LOG_PAGE = 5000;
+
+/**
+ * The project page (L2-030): the pipeline with each stage's status, duration and, while running, its step and
+ * latest log line; the selected stage's runs, log, artifacts and decisions. Kept current by the live event stream.
+ */
 @Component({
   selector: 'hw-project-page',
-  imports: [RouterLink, IconComponent, StatusComponent, StatusIconComponent],
+  imports: [RouterLink, IconComponent, StatusComponent, StatusIconComponent, LiveLogComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project.page.html',
 })
@@ -46,32 +87,57 @@ export class ProjectPage {
   private readonly events = inject(PROJECT_EVENTS);
 
   readonly projectId = input.required<string>();
+  /** `?stage=` from the URL: the stage the user selected. */
+  readonly stage = input<string>();
+
+  /** Bumped by "Try again" to load the project once more. */
+  private readonly attempt = signal(0);
 
   /** The snapshot from GET, then every later event folded in. */
-  private readonly live$: Observable<{ loaded: Loaded; event: ProjectEvent | null }> = toObservable(
-    this.projectId,
-  ).pipe(
-    switchMap((id) =>
-      this.api.getProject(id).pipe(
-        switchMap((snapshot) =>
-          this.events.follow(id, snapshot.lastSequence).pipe(
-            scan(
-              (acc, event) => ({
-                project: applyEvent(acc.project, event),
-                event: event as ProjectEvent | null,
-              }),
-              { project: snapshot, event: null as ProjectEvent | null },
+  private readonly live$: Observable<{ loaded: Loaded; event: ProjectEvent | null }> =
+    combineLatest([toObservable(this.projectId), toObservable(this.attempt)]).pipe(
+      switchMap(([id]) =>
+        this.api.getProject(id).pipe(
+          switchMap((snapshot) =>
+            this.events.follow(id, snapshot.lastSequence).pipe(
+              scan(
+                (acc, event) => ({
+                  project: applyEvent(acc.project, event),
+                  event: event as ProjectEvent | null,
+                }),
+                { project: snapshot, event: null as ProjectEvent | null },
+              ),
+              startWith({ project: snapshot, event: null }),
+              map(({ project, event }) => ({
+                loaded: { state: 'ready', project } as Loaded,
+                event,
+              })),
             ),
-            startWith({ project: snapshot, event: null }),
-            map(({ project, event }) => ({ loaded: { state: 'ready', project } as Loaded, event })),
           ),
+          catchError((error: unknown) =>
+            of({
+              loaded: {
+                state:
+                  error instanceof HttpErrorResponse && error.status === 404 ? 'missing' : 'error',
+              } as Loaded,
+              event: null,
+            }),
+          ),
+          startWith({ loaded: { state: 'loading' } as Loaded, event: null }),
         ),
-        catchError(() => of({ loaded: { state: 'missing' } as Loaded, event: null })),
-        startWith({ loaded: { state: 'loading' } as Loaded, event: null }),
       ),
-    ),
-    // One GET and one hub follow, shared by the page state and the announcer.
-    shareReplay({ bufferSize: 1, refCount: true }),
+      // One GET and one hub follow, shared by the page state, the stage detail, the log and the announcer.
+      shareReplay({ bufferSize: 1, refCount: true }),
+    );
+
+  /**
+   * Each live event once per subscriber. A subscriber that joins later also gets the latest one again, which is
+   * harmless: log lines are merged by line number, and the detail is simply reloaded.
+   */
+  private readonly events$: Observable<ProjectEvent> = this.live$.pipe(
+    map(({ event }) => event),
+    filter((event): event is ProjectEvent => event !== null),
+    distinctUntilChanged((a, b) => a.sequence === b.sequence),
   );
 
   private readonly live = toSignal(this.live$, {
@@ -104,8 +170,116 @@ export class ProjectPage {
     );
   });
 
+  /** The stage the detail panel shows (L2-030 AC3). */
+  protected readonly selected = computed(() => {
+    const direction = this.direction();
+    if (!direction) return null;
+    const number = selectedStage(direction.stages, this.stage());
+    return direction.stages.find((s) => s.number === number) ?? null;
+  });
+
+  protected readonly meta = computed(() => {
+    const stage = this.selected();
+    return stage ? STAGE_META[stage.number] : null;
+  });
+
+  protected readonly tabs = TABS;
+  protected readonly tab = signal<Tab>('log');
+
+  /** Which stage's detail to load; a change of status refreshes it as well. */
+  private readonly detailKey = computed(() => {
+    const direction = this.direction();
+    const stage = this.selected();
+    return direction && stage
+      ? { projectId: this.projectId(), directionId: direction.id, stage: stage.number }
+      : null;
+  });
+
+  /** The selected stage's runs, artifacts and decisions, reloaded when an event touches them. */
+  protected readonly detail = toSignal(
+    toObservable(this.detailKey).pipe(
+      distinctUntilChanged(
+        (a, b) =>
+          a?.directionId === b?.directionId &&
+          a?.stage === b?.stage &&
+          a?.projectId === b?.projectId,
+      ),
+      switchMap((key) =>
+        key === null
+          ? of(null)
+          : merge(
+              of(null),
+              this.events$.pipe(
+                filter(
+                  (e) =>
+                    DETAIL_EVENTS.has(e.type) &&
+                    e.payload['directionId'] === key.directionId &&
+                    e.payload['stage'] === key.stage,
+                ),
+                auditTime(250),
+              ),
+            ).pipe(
+              switchMap(() =>
+                this.api
+                  .getStageDetail(key.projectId, key.directionId, key.stage)
+                  .pipe(catchError(() => of(null))),
+              ),
+              startWith(null as StageDetail | null),
+            ),
+      ),
+    ),
+    { initialValue: null },
+  );
+
+  /** The run whose log the Log tab shows: the live run, else the stage's newest. */
+  private readonly logRun = computed(() => {
+    const stage = this.selected();
+    const runId = stage?.runId ?? this.detail()?.runs[0]?.id ?? null;
+    return runId ? { projectId: this.projectId(), runId } : null;
+  });
+
+  /** The selected run's log: every stored line, then lines as they arrive (L2-033 AC1). */
+  protected readonly logLines = toSignal(
+    toObservable(this.logRun).pipe(
+      distinctUntilChanged((a, b) => a?.runId === b?.runId),
+      switchMap((run) => {
+        if (!run) return of([] as LogLine[]);
+        const stored$ = this.api.getRunLog(run.projectId, run.runId, 0, LOG_PAGE).pipe(
+          expand((page) =>
+            page.length < LOG_PAGE
+              ? EMPTY
+              : this.api.getRunLog(run.projectId, run.runId, page.at(-1)!.line, LOG_PAGE),
+          ),
+          reduce((all, page) => all.concat(page), [] as LogLine[]),
+          catchError(() => of([] as LogLine[])),
+        );
+        const arriving$ = this.events$.pipe(
+          filter((e) => e.type === 'LogLines' && e.payload['runId'] === run.runId),
+          map((e) => (e.payload['lines'] as LogLine[] | undefined) ?? []),
+        );
+        return merge(stored$, arriving$).pipe(
+          scan((shown, lines) => mergeLines(shown, lines), [] as LogLine[]),
+          startWith([] as LogLine[]),
+        );
+      }),
+    ),
+    { initialValue: [] as LogLine[] },
+  );
+
+  /** The text shown instead of a log for a stage that hasn't run. */
+  protected readonly notice = computed(() => {
+    const stage = this.selected();
+    const direction = this.direction();
+    if (!stage || !direction) return null;
+    // A queued run that no worker has leased yet has nothing to show.
+    if (this.detail()?.runs.some((r) => r.startedAt !== null)) return null;
+    const first = direction.stages.find((s) => s.status !== 'Skipped')?.number ?? 0;
+    return stageNotice(stage, first);
+  });
+
   protected readonly title = directionTitle;
   protected readonly clockTime = clockTime;
+  protected readonly logTime = logTime;
   protected readonly featureOutcome = featureOutcome;
 
   protected readonly status = computed(() => {
@@ -118,12 +292,11 @@ export class ProjectPage {
     initialValue: Date.now(),
   });
 
-  /** Stage changes for the polite live region, at most one announcement a second (the latest wins). */
+  /** Stage changes for the polite live region, at most one announcement every 5 seconds (the latest wins). */
   protected readonly announcement = toSignal(
-    this.live$.pipe(
-      map(({ event }) => event),
-      filter((event): event is ProjectEvent => event?.type === 'StageChanged'),
-      throttleTime(1000, asyncScheduler, { leading: true, trailing: true }),
+    this.events$.pipe(
+      filter((event) => event.type === 'StageChanged'),
+      throttleTime(ANNOUNCE_EVERY_MS, asyncScheduler, { leading: true, trailing: true }),
       map(
         (event) =>
           `Stage ${event.payload['stage']}, ${event.payload['name']}, ${event.payload['status']}`,
@@ -134,5 +307,33 @@ export class ProjectPage {
 
   protected duration(startedAt: string | null, endedAt: string | null): string {
     return formatDuration(startedAt, endedAt, endedAt ? 0 : this.now());
+  }
+
+  protected runStatus(status: string): StatusName {
+    return status as StatusName;
+  }
+
+  protected shortId(id: string): string {
+    return `run-${id.slice(0, 8)}`;
+  }
+
+  protected retry(): void {
+    this.attempt.update((n) => n + 1);
+  }
+
+  /** Arrow keys, Home and End move between tabs, as the WAI-ARIA tabs pattern asks. */
+  protected onTabKey(event: KeyboardEvent, index: number): void {
+    const moves: Record<string, number> = {
+      ArrowRight: index + 1,
+      ArrowLeft: index - 1,
+      Home: 0,
+      End: TABS.length - 1,
+    };
+    const next = moves[event.key];
+    if (next === undefined) return;
+    event.preventDefault();
+    const target = TABS[(next + TABS.length) % TABS.length]!;
+    this.tab.set(target.id);
+    document.getElementById(`stage-tab-${target.id}`)?.focus();
   }
 }

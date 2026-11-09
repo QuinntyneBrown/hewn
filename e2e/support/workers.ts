@@ -13,7 +13,14 @@ const MAGIC_PATTERNS_TOKEN = 'e2e-magic-patterns-token-not-a-secret';
  * fake GitHub, the Greenlit fixture and a fake Magic Patterns MCP server; the rest use the scripted executor (three steps of `stepMs` each),
  * so pipeline behaviour stays deterministic.
  */
-export function startWorkers(count: number, stepMs: number): () => Promise<void> {
+export interface WorkerOptions {
+  /** `stages` runs each stage's real executor; `scripted` runs three timed steps for every stage. */
+  executor?: 'stages' | 'scripted';
+  /** Log lines a scripted stage writes in its main step. */
+  logLines?: number;
+}
+
+export function startWorkers(count: number, stepMs: number, options: WorkerOptions = {}): () => Promise<void> {
   const src = join(import.meta.dirname, '..', '..', 'worker', 'src');
   const output = process.env['HEWN_E2E_WORKER_LOGS'] ? 'inherit' : 'ignore';
   const magicPatterns = spawn(process.execPath, [join(src, 'magic-patterns', 'fake-server-main.ts')], {
@@ -29,8 +36,9 @@ export function startWorkers(count: number, stepMs: number): () => Promise<void>
         HEWN_WORKER_TOKEN: E2E_WORKER_TOKEN,
         HEWN_LOCATION: 'Local',
         HEWN_WORKER_NAME: `e2e-worker-${i + 1}`,
-        HEWN_EXECUTOR: 'stages',
+        HEWN_EXECUTOR: options.executor ?? 'stages',
         HEWN_SCRIPTED_STEP_MS: String(stepMs),
+        HEWN_SCRIPTED_LOG_LINES: String(options.logLines ?? 0),
         HEWN_MAGIC_PATTERNS_URL: `http://127.0.0.1:${MAGIC_PATTERNS_PORT}/mcp`,
         HEWN_MAGIC_PATTERNS_TOKEN: MAGIC_PATTERNS_TOKEN,
         HEWN_MAGIC_PATTERNS_POLL_MS: '200',
