@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 01 part 5 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="01 · part 5" data-video-title="Build a new product, part five" data-parts="Introduction|What we built|Design|Code|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 1 · Part 5</div>
+  <h1>Designs and the design system</h1>
+  <p class="lead">Stage 2 designs every screen in Magic Patterns; stage 3 extracts the tokens and components.</p>
+</section>
+
+<section id="built" data-part="1" data-cue="Both stages join the executor from part four">
+  <h2>Two more stage definitions</h2>
+  <div class="cols">
+    <div class="card"><h3>2 · Designs</h3><ul class="bullets small"><li>Skill <span class="file">writing-html-mocks</span></li><li>Magic Patterns <strong>required</strong></li><li>After the agent: export</li><li>Writes <span class="file">docs/mocks/</span></li></ul></div>
+    <div class="card"><h3>3 · Design system</h3><ul class="bullets small"><li>Skill <span class="file">extracting-design-systems</span></li><li>Magic Patterns optional</li><li>After the agent: compare tokens</li><li>Writes <span class="file">docs/design-system/</span></li></ul></div>
+  </div>
+</section>
+
+<section id="mcp" data-part="1" data-cue="The worker talks to Magic Patterns over the Model Context Protocol">
+  <h2>Over MCP</h2>
+  <ul class="steps">
+    <li class="done">create_design</li><li class="done">get_design_status</li><li class="done">read_artifact_files</li><li class="done">list_design_systems</li>
+  </ul>
+  <p class="muted small">Streamable HTTP with a bearer credential: <span class="file">HEWN_MAGIC_PATTERNS_URL</span>, <span class="file">HEWN_MAGIC_PATTERNS_TOKEN</span>.</p>
+</section>
+
+<section id="nofallback" data-part="2" data-cue="All UI design happens in Magic Patterns, so there is no fallback.">
+  <div class="code-file">worker/src/magic-patterns/magic-patterns.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="5-6">try {
+  await client.connect(transport);
+} catch (error) {
+  await client.close().catch(() =&gt; undefined);
+  // Never pass the server's message on: it can echo the request, credential included.
+  throw new MagicPatternsUnavailable(/\b401\b|\b403\b|unauthori[sz]ed|invalid_token/i.test(String(error)) ? 'credential rejected' : 'unreachable');
+}</pre>
+</section>
+
+<section id="manifest" data-part="2" data-cue="Each design holds one raw HTML file per state">
+  <div class="code-file">docs/mocks/manifest.json</div>
+  <pre class="code tight" data-lang="json">{
+  "screens": [{
+    "screen": "sign-in",
+    "feature": "Sign in",
+    "magicPatternsUrl": "https://www.magicpatterns.com/c/…",
+    "states": ["default", "loading", "empty", "error"],
+    "notApplicable": {}
+  }]
+}</pre>
+  <p class="muted small">Exported to <span class="file">docs/mocks/{screen}/{state}.html</span> (ADR 0007).</p>
+</section>
+
+<section id="validator" data-part="3" data-cue="The mock validator checks">
+  <div class="code-file">worker/src/validators/mock-validator.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="5-8">for (const width of WIDTHS) {
+  await page.setViewportSize({ width, height: 800 });
+  for (const path of renderable) {
+    await page.goto(pathToFileURL(join(workspace, path)).href, { waitUntil: 'load' });
+    const scrolls = await page.evaluate(
+      () =&gt; document.documentElement.scrollWidth &gt; document.documentElement.clientWidth,
+    );
+    if (scrolls) problems.push(`${path} scrolls horizontally at ${width} px`);
+  }
+}</pre>
+</section>
+
+<section id="coverage" data-part="3" data-cue="coverage check normalises">
+  <div class="code-file">worker/test/design-validators.spec.ts</div>
+  <pre class="code tight" data-lang="ts">expect(validateTokenCoverage(dir)).toEqual([
+  '#ff0000 in docs/mocks/a/default.html matches no token',
+  '#008000 in docs/mocks/a/default.html matches no token',
+]);</pre>
+</section>
+
+<section id="tests" data-part="4" data-cue="A fake Magic Patterns server speaks the real protocol">
+  <h2>Tests</h2>
+  <div class="cols cols--3">
+    <div class="card"><h3>73 backend</h3><p class="small">Stage 2 and 3 paths</p></div>
+    <div class="card"><h3>65 worker</h3><p class="small">Client, validators in Chromium, both stages</p></div>
+    <div class="card"><h3>18 Playwright</h3><p class="small">Pipeline designs through the fake server</p></div>
+  </div>
+</section>
+
+<section id="clip" data-part="5" data-cue="Here is the real app, with one worker and the fake Magic Patterns server." data-clip="clips/designs.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Submit; stages 2 and 3 design and extract; the direction completes</aside>
+</section>
+
+<section id="mocks" data-part="5" data-cue="And here is what stage two commits">
+  <div class="cols cols--wide">
+    <figure><img src="screens/mock-default-1280.png" alt="Exported default state at 1280 px"></figure>
+    <figure class="phone"><img src="screens/mock-error-375.png" alt="Exported error state at 375 px, dark theme"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="6" data-cue="Screens are designed only in Magic Patterns">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Designed in Magic Patterns only; no fallback</li>
+    <li>Every state exported and checked at three widths</li>
+    <li>Next: stage 6, the scaffold with CI and branch protection</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

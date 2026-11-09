@@ -1,0 +1,145 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:04.37
+Part four gave Hewn its document stages.
+
+00:00:04.37 --> 00:00:07.03
+Part five adds the two design stages.
+
+00:00:07.03 --> 00:00:12.20
+Stage two designs every screen in Magic Patterns and commits the export.
+
+00:00:12.20 --> 00:00:18.24
+Stage three extracts a design system from those screens and checks that every colour
+
+00:00:18.24 --> 00:00:19.10
+has a token.
+
+00:00:20.25 --> 00:00:25.69
+Both stages join the executor from part four as two more stage definitions,
+
+00:00:25.69 --> 00:00:26.92
+each with a hook.
+
+00:00:26.92 --> 00:00:30.40
+Stage two needs Magic Patterns before it starts,
+
+00:00:30.40 --> 00:00:33.67
+and exports designs after its agent finishes.
+
+00:00:33.67 --> 00:00:39.33
+Stage three compares its tokens with the Magic Patterns design system when one
+
+00:00:39.33 --> 00:00:39.83
+exists.
+
+00:00:40.18 --> 00:00:44.98
+The worker talks to Magic Patterns over the Model Context Protocol,
+
+00:00:44.98 --> 00:00:50.49
+with the same tools the real server offers: create design, get design status,
+
+00:00:50.49 --> 00:00:53.92
+read artifact files and the design system tools.
+
+00:00:55.07 --> 00:00:59.60
+All UI design happens in Magic Patterns, so there is no fallback.
+
+00:00:59.60 --> 00:01:02.74
+Before the agent runs, the executor connects.
+
+00:01:02.74 --> 00:01:06.57
+If the server is unreachable or refuses the credential,
+
+00:01:06.57 --> 00:01:10.82
+the run fails with Magic Patterns unavailable and the reason,
+
+00:01:10.82 --> 00:01:14.66
+and the agent never starts, so nothing is hand-written.
+
+00:01:15.01 --> 00:01:20.87
+Each design holds one raw HTML file per state: default, loading, empty and error.
+
+00:01:20.87 --> 00:01:26.74
+The executor reads them through the protocol and writes them to docs slash mocks,
+
+00:01:26.74 --> 00:01:32.82
+next to a manifest recording every screen's feature, Magic Patterns link and states.
+
+00:01:33.97 --> 00:01:38.91
+The mock validator checks that every core feature in the brief has a design,
+
+00:01:38.91 --> 00:01:42.68
+and every screen has all four states or a recorded reason.
+
+00:01:42.68 --> 00:01:44.11
+Every file must parse.
+
+00:01:44.11 --> 00:01:48.01
+Then Chromium loads each file at three hundred seventy-five,
+
+00:01:48.01 --> 00:01:51.84
+seven hundred sixty-eight and twelve hundred eighty pixels,
+
+00:01:51.84 --> 00:01:56.33
+and any horizontal scroll fails the run, with the file and the width.
+
+00:01:56.68 --> 00:02:01.65
+Stage three's coverage check normalises hex, RGB and HSL colours,
+
+00:02:01.65 --> 00:02:06.09
+and lists every colour in the mocks that no token matches.
+
+00:02:07.24 --> 00:02:10.83
+A fake Magic Patterns server speaks the real protocol,
+
+00:02:10.83 --> 00:02:14.48
+and twenty new worker tests run against it: the client,
+
+00:02:14.48 --> 00:02:19.01
+including a refused credential that is never echoed; the validators,
+
+00:02:19.01 --> 00:02:22.13
+with real Chromium; and both stages end to end.
+
+00:02:22.13 --> 00:02:25.26
+The backend gained six tests for the new paths,
+
+00:02:25.26 --> 00:02:29.85
+and the Playwright pipeline designs through the fake server for real.
+
+00:02:31.00 --> 00:02:35.91
+Here is the real app, with one worker and the fake Magic Patterns server.
+
+00:02:35.91 --> 00:02:37.93
+The Owner submits a direction.
+
+00:02:37.93 --> 00:02:41.97
+Stage zero creates the repository, and the brief is written.
+
+00:02:41.97 --> 00:02:46.27
+Then stage two designs every core feature and exports the mocks,
+
+00:02:46.27 --> 00:02:50.38
+and stage three extracts the design system, each in a moment.
+
+00:02:50.38 --> 00:02:54.96
+The scripted stages that remain follow, and the direction completes.
+
+00:02:55.31 --> 00:03:00.61
+And here is what stage two commits: a design's default state at desktop width,
+
+00:03:00.61 --> 00:03:03.95
+and its error state on a phone in the dark theme,
+
+00:03:03.95 --> 00:03:06.40
+exactly as Magic Patterns served it.
+
+00:03:07.55 --> 00:03:13.41
+Screens are designed only in Magic Patterns, exported, and checked at three widths.
+
+00:03:13.41 --> 00:03:17.08
+The design system covers every colour the mocks use.
+
+00:03:17.08 --> 00:03:22.80
+Next, stage six: the scaffold, with continuous integration and branch protection.
