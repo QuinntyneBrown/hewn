@@ -34,6 +34,10 @@ Stages built so far:
   Chromium (`npx playwright-core install chromium`).
 - **Stage 3, Design system**: extracts `docs/design-system/tokens.json` and component pages, fails on mock colours
   with no token, and logs Magic Patterns design-system colours it does not match.
+- **Stage 6, Scaffold** (`ScaffoldStageExecutor`): generates the stack template chosen in stage 4 (the default is
+  .NET 10 + Angular 21 + Playwright with a GitHub Actions workflow), commits it to `hewn/scaffold`, opens a pull
+  request, waits for CI (`HEWN_CHECK_POLL_MS`, default 30000), squash-merges and requires the CI checks on the
+  default branch. `node src/scaffold/generate-cli.ts <dir>` writes the default template for inspection.
 - `node src/magic-patterns/fake-server-main.ts` (with `PORT` and `MAGIC_PATTERNS_TOKEN`) runs the fake Magic
   Patterns MCP server the e2e stack uses.
 

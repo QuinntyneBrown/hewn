@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Stage 6, Scaffold (journey 1, L2-015 AC1-AC4, L2-036 AC2): the default .NET + Angular + Playwright template with
+  a CI workflow, committed to `hewn/scaffold`, merged through a pull request once CI passes, with the CI checks
+  then required on the default branch. New broker mutations `open_pull_request`, `merge_pull_request` and
+  `protect_branch`, branch commits, and a pull request checks endpoint, all limited to stage 6.
 - Stages 2 and 3 (journey 1, L2-010 AC1-AC5, L2-012 AC1-AC3): screens designed in Magic Patterns over MCP and
   exported to `docs/mocks/` with a manifest, validated for coverage, states, parsing and horizontal scroll; the
   design system extracted to `docs/design-system/`, validated for token groups and mock colour coverage, with
