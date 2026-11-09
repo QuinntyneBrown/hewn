@@ -1,6 +1,8 @@
 import { hostname } from 'node:os';
 import type { WorkerLocation } from './api.ts';
+import { BootstrapStageExecutor } from './executors/bootstrap-executor.ts';
 import { ScriptedStageExecutor } from './executors/scripted-executor.ts';
+import { StageRouter, type StageExecutor } from './executors/stage-executor.ts';
 import { HttpHewnApi } from './http-api.ts';
 import { WorkLoop } from './work-loop.ts';
 
@@ -23,17 +25,20 @@ if (location !== 'Local' && location !== 'Cloud') {
   process.exit(2);
 }
 
-const executorName = process.env.HEWN_EXECUTOR ?? 'scripted';
-if (executorName !== 'scripted') {
-  console.error(`HEWN_EXECUTOR=${executorName} is not available yet; only "scripted" is.`);
+// `stages` runs the stages implemented so far for real and scripts the rest; `scripted` scripts every stage.
+const executorName = process.env.HEWN_EXECUTOR ?? 'stages';
+if (executorName !== 'scripted' && executorName !== 'stages') {
+  console.error('HEWN_EXECUTOR must be "stages" or "scripted".');
   process.exit(2);
 }
 
 const failStage = process.env.HEWN_SCRIPTED_FAIL_STAGE;
-const executor = new ScriptedStageExecutor({
+const scripted = new ScriptedStageExecutor({
   stepMs: Number(process.env.HEWN_SCRIPTED_STEP_MS ?? 1000),
   failStage: failStage === undefined ? undefined : Number(failStage),
 });
+const executor: StageExecutor =
+  executorName === 'scripted' ? scripted : new StageRouter(new Map([[0, new BootstrapStageExecutor()]]), scripted);
 
 const stop = new AbortController();
 for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => stop.abort());

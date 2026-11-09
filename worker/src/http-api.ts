@@ -1,4 +1,12 @@
-import { LeaseLostError, type HewnApi, type LeasedRun, type RunOutcome, type WorkerRegistration } from './api.ts';
+import {
+  LeaseLostError,
+  type CommitFile,
+  type HewnApi,
+  type LeasedRun,
+  type LogLevel,
+  type RunOutcome,
+  type WorkerRegistration,
+} from './api.ts';
 
 /** The worker protocol over HTTP. The token is sent only in the Authorization header and never logged. */
 export class HttpHewnApi implements HewnApi {
@@ -36,15 +44,49 @@ export class HttpHewnApi implements HewnApi {
     await this.post(`/api/worker/runs/${run.runId}/result`, { workerId, epoch: run.epoch, ...outcome });
   }
 
-  private async post(path: string, body: unknown): Promise<unknown> {
+  async listSkillFolders(workerId: string, run: LeasedRun): Promise<Record<string, string[]>> {
+    const query = new URLSearchParams({ workerId, epoch: String(run.epoch) });
+    return (await this.send('GET', `/api/worker/runs/${run.runId}/repository/skill-folders?${query}`)) as Record<
+      string,
+      string[]
+    >;
+  }
+
+  async commit(
+    workerId: string,
+    run: LeasedRun,
+    idempotencyKey: string,
+    message: string,
+    files: CommitFile[],
+  ): Promise<string> {
+    const body = (await this.post(`/api/worker/runs/${run.runId}/github/mutations`, {
+      workerId,
+      epoch: run.epoch,
+      kind: 'commit',
+      idempotencyKey,
+      message,
+      files: files.map((f) => ({ path: f.path, contentBase64: f.content.toString('base64') })),
+    })) as { sha: string };
+    return body.sha;
+  }
+
+  async log(workerId: string, run: LeasedRun, lines: { level: LogLevel; text: string }[]): Promise<void> {
+    await this.post(`/api/worker/runs/${run.runId}/logs`, { workerId, epoch: run.epoch, lines });
+  }
+
+  private post(path: string, body: unknown): Promise<unknown> {
+    return this.send('POST', path, body);
+  }
+
+  private async send(method: 'GET' | 'POST', path: string, body?: unknown): Promise<unknown> {
     const response = await fetch(`${this.baseUrl}${path}`, {
-      method: 'POST',
+      method,
       headers: { authorization: `Bearer ${this.token}`, 'content-type': 'application/json' },
-      body: JSON.stringify(body),
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
 
     if (response.status === 409) throw new LeaseLostError();
-    if (!response.ok) throw new Error(`Hewn API ${path} answered ${response.status}`);
+    if (!response.ok) throw new Error(`Hewn API ${path.split('?')[0]} answered ${response.status}`);
     if (response.status === 204) return null;
     return response.json();
   }

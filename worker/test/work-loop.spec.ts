@@ -12,7 +12,7 @@ const registration = { name: 'hewn-local-01', location: 'Local' as const, host: 
 /** Executor whose every stage has the given steps, each taking `ms` of (fake) time. */
 function timedExecutor(stepCount: number, ms: number, executed: string[] = [], failAt?: string): StageExecutor {
   return {
-    plan: (run) =>
+    plan: (run, _context) =>
       Array.from({ length: stepCount }, (_, i): StageStep => ({
         name: `s${run.stage}.${i + 1}`,
         execute: (signal) =>
@@ -155,6 +155,28 @@ describe('WorkLoop', () => {
     await vi.advanceTimersByTimeAsync(30_000);
 
     expect(api.count('result')).toBe(1);
+  });
+
+  it('gives executors a context that logs and commits through the API with the run and epoch', async () => {
+    api.enqueueStage(0, 0, 0);
+    void start({
+      plan: (_run, context) => [
+        {
+          name: 'commit',
+          execute: async () => {
+            await context.log('info', 'hello');
+            await context.commit(1, 'msg', [{ path: '.hewn/skills.lock', content: Buffer.from('{}') }]);
+          },
+        },
+      ],
+    });
+
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    expect(api.logs).toEqual([{ runId: 'run-1', level: 'info', text: 'hello' }]);
+    expect(api.commits).toEqual([
+      { runId: 'run-1', idempotencyKey: 'run-1/1/commit', message: 'msg', paths: ['.hewn/skills.lock'] },
+    ]);
   });
 
   it('reports a failed step as a failed run and does not checkpoint it', async () => {

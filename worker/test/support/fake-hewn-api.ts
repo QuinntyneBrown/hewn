@@ -1,5 +1,6 @@
 import {
   LeaseLostError,
+  type CommitFile,
   type HewnApi,
   type LeasedRun,
   type RunOutcome,
@@ -20,6 +21,8 @@ export class FakeHewnApi implements HewnApi {
   readonly registrations: WorkerRegistration[] = [];
   /** Answer the next heartbeats with these: 'lost' (409) or 'down' (network error). */
   readonly heartbeatFaults: ('lost' | 'down')[] = [];
+  readonly logs: { runId: string; level: string; text: string }[] = [];
+  readonly commits: { runId: string; idempotencyKey: string; message: string; paths: string[] }[] = [];
   private readonly queue: LeasedRun[] = [];
   private nextId = 1;
 
@@ -40,6 +43,7 @@ export class FakeHewnApi implements HewnApi {
         stackPreference: null,
         repository: null,
       },
+      skillsSource: 'https://github.com/QuinntyneBrown/greenlit.git',
     };
     this.lastStage = lastStage;
     this.queue.push(run);
@@ -79,6 +83,25 @@ export class FakeHewnApi implements HewnApi {
     if (outcome.outcome === 'Succeeded' && run.stage < this.lastStage) {
       this.enqueueStage(run.stage + 1, 0, this.lastStage);
     }
+  }
+
+  async listSkillFolders(): Promise<Record<string, string[]>> {
+    return { '.claude/skills': [], '.agents/skills': [] };
+  }
+
+  async commit(
+    _workerId: string,
+    run: LeasedRun,
+    idempotencyKey: string,
+    message: string,
+    files: CommitFile[],
+  ): Promise<string> {
+    this.commits.push({ runId: run.runId, idempotencyKey, message, paths: files.map((f) => f.path) });
+    return 'c0ffee';
+  }
+
+  async log(_workerId: string, run: LeasedRun, lines: { level: string; text: string }[]): Promise<void> {
+    this.logs.push(...lines.map((l) => ({ runId: run.runId, ...l })));
   }
 
   private record(call: Omit<Call, 'at'>): void {
