@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 07 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="07" data-video-title="Cancel a direction" data-parts="Introduction|Goal|Flow|Control poll|Cancel|Labels|Page|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 7</div>
+  <h1>Cancel a direction</h1>
+  <p class="lead">Stop unwanted work within ten seconds, and label what is still open.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video walks through how it was built">
+  <figure><img src="screens/cancelled-desktop.png" alt="A direction Cancelled by quinntynebrown; the run stopped within 1 second and pull request #1 is open and labelled hewn:cancelled"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="An Owner presses Cancel on a running or paused direction">
+  <div class="cols cols--wide">
+    <figure><img src="screens/running-desktop.png" alt="A running direction with Pause and Cancel in the header"></figure>
+    <ul class="bullets small">
+      <li>Run stops within 10 s</li>
+      <li>Open PRs: hewn:cancelled</li>
+      <li>Next queued direction starts</li>
+      <li>Viewers: no control, 403</li>
+    </ul>
+  </div>
+</section>
+
+<section id="flow" data-part="2" data-cue="Here is the whole flow.">
+  <figure class="diagram"><img src="../../detailed-designs/pipeline/pause-resume-cancel-stop/diagrams/sequence-cancel.png" alt="Sequence diagram: the worker holds a control poll; Cancel labels open pull requests, cancels the run and direction, starts the next queued direction, then wakes the poll and waits up to 10 seconds"></figure>
+</section>
+
+<section id="poll-api" data-part="3" data-cue="On the API side, the poll checks">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/CancelDirection.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="3,4,7,12">    public async Task&lt;string?&gt; Handle(PollRunControlQuery query, CancellationToken cancellationToken)
+    {
+        var status = await StatusAsync(query, cancellationToken);
+        if (status == RunStatus.Leased &amp;&amp; query.WaitSeconds &gt; 0)
+        {
+            var wait = TimeSpan.FromSeconds(Math.Min(query.WaitSeconds, MaxWaitSeconds));
+            if (!await signals.WaitForStopAsync(query.RunId, wait, cancellationToken))
+            {
+                return null;
+            }
+
+            status = await StatusAsync(query, cancellationToken);
+        }
+
+        if (status != RunStatus.Cancelled)
+        {</pre>
+</section>
+
+<section id="poll-worker" data-part="3" data-cue="In the worker, the Cancel answer aborts">
+  <div class="code-file">worker/src/work-loop.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="4,5-8">  private async listenForControl(workerId: string, run: LeasedRun, lease: AbortController): Promise&lt;void&gt; {
+    while (!lease.signal.aborted) {
+      try {
+        const control = await this.api.control(workerId, run, this.controlWaitSeconds, lease.signal);
+        if (control === 'Cancel') {
+          this.log('Cancelled; the run stops now', { runId: run.runId });
+          lease.abort(new Error('Cancelled by an Owner.'));
+          return;
+        }
+      } catch (error) {
+        // A lost lease is the heartbeat's to handle; otherwise wait a little and poll again.
+        if (lease.signal.aborted || error instanceof LeaseLostError) return;
+        await sleep(1_000, lease.signal);
+      }
+    }
+  }</pre>
+</section>
+
+<section id="cancel" data-part="4" data-cue="The cancel command takes the project's lock.">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/CancelDirection.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,2,5,8,9,12-14">                await RunLog.InfoAsync(db, events, run, $"Cancel requested by {user.Login}", clock.GetUtcNow(), cancellationToken);
+                await LabelOpenPullRequestsAsync(project, direction, run, cancellationToken);
+            }
+
+            await pipeline.OnCancelledAsync(run, project, direction, user.Login, cancellationToken);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        await events.PublishAsync(cancellationToken);
+
+        var stopped = true;
+        if (run is { HadWorkerWhenCancelled: true, StopAcknowledgedAt: null })
+        {
+            signals.RequestStop(run.Id);
+            stopped = await signals.WaitForAcknowledgementAsync(run.Id, TimeSpan.FromSeconds(options.Value.StopDeadlineSeconds), cancellationToken);
+            signals.Forget(run.Id);</pre>
+</section>
+
+<section id="orchestrator" data-part="4" data-cue="Then the orchestrator cancels the run">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/PipelineOrchestrator.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,2,8-12,14">        run?.Cancel(now);
+        if (direction.Cancel(cancelledBy, now, run?.HadWorkerWhenCancelled ?? false) is { } stage)
+        {
+            await AppendStageAsync(direction, stage, cancellationToken);
+        }
+
+        await AppendDirectionAsync(direction, cancellationToken);
+        if (project.NextQueuedDirection(direction.Id) is { } queued)
+        {
+            await StartDirectionAsync(project, queued, cancellationToken);
+            return;
+        }
+
+        project.ChangeStatus(ProjectStatus.Cancelled);
+        await AppendProjectAsync(project, cancellationToken);
+    }</pre>
+</section>
+
+<section id="labels" data-part="5" data-cue="Which pull requests are open?">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/CancelDirection.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="5,6,11,13">        foreach (var number in numbers)
+        {
+            try
+            {
+                var pull = await gitHub.GetPullRequestAsync(project.RepositoryOwner!, project.RepositoryName!, number, cancellationToken);
+                if (pull is null || pull.Merged)
+                {
+                    continue;
+                }
+
+                await gitHub.AddLabelAsync(project.RepositoryOwner!, project.RepositoryName!, number, CancelledLabel, cancellationToken);
+                labelled.Add(number);
+                lines.Add(new RunLogEntry("tool", $"gh pr edit {number} --add-label {CancelledLabel}"));
+            }
+            catch (GitHubException e)
+            {</pre>
+</section>
+
+<section id="pr-json" data-part="5" data-cue="Merged work stays merged.">
+  <figure><img src="screens/pull-request-json.png" alt="The fake GitHub's pull request #1: open true, merged false, labels hewn:cancelled"></figure>
+</section>
+
+<section id="dialog" data-part="6" data-cue="On the project page, Owners see Cancel">
+  <figure><img src="screens/cancel-dialog-desktop.png" alt="The dialog: Cancel Kiln Booking's direction? with Keep running and Cancel direction"></figure>
+</section>
+
+<section id="busy" data-part="6" data-cue="While Hewn waits for the worker">
+  <figure><img src="screens/cancel-busy-desktop.png" alt="The dialog's Cancel direction button shows Cancelling…"></figure>
+</section>
+
+<section id="failed" data-part="6" data-cue="If the worker has stopped answering">
+  <figure><img src="screens/cancel-failed-desktop.png" alt="Cancel didn't reach the worker: e2e-worker-1 stopped answering, with Try again"></figure>
+</section>
+
+<section id="cancelled-themes" data-part="6" data-cue="The cancelled page says who cancelled and when">
+  <div class="cols">
+    <figure><img src="screens/cancelled-desktop-dark.png" alt="The cancelled direction in dark mode"></figure>
+    <figure class="phone"><img src="screens/cancelled-phone.png" alt="The cancelled direction on a phone"></figure>
+  </div>
+</section>
+
+<section id="red" data-part="7" data-cue="Each slice began with its tests failing.">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Pipeline/CancelDirectionTests.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,4,11,12,13,16">        var control = ControlAsync(s.Worker, run);
+
+        var clock = Stopwatch.StartNew();
+        var response = await CancelAsync(s.Owner, s.ProjectId, s.DirectionId);
+        clock.Stop();
+
+        // The worker hears at once, and the API answers once it has.
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await HewnClient.ReadJsonAsync(response);
+        Assert.Equal("Cancelled", body.GetProperty("status").GetString());
+        Assert.True(body.GetProperty("stopped").GetBoolean());
+        Assert.InRange(body.GetProperty("stoppedWithinSeconds").GetInt32(), 1, 10);
+        Assert.True(clock.Elapsed &lt; TimeSpan.FromSeconds(10));
+        var heard = await control;
+        Assert.Equal(HttpStatusCode.OK, heard.StatusCode);
+        Assert.Equal("Cancel", (await HewnClient.ReadJsonAsync(heard)).GetProperty("control").GetString());</pre>
+  <div class="result red">✘ 7 failed · CancelDirectionTests</div>
+</section>
+
+<section id="red-worker" data-part="7" data-cue="The worker gained five tests">
+  <div class="code-file">worker/test/cancel.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1,4-7,11,12">    api.cancel();
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(finished).toEqual(['s0.1']);
+    expect(api.calls.filter((c) =&gt; c.method === 'step').map((c) =&gt; c.step)).toEqual([1, 2]);
+    expect(api.calls.filter((c) =&gt; c.method === 'checkpoint').map((c) =&gt; c.step)).toEqual([1]);
+    expect(logs).toContain('Cancelled; the run stops now');
+
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(finished).toEqual(['s0.1']);
+    expect(api.count('result')).toBe(0);
+    expect(api.count('checkpoint')).toBe(1);</pre>
+  <div class="result red">✘ 4 failed · cancel.spec.ts</div>
+  <div class="result green">✓ 185 backend · 138 worker passed</div>
+</section>
+
+<section id="tests" data-part="7" data-cue="All green, the backend has one hundred and eighty five tests">
+  <div class="cols cols--3">
+    <div class="card"><h3>185 backend</h3><p class="small">7 new, real API</p></div>
+    <div class="card"><h3>138 worker · 71 frontend</h3><p class="small">5 and 7 new</p></div>
+    <div class="card"><h3>50 e2e</h3><p class="small">Pipeline 17 · behaviour 15 · a11y 11 · visual 7</p></div>
+  </div>
+</section>
+
+<section id="e2e" data-part="7" data-cue="One checks the stop within ten seconds">
+  <div class="code-file">e2e/tests/pipeline/cancel-a-direction.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3-5,9">    await project.cancelButton.click();
+    const pressed = Date.now();
+    await project.cancelConfirm.click();
+    await expect(project.cancelDialog).toHaveCount(0, { timeout: 10_000 });
+    expect(Date.now() - pressed, 'the run stopped within 10 seconds').toBeLessThan(10_000);
+
+    await expect(project.projectStatus).toHaveText('Cancelled');
+    await expect(project.cancelledCallout).toContainText(/Cancelled by quinntynebrown on \d{1,2} \w{3} at \d\d:\d\d/);
+    await expect(project.cancelledCallout).toContainText(/The active run stopped within \d{1,2} seconds?\./);
+    await expect(project.cancelledCallout).toContainText('Pull request #1 is open and labelled hewn:cancelled.');
+    await expect(project.headerMeta).toContainText(/Product direction · cancelled \d{1,2} \w{3}/);</pre>
+  <div class="result green">✓ stopped within 10 s · PR #1 open, labelled hewn:cancelled</div>
+</section>
+
+<section id="clip-cancel" data-part="8" data-cue="Here is a direction running Detailed designs." data-clip="clips/cancel.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Cancel, confirm, Cancelling…, then Cancelled: the log shows the label and the stop</aside>
+</section>
+
+<section id="pr" data-part="8" data-cue="In the fake GitHub, pull request number one is still open">
+  <figure><img src="screens/pull-request-json.png" alt="Pull request #1 open, not merged, labelled hewn:cancelled"></figure>
+</section>
+
+<section id="clip-queue" data-part="8" data-cue="Now a second project, with a feature direction waiting" data-clip="clips/queue.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">One direction queued; Cancel the running one and the feature direction starts at Idea</aside>
+</section>
+
+<section id="viewer" data-part="8" data-cue="A Viewer sees the cancelled direction">
+  <div class="cols">
+    <figure><img src="screens/cancel-failed-desktop.png" alt="The failed dialog naming the silent worker"></figure>
+    <figure><img src="screens/cancelled-viewer-desktop.png" alt="A Viewer sees the cancelled direction with no controls"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="9" data-cue="Journey seven is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Stops within 10 s, on a held poll</li>
+    <li>Open PRs stay open, labelled</li>
+    <li>Next queued direction starts</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>
