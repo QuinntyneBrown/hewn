@@ -18,6 +18,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 02 | [Add a feature](02-add-a-feature/README.md) | ~5:07 | Journey 2 |
 | 03 | [Monitor a direction](03-monitor-a-direction/README.md) | ~4:52 | Journey 3 |
 | 04 | [Limit spending](04-limit-spending/README.md) | ~4:48 | Journey 4 |
+| 05 | [Raise budget and resume](05-raise-budget-and-resume/README.md) | ~4:32 | Journey 5 |
 
 ## Voice
 

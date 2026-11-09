@@ -1,0 +1,202 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:06.71
+This is journey five of Hewn, the software factory: raise the budget and resume.
+
+00:00:06.71 --> 00:00:10.48
+In journey four, a direction stopped itself at its budget.
+
+00:00:10.48 --> 00:00:14.91
+Now an Owner can give it more and send it on its way, in one action.
+
+00:00:14.91 --> 00:00:20.05
+This video walks through how it was built: the command, the resume, the dialog,
+
+00:00:20.05 --> 00:00:21.75
+the Viewer, and the tests.
+
+00:00:22.90 --> 00:00:28.13
+On a direction paused with Budget reached, an Owner presses Raise and resume,
+
+00:00:28.13 --> 00:00:32.00
+enters a new budget above the spend so far, and confirms.
+
+00:00:32.00 --> 00:00:37.57
+The budget is raised, and the direction resumes from its next step, in one action.
+
+00:00:37.92 --> 00:00:43.28
+A budget at or below the spend is refused inline, before anything changes.
+
+00:00:43.28 --> 00:00:45.74
+And Viewers never see the control.
+
+00:00:45.74 --> 00:00:49.57
+If they try the API anyway, it answers four oh three.
+
+00:00:50.72 --> 00:00:52.60
+Here is the whole exchange.
+
+00:00:52.60 --> 00:00:58.40
+The dialog posts the new budget, together with the budget the Owner was looking at.
+
+00:00:58.40 --> 00:01:03.84
+The API answers with a conflict, a validation error, or the resumed direction.
+
+00:01:04.19 --> 00:01:06.98
+The command first takes the project's lock,
+
+00:01:06.98 --> 00:01:09.70
+because model calls add to the same spend.
+
+00:01:09.70 --> 00:01:14.63
+If the budget is not the one the Owner saw, another session got there first,
+
+00:01:14.63 --> 00:01:16.51
+and the answer is a conflict.
+
+00:01:16.51 --> 00:01:20.98
+If the direction is not paused at its budget, that is a conflict too.
+
+00:01:20.98 --> 00:01:26.16
+And a new budget at or below the spend is refused, with a message for the field.
+
+00:01:26.51 --> 00:01:31.15
+Then, in one save, it records a Budget raised event with who raised it,
+
+00:01:31.15 --> 00:01:35.86
+hands the paused run to the pipeline, and publishes everything together.
+
+00:01:35.86 --> 00:01:41.08
+There is no moment where the budget is raised but the direction is still paused.
+
+00:01:42.23 --> 00:01:44.53
+Resuming reuses the run that paused.
+
+00:01:44.53 --> 00:01:47.47
+It goes back to the queue with its checkpoint,
+
+00:01:47.47 --> 00:01:52.38
+so the next worker to lease it carries on from the step after the last one it
+
+00:01:52.38 --> 00:01:53.02
+completed.
+
+00:01:53.02 --> 00:01:56.91
+The warning at eighty percent is re-armed for the new budget.
+
+00:01:56.91 --> 00:02:02.20
+And the stage, the direction and the project turn Running, each with its own event.
+
+00:02:03.35 --> 00:02:07.03
+The Raise budget dialog is built on the CDK dialog.
+
+00:02:07.03 --> 00:02:12.93
+It checks the amount before sending anything, sends the budget it was opened with,
+
+00:02:12.93 --> 00:02:14.88
+and closes with the result.
+
+00:02:14.88 --> 00:02:17.90
+A refusal from the API shows on the field.
+
+00:02:18.25 --> 00:02:21.13
+If another session raised the budget first,
+
+00:02:21.13 --> 00:02:24.60
+the dialog says the budget was not changed, and why.
+
+00:02:24.60 --> 00:02:28.88
+On a phone, the same dialog rises from the bottom of the screen.
+
+00:02:30.03 --> 00:02:35.37
+A Viewer sees the same pause, with what was spent, but no amount and no button.
+
+00:02:35.37 --> 00:02:40.51
+The end to end test signs in as a Viewer, checks that the control is absent,
+
+00:02:40.51 --> 00:02:44.23
+then posts to the API directly, and gets four oh three.
+
+00:02:45.38 --> 00:02:48.04
+Each slice began with its tests failing.
+
+00:02:48.04 --> 00:02:52.94
+The backend gained seven tests against the real API: the raise and resume,
+
+00:02:52.94 --> 00:02:57.05
+two budgets at or below the spend, the Viewer, a stale budget,
+
+00:02:57.05 --> 00:03:01.29
+a direction that is not paused, and another project's direction.
+
+00:03:01.29 --> 00:03:05.07
+All green, the backend has one hundred and seventy tests,
+
+00:03:05.07 --> 00:03:08.32
+and the worker one hundred and thirty, unchanged.
+
+00:03:08.67 --> 00:03:11.43
+The frontend has fifty three unit tests.
+
+00:03:11.43 --> 00:03:16.06
+End to end, a new pipeline test drives a real worker to the budget,
+
+00:03:16.06 --> 00:03:20.75
+refuses an amount, checks the Viewer and the dialog's accessibility,
+
+00:03:20.75 --> 00:03:24.35
+then raises the budget and watches the run carry on,
+
+00:03:24.35 --> 00:03:26.97
+for forty six end to end tests in all.
+
+00:03:28.12 --> 00:03:32.79
+Here is a direction with a ten dollar budget, paused at ten dollars twenty.
+
+00:03:32.79 --> 00:03:36.34
+The Owner types ten, and presses Raise budget and resume.
+
+00:03:36.34 --> 00:03:40.88
+Ten is not more than what was spent, so the dialog says so, on the field.
+
+00:03:40.88 --> 00:03:41.50
+Twenty is.
+
+00:03:41.50 --> 00:03:44.61
+The dialog closes, the direction is Running again,
+
+00:03:44.61 --> 00:03:46.98
+and the run picks up where it stopped.
+
+00:03:46.98 --> 00:03:52.02
+Spend climbs past ten dollars, live, the warning returns at eighty percent of the
+
+00:03:52.02 --> 00:03:54.38
+new budget, and the next stage begins.
+
+00:03:54.73 --> 00:03:58.84
+When spend reaches the new budget, the direction pauses again,
+
+00:03:58.84 --> 00:04:02.28
+with a fresh suggestion of one hundred dollars more.
+
+00:04:02.28 --> 00:04:05.46
+The same page works in dark mode and on a phone.
+
+00:04:06.61 --> 00:04:08.32
+Journey five is complete.
+
+00:04:08.32 --> 00:04:12.35
+An Owner raises a reached budget and resumes in one action.
+
+00:04:12.35 --> 00:04:15.42
+The direction carries on from its checkpoint,
+
+00:04:15.42 --> 00:04:18.29
+with spend and the warning starting again.
+
+00:04:18.29 --> 00:04:23.82
+And a budget at or below the spend, a stale budget, or a Viewer, are all refused.
+
+00:04:23.82 --> 00:04:28.33
+Next comes journey six: pause and resume a direction, at any time.
