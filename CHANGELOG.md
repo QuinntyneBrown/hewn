@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Two writes to one project at once (a worker's log batch and its model call) no longer pick the same event sequence
+  number and fail with a 500; `EventAppender` serializes a project's writes.
+
 ### Added
 
 - Limit spending (journey 4, L2-052, L2-053 AC1-AC3):

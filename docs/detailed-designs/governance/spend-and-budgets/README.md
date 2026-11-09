@@ -85,6 +85,9 @@ design above; ADR 0010 records them.
 - **Stop.** The run, its stage, the direction ("Budget reached") and the project turn Paused; the lease is released
   and the run keeps its checkpoint for Raise and resume. The worker ends the run with no further call, checkpoint or
   result.
+- **Concurrent reports.** A worker's log batch and its model call often arrive together. `EventAppender` takes a
+  per-project lock before reading the last sequence and holds it until the events are published, and the model-call
+  handler takes it before reading spend, so neither the sequence nor the total can be claimed twice.
 - **Rounding.** Costs and spend are rounded to 6 decimal places, since SQLite stores decimals as doubles.
 - **Defaults.** A one-row `direction_defaults` table holds the Owner's default budget ($10 to $10,000), read through
   `GET /api/settings/direction-defaults` and `GET /api/config`; `HEWN_DEFAULT_BUDGET_USD` applies until it is saved.

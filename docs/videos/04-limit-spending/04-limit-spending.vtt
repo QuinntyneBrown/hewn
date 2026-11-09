@@ -1,0 +1,235 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:05.80
+This is journey four of Hewn, the software factory: limit spending.
+
+00:00:05.80 --> 00:00:09.08
+Hewn runs without anyone approving each model call,
+
+00:00:09.08 --> 00:00:13.44
+so it has to know what every call costs, and stop itself at a limit.
+
+00:00:13.44 --> 00:00:17.94
+This video walks through how it was built: the meter, the price table,
+
+00:00:17.94 --> 00:00:20.57
+the budget rule, the page, and the tests.
+
+00:00:21.72 --> 00:00:27.38
+Every model call records its input and output tokens, its model and its cost,
+
+00:00:27.38 --> 00:00:30.76
+against its run, stage, direction and project.
+
+00:00:30.76 --> 00:00:33.99
+Spend shows on the project and updates live.
+
+00:00:34.34 --> 00:00:36.21
+Every direction has a budget.
+
+00:00:36.21 --> 00:00:39.50
+It starts at the default an Owner sets in Settings,
+
+00:00:39.50 --> 00:00:41.76
+and can be changed when submitting.
+
+00:00:41.76 --> 00:00:45.89
+At eighty percent, a warning is pushed and shown on the project.
+
+00:00:45.89 --> 00:00:50.79
+At one hundred percent, the direction pauses with the reason Budget reached,
+
+00:00:50.79 --> 00:00:52.66
+after the current model call.
+
+00:00:52.66 --> 00:00:55.18
+This is a safety stop, not an approval.
+
+00:00:56.33 --> 00:01:00.96
+Here is where usage is recorded, and how the threshold check runs.
+
+00:01:00.96 --> 00:01:06.71
+The worker reports each call the moment it returns, with its model and its tokens,
+
+00:01:06.71 --> 00:01:07.91
+but never a cost.
+
+00:01:07.91 --> 00:01:11.41
+The API prices the call, adds it to the direction,
+
+00:01:11.41 --> 00:01:15.06
+and answers with a verdict: continue, warn, or stop.
+
+00:01:15.41 --> 00:01:19.26
+In the worker, every call gets a fresh call identifier,
+
+00:01:19.26 --> 00:01:21.49
+so a retried report counts once.
+
+00:01:21.49 --> 00:01:24.71
+A warn verdict writes a line into the run log.
+
+00:01:24.71 --> 00:01:29.88
+A stop verdict ends the run straight away: no further call, no checkpoint,
+
+00:01:29.88 --> 00:01:30.86
+and no result.
+
+00:01:32.01 --> 00:01:37.78
+Prices are configuration: dollars per million input and output tokens for each model,
+
+00:01:37.78 --> 00:01:40.70
+defaulting to Anthropic's published prices.
+
+00:01:40.70 --> 00:01:45.59
+A model that is not in the table is priced at the table's highest rates,
+
+00:01:45.59 --> 00:01:50.34
+so an unknown model can only make the budget stop sooner, never later.
+
+00:01:50.34 --> 00:01:53.19
+Costs are kept to a millionth of a dollar.
+
+00:01:54.34 --> 00:01:59.32
+Recording the call and judging the budget happen in one handler, in one save.
+
+00:01:59.32 --> 00:02:04.23
+The first time spend reaches eighty percent, the direction is marked warned,
+
+00:02:04.23 --> 00:02:06.94
+and a budget warning event goes out, once.
+
+00:02:06.94 --> 00:02:09.79
+At one hundred percent, the verdict is stop.
+
+00:02:10.14 --> 00:02:14.37
+Stop pauses the run, its stage, the direction and the project,
+
+00:02:14.37 --> 00:02:15.94
+and releases the lease.
+
+00:02:15.94 --> 00:02:21.60
+The run keeps its checkpoint, so raising the budget in journey five can resume from
+
+00:02:21.60 --> 00:02:23.24
+the last completed step.
+
+00:02:24.39 --> 00:02:28.30
+The project header shows the direction's spend of its budget,
+
+00:02:28.30 --> 00:02:30.62
+as a meter with the amounts in text.
+
+00:02:30.62 --> 00:02:33.19
+Each spend updated event moves it, live.
+
+00:02:33.19 --> 00:02:37.04
+When the budget warning arrives, the meter turns to warning,
+
+00:02:37.04 --> 00:02:40.57
+and a toast says how close the direction is to pausing.
+
+00:02:40.57 --> 00:02:43.40
+The toast waits while you hover or focus it,
+
+00:02:43.40 --> 00:02:46.87
+and the meter keeps the news after the toast has gone.
+
+00:02:47.22 --> 00:02:51.59
+A paused direction shows Paused, Budget reached, with what it spent.
+
+00:02:51.59 --> 00:02:56.22
+And Settings has the default budget, which Owners save and Viewers read.
+
+00:02:57.37 --> 00:03:01.27
+The backend and worker slices began with their tests failing.
+
+00:03:01.27 --> 00:03:04.71
+The backend gained sixteen tests against the real API,
+
+00:03:04.71 --> 00:03:07.20
+and the worker four against a fake API.
+
+00:03:07.20 --> 00:03:12.49
+One backend test covers a race this journey uncovered: a log batch and a model call
+
+00:03:12.49 --> 00:03:15.94
+arriving at once, both claiming the same event number.
+
+00:03:15.94 --> 00:03:18.11
+Now a project's writes take turns.
+
+00:03:18.11 --> 00:03:22.00
+All green, the backend has one hundred and sixty three tests,
+
+00:03:22.00 --> 00:03:24.42
+and the worker one hundred and thirty.
+
+00:03:24.77 --> 00:03:27.44
+The frontend has forty five unit tests.
+
+00:03:27.44 --> 00:03:32.91
+End to end, a new pipeline test drives a real worker through the warning and the
+
+00:03:32.91 --> 00:03:37.83
+pause, and new behaviour, accessibility and visual tests cover Settings,
+
+00:03:37.83 --> 00:03:40.50
+for forty five end to end tests in all.
+
+00:03:41.65 --> 00:03:42.75
+Here is Settings.
+
+00:03:42.75 --> 00:03:47.05
+An Owner types a default of five dollars, and is told what to fix,
+
+00:03:47.05 --> 00:03:48.68
+with a link to the field.
+
+00:03:48.68 --> 00:03:52.85
+Three hundred and fifty saves, and new directions start with it.
+
+00:03:53.20 --> 00:03:58.20
+Now a direction with a ten dollar budget, and a worker that reports a model call
+
+00:03:58.20 --> 00:03:59.20
+every few lines.
+
+00:03:59.20 --> 00:04:00.96
+Each call costs sixty cents.
+
+00:04:00.96 --> 00:04:04.21
+Spend climbs in the header as each call is recorded,
+
+00:04:04.21 --> 00:04:06.96
+through the first stage and into the second.
+
+00:04:06.96 --> 00:04:10.84
+At eighty percent, the warning toast arrives, the meter turns,
+
+00:04:10.84 --> 00:04:14.10
+and the warning is written into the run log as well.
+
+00:04:14.10 --> 00:04:19.35
+A few calls later, the direction pauses, with Budget reached, and nothing more runs.
+
+00:04:19.70 --> 00:04:22.83
+The same page works in dark mode and on a phone.
+
+00:04:22.83 --> 00:04:25.57
+And a Viewer sees the defaults, read only.
+
+00:04:26.72 --> 00:04:28.41
+Journey four is complete.
+
+00:04:28.41 --> 00:04:32.74
+Every model call is recorded and priced by Hewn, not the worker.
+
+00:04:32.74 --> 00:04:36.25
+Spend climbs live, with a warning at eighty percent.
+
+00:04:36.25 --> 00:04:41.52
+And at one hundred percent, the direction stops itself after the current call.
+
+00:04:41.52 --> 00:04:45.11
+Next comes journey five: raise the budget and resume.

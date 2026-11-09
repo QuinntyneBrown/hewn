@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 04 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="04" data-video-title="Limit spending" data-parts="Introduction|Goal|Meter|Prices|Budget|Page|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 4</div>
+  <h1>Limit spending</h1>
+  <p class="lead">Price every model call, show spend live, warn at 80% and stop at the budget.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video walks through how it was built">
+  <figure><img src="screens/budget-reached-desktop.png" alt="A project paused with Budget reached, its spend meter full"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="Every model call records its input and output tokens">
+  <div class="cols cols--wide">
+    <figure><img src="screens/warning-desktop.png" alt="Spend climbing in the project header, with the 80% warning toast"></figure>
+    <ul class="bullets small">
+      <li>Tokens, model, cost per call</li>
+      <li>Against run, stage, direction, project</li>
+      <li>Spend shown live</li>
+    </ul>
+  </div>
+</section>
+
+<section id="goal-budget" data-part="1" data-cue="Every direction has a budget.">
+  <div class="cols cols--wide">
+    <figure><img src="screens/settings-saved-desktop.png" alt="Settings with the default budget saved"></figure>
+    <ul class="bullets small">
+      <li>Default from Settings</li>
+      <li>Warn at 80%</li>
+      <li>Pause at 100%, after the call</li>
+    </ul>
+  </div>
+</section>
+
+<section id="diagram" data-part="2" data-cue="Here is where usage is recorded, and how the threshold check runs.">
+  <figure class="diagram"><img src="../../detailed-designs/governance/spend-and-budgets/diagrams/sequence-meter-and-stop.png" alt="Sequence diagram: the worker reports a model call, the API prices it, records it, checks the budget and answers Continue, Warn or Stop"></figure>
+</section>
+
+<section id="meter" data-part="2" data-cue="In the worker, every call gets a fresh call identifier">
+  <div class="code-file">worker/src/work-loop.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3,7,8-13">      recordModelCall: async (call) =&gt; {
+        const { verdict, directionSpendUsd, budgetUsd } = await this.api.recordModelCall(workerId, run, {
+          callId: randomUUID(),
+          ...call,
+        });
+        const spend = `${dollars(directionSpendUsd)} of ${dollars(budgetUsd)}`;
+        if (verdict === 'Warn') logs.add({ level: 'warn', text: `Spend at 80% of budget (${spend})` });
+        if (verdict === 'Stop') {
+          // Hewn has paused the direction and released the lease; nothing more of this run may reach it.
+          this.log('Budget reached; the direction is Paused', { runId: run.runId, spend });
+          const reached = new BudgetReachedError(`Budget reached (${spend}).`);
+          lease.abort(reached);
+          throw reached;
+        }
+      },</pre>
+</section>
+
+<section id="prices" data-part="3" data-cue="Prices are configuration">
+  <div class="code-file">backend/src/Hewn.Application/Spend/PriceTable.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="4-6,8">    public decimal Cost(string model, long inputTokens, long outputTokens)
+    {
+        var prices = options.Value.Prices;
+        var price = prices.TryGetValue(model, out var known)
+            ? known
+            : new ModelPrice(prices.Values.Max(p =&gt; p.InputPerMillionUsd), prices.Values.Max(p =&gt; p.OutputPerMillionUsd));
+        var cost = (inputTokens * price.InputPerMillionUsd + outputTokens * price.OutputPerMillionUsd) / 1_000_000m;
+        return Math.Round(cost, Decimals, MidpointRounding.AwayFromZero);
+    }</pre>
+</section>
+
+<section id="rule" data-part="4" data-cue="Recording the call and judging the budget happen in one handler">
+  <div class="code-file">backend/src/Hewn.Domain/Direction.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="3-7,9-12">        SpendUsd = Math.Round(SpendUsd + costUsd, 6, MidpointRounding.AwayFromZero);
+        var warned = false;
+        if (!BudgetWarned &amp;&amp; SpendUsd &gt;= BudgetUsd * WarnAtFraction)
+        {
+            BudgetWarned = true;
+            warned = true;
+        }
+
+        if (SpendUsd &gt;= BudgetUsd)
+        {
+            return (BudgetVerdict.Stop, warned);
+        }
+
+        return (warned ? BudgetVerdict.Warn : BudgetVerdict.Continue, warned);</pre>
+</section>
+
+<section id="stop" data-part="4" data-cue="Stop pauses the run, its stage, the direction and the project">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/PipelineOrchestrator.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="3,4,7">    public async Task OnBudgetReachedAsync(Run run, Project project, Direction direction, CancellationToken cancellationToken)
+    {
+        run.Pause();
+        var stage = direction.Pause(run.Stage, Direction.BudgetReached);
+        await AppendStageAsync(direction, stage, cancellationToken);
+        await AppendDirectionAsync(direction, cancellationToken);
+        project.ChangeStatus(ProjectStatus.Paused);
+        await AppendProjectAsync(project, cancellationToken);
+    }</pre>
+</section>
+
+<section id="page" data-part="5" data-cue="The project header shows the direction's spend of its budget">
+  <div class="code-file">frontend/projects/api/src/lib/projects/apply-event.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2,8,9">    case 'SpendUpdated':
+      next.spendUsd = p['projectSpendUsd'] as number;
+      next.directions = project.directions.map((d) =&gt;
+        d.id !== p['directionId']
+          ? d
+          : {
+              ...d,
+              spendUsd: p['directionSpendUsd'] as number,
+              budgetUsd: p['budgetUsd'] as number,
+            },
+      );
+      break;</pre>
+</section>
+
+<section id="page-paused" data-part="5" data-cue="A paused direction shows Paused, Budget reached">
+  <div class="cols">
+    <figure><img src="screens/settings-invalid-desktop.png" alt="Settings: an out-of-range default budget with its linked error"></figure>
+    <figure class="phone"><img src="screens/budget-reached-phone-dark.png" alt="Paused · Budget reached on a phone in dark mode"></figure>
+  </div>
+</section>
+
+<section id="red" data-part="6" data-cue="The backend and worker slices began with their tests failing.">
+  <div class="code-file">worker/test/spend.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="4,5,10-12">  it('ends the run right after the call that reaches the budget, without another call, checkpoint or result', async () =&gt; {
+    api.enqueueStage(0, 0, 0);
+    api.verdicts.push(
+      { verdict: 'Continue', directionSpendUsd: 6, budgetUsd: 10 },
+      { verdict: 'Stop', directionSpendUsd: 12, budgetUsd: 10 },
+    );
+    void start(callingExecutor(2, 3));
+
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    expect(api.modelCalls).toHaveLength(2);
+    expect(api.calls.filter((c) =&gt; c.method === 'checkpoint')).toHaveLength(0);
+    expect(api.calls.filter((c) =&gt; c.method === 'result')).toHaveLength(0);</pre>
+  <div class="result red">✘ 4 failed · worker spend.spec.ts</div>
+  <div class="result green">✓ 163 backend · 130 worker passed</div>
+</section>
+
+<section id="tests" data-part="6" data-cue="The frontend has forty five unit tests.">
+  <div class="cols cols--3">
+    <div class="card"><h3>163 backend</h3><p class="small">16 new, real API</p></div>
+    <div class="card"><h3>130 worker</h3><p class="small">4 new, fake API</p></div>
+    <div class="card"><h3>45 e2e</h3><p class="small">Pipeline 12 · behaviour 15 · a11y 11 · visual 7</p></div>
+  </div>
+</section>
+
+<section id="clip-settings" data-part="7" data-cue="Here is Settings." data-clip="clips/settings.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">$5 is out of range, with a linked error; $350 saves</aside>
+</section>
+
+<section id="clip-spend" data-part="7" data-cue="Now a direction with a ten dollar budget" data-clip="clips/spend.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Spend climbs live, the 80% toast arrives, then Paused · Budget reached</aside>
+</section>
+
+<section id="themes" data-part="7" data-cue="The same page works in dark mode and on a phone.">
+  <div class="cols">
+    <figure><img src="screens/budget-reached-desktop-dark.png" alt="Budget reached in dark mode"></figure>
+    <figure class="phone"><img src="screens/budget-reached-phone.png" alt="Budget reached on a phone"></figure>
+  </div>
+</section>
+
+<section id="viewer" data-part="7" data-cue="And a Viewer sees the defaults, read only.">
+  <div class="cols">
+    <figure><img src="screens/settings-viewer-desktop.png" alt="Settings read-only for a Viewer"></figure>
+    <figure class="phone"><img src="screens/settings-phone.png" alt="Settings on a phone"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="8" data-cue="Journey four is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Every call priced by Hewn, not the worker</li>
+    <li>Spend live, a warning at 80%</li>
+    <li>A safety stop at 100%, after the call</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>
