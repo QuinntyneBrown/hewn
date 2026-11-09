@@ -18,6 +18,7 @@ public sealed class ApplicationExceptionHandler(IProblemDetailsService problems)
             GitHubException e => new ProblemDetails { Status = StatusCodes.Status502BadGateway, Title = e.Message, Extensions = { ["code"] = "github_failed" } },
             ConflictException e => new ProblemDetails { Status = StatusCodes.Status409Conflict, Title = e.Message, Extensions = { ["code"] = e.Code } },
             LeaseLostException => new ProblemDetails { Status = StatusCodes.Status409Conflict, Title = "Lease lost", Extensions = { ["code"] = "lease_lost" } },
+            TooManyRequestsException e => TooMany(httpContext, e),
             _ => null,
         };
 
@@ -28,6 +29,17 @@ public sealed class ApplicationExceptionHandler(IProblemDetailsService problems)
 
         httpContext.Response.StatusCode = problem.Status!.Value;
         return await problems.TryWriteAsync(new ProblemDetailsContext { HttpContext = httpContext, ProblemDetails = problem });
+    }
+
+    private static ProblemDetails TooMany(HttpContext httpContext, TooManyRequestsException e)
+    {
+        httpContext.Response.Headers.RetryAfter = e.RetryAfterSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return new ProblemDetails
+        {
+            Status = StatusCodes.Status429TooManyRequests,
+            Title = e.Message,
+            Extensions = { ["code"] = e.Code, ["limit"] = e.Limit, ["retryAfterSeconds"] = e.RetryAfterSeconds },
+        };
     }
 
     private static ValidationProblemDetails FieldProblem(FieldValidationException e)

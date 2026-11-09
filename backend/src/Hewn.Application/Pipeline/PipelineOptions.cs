@@ -22,4 +22,7 @@ public sealed class PipelineOptions
     /// L2-006 AC1). Its length is the number of retries.
     /// </summary>
     public IReadOnlyList<int> RetryBackoffSeconds { get; set; } = [30, 120, 600];
+
+    /// <summary>Directions an Owner may submit in any minute (Hewn:RateLimit:DirectionsPerMinute; L2-043 AC4).</summary>
+    public int DirectionsPerMinute { get; set; } = 10;
 }

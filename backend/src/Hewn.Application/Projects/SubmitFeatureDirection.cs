@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Hewn.Application.Projects;
 
-public sealed record SubmitFeatureDirectionCommand(Guid ProjectId, string? Idea, decimal? BudgetUsd) : IRequest<SubmitProductDirectionResult>;
+public sealed record SubmitFeatureDirectionCommand(Guid ProjectId, string? Idea, decimal? BudgetUsd) : IRequest<SubmitProductDirectionResult>, IDirectionSubmission;
 
 public sealed class SubmitFeatureDirectionValidator : AbstractValidator<SubmitFeatureDirectionCommand>
 {

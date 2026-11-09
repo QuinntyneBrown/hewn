@@ -15,7 +15,7 @@ public sealed record SubmitProductDirectionCommand(
     string? Idea,
     string? StackPreference,
     string? RepositoryUrl,
-    decimal? BudgetUsd) : IRequest<SubmitProductDirectionResult>;
+    decimal? BudgetUsd) : IRequest<SubmitProductDirectionResult>, IDirectionSubmission;
 
 public sealed record SubmitProductDirectionResult(Guid ProjectId, Guid DirectionId);
 

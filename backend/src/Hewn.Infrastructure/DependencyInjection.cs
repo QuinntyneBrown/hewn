@@ -66,6 +66,11 @@ public static class DependencyInjection
                 o.StopDeadlineSeconds = deadline;
             }
 
+            if (int.TryParse(configuration["Hewn:RateLimit:DirectionsPerMinute"], out var perMinute) && perMinute > 0)
+            {
+                o.DirectionsPerMinute = perMinute;
+            }
+
             if (configuration["Hewn:Retry:BackoffSeconds"] is { Length: > 0 } backoff)
             {
                 o.RetryBackoffSeconds = [.. backoff.Split(',').Select(v => int.Parse(v.Trim(), System.Globalization.CultureInfo.InvariantCulture))];
