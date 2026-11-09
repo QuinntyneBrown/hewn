@@ -18,31 +18,35 @@ skinparam sequenceMessageAlign left
 actor "Owner or Viewer" as user
 box "Frontend — Mission Control application" #E0F2FE
   participant "ProjectsPage" as page
-  participant "ProjectsStore" as store
-  participant "ProjectsApi" as client
+  participant "PROJECTS_API" as client
 end box
 box "Backend — Hewn API application" #D1FADF
   participant "ProjectsController" as ctrl
 end box
 box "Backend — Hewn Application and Domain" #ECFDF3
-  participant "ProjectSummaryQuery" as query
+  participant "ListProjectsHandler" as handler
+  participant "ProjectSummaryReader" as reader
 end box
 box "Backend — Hewn Infrastructure" #FFF4E5
   database "Hewn database" as db
 end box
-user -> page : Open /projects?status=Blocked
-page -> store : load(Blocked) from query string (L2-002 AC2)
-store -> client : GET /api/projects?status=Blocked
-client -> ctrl : HTTPS request
-ctrl -> query : ProjectsQuery for the caller
-query -> db : Select accessible summaries, order by last activity desc (L2-002 AC1)
-db --> query : Rows
-query --> ctrl : ProjectSummaryDto[]
+user -> page : Open /projects?status=blocked
+page -> page : parseStatusFilter from the query string (L2-002 AC2)
+page -> client : list()
+client -> ctrl : GET /api/projects
+ctrl -> handler : ListProjectsQuery
+handler -> reader : ReadAsync(all projects)
+reader -> db : Projects with directions, leased runs, increments, latest event (ADR 0016)
+db --> reader : Rows
+reader --> handler : ProjectSummaryDto[]
+handler --> ctrl : Sorted by last activity, newest first (L2-002 AC1)
 ctrl --> client : 200
-client --> store : rows
+client --> page : rows
 alt no projects at all
-  store --> page : Empty state; New product only for Owners (L2-002 AC3)
+  page --> user : Empty state; New product only for Owners (L2-002 AC3)
 else rows
-  store --> page : Render rows with stage, status, percent, spend, activity
+  page --> user : Tabs with counts; the rows with the chosen status
 end
+user -> page : Choose a tab
+page -> page : Navigate to ?status=running; filter the loaded rows
 @enduml

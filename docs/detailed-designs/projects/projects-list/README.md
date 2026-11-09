@@ -13,15 +13,13 @@ Terms used in this design:
 
 ## Description
 
-The slice is a read model plus a live update path.
+The slice is a list read on request plus a live update path ([ADR 0016](../../../adr/0016-project-rows-are-read-on-request.md)).
 
-- **`ProjectsPage`** — Angular page at `/projects?status={filter}`. It renders the filter tabs (All, each status with a count, Archived), the rows, and the empty, loading, error and no-results states. The New product action renders only for Owners.
-- **`ProjectsStore`** — Angular signal store holding the list. It loads once through `ProjectsApi`, then applies `ProjectChanged` events from `LiveEventsService` to the matching row without a reload.
-- **`ProjectsApi`** — typed client for `GET /api/projects?status=`.
-- **`ProjectsController`** — `GET /api/projects` returns `ProjectSummaryDto[]` for projects the caller can access, sorted by `LastActivityAt` descending.
-- **`ProjectSummaryQuery`** — query handler that reads the `project_summaries` read model.
-- **`ProjectSummaryProjector`** — updates the read model when stage, status, percent complete or spend events are persisted, and publishes `ProjectChanged` to the project's hub group.
-- **`ProjectSummaryDto`** — row data: id, name, idea, stage, status, percent complete, spend, last activity, note.
+- **`ProjectsPage`** — Angular page at `/projects?status={filter}`. It renders the filter tabs (All and each status, with a count), the rows, and the empty, loading, error and no-results states. The New product action renders only for Owners. It loads the list once through `PROJECTS_API`, then applies each `ProjectSummary` row from `PROJECT_EVENTS.followProjects()` without a reload.
+- **`ProjectsController`** — `GET /api/projects` returns `ProjectSummaryDto[]` for every project, sorted by `LastActivityAt` descending, through `ListProjectsHandler`.
+- **`ProjectSummaryReader`** — builds rows on request from projects, directions, leased runs, increments and each project's latest event.
+- **`SignalRProjectEventPublisher`** — after events are stored and sent to each project's group, reads every changed project's row and sends it as `ProjectSummary` to the hub's `projects` group, which the page joins with `JoinProjects`.
+- **`ProjectSummaryDto`** — row data: id, name, idea, repository, status, stage, note, percent complete, spend, last activity.
 
 ## Requirements
 
@@ -50,19 +48,19 @@ Mission Control loads the list over HTTPS and then receives row updates over Sig
 
 ### Components
 
-A projector keeps a denormalized summary table current and publishes `ProjectChanged`, so the list query stays a single indexed read.
+The reader builds rows on request for both the list and the live updates, so they always agree; the publisher sends each changed row to the `projects` group.
 
 ![C4 component view for the projects list](diagrams/c4-component.png)
 
 ### Class structure
 
-`ProjectsStore` holds `ProjectSummaryDto` rows and applies `ProjectChanged` events by project id; the projector produces those events from stage, spend and direction events.
+`ProjectsPage` holds `ProjectSummaryDto` rows and replaces or adds a row by project id; the reader produces those rows for the handler and the publisher.
 
 ![Class diagram for the projects list](diagrams/class-structure.png)
 
 ### Behaviour — load and filter the list
 
-The filter is written to the query string before the request, so a reload restores it (L2-002 AC2). An Owner with no projects sees the empty state with New product; a Viewer sees it without (AC3).
+The filter lives in the query string and is applied to the loaded rows, so a reload restores it (L2-002 AC2). An Owner with no projects sees the empty state with New product; a Viewer sees it without (AC3).
 
 ![Sequence diagram: load and filter the list](diagrams/sequence-load-and-filter.png)
 

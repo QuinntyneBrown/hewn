@@ -12,42 +12,40 @@ skinparam class {
 title Class structure — Projects list
 
 class ProjectSummaryDto {
-  +ProjectId Id
+  +Guid Id
   +string Name
   +string Idea
-  +int Stage
-  +ProjectStatus Status
+  +string? Repository
+  +string Status
+  +StageRefDto Stage
+  +string? Note
   +int PercentComplete
   +decimal SpendUsd
   +DateTimeOffset LastActivityAt
-  +string? Note
+  +bool FirstDirectionComplete
 }
-class ProjectsQuery {
-  +ProjectStatus? Status
-  +bool Archived
+class StageRefDto {
+  +int Number
+  +string Name
 }
-class ProjectSummaryQuery {
-  +Handle(q: ProjectsQuery, user: UserId): Task<ProjectSummaryDto[]>
+class ListProjectsHandler {
+  +Handle(q: ListProjectsQuery): Task<ProjectSummaryDto[]>
 }
-class ProjectSummaryProjector {
-  +On(e: StageStatusChanged): Task
-  +On(e: SpendUpdated): Task
-  +On(e: DirectionStatusChanged): Task
+class ProjectSummaryReader {
+  +ReadAsync(projectId: Guid?): Task<ProjectSummaryDto[]>
 }
-class ProjectsStore <<Angular>> {
-  +rows: Signal<ProjectSummaryDto[]>
-  +filter: Signal<ProjectStatus | 'All' | 'Archived'>
-  +load(filter): void
-  +apply(e: ProjectChanged): void
+class SignalRProjectEventPublisher {
+  +PublishAsync(events): Task
 }
-class ProjectChanged {
-  +ProjectId ProjectId
-  +long Sequence
-  +ProjectSummaryDto Summary
+class ProjectsPage <<Angular>> {
+  -all: Signal<ProjectSummary[] | null>
+  +filter: Signal<StatusFilter>
+  +rows: Signal<ProjectSummary[]>
+  +counts: Signal<Record<StatusFilter, number>>
 }
-ProjectSummaryQuery ..> ProjectsQuery : handles
-ProjectSummaryQuery ..> ProjectSummaryDto : returns
-ProjectSummaryProjector ..> ProjectChanged : publishes
-ProjectsStore "1" o-- "*" ProjectSummaryDto
-ProjectsStore ..> ProjectChanged : applies
+ProjectSummaryDto *-- StageRefDto
+ListProjectsHandler ..> ProjectSummaryReader : reads
+SignalRProjectEventPublisher ..> ProjectSummaryReader : reads changed rows
+ListProjectsHandler ..> ProjectSummaryDto : returns
+ProjectsPage "1" o-- "*" ProjectSummaryDto
 @enduml

@@ -17,21 +17,28 @@ skinparam package {
 skinparam sequenceMessageAlign left
 box "Frontend — Mission Control application" #E0F2FE
   participant "ProjectsPage" as page
-  participant "ProjectsStore" as store
-  participant "LiveEventsService" as live
+  participant "PROJECT_EVENTS" as live
 end box
 box "Backend — Hewn API application" #D1FADF
+  participant "SignalRProjectEventPublisher" as pub
   participant "MissionControlHub" as hub
 end box
 box "Backend — Hewn Application and Domain" #ECFDF3
-  participant "ProjectSummaryProjector" as proj
+  participant "ProjectSummaryReader" as reader
 end box
 box "Backend — Hewn Infrastructure" #FFF4E5
   database "Hewn database" as db
 end box
-proj -> db : Update project_summaries for DirectionStatusChanged
-proj -> hub : Publish ProjectChanged(seq n) to project group
-hub -> live : ProjectChanged (p95 <= 1 s, L2-031 AC1)
-live -> store : apply(event) once by sequence (L2-032)
-store -> page : Re-render the one row in place (L2-002 AC4)
+page -> live : followProjects()
+live -> hub : JoinProjects (group "projects")
+note over pub : Events were stored with their sequence\nand sent to each project's group
+pub -> reader : ReadAsync(changed project)\n(not for LogLines or DecisionRecorded)
+reader -> db : One project's row
+db --> reader : ProjectSummaryDto
+pub -> hub : ProjectSummary to group "projects" (ADR 0016)
+hub -> live : ProjectSummary (within 1 s, L2-031 AC1)
+live -> page : {kind: 'row', row}
+page -> page : upsertRow, sorted newest first (L2-002 AC4)
+live -> page : {kind: 'resync'} after a reconnect
+page -> page : Load the list again
 @enduml
