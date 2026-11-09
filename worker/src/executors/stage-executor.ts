@@ -1,4 +1,17 @@
-import type { BacklogReport, CheckRun, CommitFile, LeasedRun, LogLevel, PullRequest } from '../api.ts';
+import type {
+  BacklogReport,
+  CheckRun,
+  CommitFile,
+  CommitOptions,
+  Increment,
+  IncrementUpdate,
+  LeasedRun,
+  LogLevel,
+  PullRequest,
+} from '../api.ts';
+
+/** A step number, or a name for the steps inside a stage-10 increment (`i3/tests`); keys are `{run}/{step}/…`. */
+export type StepKey = number | string;
 
 export interface StageStep {
   name: string;
@@ -14,14 +27,23 @@ export interface RunContext {
   /** The product repository's default branch as a gzipped tarball with one top-level folder. */
   downloadRepository(): Promise<Buffer>;
   /** Commits as step `step`; the idempotency key is `{run}/{step}/commit`, so a resumed step cannot commit twice. */
-  commit(step: number, message: string, files: CommitFile[], branch?: string): Promise<string>;
+  commit(
+    step: StepKey,
+    message: string,
+    files: CommitFile[],
+    branch?: string,
+    options?: CommitOptions,
+  ): Promise<string>;
   /** Opens a pull request into the default branch; keyed `{run}/{step}/pull-request`, so repeating it returns the first. */
-  openPullRequest(step: number, request: { head: string; title: string; body: string }): Promise<PullRequest>;
+  openPullRequest(step: StepKey, request: { head: string; title: string; body: string }): Promise<PullRequest>;
   pullRequestChecks(number: number): Promise<CheckRun[]>;
   /** Stage 9: replaces the direction's backlog in Hewn. */
   reportBacklog(report: BacklogReport): Promise<void>;
   /** Squash-merges; keyed `{run}/{step}/merge`. */
-  mergePullRequest(step: number, number: number): Promise<string>;
+  mergePullRequest(step: StepKey, number: number): Promise<string>;
+  /** Stage 10: the next runnable increment, or null when the backlog is done. */
+  nextIncrement(): Promise<Increment | null>;
+  updateIncrement(number: number, update: IncrementUpdate): Promise<void>;
   /** Requires the checks on the default branch; keyed `{run}/{step}/protect`. */
   protectDefaultBranch(step: number, checks: string[]): Promise<void>;
 }

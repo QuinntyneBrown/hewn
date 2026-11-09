@@ -13,6 +13,21 @@ export interface StageAgentTask {
   allowedTools: readonly string[];
   /** Magic Patterns, for the design stages (L2-010); the only way an agent designs a screen. */
   magicPatterns?: MagicPatterns;
+  /** Stage 10: which part of which increment this session works on. */
+  increment?: IncrementTask;
+}
+
+export interface IncrementTask {
+  number: number;
+  title: string;
+  slug: string;
+  l2Ids: string[];
+  designs: string[];
+  phase: 'tests' | 'implement' | 'video' | 'resolve';
+  /** Failing tests or checks from the last gate or CI run, for `implement`. */
+  failing?: string[];
+  /** Paths changed both on the branch and on the default branch, for `resolve`. */
+  conflicts?: string[];
 }
 
 export interface StageAgent {

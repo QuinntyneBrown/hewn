@@ -71,3 +71,17 @@ Title and body follow the template (L2-024 AC1, AC2); check changes reach Missio
 If no webhook arrives for an open PR within 60 seconds, the poller reads the checks and emits the same event (L2-037 AC1).
 
 ![Sequence diagram: poll when no webhook arrives](diagrams/sequence-poll-when-silent.png)
+
+## Decisions made while building the slice
+
+- **Rebase without git.** The worker holds no Git credential, so a rebase is a commit with `rebase: true`: the API
+  commits every file the branch changes on top of the default branch's head and force-moves the branch. The
+  worker replays its changes onto a fresh checkout; files both sides changed go to the agent to resolve.
+- **Behind.** A merge refused because the branch is behind (GitHub's 405 "out of date" under strict protection)
+  is `400 branch_behind`, with nothing recorded, so the worker rebases and merges again under a new key.
+- **Merging deletes the branch** for every stage that merges, and the merge title is the pull request's title.
+- **Stage 10's writes.** `feature/{slug}` branches take any path except `.github/`, `.claude/`, `.agents/`,
+  `.hewn/` and `docs/specs/`; the default branch only `docs/estimates/` (progress) and the decision log.
+- **Attribution** is "Built by Hewn · direction {id8} · run-{id8}", the last line of the body.
+- **Deferred:** webhooks, the check poller and `CheckChanged` (L2-037, L2-024 AC3) with journey 13 and
+  source control; until then the worker polls checks through the API.

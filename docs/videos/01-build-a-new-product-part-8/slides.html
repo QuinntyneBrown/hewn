@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 01 part 8 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="01 · part 8" data-video-title="Build a new product, part eight" data-parts="Introduction|What we built|Design|Code|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 1 · Part 8</div>
+  <h1>Increments</h1>
+  <p class="lead">Test first, implement until a fixed gate is green, record a video, open a pull request, and squash-merge on green checks.</p>
+</section>
+
+<section id="loop" data-part="1" data-cue="Stage ten asks the API for the next runnable increment">
+  <h2>Per increment</h2>
+  <ul class="steps">
+    <li class="done">Tests on feature/{slug}</li><li class="done">Red recorded</li><li class="done">Implement to green</li><li class="done">Video</li><li class="done">Pull request</li><li class="done">Merge and progress</li>
+  </ul>
+</section>
+
+<section id="gate" data-part="1" data-cue="Then the agent implements in iterations.">
+  <div class="code-file">worker/src/scaffold/dotnet-angular-template.ts · gate</div>
+  <pre class="code tight" data-lang="text">backend         dotnet test
+frontend lint   npm install &amp;&amp; npm run lint
+frontend unit   npm test
+e2e             npm install &amp;&amp; npx playwright test   (acceptance)
+
+10 failing iterations → Blocked, failing tests listed</pre>
+</section>
+
+<section id="rules" data-part="2" data-cue="The worker still holds no GitHub credential.">
+  <h2>Stage 10 may</h2>
+  <ul class="bullets small">
+    <li>Commit code to <span class="file">feature/{slug}</span>, never <span class="file">.github/</span> or <span class="file">docs/specs/</span></li>
+    <li>Commit only <span class="file">docs/estimates/</span> to the default branch</li>
+    <li>Open and merge only its own pull requests</li>
+    <li>Never protect branches: <span class="file">mutation_not_allowed</span></li>
+  </ul>
+</section>
+
+<section id="rebase" data-part="2" data-cue="If the default branch moved">
+  <div class="code-file">worker/src/executors/increment-executor.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3-5">} catch (error) {
+  if (!(error instanceof HewnApiError &amp;&amp; error.code === 'branch_behind')) throw error;
+  ({ directory, base } = await this.rebase(...));   // replay, agent resolves conflicts
+  await context.commit(key(`rebase-${n}`), message, changed, branch, { rebase: true });
+  green = (await gate.full(directory, testFiles)) ...
+}</pre>
+</section>
+
+<section id="pr" data-part="3" data-cue="The pull request is titled after the journey">
+  <div class="code-file">Book a firing (journey 2, L2-002, L2-003)</div>
+  <pre class="code tight" data-lang="markdown">## What · ## Design and decisions · ## API
+## Tests
+| `dotnet test`         | 14 | 0 |
+| `npx playwright test` |  6 | 0 |
+## Deferred · ## Notes
+- Red recorded: 3 new acceptance tests failed on the test commit.
+
+Built by Hewn · direction d7d7d7d7 · run-0412abcd</pre>
+</section>
+
+<section id="failures" data-part="3" data-cue="A failed check counts as a failed iteration.">
+  <h2>When things go wrong</h2>
+  <ul class="bullets small">
+    <li>Failed check → another implement iteration</li>
+    <li>Video fails twice → "Video failed: reason" in Notes</li>
+    <li>After merge → designs 100%, estimates committed</li>
+  </ul>
+</section>
+
+<section id="tests" data-part="4" data-cue="The backend gained twenty tests">
+  <h2>Tests</h2>
+  <div class="cols cols--3">
+    <div class="card"><h3>114 backend</h3><p class="small">Cursor, blocking, red, branches, merge, behind</p></div>
+    <div class="card"><h3>103 worker</h3><p class="small">Guard, gate, PR body, video, every executor path</p></div>
+    <div class="card"><h3>18 e2e</h3><p class="small">Stage 10 merges every increment in the pipeline specs</p></div>
+  </div>
+</section>
+
+<section id="clip" data-part="5" data-cue="Here is the real app with one worker." data-clip="clips/increments.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Submit; stage 10 merges each increment; the direction completes</aside>
+</section>
+
+<section id="recap" data-part="6" data-cue="Each increment now ships test first">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Tests first, red recorded, gate decides green</li>
+    <li>Merged through pull requests, rebased when behind</li>
+    <li>Next: recorded decisions and the no-approval e2e test</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

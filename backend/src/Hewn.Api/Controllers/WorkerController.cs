@@ -1,5 +1,6 @@
 using Hewn.Api.Auth;
 using Hewn.Application.Pipeline;
+using Hewn.Domain;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -36,9 +37,20 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
         string? Title = null,
         string? Body = null,
         int? Number = null,
-        IReadOnlyList<string>? Checks = null);
+        IReadOnlyList<string>? Checks = null,
+        bool Rebase = false);
 
     public sealed record LogRequest(string WorkerId, long Epoch, IReadOnlyList<RunLogEntry> Lines);
+
+    public sealed record IncrementRequest(
+        string WorkerId,
+        long Epoch,
+        IncrementStatus Status,
+        int? RedFailing = null,
+        int? RedPassing = null,
+        int? Iterations = null,
+        IReadOnlyList<string>? FailingTests = null,
+        int? PullRequestNumber = null);
 
     public sealed record BacklogRequest(string WorkerId, long Epoch, IReadOnlyList<PlannedIncrement> Increments, IReadOnlyList<DeferredDesign> Deferred);
 
@@ -93,7 +105,7 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
         switch (request.Kind)
         {
             case "commit":
-                var sha = await mediator.Send(new CommitFilesCommand(runId, worker, epoch, key, request.Message ?? string.Empty, request.Files ?? [], request.Branch), cancellationToken);
+                var sha = await mediator.Send(new CommitFilesCommand(runId, worker, epoch, key, request.Message ?? string.Empty, request.Files ?? [], request.Branch, request.Rebase), cancellationToken);
                 return Ok(new { sha });
             case "open_pull_request":
                 return Ok(await mediator.Send(new OpenPullRequestCommand(runId, worker, epoch, key, request.Head ?? string.Empty, request.Title ?? string.Empty, request.Body ?? string.Empty), cancellationToken));
@@ -117,6 +129,22 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> Backlog(Guid runId, BacklogRequest request, CancellationToken cancellationToken)
     {
         await mediator.Send(new RecordBacklogCommand(runId, request.WorkerId, request.Epoch, request.Increments ?? [], request.Deferred ?? []), cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>Stage 10: the next runnable increment, or 204 when none is left.</summary>
+    [HttpGet("runs/{runId:guid}/increments/next")]
+    public async Task<IActionResult> NextIncrement(Guid runId, [FromQuery] string workerId, [FromQuery] long epoch, CancellationToken cancellationToken)
+    {
+        var next = await mediator.Send(new GetNextIncrementQuery(runId, workerId, epoch), cancellationToken);
+        return next is null ? NoContent() : Ok(next);
+    }
+
+    /// <summary>Stage 10's progress on one increment: started, red recorded, Blocked or Merged.</summary>
+    [HttpPut("runs/{runId:guid}/increments/{number:int}")]
+    public async Task<IActionResult> UpdateIncrement(Guid runId, int number, IncrementRequest request, CancellationToken cancellationToken)
+    {
+        await mediator.Send(new UpdateIncrementCommand(runId, request.WorkerId, request.Epoch, number, request.Status, request.RedFailing, request.RedPassing, request.Iterations, request.FailingTests, request.PullRequestNumber), cancellationToken);
         return NoContent();
     }
 

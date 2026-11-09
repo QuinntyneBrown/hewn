@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Stage 10, Increments (journey 1, L2-021 to L2-025, L2-023 AC1 and AC3, L2-024 AC1-AC2): each increment is
+  delivered test first on `feature/{slug}` with red recorded, implemented until the stack's gate is green or
+  Blocked after `HEWN_MAX_ITERATIONS`, recorded on video, opened as a pull request with the six-section body,
+  squash-merged once checks pass (rebasing when the default branch moved) and followed by a progress commit.
 - Stage 9, Estimates (journey 1, L2-018 AC1, L2-019 AC1-AC3, L2-020 AC1): estimates per design, automatic
   descoping with reasons and Deferred status lines, and a backlog of increments ordered by journey and
   dependency, stored in Hewn's new `increments` table through `PUT /api/worker/runs/{id}/backlog`.

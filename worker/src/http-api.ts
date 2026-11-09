@@ -1,5 +1,9 @@
 import {
+  HewnApiError,
   LeaseLostError,
+  type CommitOptions,
+  type Increment,
+  type IncrementUpdate,
   type BacklogReport,
   type CommitFile,
   type HewnApi,
@@ -68,6 +72,7 @@ export class HttpHewnApi implements HewnApi {
     message: string,
     files: CommitFile[],
     branch?: string,
+    options?: CommitOptions,
   ): Promise<string> {
     const body = (await this.post(`/api/worker/runs/${run.runId}/github/mutations`, {
       workerId,
@@ -77,6 +82,7 @@ export class HttpHewnApi implements HewnApi {
       message,
       files: files.map((f) => ({ path: f.path, contentBase64: f.content.toString('base64') })),
       ...(branch === undefined ? {} : { branch }),
+      ...(options?.rebase ? { rebase: true } : {}),
     })) as { sha: string };
     return body.sha;
   }
@@ -96,6 +102,19 @@ export class HttpHewnApi implements HewnApi {
       checks: CheckRun[];
     };
     return body.checks;
+  }
+
+  async nextIncrement(workerId: string, run: LeasedRun): Promise<Increment | null> {
+    const query = new URLSearchParams({ workerId, epoch: String(run.epoch) });
+    return (await this.send('GET', `/api/worker/runs/${run.runId}/increments/next?${query}`)) as Increment | null;
+  }
+
+  async updateIncrement(workerId: string, run: LeasedRun, number: number, update: IncrementUpdate): Promise<void> {
+    await this.send('PUT', `/api/worker/runs/${run.runId}/increments/${number}`, {
+      workerId,
+      epoch: run.epoch,
+      ...update,
+    });
   }
 
   async reportBacklog(workerId: string, run: LeasedRun, report: BacklogReport): Promise<void> {
@@ -154,7 +173,14 @@ export class HttpHewnApi implements HewnApi {
     });
 
     if (response.status === 409) throw new LeaseLostError();
-    if (!response.ok) throw new Error(`Hewn API ${path.split('?')[0]} answered ${response.status}`);
+    if (!response.ok) {
+      const problem = (await response.json().catch(() => null)) as { code?: string; title?: string } | null;
+      throw new HewnApiError(
+        `Hewn API ${path.split('?')[0]} answered ${response.status}${problem?.code ? ` (${problem.code})` : ''}`,
+        response.status,
+        problem?.code ?? null,
+      );
+    }
     return response;
   }
 }

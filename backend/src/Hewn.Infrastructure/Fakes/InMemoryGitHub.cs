@@ -140,11 +140,22 @@ public class InMemoryGitHub(IConfiguration? configuration) : IGitHubRepositoryPr
         }
     }
 
-    public Task<string> CommitToBranchAsync(string owner, string name, string branch, string message, IReadOnlyList<RepositoryFile> files, CancellationToken cancellationToken)
+    public Task<string> CommitToBranchAsync(string owner, string name, string branch, string message, IReadOnlyList<RepositoryFile> files, bool rebase, CancellationToken cancellationToken)
     {
         lock (_lock)
         {
-            return Task.FromResult(Existing(owner, name).CommitToBranch(branch, message, files));
+            return Task.FromResult(Existing(owner, name).CommitToBranch(branch, message, files, rebase));
+        }
+    }
+
+    public Task DeleteBranchAsync(string owner, string name, string branch, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            var repository = Existing(owner, name);
+            repository.Branches.Remove(branch);
+            repository.BranchBases.Remove(branch);
+            return Task.CompletedTask;
         }
     }
 
@@ -181,7 +192,9 @@ public class InMemoryGitHub(IConfiguration? configuration) : IGitHubRepositoryPr
             var repository = Existing(owner, name);
             var pull = repository.PullRequests.Single(p => p.Number == number);
             // The fake "runs" CI instantly: one check per job in the head branch's workflow.
-            var workflow = repository.Branches[pull.Head].TryGetValue(".github/workflows/ci.yml", out var bytes) ? Encoding.UTF8.GetString(bytes) : string.Empty;
+            // A merged pull request's branch is gone; its checks are those of the merge.
+            var tree = repository.Branches.GetValueOrDefault(pull.Head) ?? repository.Files;
+            var workflow = tree.TryGetValue(".github/workflows/ci.yml", out var bytes) ? Encoding.UTF8.GetString(bytes) : string.Empty;
             IReadOnlyList<CheckRunInfo> checks = [.. WorkflowJobs(workflow).Select(job =>
                 new CheckRunInfo(job, "completed", repository.FailingChecks.Contains(job) ? "failure" : "success"))];
             return Task.FromResult(checks);
@@ -197,6 +210,11 @@ public class InMemoryGitHub(IConfiguration? configuration) : IGitHubRepositoryPr
             if (pull.Merged)
             {
                 throw new GitHubException("GitHub refused to merge: 405 Pull Request is not mergeable");
+            }
+
+            if (repository.BranchBases.GetValueOrDefault(pull.Head) != repository.Commits.Count)
+            {
+                throw new GitHubBranchBehindException("GitHub refused to merge: 405 Head branch is out of date");
             }
 
             var files = repository.Branches[pull.Head].Select(f => new RepositoryFile(f.Key, f.Value)).ToList();
@@ -267,6 +285,9 @@ public sealed class FakeRepository(string owner, string name, bool isPrivate, Li
     /// <summary>Branches other than the default, each with its full file set.</summary>
     public Dictionary<string, Dictionary<string, byte[]>> Branches { get; } = new(StringComparer.Ordinal);
 
+    /// <summary>How many default-branch commits each branch was made (or last rebased) on.</summary>
+    public Dictionary<string, int> BranchBases { get; } = new(StringComparer.Ordinal);
+
     public List<FakePullRequest> PullRequests { get; } = [];
 
     public List<string> RequiredChecks { get; } = [];
@@ -282,14 +303,16 @@ public sealed class FakeRepository(string owner, string name, bool isPrivate, Li
         Commit($"Update {path}", [new RepositoryFile(path, Encoding.UTF8.GetBytes(content))]);
 
     internal PullRequestInfo PullRequestInfo(FakePullRequest pull) =>
-        new(pull.Number, $"https://github.com/{Owner}/{Name}/pull/{pull.Number}", pull.Head, pull.Merged);
+        new(pull.Number, $"https://github.com/{Owner}/{Name}/pull/{pull.Number}", pull.Head, pull.Merged, pull.Title);
 
-    internal string CommitToBranch(string branch, string message, IReadOnlyList<RepositoryFile> files)
+    /// <summary>Commits to a branch as the broker does; tests also use it to make a branch Hewn did not.</summary>
+    public string CommitToBranch(string branch, string message, IReadOnlyList<RepositoryFile> files, bool rebase = false)
     {
-        if (!Branches.TryGetValue(branch, out var tree))
+        if (rebase || !Branches.TryGetValue(branch, out var tree))
         {
             tree = new Dictionary<string, byte[]>(Files, StringComparer.Ordinal);
             Branches[branch] = tree;
+            BranchBases[branch] = Commits.Count;
         }
 
         foreach (var file in files)

@@ -61,3 +61,18 @@ The guard runs before the push, so a commit that mixes tests and code never reac
 The branch comes from the latest default branch (L2-021 AC1). The first commit holds only traced acceptance tests (AC2). The red run is recorded, or the early-green flag set (AC3).
 
 ![Sequence diagram: write tests and record red](diagrams/sequence-test-first.png)
+
+## Decisions made while building the slice
+
+- **`IncrementStageExecutor`** (`worker/src/executors/increment-executor.ts`) has one step, "Deliver increments",
+  that asks the API for the next runnable increment until none is left; progress lives on the increment, so a
+  resumed run picks up where the backlog stands.
+- **Test files** are `*.spec.ts`, `*.test.ts`, `*Tests.cs` and scripts under `e2e/**/tests/`; the `Traces to:`
+  header may sit anywhere in the first five lines, so the house header `// Acceptance Test` can come first.
+- **A failed guard blocks the increment** (failing tests "Test commit: …") rather than failing the run, so the
+  rest of the backlog still ships. Nothing is committed.
+- **Red** is the stack's acceptance suite run on the new test files alone; counts are parsed from dotnet, vitest
+  and Playwright output and stored as `RedFailing`/`RedPassing` on the increment with `TestsPassedEarly`.
+- **Keys.** Commit keys carry the lease epoch (`{run}/e{epoch}/i{n}/tests`), so a resumed run commits its own work;
+  pull request and merge keys do not, so a resume finds the same pull request.
+- **Deferred:** the increment page timeline (journey 13).

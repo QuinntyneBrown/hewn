@@ -59,6 +59,7 @@ const leased = (stage: number, stageName: string): LeasedRun => ({
   },
   skillsSource: 'unused',
   descopeThresholdDays: 3,
+  maxIterations: 10,
 });
 
 function context() {

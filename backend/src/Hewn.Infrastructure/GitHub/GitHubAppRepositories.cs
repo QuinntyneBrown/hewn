@@ -82,18 +82,37 @@ public sealed class GitHubAppRepositories(GitHubAppClient client) : IGitHubRepos
         return await CommitToRefAsync(token, owner, name, branch, message, files, cancellationToken);
     }
 
-    public async Task<string> CommitToBranchAsync(string owner, string name, string branch, string message, IReadOnlyList<RepositoryFile> files, CancellationToken cancellationToken)
+    public async Task<string> CommitToBranchAsync(string owner, string name, string branch, string message, IReadOnlyList<RepositoryFile> files, bool rebase, CancellationToken cancellationToken)
     {
         var token = await RepositoryTokenAsync(owner, name, cancellationToken);
         var repo = $"repos/{owner}/{name}";
-        if (await GetJsonAsync(token, $"{repo}/git/ref/heads/{branch}", cancellationToken) is null)
+        var exists = await GetJsonAsync(token, $"{repo}/git/ref/heads/{branch}", cancellationToken) is not null;
+        if (!exists || rebase)
         {
             var main = await DefaultBranchAsync(token, owner, name, cancellationToken);
-            var from = (await GetJsonAsync(token, $"{repo}/git/ref/heads/{main}", cancellationToken))!.Value.GetProperty("object").GetProperty("sha").GetString();
-            await PostJsonAsync(token, $"{repo}/git/refs", new { @ref = $"refs/heads/{branch}", sha = from }, cancellationToken);
+            var from = (await GetJsonAsync(token, $"{repo}/git/ref/heads/{main}", cancellationToken))!.Value.GetProperty("object").GetProperty("sha").GetString()!;
+            if (!exists)
+            {
+                await PostJsonAsync(token, $"{repo}/git/refs", new { @ref = $"refs/heads/{branch}", sha = from }, cancellationToken);
+            }
+            else
+            {
+                // A rebase: the new commit sits on the default branch's head and the branch is moved to it.
+                return await CommitToRefAsync(token, owner, name, branch, message, files, cancellationToken, parentOverride: from);
+            }
         }
 
         return await CommitToRefAsync(token, owner, name, branch, message, files, cancellationToken);
+    }
+
+    public async Task DeleteBranchAsync(string owner, string name, string branch, CancellationToken cancellationToken)
+    {
+        var token = await RepositoryTokenAsync(owner, name, cancellationToken);
+        using var response = await client.SendAsRepositoryAsync(HttpMethod.Delete, $"repos/{owner}/{name}/git/refs/heads/{branch}", token, cancellationToken);
+        if (response.StatusCode is not (HttpStatusCode.UnprocessableEntity or HttpStatusCode.NotFound))
+        {
+            Ensure(response, $"delete {branch}");
+        }
     }
 
     public async Task<PullRequestInfo> OpenPullRequestAsync(string owner, string name, string head, string title, string body, CancellationToken cancellationToken)
@@ -127,6 +146,16 @@ public sealed class GitHubAppRepositories(GitHubAppClient client) : IGitHubRepos
     {
         var token = await RepositoryTokenAsync(owner, name, cancellationToken);
         using var response = await client.SendAsRepositoryAsync(HttpMethod.Put, $"repos/{owner}/{name}/pulls/{number}/merge", token, cancellationToken, new { merge_method = "squash", commit_title = $"{title} (#{number})" });
+        if (response.StatusCode == HttpStatusCode.MethodNotAllowed)
+        {
+            // Branch protection with strict checks refuses a branch that is behind the default branch.
+            var message = TryMessage(await response.Content.ReadAsStringAsync(cancellationToken)) ?? "not mergeable";
+            if (message.Contains("out of date", StringComparison.OrdinalIgnoreCase) || message.Contains("modified", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new GitHubBranchBehindException($"GitHub refused to merge #{number}: {message}");
+            }
+        }
+
         var merged = await Ensure(response, $"merge #{number}").Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
         return merged.GetProperty("sha").GetString()!;
     }
@@ -149,15 +178,16 @@ public sealed class GitHubAppRepositories(GitHubAppClient client) : IGitHubRepos
         pull.GetProperty("number").GetInt32(),
         pull.GetProperty("html_url").GetString()!,
         pull.GetProperty("head").GetProperty("ref").GetString()!,
-        pull.TryGetProperty("merged", out var merged) && merged.ValueKind == JsonValueKind.True);
+        pull.TryGetProperty("merged", out var merged) && merged.ValueKind == JsonValueKind.True,
+        pull.GetProperty("title").GetString() ?? string.Empty);
 
     private async Task<string> DefaultBranchAsync(string token, string owner, string name, CancellationToken cancellationToken) =>
         (await GetJsonAsync(token, $"repos/{owner}/{name}", cancellationToken))!.Value.GetProperty("default_branch").GetString()!;
 
-    private async Task<string> CommitToRefAsync(string token, string owner, string name, string branch, string message, IReadOnlyList<RepositoryFile> files, CancellationToken cancellationToken)
+    private async Task<string> CommitToRefAsync(string token, string owner, string name, string branch, string message, IReadOnlyList<RepositoryFile> files, CancellationToken cancellationToken, string? parentOverride = null)
     {
         var repo = $"repos/{owner}/{name}";
-        var head = (await GetJsonAsync(token, $"{repo}/git/ref/heads/{branch}", cancellationToken))!.Value.GetProperty("object").GetProperty("sha").GetString()!;
+        var head = parentOverride ?? (await GetJsonAsync(token, $"{repo}/git/ref/heads/{branch}", cancellationToken))!.Value.GetProperty("object").GetProperty("sha").GetString()!;
         var baseTree = (await GetJsonAsync(token, $"{repo}/git/commits/{head}", cancellationToken))!.Value.GetProperty("tree").GetProperty("sha").GetString()!;
 
         var entries = new List<object>();
@@ -170,7 +200,7 @@ public sealed class GitHubAppRepositories(GitHubAppClient client) : IGitHubRepos
         var tree = await PostJsonAsync(token, $"{repo}/git/trees", new { base_tree = baseTree, tree = entries }, cancellationToken);
         var commit = await PostJsonAsync(token, $"{repo}/git/commits", new { message, tree = tree.GetProperty("sha").GetString(), parents = new[] { head } }, cancellationToken);
         var sha = commit.GetProperty("sha").GetString()!;
-        using var update = await client.SendAsRepositoryAsync(HttpMethod.Patch, $"{repo}/git/refs/heads/{branch}", token, cancellationToken, new { sha });
+        using var update = await client.SendAsRepositoryAsync(HttpMethod.Patch, $"{repo}/git/refs/heads/{branch}", token, cancellationToken, new { sha, force = parentOverride is not null });
         Ensure(update, $"update {branch}");
         return sha;
     }

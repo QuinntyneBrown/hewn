@@ -35,6 +35,7 @@ export function startWorkers(count: number, stepMs: number): () => Promise<void>
         HEWN_MAGIC_PATTERNS_TOKEN: MAGIC_PATTERNS_TOKEN,
         HEWN_MAGIC_PATTERNS_POLL_MS: '200',
         HEWN_CHECK_POLL_MS: '200',
+        HEWN_GATE: 'scripted',
       },
       stdio: output,
     }),

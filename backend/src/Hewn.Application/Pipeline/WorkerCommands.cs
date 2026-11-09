@@ -47,7 +47,8 @@ public sealed record LeasedRunDto(
     string? CheckpointSha,
     LeasedRunProject Project,
     string SkillsSource,
-    decimal DescopeThresholdDays);
+    decimal DescopeThresholdDays,
+    int MaxIterations);
 
 public sealed record LeaseRunCommand(string WorkerId) : IRequest<LeasedRunDto?>;
 
@@ -97,7 +98,8 @@ public sealed class LeaseRunHandler(
             run.CheckpointSha,
             new LeasedRunProject(project.Id, project.Name, project.Idea, project.StackPreference, project.Repository),
             options.Value.SkillsSource,
-            options.Value.DescopeThresholdDays);
+            options.Value.DescopeThresholdDays,
+            options.Value.MaxIterations);
     }
 
     /// <summary>Creates or adopts the repository; on refusal fails the run with GitHub's reason and returns false.</summary>

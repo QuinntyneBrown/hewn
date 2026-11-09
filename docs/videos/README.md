@@ -13,6 +13,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 01 · 5 | [Build a new product, part five: designs and the design system](01-build-a-new-product-part-5/README.md) | ~3:26 | Journey 1, part 5 |
 | 01 · 6 | [Build a new product, part six: the scaffold](01-build-a-new-product-part-6/README.md) | ~3:11 | Journey 1, part 6 |
 | 01 · 7 | [Build a new product, part seven: estimates and descoping](01-build-a-new-product-part-7/README.md) | ~2:59 | Journey 1, part 7 |
+| 01 · 8 | [Build a new product, part eight: increments](01-build-a-new-product-part-8/README.md) | ~3:06 | Journey 1, part 8 |
 
 ## Voice
 

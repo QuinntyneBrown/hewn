@@ -54,6 +54,7 @@ const leased = (stage: number, stageName: string, stackPreference: string | null
   },
   skillsSource: 'unused',
   descopeThresholdDays: 3,
+  maxIterations: 10,
 });
 
 interface Recorded {

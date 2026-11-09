@@ -62,3 +62,16 @@ The gate is fixed code, so "done" never depends on the model's own judgment.
 Done means the whole gate passes (L2-022 AC1). After 10 failing iterations the increment is Blocked with failing tests listed, and work moves to an independent increment (AC2).
 
 ![Sequence diagram: iterate to green or block](diagrams/sequence-iterate.png)
+
+## Decisions made while building the slice
+
+- **Gate.** Each stack template lists its gate (`StackTemplate.gate`); for .NET and Angular: `dotnet test`,
+  `npm run lint` and `npm test` in `frontend/`, and `npx playwright test` in `e2e/`, each preceded by
+  `npm install` where needed. Failing tests are lines starting ✘, ×, `FAIL` or `Failed`, otherwise the suite name.
+- **Cap.** `HEWN_MAX_ITERATIONS` on the API (default 10), sent with every lease until Settings stores it.
+- **`BacklogCursor`** is `GET /api/worker/runs/{id}/increments/next`: the lowest Queued or InProgress increment
+  none of whose dependencies is Blocked, directly or transitively. `PUT …/increments/{n}` records progress
+  (InProgress, Blocked with failing tests, Merged) and appends `IncrementChanged`; failing tests are redacted.
+- **Scripted gate.** The e2e stack runs `HEWN_GATE=scripted`: acceptance tests fail until the scripted agent's
+  implementation file exists, which keeps the pipeline fast while every step and API call is real.
+- **Deferred:** live iteration progress in Mission Control (journey 13).

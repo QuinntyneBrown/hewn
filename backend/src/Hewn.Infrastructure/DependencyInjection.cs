@@ -35,6 +35,11 @@ public static class DependencyInjection
             {
                 o.DescopeThresholdDays = threshold;
             }
+
+            if (int.TryParse(configuration["HEWN_MAX_ITERATIONS"], out var iterations) && iterations > 0)
+            {
+                o.MaxIterations = iterations;
+            }
         });
 
         if (configuration.GetValue<bool>("Hewn:Fakes:Enabled"))

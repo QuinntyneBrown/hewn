@@ -1,3 +1,5 @@
+import type { GateCommand } from '../increments/test-gate.ts';
+
 /** A generated file, as the scaffold commits it. */
 export interface ScaffoldFile {
   path: string;
@@ -11,6 +13,8 @@ export interface StackTemplate {
   matches(decision: string): boolean;
   /** CI job names, which are the check names GitHub reports and branch protection requires. */
   checks: readonly string[];
+  /** Stage 10's local gate (L2-022 AC1): backend tests, frontend lint and unit tests, and the e2e suite. */
+  gate: readonly GateCommand[];
   generate(projectName: string): ScaffoldFile[];
 }
 

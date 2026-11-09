@@ -140,6 +140,7 @@ internal sealed class IncrementConfiguration : IEntityTypeConfiguration<Incremen
         b.Property(i => i.Reason).HasMaxLength(500);
         b.Property(i => i.Status).HasConversion<string>().HasMaxLength(16);
         b.Property(i => i.EstimateDays).HasPrecision(6, 1);
+        b.Property(i => i.FailingTests).HasMaxLength(52_000);
         b.HasIndex(i => new { i.DirectionId, i.Number });
     }
 }

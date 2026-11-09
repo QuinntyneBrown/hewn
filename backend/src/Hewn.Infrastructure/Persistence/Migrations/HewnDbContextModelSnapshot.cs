@@ -131,6 +131,13 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                         .HasPrecision(6, 1)
                         .HasColumnType("REAL");
 
+                    b.Property<string>("FailingTests")
+                        .HasMaxLength(52000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Iterations")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("Journey")
                         .HasColumnType("INTEGER");
 
@@ -149,10 +156,19 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("RedFailing")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("RedPassing")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("TestsPassedEarly")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Title")
                         .IsRequired()

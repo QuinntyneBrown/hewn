@@ -93,8 +93,10 @@ export class WorkLoop {
       log: (level, text) => this.api.log(workerId, run, [{ level, text }]),
       listSkillFolders: () => this.api.listSkillFolders(workerId, run),
       downloadRepository: () => this.api.downloadRepository(workerId, run),
-      commit: (step, message, files, branch) =>
-        this.api.commit(workerId, run, `${run.runId}/${step}/commit`, message, files, branch),
+      commit: (step, message, files, branch, options) =>
+        this.api.commit(workerId, run, `${run.runId}/${step}/commit`, message, files, branch, options),
+      nextIncrement: () => this.api.nextIncrement(workerId, run),
+      updateIncrement: (number, update) => this.api.updateIncrement(workerId, run, number, update),
       openPullRequest: (step, request) =>
         this.api.openPullRequest(workerId, run, `${run.runId}/${step}/pull-request`, request),
       pullRequestChecks: (number) => this.api.pullRequestChecks(workerId, run, number),
