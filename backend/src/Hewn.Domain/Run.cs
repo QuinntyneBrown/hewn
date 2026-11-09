@@ -47,12 +47,28 @@ public sealed class Run
 
     public DateTimeOffset? StartedAt { get; private set; }
 
+    /// <summary>The worker that last held the lease; kept after the run ends, unlike <see cref="WorkerId"/>.</summary>
+    public string? RanBy { get; private set; }
+
+    /// <summary>The step the worker is on (1-based), while the run is leased.</summary>
+    public int? CurrentStep { get; private set; }
+
+    public string? CurrentStepName { get; private set; }
+
     public DateTimeOffset? EndedAt { get; private set; }
 
     public bool IsHeldBy(string workerId, long epoch) =>
         Status == RunStatus.Leased && WorkerId == workerId && LeaseEpoch == epoch;
 
     public void Renew(DateTimeOffset now) => LeaseExpiresAt = now + LeaseDuration;
+
+    public const int MaxStepNameLength = 200;
+
+    public void StartStep(int step, string name)
+    {
+        CurrentStep = step;
+        CurrentStepName = name.Length > MaxStepNameLength ? name[..MaxStepNameLength] : name;
+    }
 
     public void Checkpoint(int step, string? sha)
     {

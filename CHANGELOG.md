@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Monitor a direction (journey 3, L2-030, L2-031, L2-033, L2-047 AC3):
+  - the running stage shows its current step and latest log line, live, from new `StepStarted` and `LogLines`
+    events; workers name each step (`PUT /api/worker/runs/{id}/step`) and send log lines in batches;
+  - selecting a stage shows its runs, log, artifacts and decisions
+    (`GET /api/projects/{id}/directions/{d}/stages/{n}`, `GET /api/projects/{id}/runs/{r}/logs`); workers report
+    the decisions they commit (`POST /api/worker/runs/{id}/decisions`, `DecisionRecorded`, ADR 0009);
+  - the live log follows new lines, holds when scrolled up with "{n} new lines — Jump to latest", and keeps at most
+    500 lines in the page;
+  - stage changes are announced in a polite live region at most once every 5 seconds;
+  - the project page has loading and error states, and runs record when they started and which worker ran them.
 - Add a feature (journey 2, L2-005, L2-010 AC6, L2-014 AC4, L2-017 AC3, L2-054):
   - New direction's Feature for a product adds a feature direction to an existing product through
     `POST /api/projects/{id}/directions`; `GET /api/projects` lists products and whether a feature would queue;

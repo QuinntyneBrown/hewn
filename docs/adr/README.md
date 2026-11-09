@@ -12,3 +12,4 @@ Read the ADRs that cover an area before changing it. New ADRs take the next numb
 | [0006](0006-commit-mutation-before-git-proxy.md) | Workers commit through the API's commit mutation until the git push proxy exists | Accepted |
 | [0007](0007-magic-patterns-designs-hold-raw-html-states.md) | Magic Patterns designs hold one raw HTML file per state, and workers reach Magic Patterns directly | Accepted |
 | [0008](0008-feature-scope-is-a-recorded-decision.md) | A feature's UI scope is a recorded decision, and later directions keep every number | Accepted |
+| [0009](0009-live-progress-from-the-worker.md) | Live progress: workers name steps and batch log lines, and Hewn keeps a copy of each decision | Accepted |

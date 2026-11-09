@@ -3,15 +3,17 @@ import {
   type CommitFile,
   type HewnApi,
   type LeasedRun,
+  type ReportedDecision,
   type RunOutcome,
   type WorkerRegistration,
 } from '../../src/api.ts';
 
 export interface Call {
-  method: 'register' | 'lease' | 'heartbeat' | 'checkpoint' | 'result';
+  method: 'register' | 'lease' | 'heartbeat' | 'step' | 'checkpoint' | 'result';
   at: number;
   runId?: string;
   step?: number;
+  name?: string;
   outcome?: RunOutcome;
 }
 
@@ -22,6 +24,10 @@ export class FakeHewnApi implements HewnApi {
   /** Answer the next heartbeats with these: 'lost' (409) or 'down' (network error). */
   readonly heartbeatFaults: ('lost' | 'down')[] = [];
   readonly logs: { runId: string; level: string; text: string }[] = [];
+  /** When each line in `logs` was sent. */
+  readonly logTimes: number[] = [];
+  logBatches = 0;
+  readonly decisions: { runId: string; decisions: ReportedDecision[] }[] = [];
   readonly commits: { runId: string; idempotencyKey: string; message: string; paths: string[] }[] = [];
   private readonly queue: LeasedRun[] = [];
   private nextId = 1;
@@ -74,6 +80,14 @@ export class FakeHewnApi implements HewnApi {
     const fault = this.heartbeatFaults.shift();
     if (fault === 'lost') throw new LeaseLostError();
     if (fault === 'down') throw new Error('connect ECONNREFUSED');
+  }
+
+  async startStep(_workerId: string, run: LeasedRun, step: number, name: string): Promise<void> {
+    this.record({ method: 'step', runId: run.runId, step, name });
+  }
+
+  async recordDecisions(_workerId: string, run: LeasedRun, decisions: ReportedDecision[]): Promise<void> {
+    this.decisions.push({ runId: run.runId, decisions });
   }
 
   async checkpoint(_workerId: string, run: LeasedRun, step: number): Promise<void> {
@@ -131,7 +145,9 @@ export class FakeHewnApi implements HewnApi {
   }
 
   async log(_workerId: string, run: LeasedRun, lines: { level: string; text: string }[]): Promise<void> {
+    this.logBatches++;
     this.logs.push(...lines.map((l) => ({ runId: run.runId, ...l })));
+    this.logTimes.push(...lines.map(() => Date.now()));
   }
 
   private record(call: Omit<Call, 'at'>): void {

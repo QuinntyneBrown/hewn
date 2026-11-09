@@ -42,6 +42,10 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
 
     public sealed record LogRequest(string WorkerId, long Epoch, IReadOnlyList<RunLogEntry> Lines);
 
+    public sealed record StepRequest(string WorkerId, long Epoch, int Step, string Name);
+
+    public sealed record DecisionsRequest(string WorkerId, long Epoch, IReadOnlyList<ReportedDecision> Decisions);
+
     public sealed record IncrementRequest(
         string WorkerId,
         long Epoch,
@@ -125,6 +129,22 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
     [HttpGet("runs/{runId:guid}/pull-requests/{number:int}/checks")]
     public async Task<IActionResult> Checks(Guid runId, int number, [FromQuery] string workerId, [FromQuery] long epoch, CancellationToken cancellationToken) =>
         Ok(new { checks = await mediator.Send(new GetPullRequestChecksQuery(runId, workerId, epoch, number), cancellationToken) });
+
+    /// <summary>The step the worker starts, shown live on the running stage (L2-030 AC2).</summary>
+    [HttpPut("runs/{runId:guid}/step")]
+    public async Task<IActionResult> Step(Guid runId, StepRequest request, CancellationToken cancellationToken)
+    {
+        await mediator.Send(new StartStepCommand(runId, request.WorkerId, request.Epoch, request.Step, request.Name), cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>The decisions the run recorded in docs/decisions.md (L2-054), for the stage's Decisions tab.</summary>
+    [HttpPost("runs/{runId:guid}/decisions")]
+    public async Task<IActionResult> Decisions(Guid runId, DecisionsRequest request, CancellationToken cancellationToken)
+    {
+        await mediator.Send(new RecordDecisionsCommand(runId, request.WorkerId, request.Epoch, request.Decisions), cancellationToken);
+        return NoContent();
+    }
 
     /// <summary>Stage 1 of a feature direction: the recorded decision on whether the feature changes the UI.</summary>
     [HttpPut("runs/{runId:guid}/scope")]

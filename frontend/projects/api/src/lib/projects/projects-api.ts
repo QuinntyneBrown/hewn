@@ -3,7 +3,9 @@ import { inject, Injectable, InjectionToken } from '@angular/core';
 import { catchError, Observable, throwError } from 'rxjs';
 import { toFieldErrors } from '../problems/field-errors';
 import {
+  LogLine,
   Project,
+  StageDetail,
   ProjectSummary,
   SubmitFeatureDirectionRequest,
   SubmitProductDirectionRequest,
@@ -23,6 +25,10 @@ export interface ProjectsApi {
     projectId: string,
     request: SubmitFeatureDirectionRequest,
   ): Observable<SubmitProductDirectionResult>;
+  /** A stage's runs, artifacts and decisions (L2-030 AC3). */
+  getStageDetail(projectId: string, directionId: string, stage: number): Observable<StageDetail>;
+  /** A run's log lines after `after`, oldest first, at most `limit` (the API caps it at 5,000). */
+  getRunLog(projectId: string, runId: string, after: number, limit?: number): Observable<LogLine[]>;
 }
 
 export const PROJECTS_API = new InjectionToken<ProjectsApi>('ProjectsApi');
@@ -57,5 +63,18 @@ export class HttpProjectsApi implements ProjectsApi {
         request,
       )
       .pipe(catchError((error: unknown) => throwError(() => toFieldErrors(error) ?? error)));
+  }
+
+  getStageDetail(projectId: string, directionId: string, stage: number): Observable<StageDetail> {
+    return this.http.get<StageDetail>(
+      `/api/projects/${encodeURIComponent(projectId)}/directions/${encodeURIComponent(directionId)}/stages/${stage}`,
+    );
+  }
+
+  getRunLog(projectId: string, runId: string, after: number, limit = 5000): Observable<LogLine[]> {
+    return this.http.get<LogLine[]>(
+      `/api/projects/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/logs`,
+      { params: { after, limit } },
+    );
   }
 }

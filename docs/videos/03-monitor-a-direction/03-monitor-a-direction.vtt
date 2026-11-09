@@ -1,0 +1,229 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:06.30
+This is journey three of Hewn, the software factory: monitor a direction.
+
+00:00:06.30 --> 00:00:11.82
+Once a direction is running, anyone who can see the project opens it and follows the
+
+00:00:11.82 --> 00:00:13.59
+work live, with no refresh.
+
+00:00:13.59 --> 00:00:19.11
+This video walks through how it was built: the live stages, the event flow, the log,
+
+00:00:19.11 --> 00:00:21.21
+the stage detail, and the tests.
+
+00:00:22.36 --> 00:00:25.56
+Journey three is for Owners and Viewers alike.
+
+00:00:25.56 --> 00:00:30.85
+The pipeline shows every stage with an icon and a text label for its status,
+
+00:00:30.85 --> 00:00:33.28
+never colour alone, and a duration.
+
+00:00:33.28 --> 00:00:37.88
+The running stage shows the step it is on and its latest log line.
+
+00:00:37.88 --> 00:00:42.47
+Selecting a stage shows its runs, its log, the files it committed,
+
+00:00:42.47 --> 00:00:44.76
+and the decisions its agent made.
+
+00:00:45.11 --> 00:00:47.93
+The log follows new lines as they arrive.
+
+00:00:47.93 --> 00:00:52.20
+Scroll up, and it holds still and counts what you have missed.
+
+00:00:52.20 --> 00:00:57.42
+And screen reader users hear stage changes, at most once every five seconds.
+
+00:00:58.57 --> 00:01:01.56
+Everything on the page comes from one stream.
+
+00:01:01.56 --> 00:01:05.89
+A change is stored with the next sequence number for its project,
+
+00:01:05.89 --> 00:01:08.41
+in the same save as the change itself.
+
+00:01:08.41 --> 00:01:12.60
+Then it is broadcast to the project's group on the SignalR hub.
+
+00:01:12.60 --> 00:01:15.99
+The client store applies each event once, in order,
+
+00:01:15.99 --> 00:01:18.99
+and fetches any it missed by sequence number.
+
+00:01:19.34 --> 00:01:24.61
+Journey three adds three events: step started, log lines, and decision recorded.
+
+00:01:25.76 --> 00:01:30.47
+Before each step, the worker names it, so the running stage can show it.
+
+00:01:30.47 --> 00:01:33.42
+Log lines no longer go one request at a time.
+
+00:01:33.42 --> 00:01:38.53
+The worker batches them every quarter of a second, up to five hundred at once,
+
+00:01:38.53 --> 00:01:42.52
+and always sends what it has before a checkpoint or a result.
+
+00:01:42.52 --> 00:01:44.42
+Each batch becomes one event.
+
+00:01:44.77 --> 00:01:50.18
+After a document stage commits, the worker reports the decisions it recorded,
+
+00:01:50.18 --> 00:01:51.65
+with their rationale.
+
+00:01:51.65 --> 00:01:55.10
+Hewn keeps a redacted copy for the Decisions tab,
+
+00:01:55.10 --> 00:01:58.75
+and ignores a decision a resumed step reports twice.
+
+00:01:59.90 --> 00:02:04.53
+The page loads the project once, then folds every event into it.
+
+00:02:04.53 --> 00:02:08.23
+A step started event sets the running stage's step.
+
+00:02:08.23 --> 00:02:11.05
+A log lines event sets its latest line.
+
+00:02:11.05 --> 00:02:15.47
+A stage changed event clears both, because the run has ended.
+
+00:02:15.82 --> 00:02:19.79
+Selecting a stage loads its runs, artifacts and decisions,
+
+00:02:19.79 --> 00:02:23.21
+and reloads them when an event touches that stage.
+
+00:02:23.21 --> 00:02:27.79
+The tabs work from the keyboard, with the arrow keys, Home and End.
+
+00:02:28.94 --> 00:02:34.34
+The log loads every stored line in pages, then merges new lines by line number,
+
+00:02:34.34 --> 00:02:38.51
+so a line that arrives early is neither lost nor shown twice.
+
+00:02:38.51 --> 00:02:41.92
+While the user is at the bottom, the view follows.
+
+00:02:41.92 --> 00:02:45.41
+Scrolled up, it stays put and counts the new lines.
+
+00:02:45.76 --> 00:02:50.61
+Above five hundred lines, the log renders only a window around the view,
+
+00:02:50.61 --> 00:02:54.92
+so no more than five hundred line elements are ever in the page.
+
+00:02:54.92 --> 00:03:00.18
+Each windowed line keeps to one row, so the spacers above and below are exact.
+
+00:03:01.33 --> 00:03:05.20
+The backend gained fourteen tests against the real API,
+
+00:03:05.20 --> 00:03:07.87
+and the worker six against a fake API.
+
+00:03:07.87 --> 00:03:12.16
+The backend and worker slices began with their tests failing.
+
+00:03:12.16 --> 00:03:16.45
+All green, the backend has one hundred and forty seven tests,
+
+00:03:16.45 --> 00:03:19.40
+and the worker one hundred and twenty six.
+
+00:03:19.75 --> 00:03:22.50
+The frontend has thirty five unit tests.
+
+00:03:22.50 --> 00:03:28.15
+End to end, five new pipeline tests drive real workers: a stage turning over live,
+
+00:03:28.15 --> 00:03:33.60
+the log holding when scrolled up, a past stage's tabs, a six thousand line log,
+
+00:03:33.60 --> 00:03:35.94
+and the five second announcements.
+
+00:03:35.94 --> 00:03:41.45
+Accessibility checks now cover every tab, and a visual test compares the waiting
+
+00:03:41.45 --> 00:03:42.83
+state with its mock.
+
+00:03:43.98 --> 00:03:46.98
+Here is a direction starting with one worker.
+
+00:03:46.98 --> 00:03:51.85
+The running stage shows its step and its latest line, both updating live.
+
+00:03:51.85 --> 00:03:55.65
+Bootstrap turns Succeeded, and Idea starts straight away.
+
+00:03:56.00 --> 00:03:57.40
+Here is the live log.
+
+00:03:57.40 --> 00:03:58.79
+It follows new lines.
+
+00:03:58.79 --> 00:04:04.12
+Scroll up, and it holds, with the count of new lines and a button to jump to the
+
+00:04:04.12 --> 00:04:04.58
+latest.
+
+00:04:04.58 --> 00:04:06.71
+One click, and it follows again.
+
+00:04:07.06 --> 00:04:09.12
+Now a stage that has finished.
+
+00:04:09.12 --> 00:04:13.66
+Selecting Idea shows its log, its run with the worker that ran it,
+
+00:04:13.66 --> 00:04:17.85
+the files it committed, and the decisions its agent recorded,
+
+00:04:17.85 --> 00:04:19.50
+each with its rationale.
+
+00:04:19.85 --> 00:04:22.86
+The same page works in dark mode and on a phone.
+
+00:04:22.86 --> 00:04:25.87
+And before any worker has picked up a direction,
+
+00:04:25.87 --> 00:04:28.12
+the page says it is waiting for one.
+
+00:04:29.27 --> 00:04:31.05
+Journey three is complete.
+
+00:04:31.05 --> 00:04:35.83
+Every stage change, step and log line reaches the page live, in order,
+
+00:04:35.83 --> 00:04:37.54
+from one numbered stream.
+
+00:04:37.54 --> 00:04:41.77
+The log follows, holds and stays light, however long it grows.
+
+00:04:41.77 --> 00:04:45.32
+And every stage shows its runs, files and decisions.
+
+00:04:45.32 --> 00:04:48.26
+Next comes journey four, limiting spending.

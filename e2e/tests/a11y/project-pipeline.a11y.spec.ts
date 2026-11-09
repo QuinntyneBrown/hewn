@@ -1,6 +1,6 @@
 // Acceptance Test
-// Traces to: L2-030, L2-047
-// Description: The project pipeline has no axe-core violations while a stage runs and once the direction is complete
+// Traces to: L2-030, L2-033, L2-047
+// Description: The project pipeline has no axe-core violations while a stage runs, once the direction is complete, and on each tab of a selected stage
 
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
@@ -36,5 +36,11 @@ test.describe('Project pipeline', () => {
 
     await expect(project.completeCallout).toBeVisible({ timeout: 90_000 });
     expect(await violations(page)).toEqual([]);
+
+    await project.selectStage('Idea');
+    for (const tab of ['Log', 'Runs', 'Artifacts', 'Decisions'] as const) {
+      await project.tab(tab).click();
+      expect(await violations(page), `${tab} tab`).toEqual([]);
+    }
   });
 });

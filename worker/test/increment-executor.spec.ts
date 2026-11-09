@@ -114,6 +114,7 @@ function harness(backlog: Increment[]) {
     workspace: mkdtempSync(join(root, 'workspace-')),
     log: async (_level, text) => void logs.push(text),
     listSkillFolders: async () => ({}),
+    recordDecisions: async () => {},
     downloadRepository: async () => execFileSync('tar', ['-czf', '-', '-C', root, 'kiln-abc1234']),
     commit: async (step, message, files: CommitFile[], branch, options) => {
       commits.push({

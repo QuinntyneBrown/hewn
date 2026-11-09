@@ -1,6 +1,7 @@
 import type {
   BacklogReport,
   ScopeReport,
+  ReportedDecision,
   CheckRun,
   CommitFile,
   CommitOptions,
@@ -40,6 +41,8 @@ export interface RunContext {
   pullRequestChecks(number: number): Promise<CheckRun[]>;
   /** Stage 9: replaces the direction's backlog in Hewn. */
   reportBacklog(report: BacklogReport): Promise<void>;
+  /** The decisions this run committed to docs/decisions.md (L2-054), for the stage's Decisions tab. */
+  recordDecisions(decisions: ReportedDecision[]): Promise<void>;
   /** Stage 1 of a feature direction: tells Hewn whether stages 2 and 3 run. */
   reportScope(report: ScopeReport): Promise<void>;
   /** Squash-merges; keyed `{run}/{step}/merge`. */

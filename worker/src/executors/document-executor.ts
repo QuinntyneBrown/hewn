@@ -261,12 +261,13 @@ export class DocumentStageExecutor implements StageExecutor {
     );
     await definition.afterAgent?.({ directory, context, magicPatterns, leased });
 
-    for (const { question, answer } of parseDecisions(
+    const decisions = parseDecisions(
       readDecisions(directory)
         .split(/^(?=## )/m)
         .slice(1 + decisionsBefore)
         .join(''),
-    )) {
+    );
+    for (const { question, answer } of decisions) {
       await context.log('info', `Question: ${question}`);
       await context.log('info', `Answer: ${answer}`);
     }
@@ -296,6 +297,8 @@ export class DocumentStageExecutor implements StageExecutor {
       }
     }
     await context.commit(COMMIT_STEP, definition.commitMessage, files);
+    // Only committed decisions reach the Decisions tab; Hewn ignores ones a resumed step reports again.
+    if (decisions.length > 0) await context.recordDecisions(decisions);
     if (scope) {
       await context.reportScope(scope);
       await context.log(

@@ -96,14 +96,15 @@ export function linkedAdrs(directory: string): string[] {
 }
 
 /** Decisions in the log text, in order; entries that are missing a field are skipped. */
-export function parseDecisions(text: string): { question: string; answer: string }[] {
+export function parseDecisions(text: string): { question: string; answer: string; rationale: string }[] {
   return text
     .split(/^## /m)
     .slice(1)
     .flatMap((entry) => {
       const question = /\*\*Question:\*\*\s*(.+)/.exec(entry)?.[1]?.trim();
       const answer = /\*\*Answer:\*\*\s*(.+)/.exec(entry)?.[1]?.trim();
-      return question && answer ? [{ question, answer }] : [];
+      const rationale = /\*\*Rationale:\*\*\s*(.+)/.exec(entry)?.[1]?.trim() ?? '';
+      return question && answer ? [{ question, answer, rationale }] : [];
     });
 }
 

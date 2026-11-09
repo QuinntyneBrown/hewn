@@ -6,6 +6,7 @@ import {
   type IncrementUpdate,
   type BacklogReport,
   type ScopeReport,
+  type ReportedDecision,
   type CommitFile,
   type HewnApi,
   type LeasedRun,
@@ -154,6 +155,14 @@ export class HttpHewnApi implements HewnApi {
       idempotencyKey,
       ...fields,
     });
+  }
+
+  async startStep(workerId: string, run: LeasedRun, step: number, name: string): Promise<void> {
+    await this.send('PUT', `/api/worker/runs/${run.runId}/step`, { workerId, epoch: run.epoch, step, name });
+  }
+
+  async recordDecisions(workerId: string, run: LeasedRun, decisions: ReportedDecision[]): Promise<void> {
+    await this.post(`/api/worker/runs/${run.runId}/decisions`, { workerId, epoch: run.epoch, decisions });
   }
 
   async log(workerId: string, run: LeasedRun, lines: { level: LogLevel; text: string }[]): Promise<void> {

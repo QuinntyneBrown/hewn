@@ -19,6 +19,8 @@ public interface IAppDbContext
 
     DbSet<RunLogLine> RunLogLines { get; }
 
+    DbSet<RunDecision> RunDecisions { get; }
+
     DbSet<GitHubMutation> GitHubMutations { get; }
 
     DbSet<Increment> Increments { get; }

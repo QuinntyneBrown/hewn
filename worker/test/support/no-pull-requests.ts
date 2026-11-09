@@ -15,7 +15,10 @@ export const noPullRequests: Pick<
   | 'reportScope'
   | 'nextIncrement'
   | 'updateIncrement'
+  | 'recordDecisions'
 > = {
+  // Decisions are reported by every document stage; tests that check them pass their own.
+  recordDecisions: async () => {},
   nextIncrement: unexpected('nextIncrement'),
   updateIncrement: unexpected('updateIncrement'),
   reportBacklog: unexpected('reportBacklog'),

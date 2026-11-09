@@ -2,6 +2,7 @@ using System.Text.Json;
 using FluentValidation;
 using Hewn.Application.Abstractions;
 using Hewn.Application.Common;
+using Hewn.Application.Events;
 using Hewn.Domain;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -90,7 +91,7 @@ public sealed class CommitFilesHandler(IAppDbContext db, LeaseService leases, IG
             ? await gitHub.CommitAsync(project.RepositoryOwner!, project.RepositoryName!, command.Message, files, cancellationToken)
             : await gitHub.CommitToBranchAsync(project.RepositoryOwner!, project.RepositoryName!, command.Branch, command.Message, files, command.Rebase, cancellationToken);
 
-        db.GitHubMutations.Add(new GitHubMutation(run.Id, command.IdempotencyKey, Kind, JsonSerializer.Serialize(new { sha }), clock.GetUtcNow()));
+        db.GitHubMutations.Add(new GitHubMutation(run.Id, command.IdempotencyKey, Kind, JsonSerializer.Serialize(new { sha, paths = files.Select(f => f.Path) }), clock.GetUtcNow()));
         await FencedSave.SaveAsync(db, cancellationToken);
         return sha;
     }
@@ -111,19 +112,32 @@ public sealed class AppendRunLogValidator : AbstractValidator<AppendRunLogComman
     }
 }
 
-public sealed class AppendRunLogHandler(IAppDbContext db, LeaseService leases, TimeProvider clock) : IRequestHandler<AppendRunLogCommand>
+/// <summary>
+/// Stores a batch of log lines, numbered per run and redacted, and sends them as one <c>LogLines</c> event so an
+/// open log and the running stage's latest line update live (L2-031, L2-033).
+/// </summary>
+public sealed class AppendRunLogHandler(IAppDbContext db, LeaseService leases, EventAppender events, TimeProvider clock) : IRequestHandler<AppendRunLogCommand>
 {
     public async Task Handle(AppendRunLogCommand command, CancellationToken cancellationToken)
     {
         var run = await leases.FenceAsync(command.RunId, command.WorkerId, command.Epoch, cancellationToken);
         var last = await db.RunLogLines.Where(l => l.RunId == run.Id).Select(l => (long?)l.Sequence).MaxAsync(cancellationToken) ?? 0;
         var now = clock.GetUtcNow();
-        foreach (var line in command.Lines)
-        {
-            db.RunLogLines.Add(new RunLogLine(run.Id, ++last, line.Level, SecretRedactor.Redact(line.Text), now));
-        }
-
+        var lines = command.Lines.Select(line => new RunLogLine(run.Id, ++last, line.Level, SecretRedactor.Redact(line.Text), now)).ToList();
+        db.RunLogLines.AddRange(lines);
+        await events.AppendAsync(
+            run.ProjectId,
+            "LogLines",
+            new
+            {
+                directionId = run.DirectionId,
+                stage = run.Stage,
+                runId = run.Id,
+                lines = lines.Select(l => new { line = l.Sequence, at = l.At, level = l.Level, text = l.Text }),
+            },
+            cancellationToken);
         await FencedSave.SaveAsync(db, cancellationToken);
+        await events.PublishAsync(cancellationToken);
     }
 }
 

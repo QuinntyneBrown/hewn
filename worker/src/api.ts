@@ -39,6 +39,13 @@ export interface LeasedDirection {
 }
 
 /** Stage 1 of a feature direction: the recorded decision on whether the feature changes the UI (L2-005 AC2). */
+/** A decision the run recorded in docs/decisions.md (L2-054), reported for the stage's Decisions tab. */
+export interface ReportedDecision {
+  question: string;
+  answer: string;
+  rationale: string;
+}
+
 export interface ScopeReport {
   hasUiChange: boolean;
   rationale: string;
@@ -116,6 +123,8 @@ export interface HewnApi {
   register(registration: WorkerRegistration): Promise<string>;
   lease(workerId: string): Promise<LeasedRun | null>;
   heartbeat(workerId: string, run: LeasedRun): Promise<void>;
+  /** Names the step (1-based) the worker is starting, shown live on the running stage. */
+  startStep(workerId: string, run: LeasedRun, step: number, name: string): Promise<void>;
   checkpoint(workerId: string, run: LeasedRun, step: number, sha?: string): Promise<void>;
   result(workerId: string, run: LeasedRun, outcome: RunOutcome): Promise<void>;
   /** Skill folder names already in the product repository, by skill root. */
@@ -141,6 +150,7 @@ export interface HewnApi {
   pullRequestChecks(workerId: string, run: LeasedRun, number: number): Promise<CheckRun[]>;
   reportBacklog(workerId: string, run: LeasedRun, report: BacklogReport): Promise<void>;
   reportScope(workerId: string, run: LeasedRun, report: ScopeReport): Promise<void>;
+  recordDecisions(workerId: string, run: LeasedRun, decisions: ReportedDecision[]): Promise<void>;
   mergePullRequest(workerId: string, run: LeasedRun, idempotencyKey: string, number: number): Promise<string>;
   protectDefaultBranch(workerId: string, run: LeasedRun, idempotencyKey: string, checks: string[]): Promise<void>;
   log(workerId: string, run: LeasedRun, lines: { level: LogLevel; text: string }[]): Promise<void>;
