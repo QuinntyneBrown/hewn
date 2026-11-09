@@ -104,7 +104,7 @@ Journey 2 built L2-005 AC1-AC4. See [ADR 0008](../../adr/0008-feature-scope-is-a
 - **Submitting.** `POST /api/projects/{id}/directions` `{idea, budgetUsd}` (Owner only; 404 for an unknown
   project; `idea` 10 to 20,000 characters). The feature direction is created with stages 0, 4 and 6 Skipped,
   and `DirectionQueued` carries the whole direction so an open project page can show it.
-- **The queue.** A project's active direction is the one Running or Paused, else its oldest Queued one. A
+- **The queue.** A project's active direction is the one Running, Paused or Blocked, else its oldest Queued one. A
   feature submitted to a project with an active direction stays Queued; otherwise its first run (stage 1) is
   queued at once and the project turns Running. When a direction completes, the orchestrator starts the oldest
   queued direction instead of setting the project Idle (L2-004 AC4).
@@ -120,7 +120,20 @@ Journey 2 built L2-005 AC1-AC4. See [ADR 0008](../../adr/0008-feature-scope-is-a
   first direction isn't Complete reads "queues behind the running direction". The project page strikes through
   Skipped stages, shows "N direction(s) queued" naming the next one, and a "Feature direction complete" callout
   that says what was skipped and the recorded reason.
-- **Not built yet:** cancelling a direction (journey 6) must also start the next queued direction.
+- **Cancelling** a direction (journey 7) also starts the next queued one.
+
+## Queue further directions (journey 10)
+
+Journey 10 proved L2-004 AC4 and L2-005 AC4 end to end and added the submission limit (L2-043 AC4).
+
+- **No new queue code.** The queue from journey 2 already holds any number of directions. The pipeline e2e test
+  submits two feature directions on a running product direction and checks that the page shows "2 directions
+  queued", and that each starts by itself when the one before it is Complete, first in, first out.
+- **The queued callout** names only the next direction to start, as `pages/project-pipeline/queued-direction.html`
+  does, and counts the rest.
+- **The submission limit** is described in [Web protections](../../security/web-protections/README.md):
+  an Owner's 11th direction in a minute is refused with 429.
+- **Deferred:** reordering or removing queued directions.
 
 ## No approval steps (L2-028)
 

@@ -60,3 +60,19 @@ Each request DTO has a validator; `ValidationFilter` turns failures into one `Va
 Pages carry the CSP and headers (L2-043 AC2). Missing anti-forgery tokens return 400 (AC3), an 11th submission in a minute returns 429 (AC4), and invalid input returns 400 with field errors and no change (AC1).
 
 ![Sequence diagram: pass the request pipeline](diagrams/sequence-request-pipeline.png)
+
+## Decisions made while building the submission limit
+
+Journey 10 built L2-043 AC4.
+
+- **The limit counts stored directions** ([ADR 0015](../../../adr/0015-the-submission-limit-counts-stored-directions.md)).
+  `DirectionSubmissionLimit`, a MediatR behavior that runs before validation, replaces the
+  `DirectionSubmissionRateLimiter` named above. For the two submit commands it counts the Owner's directions from
+  the last 60 seconds by the injected clock. The 11th gets 429 ProblemDetails
+  `{code: "rate_limited", limit, retryAfterSeconds}` and `Retry-After`. It covers `POST /api/projects` and
+  `POST /api/projects/{id}/directions`; there is no `POST /api/directions`.
+- **Refused and invalid submissions don't count**, since they store nothing. Each Owner has their own minute.
+- **`Hewn:RateLimit:DirectionsPerMinute`** sets the limit (default 10). The e2e stack allows 30.
+- **New direction** shows the rate-limited mock's warning callout, "Too many directions in a minute", with when the
+  Owner can submit again, and keeps everything typed.
+- **Not built in this journey:** the security headers, anti-forgery filter changes and the ZAP job (AC2, AC3, AC5).
