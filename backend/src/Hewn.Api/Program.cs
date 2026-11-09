@@ -24,6 +24,11 @@ if (builder.Configuration.GetValue("Hewn:Leases:ReaperEnabled", true))
     builder.Services.AddHostedService<LeaseReaper>();
 }
 
+if (builder.Configuration.GetValue("Hewn:Checks:PollerEnabled", true))
+{
+    builder.Services.AddHostedService<CheckPollerService>();
+}
+
 builder.Services
     .AddControllers(o => o.Filters.Add<ValidateAntiforgeryFilter>())
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));

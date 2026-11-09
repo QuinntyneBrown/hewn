@@ -57,7 +57,11 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
         int? RedPassing = null,
         int? Iterations = null,
         IReadOnlyList<string>? FailingTests = null,
-        int? PullRequestNumber = null);
+        int? PullRequestNumber = null,
+        int? TestCount = null,
+        int? GreenAfter = null,
+        string? Video = null,
+        string? VideoNote = null);
 
     public sealed record ScopeRequest(string WorkerId, long Epoch, bool HasUiChange, string? Rationale);
 
@@ -190,11 +194,11 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
         return next is null ? NoContent() : Ok(next);
     }
 
-    /// <summary>Stage 10's progress on one increment: started, red recorded, Blocked or Merged.</summary>
+    /// <summary>Stage 10's progress on one increment: started, red recorded, each iteration, green, the video, the pull request, Blocked or Merged.</summary>
     [HttpPut("runs/{runId:guid}/increments/{number:int}")]
     public async Task<IActionResult> UpdateIncrement(Guid runId, int number, IncrementRequest request, CancellationToken cancellationToken)
     {
-        await mediator.Send(new UpdateIncrementCommand(runId, request.WorkerId, request.Epoch, number, request.Status, request.RedFailing, request.RedPassing, request.Iterations, request.FailingTests, request.PullRequestNumber), cancellationToken);
+        await mediator.Send(new UpdateIncrementCommand(runId, request.WorkerId, request.Epoch, number, new IncrementProgress(request.Status, request.RedFailing, request.RedPassing, request.Iterations, request.FailingTests, request.PullRequestNumber, request.TestCount, request.GreenAfter, request.Video, request.VideoNote)), cancellationToken);
         return NoContent();
     }
 

@@ -199,6 +199,22 @@ internal sealed class IncrementConfiguration : IEntityTypeConfiguration<Incremen
         b.Property(i => i.Status).HasConversion<string>().HasMaxLength(16);
         b.Property(i => i.EstimateDays).HasPrecision(6, 1);
         b.Property(i => i.FailingTests).HasMaxLength(52_000);
+        b.Property(i => i.Video).HasMaxLength(16);
+        b.Property(i => i.VideoNote).HasMaxLength(500);
         b.HasIndex(i => new { i.DirectionId, i.Number });
+        b.HasIndex(i => i.PullRequestNumber);
+    }
+}
+
+internal sealed class IncrementCheckConfiguration : IEntityTypeConfiguration<IncrementCheck>
+{
+    public void Configure(EntityTypeBuilder<IncrementCheck> b)
+    {
+        b.ToTable("increment_checks");
+        b.HasKey(c => c.Id);
+        b.Property(c => c.Name).HasMaxLength(200);
+        b.Property(c => c.Status).HasMaxLength(16);
+        b.Property(c => c.Conclusion).HasMaxLength(32);
+        b.HasIndex(c => new { c.IncrementId, c.PullRequestNumber, c.Name }).IsUnique();
     }
 }

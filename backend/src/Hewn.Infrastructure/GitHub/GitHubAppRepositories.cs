@@ -145,7 +145,9 @@ public sealed class GitHubAppRepositories(GitHubAppClient client) : IGitHubRepos
         return [.. runs.GetProperty("check_runs").EnumerateArray().Select(r => new CheckRunInfo(
             r.GetProperty("name").GetString()!,
             r.GetProperty("status").GetString()!,
-            r.GetProperty("conclusion").ValueKind == JsonValueKind.Null ? null : r.GetProperty("conclusion").GetString()))];
+            r.GetProperty("conclusion").ValueKind == JsonValueKind.Null ? null : r.GetProperty("conclusion").GetString(),
+            Time(r, "started_at"),
+            Time(r, "completed_at")))];
     }
 
     public async Task<string> MergePullRequestAsync(string owner, string name, int number, string title, CancellationToken cancellationToken)
@@ -185,7 +187,14 @@ public sealed class GitHubAppRepositories(GitHubAppClient client) : IGitHubRepos
         pull.GetProperty("html_url").GetString()!,
         pull.GetProperty("head").GetProperty("ref").GetString()!,
         pull.TryGetProperty("merged", out var merged) && merged.ValueKind == JsonValueKind.True,
-        pull.GetProperty("title").GetString() ?? string.Empty);
+        pull.GetProperty("title").GetString() ?? string.Empty,
+        pull.TryGetProperty("body", out var body) && body.ValueKind == JsonValueKind.String ? body.GetString()! : string.Empty,
+        pull.TryGetProperty("additions", out var additions) ? additions.GetInt32() : 0,
+        pull.TryGetProperty("deletions", out var deletions) ? deletions.GetInt32() : 0,
+        pull.TryGetProperty("changed_files", out var changed) ? changed.GetInt32() : 0);
+
+    private static DateTimeOffset? Time(JsonElement element, string name) =>
+        element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetDateTimeOffset() : null;
 
     private async Task<string> DefaultBranchAsync(string token, string owner, string name, CancellationToken cancellationToken) =>
         (await GetJsonAsync(token, $"repos/{owner}/{name}", cancellationToken))!.Value.GetProperty("default_branch").GetString()!;

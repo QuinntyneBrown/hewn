@@ -126,7 +126,7 @@ public sealed class ProtectDefaultBranchHandler(IAppDbContext db, LeaseService l
     }
 }
 
-public sealed class GetPullRequestChecksHandler(IAppDbContext db, LeaseService leases, IGitHubRepositories gitHub)
+public sealed class GetPullRequestChecksHandler(IAppDbContext db, LeaseService leases, IGitHubRepositories gitHub, CheckRecorder recorder)
     : IRequestHandler<GetPullRequestChecksQuery, IReadOnlyList<CheckDto>>
 {
     public async Task<IReadOnlyList<CheckDto>> Handle(GetPullRequestChecksQuery query, CancellationToken cancellationToken)
@@ -136,6 +136,12 @@ public sealed class GetPullRequestChecksHandler(IAppDbContext db, LeaseService l
         var project = await RunProject.RequireRepositoryAsync(db, run, cancellationToken);
         await OwnPullRequest.RequireAsync(gitHub, project, run.Stage, query.Number, cancellationToken);
         var checks = await gitHub.ListChecksAsync(project.RepositoryOwner!, project.RepositoryName!, query.Number, cancellationToken);
+        // The worker's own reads count as hearing from GitHub: an increment's changed checks are recorded (L2-037).
+        if (await recorder.FindAsync(project.Id, query.Number, cancellationToken) is { } increment)
+        {
+            await recorder.RecordAsync(project.Id, increment, checks, cancellationToken);
+        }
+
         return [.. checks.Select(c => new CheckDto(c.Name, c.Status, c.Conclusion))];
     }
 }

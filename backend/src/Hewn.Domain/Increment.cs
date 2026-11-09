@@ -66,13 +66,42 @@ public sealed class Increment
     /// <summary>Newline-separated failing tests of a Blocked increment.</summary>
     public string? FailingTests { get; private set; }
 
+    /// <summary>Acceptance tests in the test commit (L2-021 AC2).</summary>
+    public int? TestCount { get; private set; }
+
+    /// <summary>The iteration on which every test first passed (L2-022 AC1); null until green.</summary>
+    public int? GreenAfter { get; private set; }
+
+    /// <summary>Recorded or Failed (L2-023); a failed video never blocks the increment.</summary>
+    public string? Video { get; private set; }
+
+    /// <summary>The video's folder, or why it failed.</summary>
+    public string? VideoNote { get; private set; }
+
+    public DateTimeOffset? StartedAt { get; private set; }
+
+    public DateTimeOffset? TestsCommittedAt { get; private set; }
+
+    public DateTimeOffset? GreenAt { get; private set; }
+
+    public DateTimeOffset? VideoAt { get; private set; }
+
+    public DateTimeOffset? PullRequestOpenedAt { get; private set; }
+
+    /// <summary>When the increment merged or blocked.</summary>
+    public DateTimeOffset? FinishedAt { get; private set; }
+
+    /// <summary>When GitHub last told Hewn about the pull request's checks, by webhook or polling (L2-037 AC1).</summary>
+    public DateTimeOffset? ChecksHeardAt { get; private set; }
+
     /// <summary>
-    /// Applies a progress report from stage 10. Queued or InProgress may become InProgress; only InProgress may
-    /// become Blocked or Merged. Returns false for any other transition.
+    /// Applies a progress report from stage 10 at <paramref name="now"/>. Queued or InProgress may become
+    /// InProgress; only InProgress may become Blocked or Merged. Returns false for any other transition. Each
+    /// step's time is kept from its first report.
     /// </summary>
-    public bool Apply(IncrementStatus status, int? redFailing, int? redPassing, int? iterations, IReadOnlyList<string>? failingTests, int? pullRequestNumber)
+    public bool Apply(IncrementProgress progress, DateTimeOffset now)
     {
-        var allowed = status switch
+        var allowed = progress.Status switch
         {
             IncrementStatus.InProgress => Status is IncrementStatus.Queued or IncrementStatus.InProgress,
             IncrementStatus.Blocked or IncrementStatus.Merged => Status == IncrementStatus.InProgress,
@@ -83,23 +112,52 @@ public sealed class Increment
             return false;
         }
 
-        Status = status;
-        if (redFailing is not null && redPassing is not null)
+        Status = progress.Status;
+        StartedAt ??= now;
+        if (progress.RedFailing is not null && progress.RedPassing is not null)
         {
-            RedFailing = redFailing;
-            RedPassing = redPassing;
-            TestsPassedEarly = redFailing == 0;
+            RedFailing = progress.RedFailing;
+            RedPassing = progress.RedPassing;
+            TestsPassedEarly = progress.RedFailing == 0;
+            TestCount = progress.TestCount ?? progress.RedFailing + progress.RedPassing;
+            TestsCommittedAt ??= now;
         }
 
-        Iterations = iterations ?? Iterations;
-        PullRequestNumber = pullRequestNumber ?? PullRequestNumber;
-        if (failingTests is not null)
+        Iterations = progress.Iterations ?? Iterations;
+        if (progress.GreenAfter is not null)
         {
-            FailingTests = string.Join('\n', failingTests);
+            GreenAfter = progress.GreenAfter;
+            GreenAt = now;
+        }
+
+        if (progress.Video is not null)
+        {
+            Video = progress.Video;
+            VideoNote = progress.VideoNote;
+            VideoAt ??= now;
+        }
+
+        if (progress.PullRequestNumber is not null && PullRequestNumber is null)
+        {
+            PullRequestOpenedAt = now;
+        }
+
+        PullRequestNumber = progress.PullRequestNumber ?? PullRequestNumber;
+        if (progress.FailingTests is not null)
+        {
+            FailingTests = string.Join('\n', progress.FailingTests);
+        }
+
+        if (Status is IncrementStatus.Blocked or IncrementStatus.Merged)
+        {
+            FinishedAt = now;
         }
 
         return true;
     }
+
+    /// <summary>GitHub reported on the pull request's checks, by webhook or polling.</summary>
+    public void HeardChecks(DateTimeOffset now) => ChecksHeardAt = now;
 
     public static Increment Planned(Guid directionId, int number, string title, int journey, IEnumerable<string> l2Ids, decimal estimateDays, IEnumerable<int> dependsOn) =>
         new(directionId, number, title, journey, l2Ids, estimateDays, dependsOn, IncrementStatus.Queued, null);
@@ -107,3 +165,16 @@ public sealed class Increment
     public static Increment Deferred(Guid directionId, string title, IEnumerable<string> l2Ids, decimal estimateDays, string reason) =>
         new(directionId, null, title, null, l2Ids, estimateDays, [], IncrementStatus.Deferred, reason);
 }
+
+/// <summary>One progress report from stage 10; null fields leave the increment as it is.</summary>
+public sealed record IncrementProgress(
+    IncrementStatus Status,
+    int? RedFailing = null,
+    int? RedPassing = null,
+    int? Iterations = null,
+    IReadOnlyList<string>? FailingTests = null,
+    int? PullRequestNumber = null,
+    int? TestCount = null,
+    int? GreenAfter = null,
+    string? Video = null,
+    string? VideoNote = null);

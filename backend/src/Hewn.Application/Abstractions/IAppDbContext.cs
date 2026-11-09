@@ -25,6 +25,8 @@ public interface IAppDbContext
 
     DbSet<Increment> Increments { get; }
 
+    DbSet<IncrementCheck> IncrementChecks { get; }
+
     DbSet<ModelCall> ModelCalls { get; }
 
     DbSet<DirectionDefaults> DirectionDefaults { get; }
