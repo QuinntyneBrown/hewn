@@ -127,3 +127,19 @@ internal sealed class GitHubMutationConfiguration : IEntityTypeConfiguration<Git
         b.HasIndex(m => m.IdempotencyKey).IsUnique();
     }
 }
+
+internal sealed class IncrementConfiguration : IEntityTypeConfiguration<Increment>
+{
+    public void Configure(EntityTypeBuilder<Increment> b)
+    {
+        b.ToTable("increments");
+        b.HasKey(i => i.Id);
+        b.Property(i => i.Title).HasMaxLength(200);
+        b.Property(i => i.L2Ids).HasMaxLength(2000);
+        b.Property(i => i.DependsOn).HasMaxLength(500);
+        b.Property(i => i.Reason).HasMaxLength(500);
+        b.Property(i => i.Status).HasConversion<string>().HasMaxLength(16);
+        b.Property(i => i.EstimateDays).HasPrecision(6, 1);
+        b.HasIndex(i => new { i.DirectionId, i.Number });
+    }
+}

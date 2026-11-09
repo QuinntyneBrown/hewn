@@ -30,6 +30,11 @@ public static class DependencyInjection
             {
                 o.SkillsSource = configuration["HEWN_SKILLS_SOURCE"]!;
             }
+
+            if (decimal.TryParse(configuration["HEWN_DESCOPE_THRESHOLD_DAYS"], System.Globalization.CultureInfo.InvariantCulture, out var threshold) && threshold > 0)
+            {
+                o.DescopeThresholdDays = threshold;
+            }
         });
 
         if (configuration.GetValue<bool>("Hewn:Fakes:Enabled"))

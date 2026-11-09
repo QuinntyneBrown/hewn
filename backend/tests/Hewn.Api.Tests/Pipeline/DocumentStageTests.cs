@@ -1,5 +1,5 @@
 // Acceptance Test
-// Traces to: L2-009, L2-010, L2-012, L2-013, L2-014, L2-016, L2-017
+// Traces to: L2-009, L2-010, L2-012, L2-013, L2-014, L2-016, L2-017, L2-018, L2-019
 // Description: Document stages read the repository as an archive and may write only their own documents and the decision log
 
 using System.Formats.Tar;
@@ -96,6 +96,10 @@ public sealed class DocumentStageTests : IAsyncLifetime
     [InlineData(7, "docs/detailed-designs/ledger/import-statements/README.md")]
     [InlineData(7, "docs/detailed-designs/ledger/import-statements/diagrams/class.puml")]
     [InlineData(8, "docs/journeys.md")]
+    [InlineData(9, "docs/estimates/README.md")]
+    [InlineData(9, "docs/estimates/ledger.md")]
+    [InlineData(9, "docs/specs/L2.md")]
+    [InlineData(9, "docs/detailed-designs/ledger/import-csv/README.md")]
     public async Task Each_document_stage_may_write_its_own_documents_and_the_decision_log(int stage, string path)
     {
         var (worker, run) = await LeaseStageAsync(stage);
@@ -114,6 +118,8 @@ public sealed class DocumentStageTests : IAsyncLifetime
     [InlineData(5, "src/app.ts")]
     [InlineData(7, "docs/journeys.md")]
     [InlineData(8, ".claude/skills/grilling/SKILL.md")]
+    [InlineData(9, "docs/specs/L1.md")]
+    [InlineData(9, "docs/journeys.md")]
     public async Task A_document_stage_may_not_write_another_stages_documents(int stage, string path)
     {
         var (worker, run) = await LeaseStageAsync(stage);

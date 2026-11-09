@@ -18,6 +18,8 @@ public static class CommitPolicy
         [5] = ([], ["docs/specs/L1.md", "docs/specs/L2.md", Decisions]),
         [7] = (["docs/detailed-designs/"], [Decisions]),
         [8] = ([], ["docs/journeys.md", Decisions]),
+        // Estimates, splits of oversized designs, and Deferred status lines on descoped L2s (L2-018, L2-019).
+        [9] = (["docs/estimates/", "docs/detailed-designs/"], ["docs/specs/L2.md", Decisions]),
     };
 
     /// <summary>The only branch a stage writes to other than the default; stage 6 merges it through a pull request.</summary>

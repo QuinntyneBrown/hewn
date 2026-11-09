@@ -63,3 +63,12 @@ public enum RunStatus
     Failed,
     Cancelled,
 }
+
+public enum IncrementStatus
+{
+    Queued,
+    InProgress,
+    Blocked,
+    Merged,
+    Deferred,
+}
