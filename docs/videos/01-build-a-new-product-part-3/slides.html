@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 01 part 3 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="01 · part 3" data-video-title="Build a new product, part three" data-parts="Introduction|What we built|Design|Code|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 1 · Part 3</div>
+  <h1>Bootstrap the repository</h1>
+  <p class="lead">Stage 0 creates the private repository and installs the Greenlit skills, with a lock file that records exactly what it copied.</p>
+</section>
+
+<section id="built" data-part="1" data-cue="Two pieces share the job.">
+  <h2>Two pieces</h2>
+  <div class="cols">
+    <div class="card"><h3>API, on first lease</h3><ul class="bullets small"><li>Create <span class="file">hewn-builds/{kebab-name}</span>, private</li><li>Topic <span class="file">hewn</span></li><li><span class="file">ProjectChanged</span> with the repository</li></ul></div>
+    <div class="card"><h3>Worker, stage 0</h3><ul class="bullets small"><li>Clone Greenlit</li><li>Copy both skill folders</li><li>Write <span class="file">.hewn/skills.lock</span>, commit</li></ul></div>
+  </div>
+</section>
+
+<section id="nocred" data-part="1" data-cue="The worker never holds a GitHub credential.">
+  <h2>No credential on the worker</h2>
+  <ul class="steps">
+    <li class="done">Worker</li><li class="done">API: lease fence</li><li class="done">API: path rules</li><li class="done">GitHub App token</li><li class="done">GitHub</li>
+  </ul>
+  <p class="muted small">Reads and writes go through the API; the installation token never leaves it.</p>
+</section>
+
+<section id="adopt" data-part="2" data-cue="Creation is idempotent.">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/RepositoryProvisioner.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="2-5,6-9">var name = FormatName(project.Name);
+var existing = await gitHub.FindAsync(owner, name, cancellationToken);
+if (existing is null)
+{
+    await gitHub.CreatePrivateAsync(owner, name, Describe(project.Idea), cancellationToken);
+}
+else if (!existing.Topics.Contains(Topic) || existing.CommitCount &gt; 1)
+{
+    throw new GitHubException($"{owner}/{name} already exists and was not created by Hewn.");
+}
+
+project.AttachRepository(owner, name);</pre>
+</section>
+
+<section id="policy" data-part="2" data-cue="The commit goes through a fenced mutation">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/CommitPolicy.cs</div>
+  <pre class="code" data-lang="cs" data-mark="3">private static readonly Dictionary&lt;int, (string[] Prefixes, string[] Exact)&gt; ByStage = new()
+{
+    [0] = ([".claude/skills/", ".agents/skills/"], [".hewn/skills.lock"]),
+};</pre>
+  <p class="muted small">Key <span class="file">{run}/{step}/commit</span>: a repeated request returns the first SHA. Any other path: 400 <span class="file">path_not_allowed</span>.</p>
+</section>
+
+<section id="executor" data-part="3" data-cue="The bootstrap executor has two steps.">
+  <div class="code-file">worker/src/executors/bootstrap-executor.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3-6,12">for (const root of SKILL_ROOTS) {
+  for (const skill of await directories(join(clone, root))) {
+    if ((existing[root] ?? []).includes(skill)) {
+      await context.log('info', `kept existing: ${root}/${skill}`);
+      continue;
+    }
+    for (const file of await filesUnder(join(clone, root, skill))) {
+      files.push({ path: toRepoPath(relative(clone, file)), content: await readFile(file) });
+    }
+    copied.add(skill);
+  }
+}
+await context.commit(COMMIT_STEP, `Bootstrap skills from greenlit@${sha.slice(0, 7)}`, files);</pre>
+</section>
+
+<section id="lock" data-part="3" data-cue="The lock file records the source">
+  <div class="code-file">.hewn/skills.lock</div>
+  <pre class="code" data-lang="json">{
+  "source": "file:///…/backend/.e2e/greenlit",
+  "sha": "6007ab18a54e521394a2fe25a7ce9e46690d56f3",
+  "skills": ["estimating-designs", "grilling"]
+}</pre>
+  <p class="muted small">From an e2e run against the Greenlit fixture.</p>
+</section>
+
+<section id="tests" data-part="4" data-cue="The backend gained thirteen acceptance tests">
+  <h2>Tests</h2>
+  <div class="cols cols--3">
+    <div class="card"><h3>53 backend</h3><p class="small">Create, adopt, taken name, path rules, idempotency, stale epoch, redacted logs</p></div>
+    <div class="card"><h3>22 worker</h3><p class="small">A real local git repository stands in for Greenlit</p></div>
+    <div class="card"><h3>18 Playwright</h3><p class="small">Stage 0 runs for real; the link appears live</p></div>
+  </div>
+</section>
+
+<section id="clip" data-part="5" data-cue="Here is the real app, with one worker running." data-clip="clips/bootstrap.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Submit; stage 0 creates the repository and the link appears</aside>
+</section>
+
+<section id="screens" data-part="5" data-cue="The link sits beside the direction on desktop">
+  <div class="cols cols--wide">
+    <figure><img src="screens/repository-desktop.png" alt="Repository link in the project header"></figure>
+    <figure class="phone"><img src="screens/repository-phone-dark.png" alt="Repository link on a phone, dark theme"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="6" data-cue="Stage zero now creates the repository and installs the skills">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Private repository created or adopted on first lease</li>
+    <li>Skills copied, existing folders kept, lock recorded</li>
+    <li>Next: the document stages 1, 4, 5, 7 and 8</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>
