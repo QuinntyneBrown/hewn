@@ -13,7 +13,7 @@ public interface IDirectionSubmission;
 /// L2-043 AC4: an Owner submits at most 10 directions (Hewn:RateLimit:DirectionsPerMinute) in any minute; the extra requests are refused with 429 and
 /// when they may submit again. The count is of directions stored with the Owner as submitter, by the injected
 /// clock, so refused and invalid requests do not count, and the limit survives a restart (ADR 0015).
-/// Runs before validation, as the web-protections design orders them.
+/// Runs before validation; the anti-forgery filter has already run.
 /// </summary>
 public sealed class DirectionSubmissionLimit<TRequest, TResponse>(
     IAppDbContext db,

@@ -18,8 +18,9 @@ again in 42 seconds; nothing you typed is lost."
   injected clock. At the limit it throws `TooManyRequestsException`, which the API maps to 429 ProblemDetails
   `{code: "rate_limited", limit, retryAfterSeconds}` with a `Retry-After` header. `retryAfterSeconds` is when the
   oldest counted submission leaves the minute.
-- **It runs before validation**, as the design orders the protections, so an Owner over the limit gets 429 even for
-  an invalid form. A refused or invalid request stores nothing, so it does not count.
+- **It runs before validation**, so an Owner over the limit gets 429 even for an invalid form. Anti-forgery, an
+  ASP.NET filter, still runs first, so the order is headers, anti-forgery, the limit, then validation; the design
+  put the limiter ahead of anti-forgery. A refused or invalid request stores nothing, so it does not count.
 - **One submission per Owner at a time.** A per-login lock around counting and storing stops two simultaneous
   requests from both being the tenth.
 - **The limit is configuration:** `Hewn:RateLimit:DirectionsPerMinute`, default 10. The backend tests prove 10

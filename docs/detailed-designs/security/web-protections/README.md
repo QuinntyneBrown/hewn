@@ -71,6 +71,8 @@ Journey 10 built L2-043 AC4.
   the last 60 seconds by the injected clock. The 11th gets 429 ProblemDetails
   `{code: "rate_limited", limit, retryAfterSeconds}` and `Retry-After`. It covers `POST /api/projects` and
   `POST /api/projects/{id}/directions`; there is no `POST /api/directions`.
+- **The order** is headers, anti-forgery, the limit, then validation: the limit is a MediatR behavior, so it runs
+  after the anti-forgery filter, not ahead of it as the request pipeline diagram shows.
 - **Refused and invalid submissions don't count**, since they store nothing. Each Owner has their own minute.
 - **`Hewn:RateLimit:DirectionsPerMinute`** sets the limit (default 10). The e2e stack allows 30.
 - **New direction** shows the rate-limited mock's warning callout, "Too many directions in a minute", with when the
