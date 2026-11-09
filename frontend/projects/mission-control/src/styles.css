@@ -1,1 +1,14 @@
 /* Mission Control styles come from docs/design-system (tokens.css, components.css), loaded in angular.json. */
+
+/*
+ * CDK Dialog glue: the dialog container (role="dialog") covers the viewport like the design system's `.dialog`,
+ * which the dialog component renders inside it, so the dialog has the box assistive tech and tests expect.
+ */
+.cdk-dialog-container {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+}
+.cdk-dialog-container:focus {
+  outline: none;
+}

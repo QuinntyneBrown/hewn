@@ -61,6 +61,19 @@ export interface SubmitProductDirectionRequest {
   budgetUsd: number;
 }
 
+/** Raise and resume (L2-053 AC3). `currentBudgetUsd` is the budget the Owner saw, so a stale one is refused (409). */
+export interface RaiseAndResumeRequest {
+  budgetUsd: number;
+  currentBudgetUsd: number;
+}
+
+export interface RaiseAndResumeResult {
+  directionId: string;
+  budgetUsd: number;
+  spendUsd: number;
+  status: DirectionStatus;
+}
+
 /** What every new direction starts with, set by an Owner in Settings (L2-053 AC1). */
 export interface DirectionDefaults {
   defaultBudgetUsd: number;

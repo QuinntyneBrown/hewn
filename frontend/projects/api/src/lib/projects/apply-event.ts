@@ -104,6 +104,19 @@ export function applyEvent(project: Project, event: ProjectEvent): Project {
           : { ...d, budgetWarned: true, spendUsd: p['spendUsd'] as number },
       );
       break;
+    case 'BudgetRaised':
+      // Raise and resume (L2-053 AC3): the new budget, and the 80% warning applies to it afresh.
+      next.directions = project.directions.map((d) =>
+        d.id !== p['directionId']
+          ? d
+          : {
+              ...d,
+              budgetUsd: p['budgetUsd'] as number,
+              spendUsd: p['spendUsd'] as number,
+              budgetWarned: false,
+            },
+      );
+      break;
     case 'ProjectChanged':
       next.status = p['status'] as ProjectStatus;
       if (typeof p['repository'] === 'string') {

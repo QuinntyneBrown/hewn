@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
@@ -34,8 +35,11 @@ import {
   throttleTime,
   timer,
 } from 'rxjs';
+import { SessionStore } from '../../core/session-store';
 import { Toasts } from '../../core/toasts';
 import { LiveLogComponent } from './live-log.component';
+import { RaiseBudgetDialog, RaiseBudgetData } from './raise-budget.dialog';
+import { suggestedBudget } from './raise-budget';
 import {
   budgetWarningToast,
   clockTime,
@@ -89,6 +93,8 @@ const LOG_PAGE = 5000;
 export class ProjectPage {
   private readonly api = inject(PROJECTS_API);
   private readonly events = inject(PROJECT_EVENTS);
+  private readonly dialog = inject(Dialog);
+  protected readonly session = inject(SessionStore);
 
   readonly projectId = input.required<string>();
   /** `?stage=` from the URL: the stage the user selected. */
@@ -297,7 +303,49 @@ export class ProjectPage {
   protected readonly budgetReached = 'Budget reached';
 
   protected budgetReachedText(spendUsd: number, budgetUsd: number): string {
-    return `Spend hit ${dollars(spendUsd)} of ${dollars(budgetUsd)} after the current model call. Nothing more runs until an Owner raises the budget. This is a safety stop, not an approval.`;
+    const next = this.session.isOwner()
+      ? 'Raise the budget, then Resume.'
+      : 'Nothing more runs until an Owner raises the budget.';
+    return `Spend hit ${dollars(spendUsd)} of ${dollars(budgetUsd)} after the current model call. ${next} This is a safety stop, not an approval.`;
+  }
+
+  /** The new budget typed into the budget-reached callout, per direction; it starts $100 above the budget. */
+  private readonly newBudgets = signal<Record<string, string>>({});
+
+  protected newBudget(direction: { id: string; budgetUsd: number }): string {
+    return this.newBudgets()[direction.id] ?? suggestedBudget(direction.budgetUsd);
+  }
+
+  protected setNewBudget(directionId: string, value: string): void {
+    this.newBudgets.update((all) => ({ ...all, [directionId]: value }));
+  }
+
+  /** Raise and resume (L2-053 AC3). The page updates from the events the command sends. */
+  protected raiseAndResume(direction: { id: string; budgetUsd: number; spendUsd: number }): void {
+    const project = this.project();
+    if (!project || !this.session.isOwner()) return;
+    const ref = this.dialog.open<unknown, RaiseBudgetData>(RaiseBudgetDialog, {
+      data: {
+        projectId: project.id,
+        projectName: project.name,
+        directionId: direction.id,
+        budgetUsd: direction.budgetUsd,
+        spendUsd: direction.spendUsd,
+        initial: this.newBudget(direction),
+      },
+      ariaLabelledBy: 'raise-title',
+      ariaDescribedBy: 'raise-desc',
+      backdropClass: 'backdrop',
+      autoFocus: '#new-budget',
+    });
+    ref.closed.subscribe((result) => {
+      if (!result) return;
+      this.newBudgets.update((all) => {
+        const rest = { ...all };
+        delete rest[direction.id];
+        return rest;
+      });
+    });
   }
 
   protected readonly title = directionTitle;
