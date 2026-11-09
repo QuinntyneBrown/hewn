@@ -6,7 +6,14 @@ import {
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
-import { HttpProjectsApi, HttpSessionApi, PROJECTS_API, SESSION_API } from '@hewn/api';
+import {
+  HttpProjectsApi,
+  HttpSessionApi,
+  PROJECT_EVENTS,
+  PROJECTS_API,
+  SESSION_API,
+  SignalRProjectEvents,
+} from '@hewn/api';
 import { routes } from './app.routes';
 import { SessionStore } from './core/session-store';
 
@@ -20,6 +27,7 @@ export const appConfig: ApplicationConfig = {
     ),
     { provide: PROJECTS_API, useClass: HttpProjectsApi },
     { provide: SESSION_API, useClass: HttpSessionApi },
+    { provide: PROJECT_EVENTS, useClass: SignalRProjectEvents },
     provideAppInitializer(() => inject(SessionStore).load()),
   ],
 };
