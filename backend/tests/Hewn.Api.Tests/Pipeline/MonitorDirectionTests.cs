@@ -254,6 +254,26 @@ public sealed class MonitorDirectionTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_decision_reported_again_by_a_resumed_step_is_kept_once()
+    {
+        var (owner, projectId, directionId) = await SubmitAsync();
+        var worker = await _factory.RegisterWorkerAsync();
+        var run = await worker.LeaseAsync();
+        var body = new
+        {
+            workerId = worker.WorkerId,
+            epoch = run!.Epoch,
+            decisions = new[] { new { question = "Which skills does the product need?", answer = "All fourteen.", rationale = "None is unused." } },
+        };
+
+        (await worker.Http.PostAsJsonAsync($"/api/worker/runs/{run.RunId}/decisions", body)).EnsureSuccessStatusCode();
+        (await worker.Http.PostAsJsonAsync($"/api/worker/runs/{run.RunId}/decisions", body)).EnsureSuccessStatusCode();
+
+        var detail = await HewnClient.ReadJsonAsync(await owner.GetAsync($"/api/projects/{projectId}/directions/{directionId}/stages/0"));
+        Assert.Single(detail.GetProperty("decisions").EnumerateArray());
+    }
+
+    [Fact]
     public async Task A_decision_with_no_question_is_refused()
     {
         await SubmitAsync();

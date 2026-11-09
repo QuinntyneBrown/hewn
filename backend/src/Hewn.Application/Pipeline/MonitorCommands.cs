@@ -4,6 +4,7 @@ using Hewn.Application.Common;
 using Hewn.Application.Events;
 using Hewn.Domain;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace Hewn.Application.Pipeline;
 
@@ -63,8 +64,15 @@ public sealed class RecordDecisionsHandler(IAppDbContext db, LeaseService leases
     {
         var run = await leases.FenceAsync(command.RunId, command.WorkerId, command.Epoch, cancellationToken);
         var now = clock.GetUtcNow();
+        // A resumed step reports its decisions again; the run keeps the first copy of each question.
+        var known = (await db.RunDecisions.Where(d => d.RunId == run.Id).Select(d => d.Question).ToListAsync(cancellationToken)).ToHashSet();
         foreach (var reported in command.Decisions)
         {
+            if (!known.Add(SecretRedactor.Redact(reported.Question)))
+            {
+                continue;
+            }
+
             var decision = new RunDecision(
                 run,
                 SecretRedactor.Redact(reported.Question),

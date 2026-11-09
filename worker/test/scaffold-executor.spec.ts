@@ -57,6 +57,7 @@ function context(checkResponses: CheckRun[][]) {
     workspace,
     log: async (_l, text) => void logs.push(text),
     listSkillFolders: async () => ({}),
+    recordDecisions: async () => {},
     downloadRepository: async () => execFileSync('tar', ['-czf', '-', '-C', root, 'kiln-abc1234']),
     commit: async (step, message, files, branch) => {
       calls.push(`commit ${step} ${branch ?? 'main'} ${message}`);

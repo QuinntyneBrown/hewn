@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { LeaseLostError, type HewnApi, type LeasedRun, type WorkerRegistration } from './api.ts';
 import type { RunContext, StageExecutor } from './executors/stage-executor.ts';
+import { LogBatcher } from './log-batcher.ts';
 import { sleep } from './sleep.ts';
 
 export type Log = (message: string, fields?: Record<string, unknown>) => void;
@@ -86,11 +87,16 @@ export class WorkLoop {
       }
     }, this.heartbeatIntervalMs);
 
+    const logs = new LogBatcher(
+      (lines) => this.api.log(workerId, run, lines),
+      (error) => this.log('Could not send log lines', { runId: run.runId, error: messageOf(error) }),
+    );
+
     // Synchronous on purpose: one small directory per run, and no I/O race with the heartbeat timer.
     const workspace = mkdtempSync(join(tmpdir(), `hewn-run-${run.runId}-`));
     const context: RunContext = {
       workspace,
-      log: (level, text) => this.api.log(workerId, run, [{ level, text }]),
+      log: async (level, text) => logs.add({ level, text }),
       listSkillFolders: () => this.api.listSkillFolders(workerId, run),
       downloadRepository: () => this.api.downloadRepository(workerId, run),
       commit: (step, message, files, branch, options) =>
@@ -102,6 +108,7 @@ export class WorkLoop {
       pullRequestChecks: (number) => this.api.pullRequestChecks(workerId, run, number),
       reportBacklog: (report) => this.api.reportBacklog(workerId, run, report),
       reportScope: (report) => this.api.reportScope(workerId, run, report),
+      recordDecisions: (decisions) => this.api.recordDecisions(workerId, run, decisions),
       mergePullRequest: (step, number) =>
         this.api.mergePullRequest(workerId, run, `${run.runId}/${step}/merge`, number),
       protectDefaultBranch: (step, checks) =>
@@ -111,23 +118,28 @@ export class WorkLoop {
     try {
       const steps = this.executor.plan(run, context);
       for (let index = run.checkpointStep; index < steps.length; index++) {
+        await this.api.startStep(workerId, run, index + 1, steps[index]!.name);
         await steps[index]!.execute(lease.signal);
         if (lease.signal.aborted) return;
+        await logs.flush();
         await this.api.checkpoint(workerId, run, index + 1);
         this.log('Checkpoint', { runId: run.runId, step: index + 1 });
       }
 
       if (lease.signal.aborted) return;
+      await logs.close();
       await this.api.result(workerId, run, { outcome: 'Succeeded' });
       this.log('Run succeeded', { runId: run.runId, stage: run.stage });
     } catch (error) {
       if (lease.signal.aborted || error instanceof LeaseLostError) return;
       this.log('Run failed', { runId: run.runId, stage: run.stage });
+      await logs.close();
       await this.api
         .result(workerId, run, { outcome: 'Failed', error: messageOf(error) })
         .catch((reportError: unknown) => this.log('Could not report the failure', { error: messageOf(reportError) }));
     } finally {
       clearInterval(heartbeat);
+      void logs.close();
       stop.removeEventListener('abort', onStop);
       rmSync(workspace, { recursive: true, force: true });
     }
