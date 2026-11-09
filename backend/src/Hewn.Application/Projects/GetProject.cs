@@ -60,7 +60,8 @@ public sealed record ProjectDto(
     DateTimeOffset CreatedAt,
     long LastSequence,
     IReadOnlyList<DirectionDto> Directions,
-    decimal SpendUsd);
+    decimal SpendUsd,
+    IReadOnlyList<int>? RetryBackoffSeconds = null);
 
 public sealed class GetProjectHandler(IAppDbContext db, Microsoft.Extensions.Options.IOptions<Hewn.Application.Pipeline.PipelineOptions> options) : IRequestHandler<GetProjectQuery, ProjectDto>
 {
@@ -109,6 +110,7 @@ public sealed class GetProjectHandler(IAppDbContext db, Microsoft.Extensions.Opt
         var dto = ToDto(project, lastSequence);
         return dto with
         {
+            RetryBackoffSeconds = options.Value.RetryBackoffSeconds,
             Directions = dto.Directions.Select(d => d with
             {
                 Retry = retries.GetValueOrDefault(d.Id),

@@ -148,6 +148,7 @@ public sealed class RetryFailedStageTests : IAsyncLifetime
 
         var project = await ProjectAsync(owner, blocked);
         Assert.Equal("Blocked", project.GetProperty("status").GetString());
+        Assert.Equal([30, 120, 600], project.GetProperty("retryBackoffSeconds").EnumerateArray().Select(v => v.GetInt32()));
         var direction = project.GetProperty("directions")[0];
         Assert.Equal("Blocked", direction.GetProperty("status").GetString());
         Assert.Equal("Validation failed: L2-014 has no Given/When/Then", direction.GetProperty("failureReason").GetString());

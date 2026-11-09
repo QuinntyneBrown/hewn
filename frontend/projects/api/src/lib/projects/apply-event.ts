@@ -1,5 +1,13 @@
 import { ProjectEvent } from '../live/project-event';
-import { Direction, DirectionStatus, Project, ProjectStatus, Stage, StageStatus } from './models';
+import {
+  Direction,
+  DirectionStatus,
+  PendingRetry,
+  Project,
+  ProjectStatus,
+  Stage,
+  StageStatus,
+} from './models';
 
 /** Applies `change` to one stage of one direction. */
 function updateStage(
@@ -36,12 +44,26 @@ export function applyEvent(project: Project, event: ProjectEvent): Project {
       }));
       break;
     case 'StepStarted':
+      // A step starting means the retry, if one was waiting, is now running.
       next.directions = updateStage(project, p['directionId'], p['stage'], (s) => ({
         ...s,
         step: p['name'] as string,
         runId: p['runId'] as string,
-      }));
+      })).map((d) => (d.id === p['directionId'] ? { ...d, retry: null } : d));
       break;
+    case 'RunRetryScheduled': {
+      const retry: PendingRetry = {
+        stage: p['stage'] as number,
+        attempt: p['attempt'] as number,
+        maxAttempts: p['maxAttempts'] as number,
+        notBefore: p['notBefore'] as string,
+        reason: (p['reason'] as string | null) ?? null,
+      };
+      next.directions = project.directions.map((d) =>
+        d.id !== p['directionId'] ? d : { ...d, retry },
+      );
+      break;
+    }
     case 'LogLines': {
       const lines = (p['lines'] as { text: string }[] | undefined) ?? [];
       const last = lines.at(-1);
@@ -71,6 +93,10 @@ export function applyEvent(project: Project, event: ProjectEvent): Project {
               stoppedWithinSeconds: (p['stoppedWithinSeconds'] as number | null) ?? null,
               awaitingStop: (p['awaitingStop'] as boolean | undefined) ?? false,
               labelledPullRequests: (p['labelledPullRequests'] as number[] | undefined) ?? [],
+              failureReason: (p['failureReason'] as string | null) ?? null,
+              failedStage: (p['failedStage'] as number | null) ?? null,
+              failedAt: (p['failedAt'] as string | null) ?? null,
+              retry: p['status'] === 'Running' ? d.retry : null,
             },
       );
       break;

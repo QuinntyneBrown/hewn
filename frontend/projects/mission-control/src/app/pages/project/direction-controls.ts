@@ -44,9 +44,9 @@ export function controlFailure(action: 'pause' | 'resume', status: number): stri
   return `${name} didn’t reach Hewn (${status || 'no response'}). The direction is unchanged; try again.`;
 }
 
-/** Cancel applies to a queued, running or paused direction (L2-029 AC3). */
+/** Cancel applies to a queued, running, paused or Blocked direction (L2-029 AC3, L2-006). */
 export function canCancel(d: { status: string }): boolean {
-  return d.status === 'Queued' || d.status === 'Running' || d.status === 'Paused';
+  return ['Queued', 'Running', 'Paused', 'Blocked'].includes(d.status);
 }
 
 /** "Cancelled by quinntynebrown on 8 Nov at 17:01", as the cancelled mock's callout reads. */

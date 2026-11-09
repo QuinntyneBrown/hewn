@@ -48,6 +48,8 @@ export interface ProjectsApi {
   resume(projectId: string, directionId: string): Observable<DirectionControlResult>;
   /** L2-029 AC3: answers once the worker stopped its run or 10 seconds passed. */
   cancel(projectId: string, directionId: string): Observable<CancelDirectionResult>;
+  /** L2-006 AC3: a Blocked direction's failed stage runs again from its start with its retry counter reset. */
+  retryStage(projectId: string, directionId: string): Observable<DirectionControlResult>;
 }
 
 export const PROJECTS_API = new InjectionToken<ProjectsApi>('ProjectsApi');
@@ -125,10 +127,14 @@ export class HttpProjectsApi implements ProjectsApi {
     );
   }
 
+  retryStage(projectId: string, directionId: string): Observable<DirectionControlResult> {
+    return this.control(projectId, directionId, 'retry-stage');
+  }
+
   private control(
     projectId: string,
     directionId: string,
-    action: 'pause' | 'resume',
+    action: 'pause' | 'resume' | 'retry-stage',
   ): Observable<DirectionControlResult> {
     return this.http.post<DirectionControlResult>(
       `/api/projects/${encodeURIComponent(projectId)}/directions/${encodeURIComponent(directionId)}/${action}`,

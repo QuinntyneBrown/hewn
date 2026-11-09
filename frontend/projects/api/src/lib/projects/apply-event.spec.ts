@@ -34,6 +34,10 @@ const project = (): Project => ({
       stoppedWithinSeconds: null,
       awaitingStop: false,
       labelledPullRequests: [],
+      failureReason: null,
+      failedStage: null,
+      failedAt: null,
+      retry: null,
       stages: [0, 1].map((number) => ({
         number,
         name: `S${number}`,
@@ -313,6 +317,68 @@ describe('applyEvent', () => {
       stoppedWithinSeconds: 4,
       awaitingStop: false,
       labelledPullRequests: [9],
+    });
+  });
+
+  it('records a scheduled retry, and clears it when the next attempt starts (L2-006 AC1)', () => {
+    const waiting = applyEvent(
+      project(),
+      event(2, 'RunRetryScheduled', {
+        directionId: 'd',
+        stage: 0,
+        attempt: 2,
+        maxAttempts: 4,
+        notBefore: '2026-11-08T00:00:31Z',
+        reason: 'Skills source unreachable',
+      }),
+    );
+    expect(waiting.directions[0]!.retry).toEqual({
+      stage: 0,
+      attempt: 2,
+      maxAttempts: 4,
+      notBefore: '2026-11-08T00:00:31Z',
+      reason: 'Skills source unreachable',
+    });
+
+    const started = applyEvent(
+      waiting,
+      event(3, 'StepStarted', {
+        directionId: 'd',
+        stage: 0,
+        name: 'Prepare workspace',
+        runId: 'r2',
+      }),
+    );
+    expect(started.directions[0]!.retry).toBeNull();
+  });
+
+  it('records why a Blocked direction failed, and clears it on Retry stage (L2-006 AC2, AC3)', () => {
+    const blocked = applyEvent(
+      project(),
+      event(2, 'DirectionChanged', {
+        directionId: 'd',
+        status: 'Blocked',
+        failureReason: 'Validation failed',
+        failedStage: 0,
+        failedAt: '2026-11-08T00:20:00Z',
+      }),
+    );
+    expect(blocked.directions[0]).toMatchObject({
+      status: 'Blocked',
+      failureReason: 'Validation failed',
+      failedStage: 0,
+      failedAt: '2026-11-08T00:20:00Z',
+      retry: null,
+    });
+
+    const retried = applyEvent(
+      blocked,
+      event(3, 'DirectionChanged', { directionId: 'd', status: 'Running' }),
+    );
+    expect(retried.directions[0]).toMatchObject({
+      status: 'Running',
+      failureReason: null,
+      failedStage: null,
     });
   });
 });
