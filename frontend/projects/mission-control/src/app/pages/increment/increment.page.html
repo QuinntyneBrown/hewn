@@ -1,0 +1,184 @@
+@switch (loaded().state) {
+  @case ('loading') {
+    <div class="pad section">
+      <h1 class="visually-hidden">Increment {{ number() }}</h1>
+      <div class="stack mt-4" aria-hidden="true">
+        <span class="skeleton skeleton--title" style="width: 20rem" aria-hidden="true"></span>
+        <span class="skeleton skeleton--w50" aria-hidden="true"></span>
+      </div>
+      <div class="split split--aside mt-8">
+        <div aria-busy="true" aria-live="polite">
+          <p class="visually-hidden">Loading increment {{ number() }}</p>
+          <span class="skeleton skeleton--video" aria-hidden="true"></span>
+        </div>
+        <div class="stack">
+          <span class="skeleton skeleton--block" aria-hidden="true"></span>
+          <span class="skeleton skeleton--line" aria-hidden="true"></span>
+          <span class="skeleton skeleton--line" aria-hidden="true"></span>
+          <span class="skeleton skeleton--line" aria-hidden="true"></span>
+        </div>
+      </div>
+    </div>
+  }
+  @case ('error') {
+    <div class="pad section">
+      <h1 class="mt-2">Increment {{ number() }}</h1>
+      <div class="empty empty--error" role="alert">
+        <svg hw-icon name="warning"></svg>
+        <div>
+          <h2 class="empty__title">This increment couldn’t load</h2>
+          <p class="empty__text">{{ errorMessage() }}</p>
+        </div>
+        <div class="cluster">
+          <button class="btn" type="button" (click)="retry()">Try again</button>
+          <a class="btn btn--ghost" [routerLink]="['/projects', projectId(), 'backlog']"
+            >Back to backlog</a
+          >
+        </div>
+      </div>
+    </div>
+  }
+  @case ('missing') {
+    <div class="pad section">
+      <h1 class="mt-2">Increment {{ number() }}</h1>
+      <div class="empty" role="status">
+        <svg hw-icon name="inbox"></svg>
+        <div>
+          <h2 class="empty__title">No increment {{ number() }}</h2>
+          <p class="empty__text">
+            The current direction’s backlog has no increment with that number.
+          </p>
+        </div>
+        <div class="cluster">
+          <a class="btn" [routerLink]="['/projects', projectId(), 'backlog']">Back to backlog</a>
+        </div>
+      </div>
+    </div>
+  }
+  @default {
+    @if (increment(); as i) {
+      <div class="pad section" style="padding-bottom: var(--space-12)">
+        <nav aria-label="Breadcrumb">
+          <ol class="breadcrumb">
+            <li><a routerLink="/projects">Projects</a></li>
+            <li aria-hidden="true"><svg hw-icon name="chevronRight"></svg></li>
+            <li>
+              <a [routerLink]="['/projects', projectId()]">{{ projectName() }}</a>
+            </li>
+            <li aria-hidden="true"><svg hw-icon name="chevronRight"></svg></li>
+            <li><a [routerLink]="['/projects', projectId(), 'backlog']">Backlog</a></li>
+            <li aria-hidden="true"><svg hw-icon name="chevronRight"></svg></li>
+            <li aria-current="page">Increment {{ i.number }}</li>
+          </ol>
+        </nav>
+        <div class="cluster cluster--lg mt-2">
+          <h1>{{ i.title }}</h1>
+          @if (look(); as l) {
+            <hw-status [status]="l.status" [label]="l.label" />
+          }
+        </div>
+        <p class="phead__meta">
+          @if (i.journey) {
+            <span>Journey {{ i.journey }}</span>
+          }
+          <span class="text-mono-xs">{{ i.l2Ids.join(', ') }}</span>
+          <span>Estimate {{ i.estimateDays }} ideal days</span>
+          <span class="text-mono-xs cluster" style="gap: var(--space-1)"
+            ><svg hw-icon name="gitBranch" class="icon--xs"></svg> {{ i.branch }}</span
+          >
+        </p>
+        <div class="split split--aside mt-8">
+          <section aria-labelledby="timeline-title">
+            <h2 id="timeline-title" style="font: var(--text-h3)">Test first</h2>
+            <ol class="timeline">
+              @for (step of timeline(); track step.title) {
+                <li class="timeline__item">
+                  <span class="timeline__icon"
+                    ><svg
+                      hw-status-icon
+                      [status]="step.status === 'Merged' ? 'Succeeded' : step.status"
+                    ></svg></span
+                  ><span class="timeline__t"
+                    >{{ step.title }}<span class="visually-hidden"> ({{ step.status }})</span></span
+                  ><span class="timeline__time tabular">{{ step.time }}</span
+                  ><span class="timeline__d">{{ step.detail }}</span>
+                </li>
+              }
+            </ol>
+          </section>
+          <aside class="rail" aria-label="Pull request">
+            <h2 style="font: var(--text-h3)">Pull request</h2>
+            @if (i.pullRequest; as pr) {
+              <a class="card card--link mt-3" [href]="pr.url"
+                ><svg
+                  hw-icon
+                  [name]="pr.state === 'merged' ? 'gitMerge' : 'gitPullRequest'"
+                  class="icon--lg"
+                  [class.s-icon--ok]="pr.state === 'merged'"
+                  [class.s-icon--run]="pr.state !== 'merged'"
+                ></svg>
+                <span class="truncate" style="white-space: normal"
+                  ><span
+                    class="text-sm"
+                    style="
+                      display: block;
+                      font-weight: var(--font-weight-medium);
+                      color: var(--color-fg-default);
+                    "
+                    >{{ pr.title }}</span
+                  >
+                  <span
+                    class="text-mono-xs text-subtle"
+                    style="display: block; margin-top: var(--space-1)"
+                    >{{ meta() }}</span
+                  ></span
+                ></a
+              >
+              <h3 class="subhead mt-6">Required checks</h3>
+              <ul class="checks mt-2" aria-live="polite">
+                @for (check of checks(); track check.name) {
+                  <li>
+                    <svg hw-status-icon [status]="check.status"></svg
+                    ><span class="visually-hidden">{{ check.status }}:</span
+                    ><span class="checks__name">{{ check.name }}</span
+                    ><span class="checks__d">{{ check.detail }}</span>
+                  </li>
+                } @empty {
+                  <li>
+                    <svg hw-status-icon status="Pending"></svg
+                    ><span class="visually-hidden">Pending:</span
+                    ><span class="checks__name">Waiting for GitHub</span
+                    ><span class="checks__d">queued</span>
+                  </li>
+                }
+              </ul>
+              <h3 class="subhead mt-6">Body</h3>
+              <dl class="kv mt-2">
+                @for (section of pr.sections; track section.heading) {
+                  <div>
+                    <dt>{{ section.heading }}</dt>
+                    <dd style="white-space: pre-line">{{ section.text }}</dd>
+                  </div>
+                }
+                @if (pr.attribution) {
+                  <div>
+                    <dt class="visually-hidden">Attribution</dt>
+                    <dd class="text-caption">{{ pr.attribution }}</dd>
+                  </div>
+                }
+              </dl>
+            } @else if (i.status === 'Blocked') {
+              <p class="text-sm text-muted mt-3">Not opened while the increment is blocked.</p>
+              <h3 class="subhead mt-6">
+                {{ i.failingTests.length === 1 ? 'Failing test' : 'Failing tests' }}
+              </h3>
+              <pre class="pre mt-2">{{ i.failingTests.join('\n') }}</pre>
+            } @else {
+              <p class="text-sm text-muted mt-3">Opens after the video step.</p>
+            }
+          </aside>
+        </div>
+      </div>
+    }
+  }
+}

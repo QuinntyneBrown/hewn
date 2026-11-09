@@ -42,6 +42,12 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/project/project.page').then((m) => m.ProjectPage),
       },
       {
+        path: 'projects/:projectId/increments/:number',
+        title: 'Increment · Hewn',
+        loadComponent: () =>
+          import('./pages/increment/increment.page').then((m) => m.IncrementPage),
+      },
+      {
         path: 'workers',
         title: 'Workers · Hewn',
         loadComponent: () => import('./pages/workers/workers.page').then((m) => m.WorkersPage),

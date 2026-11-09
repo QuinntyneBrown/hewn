@@ -237,3 +237,59 @@ export interface Backlog {
   totalDays: number;
   percentComplete: number;
 }
+
+/** A required check on an increment's pull request, as GitHub last reported it (L2-024 AC3, L2-037). */
+export interface IncrementCheck {
+  name: string;
+  status: 'queued' | 'in_progress' | 'completed' | string;
+  /** success, failure and so on once completed. */
+  conclusion: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  durationSeconds: number | null;
+}
+
+/** An increment's pull request read from GitHub, with its body's sections apart from the attribution line. */
+export interface IncrementPullRequest {
+  number: number;
+  url: string;
+  title: string;
+  state: 'open' | 'merged';
+  additions: number;
+  deletions: number;
+  changedFiles: number;
+  sections: { heading: string; text: string }[];
+  attribution: string | null;
+}
+
+/** GET /api/projects/{id}/increments/{n}: one increment followed to merge (journey 13). */
+export interface IncrementDetail {
+  directionId: string;
+  number: number;
+  title: string;
+  journey: number | null;
+  l2Ids: string[];
+  estimateDays: number;
+  branch: string;
+  status: IncrementStatus;
+  startedAt: string | null;
+  testCount: number | null;
+  redFailing: number | null;
+  redPassing: number | null;
+  testsPassedEarly: boolean;
+  testsCommittedAt: string | null;
+  iterations: number;
+  maxIterations: number;
+  greenAfter: number | null;
+  greenAt: string | null;
+  video: 'Recorded' | 'Failed' | null;
+  videoNote: string | null;
+  videoAt: string | null;
+  failingTests: string[];
+  /** For a Blocked increment, the next one that doesn't depend on it. */
+  movedOnTo: number | null;
+  pullRequestOpenedAt: string | null;
+  finishedAt: string | null;
+  pullRequest: IncrementPullRequest | null;
+  checks: IncrementCheck[];
+}

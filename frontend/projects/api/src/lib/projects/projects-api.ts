@@ -5,6 +5,7 @@ import { toFieldErrors } from '../problems/field-errors';
 import { toRateLimited } from '../problems/rate-limited';
 import {
   Backlog,
+  IncrementDetail,
   LogLine,
   Project,
   StageDetail,
@@ -28,6 +29,8 @@ export interface ProjectsApi {
   listProjects(): Observable<ProjectSummary[]>;
   /** The current direction's backlog: increments in order, deferred designs apart, and the totals (L2-020 AC2). */
   getBacklog(projectId: string): Observable<Backlog>;
+  /** One increment of the current direction followed to merge; GitHub failures are 502 `github_failed`. */
+  getIncrement(projectId: string, number: number): Observable<IncrementDetail>;
   /** Adds a feature direction (L2-005). Errors with FieldErrorsProblem when a field rule is broken. */
   submitFeatureDirection(
     projectId: string,
@@ -84,6 +87,12 @@ export class HttpProjectsApi implements ProjectsApi {
 
   getBacklog(projectId: string): Observable<Backlog> {
     return this.http.get<Backlog>(`/api/projects/${encodeURIComponent(projectId)}/backlog`);
+  }
+
+  getIncrement(projectId: string, number: number): Observable<IncrementDetail> {
+    return this.http.get<IncrementDetail>(
+      `/api/projects/${encodeURIComponent(projectId)}/increments/${number}`,
+    );
   }
 
   submitFeatureDirection(

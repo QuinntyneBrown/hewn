@@ -90,14 +90,16 @@
                   [class.row--current]="i.status === 'InProgress' || i.status === 'Blocked'"
                 >
                   <span class="text-mono-xs text-subtle tabular">{{ i.number }}</span>
-                  <span
+                  <a
                     class="truncate"
+                    style="color: inherit; text-decoration: none"
+                    [routerLink]="['/projects', projectId(), 'increments', i.number]"
                     [style.font-weight]="
                       i.status === 'InProgress' || i.status === 'Blocked'
                         ? 'var(--font-weight-medium)'
                         : null
                     "
-                    >{{ i.title }}</span
+                    >{{ i.title }}</a
                   >
                   <span class="lg-hide"
                     ><hw-status [status]="i.look.status" [label]="i.look.label"
