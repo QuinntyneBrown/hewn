@@ -8,6 +8,7 @@ import {
   type ScopeReport,
   type ModelCallReport,
   type ModelCallVerdict,
+  type CheckpointVerdict,
   type ReportedDecision,
   type CommitFile,
   type HewnApi,
@@ -42,13 +43,14 @@ export class HttpHewnApi implements HewnApi {
     await this.post(`/api/worker/runs/${run.runId}/heartbeat`, { workerId, epoch: run.epoch });
   }
 
-  async checkpoint(workerId: string, run: LeasedRun, step: number, sha?: string): Promise<void> {
-    await this.post(`/api/worker/runs/${run.runId}/checkpoints`, {
+  async checkpoint(workerId: string, run: LeasedRun, step: number, sha?: string): Promise<CheckpointVerdict> {
+    const answer = (await this.post(`/api/worker/runs/${run.runId}/checkpoints`, {
       workerId,
       epoch: run.epoch,
       step,
       sha: sha ?? null,
-    });
+    })) as { verdict?: CheckpointVerdict } | undefined;
+    return answer?.verdict ?? 'Continue';
   }
 
   async result(workerId: string, run: LeasedRun, outcome: RunOutcome): Promise<void> {
