@@ -121,6 +121,10 @@ Journey 1, part 2 built the loop, leases and fencing that L2-004 needs.
 - **The checkpoint answers with a verdict** (journey 6): `{verdict: "Continue" | "Pause"}`. On `Pause` the run has
   been paused at this checkpoint and its lease released; the worker ends the run without another step or a result
   ([ADR 0011](../../../adr/0011-pause-takes-effect-at-the-next-checkpoint.md)).
+- **The control poll (journey 7).** While a run executes, the worker also holds
+  `GET /api/worker/runs/{id}/control?workerId&epoch&waitSeconds=20` open. It answers 204 to poll again, or
+  `{control: "Cancel"}` the moment an Owner cancels the direction; the worker then aborts the step in progress and
+  reports no further step, checkpoint or result ([ADR 0012](../../../adr/0012-cancel-reaches-the-worker-on-a-held-control-poll.md)).
 - **Failure text is redacted** before it is stored (`SecretRedactor`).
 - **Not built yet:** the Workers page and issued tokens, `WorkerChanged`, the git sidecar, the container
   image, `CheckpointReconciler` and the `RunWriteLock`.

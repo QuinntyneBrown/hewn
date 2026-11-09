@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Cancel a direction (journey 7, L2-029 AC3, AC5, L2-004 AC4): an Owner presses Cancel on a queued, running or
+  paused direction and confirms in a dialog. The direction, its run and its stage are Cancelled at once, the worker
+  hears it on its held control poll (`GET /api/worker/runs/{id}/control`) and stops within 10 seconds, open pull
+  requests stay open labelled `hewn:cancelled`, and the next queued direction starts
+  (`POST /api/projects/{id}/directions/{d}/cancel`, `DirectionCancelled`; ADR 0012). A worker that does not answer
+  is named in the dialog. Viewers see no control and get 403.
+
 - Pause and resume a direction (journey 6, L2-029 AC1, AC2, AC5, L2-050 AC3): an Owner presses Pause on a running
   direction; the step in progress finishes and checkpoints, then the direction is Paused ("Paused by … at …") and
   nothing new starts. Resume continues the same run from the next step, and no completed step runs twice
