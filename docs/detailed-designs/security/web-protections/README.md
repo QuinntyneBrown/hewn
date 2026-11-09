@@ -76,5 +76,5 @@ Journey 10 built L2-043 AC4.
 - **Refused and invalid submissions don't count**, since they store nothing. Each Owner has their own minute.
 - **`Hewn:RateLimit:DirectionsPerMinute`** sets the limit (default 10). The e2e stack allows 30.
 - **New direction** shows the rate-limited mock's warning callout, "Too many directions in a minute", with when the
-  Owner can submit again, and keeps everything typed.
+  Owner can submit again, keeps everything typed, and disables Start direction until then.
 - **Not built in this journey:** the security headers, anti-forgery filter changes and the ZAP job (AC2, AC3, AC5).
