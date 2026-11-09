@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Document stages 1, 4, 5, 7 and 8 (journey 1, L2-009, L2-013, L2-014, L2-016, L2-017): the worker checks out
+  the product repository through `GET /api/worker/runs/{id}/repository/archive`, runs the stage's agent,
+  validates the brief, stack decision, requirements, design coverage and journeys, and commits only the
+  stage's documents and `docs/decisions.md`. A scripted agent stands in for the model.
 - Stage 0, Bootstrap (journey 1, L2-007, L2-036 AC1 and AC3): the API creates the private product repository
   on the first lease and commits through a fenced, idempotent commit mutation; the worker copies Greenlit's
   skills, keeps existing folders and writes `.hewn/skills.lock`.
