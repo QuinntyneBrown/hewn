@@ -19,8 +19,8 @@ a `StageBlocked` event and `POST /api/directions/{id}/retry-stage`.
   `NotBefore = now + backoff`, in the same save as the failure. The run log reads "Attempt {n} failed: {reason}.
   Retry {n} of 3 in {wait}." and `RunRetryScheduled` carries the attempt, the wait and the reason. The stage and
   direction stay Running, so nothing else changes while the retry waits.
-- **The lease honours `NotBefore`.** The lease query and its guarded `UPDATE` skip a run whose `NotBefore` is in the
-  future, using the injected clock. Workers need no timers, a restart keeps the schedule, and other projects' runs
+- **The lease honours `NotBefore`.** The lease query skips a run whose `NotBefore` is in the future, using the
+  injected clock; the guarded `UPDATE` then grants only that candidate. Workers need no timers, a restart keeps the schedule, and other projects' runs
   are leased meanwhile because the waiting run is not leased.
 - **The policy is configuration.** `Hewn:Retry:BackoffSeconds` (default `30,120,600`) sets the waits; its length is
   the number of retries. The e2e stack uses `2,3,4`. `RetryPolicy` and `RunFailureHandler` are not separate types;

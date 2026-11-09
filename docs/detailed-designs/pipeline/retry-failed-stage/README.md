@@ -57,6 +57,12 @@ Backoff is a `NotBefore` timestamp on the run, so the delay survives restarts an
 
 ![Class diagram for retrying a failed stage](diagrams/class-structure.png)
 
+### Backoff schedule
+
+A failed run is retried after 30 s, 2 min and 10 min; the fourth failure blocks the stage until an Owner presses Retry stage (L2-006).
+
+![Diagram: attempts 1 to 4 with waits of 30 s, 2 min and 10 min, then Blocked and Retry stage](diagrams/backoff-schedule.png)
+
 ### Behaviour — retry automatically, then block
 
 Attempts 2–4 wait 30 s, 2 min and 10 min (L2-006 AC1). After the third retry fails, the stage is Failed, the direction Blocked, and Mission Control gets the reason and 200 log lines (AC2).
