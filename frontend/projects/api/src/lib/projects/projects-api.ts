@@ -7,6 +7,8 @@ import {
   Project,
   StageDetail,
   ProjectSummary,
+  RaiseAndResumeRequest,
+  RaiseAndResumeResult,
   SubmitFeatureDirectionRequest,
   SubmitProductDirectionRequest,
   SubmitProductDirectionResult,
@@ -29,6 +31,15 @@ export interface ProjectsApi {
   getStageDetail(projectId: string, directionId: string, stage: number): Observable<StageDetail>;
   /** A run's log lines after `after`, oldest first, at most `limit` (the API caps it at 5,000). */
   getRunLog(projectId: string, runId: string, after: number, limit?: number): Observable<LogLine[]>;
+  /**
+   * Raises a budget-reached direction's budget and resumes it, in one action (L2-053 AC3). Errors with
+   * FieldErrorsProblem when the budget is not above the spend, and with the HTTP error (409 with a `code`) otherwise.
+   */
+  raiseAndResume(
+    projectId: string,
+    directionId: string,
+    request: RaiseAndResumeRequest,
+  ): Observable<RaiseAndResumeResult>;
 }
 
 export const PROJECTS_API = new InjectionToken<ProjectsApi>('ProjectsApi');
@@ -76,5 +87,18 @@ export class HttpProjectsApi implements ProjectsApi {
       `/api/projects/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/logs`,
       { params: { after, limit } },
     );
+  }
+
+  raiseAndResume(
+    projectId: string,
+    directionId: string,
+    request: RaiseAndResumeRequest,
+  ): Observable<RaiseAndResumeResult> {
+    return this.http
+      .post<RaiseAndResumeResult>(
+        `/api/projects/${encodeURIComponent(projectId)}/directions/${encodeURIComponent(directionId)}/raise-and-resume`,
+        request,
+      )
+      .pipe(catchError((error: unknown) => throwError(() => toFieldErrors(error) ?? error)));
   }
 }

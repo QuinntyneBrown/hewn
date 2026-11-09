@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 05 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="05" data-video-title="Raise budget and resume" data-parts="Introduction|Goal|Command|Resume|Dialog|Viewer|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 5</div>
+  <h1>Raise budget and resume</h1>
+  <p class="lead">Give a direction that reached its budget more, and carry on from its next step, in one action.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video walks through how it was built">
+  <figure><img src="screens/budget-reached-desktop.png" alt="A direction Paused with Budget reached, with a new budget and Raise budget and resume"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="On a direction paused with Budget reached">
+  <div class="cols cols--wide">
+    <figure><img src="screens/dialog-desktop.png" alt="The Raise budget dialog with a new budget of $110.00"></figure>
+    <ul class="bullets small">
+      <li>New budget above the spend</li>
+      <li>Raise and resume, one action</li>
+      <li>From the next step</li>
+    </ul>
+  </div>
+</section>
+
+<section id="goal-refuse" data-part="1" data-cue="A budget at or below the spend is refused inline">
+  <div class="cols cols--wide">
+    <figure><img src="screens/dialog-invalid-desktop.png" alt="The dialog refusing $10.00: New budget must be more than the $10.20 already spent"></figure>
+    <ul class="bullets small">
+      <li>At or below spend: refused inline</li>
+      <li>Viewers: no control</li>
+      <li>API: 403 for Viewers</li>
+    </ul>
+  </div>
+</section>
+
+<section id="diagram" data-part="2" data-cue="Here is the whole exchange.">
+  <figure class="diagram"><img src="../../detailed-designs/governance/spend-and-budgets/diagrams/sequence-raise-and-resume.png" alt="Sequence diagram: the dialog posts the new and current budget; the API answers 409, 400 or 200 after one save"></figure>
+</section>
+
+<section id="checks" data-part="2" data-cue="The command first takes the project's lock">
+  <div class="code-file">backend/src/Hewn.Application/Spend/RaiseAndResume.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="2-5,7-10,12,13">        // A stale budget means another session already acted: say so before anything else.
+        if (direction.BudgetUsd != command.CurrentBudgetUsd)
+        {
+            throw new ConflictException("budget_changed", "Another session changed this budget a moment ago.");
+        }
+
+        if (!direction.IsPausedAtBudget)
+        {
+            throw new ConflictException("not_budget_paused", "The direction is not paused at its budget.");
+        }
+
+        var budget = Math.Round(command.BudgetUsd, 2, MidpointRounding.AwayFromZero);
+        if (budget &lt;= direction.SpendUsd)</pre>
+</section>
+
+<section id="one-save" data-part="2" data-cue="Then, in one save, it records a Budget raised event">
+  <div class="code-file">backend/src/Hewn.Application/Spend/RaiseAndResume.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="2-6,7,8,9">        var run = await db.Runs.SingleAsync(r =&gt; r.DirectionId == direction.Id &amp;&amp; r.Status == RunStatus.Paused, cancellationToken);
+        await events.AppendAsync(
+            project.Id,
+            BudgetRaised,
+            new { directionId = direction.Id, budgetUsd = budget, spendUsd = direction.SpendUsd, raisedBy = user.Login },
+            cancellationToken);
+        await pipeline.OnBudgetRaisedAsync(run, project, direction, budget, cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
+        await events.PublishAsync(cancellationToken);
+
+        return new RaiseAndResumeResult(direction.Id, direction.BudgetUsd, direction.SpendUsd, direction.Status.ToString());</pre>
+</section>
+
+<section id="resume" data-part="3" data-cue="Resuming reuses the run that paused.">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/PipelineOrchestrator.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="3,4,7">    public async Task OnBudgetRaisedAsync(Run run, Project project, Direction direction, decimal budgetUsd, CancellationToken cancellationToken)
+    {
+        run.Resume();
+        var stage = direction.RaiseBudgetAndResume(budgetUsd, run.Stage);
+        await AppendStageAsync(direction, stage, cancellationToken);
+        await AppendDirectionAsync(direction, cancellationToken);
+        project.ChangeStatus(ProjectStatus.Running);
+        await AppendProjectAsync(project, cancellationToken);
+    }</pre>
+</section>
+
+<section id="dialog" data-part="4" data-cue="The Raise budget dialog is built on the CDK dialog.">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/project/raise-budget.dialog.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="5,9-12,14">  protected save(): void {
+    if (this.saving()) return;
+    this.attempted.set(true);
+    this.serverError.set(null);
+    if (raiseBudgetError(this.budget(), this.data.spendUsd)) return;
+    this.saving.set(true);
+    this.failure.set(null);
+    this.api
+      .raiseAndResume(this.data.projectId, this.data.directionId, {
+        budgetUsd: parseBudget(this.budget())!,
+        currentBudgetUsd: this.data.budgetUsd,
+      })
+      .subscribe({
+        next: (result) =&gt; this.ref.close(result),</pre>
+</section>
+
+<section id="dialog-failed" data-part="4" data-cue="If another session raised the budget first">
+  <div class="cols">
+    <figure><img src="screens/dialog-failed-desktop.png" alt="The dialog after a 409: The budget wasn't changed, another session changed this budget"></figure>
+    <figure class="phone"><img src="screens/dialog-phone.png" alt="The Raise budget dialog as a bottom sheet on a phone"></figure>
+  </div>
+</section>
+
+<section id="viewer" data-part="5" data-cue="A Viewer sees the same pause">
+  <figure><img src="screens/viewer-budget-reached-desktop.png" alt="A Viewer sees Paused, Budget reached, without the new budget or the button"></figure>
+</section>
+
+<section id="viewer-403" data-part="5" data-cue="The end to end test signs in as a Viewer">
+  <div class="code-file">e2e/tests/pipeline/raise-and-resume.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3,4,11-15">    const viewer = new ProjectPage(viewerPage);
+    await viewerPage.goto(projectUrl);
+    await expect(viewer.budgetReachedCallout).toBeVisible();
+    await expect(viewer.raiseBudget).toHaveCount(0);
+    const projectId = new URL(projectUrl).pathname.split('/').at(-1)!;
+    const directionId = (
+      (await (await viewerPage.request.get(`/api/projects/${projectId}`)).json()) as {
+        directions: { id: string }[];
+      }
+    ).directions[0]!.id;
+    const forbidden = await viewerPage.request.post(
+      `/api/projects/${projectId}/directions/${directionId}/raise-and-resume`,
+      { data: { budgetUsd: 50, currentBudgetUsd: 10 }, headers: { 'X-XSRF-TOKEN': await xsrf(viewerPage) } },
+    );
+    expect(forbidden.status()).toBe(403);</pre>
+  <div class="result green">✓ 403 Forbidden · nothing changed</div>
+</section>
+
+<section id="red" data-part="6" data-cue="Each slice began with its tests failing.">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Spend/RaiseAndResumeTests.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="7,9-12">    [Fact]
+    public async Task Raising_the_budget_above_the_spend_resumes_the_direction_from_its_next_step_in_one_action()
+    {
+        var paused = await PausedAtBudgetAsync();
+        var before = (await EventsAsync(paused.Owner, paused.ProjectId)).Count;
+
+        var response = await RaiseAsync(paused.Owner, paused.ProjectId, paused.DirectionId, 20m);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await HewnClient.ReadJsonAsync(response);
+        Assert.Equal(20m, body.GetProperty("budgetUsd").GetDecimal());
+        Assert.Equal("Running", body.GetProperty("status").GetString());</pre>
+  <div class="result red">✘ 7 failed · RaiseAndResumeTests</div>
+  <div class="result green">✓ 170 backend · 130 worker passed</div>
+</section>
+
+<section id="tests" data-part="6" data-cue="The frontend has fifty three unit tests.">
+  <div class="cols cols--3">
+    <div class="card"><h3>170 backend</h3><p class="small">7 new, real API</p></div>
+    <div class="card"><h3>53 frontend</h3><p class="small">Dialog rules, BudgetRaised</p></div>
+    <div class="card"><h3>46 e2e</h3><p class="small">Pipeline 13 · behaviour 15 · a11y 11 · visual 7</p></div>
+  </div>
+</section>
+
+<section id="clip-raise" data-part="7" data-cue="Here is a direction with a ten dollar budget" data-clip="clips/raise.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">$10 is refused on the field; $20 raises the budget and the run carries on</aside>
+</section>
+
+<section id="resumed" data-part="7" data-cue="When spend reaches the new budget">
+  <div class="cols">
+    <figure><img src="screens/resumed-desktop.png" alt="The direction paused again at $20.40 of $20.00, in Designs, suggesting $120.00"></figure>
+    <figure class="phone"><img src="screens/budget-reached-phone.png" alt="Budget reached with Raise budget and resume on a phone"></figure>
+  </div>
+</section>
+
+<section id="themes" data-part="7" data-cue="The same page works in dark mode and on a phone.">
+  <div class="cols">
+    <figure><img src="screens/dialog-desktop-dark.png" alt="The Raise budget dialog in dark mode"></figure>
+    <figure><img src="screens/budget-reached-desktop-dark.png" alt="Budget reached in dark mode"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="8" data-cue="Journey five is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Raise and resume, one action, Owners only</li>
+    <li>From the checkpoint, spend and warning re-armed</li>
+    <li>Below spend, stale or Viewer: refused</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

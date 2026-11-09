@@ -219,4 +219,22 @@ describe('applyEvent', () => {
 
     expect(next.directions[0]).toMatchObject({ status: 'Paused', pauseReason: 'Budget reached' });
   });
+
+  it('takes the new budget and re-arms the 80% warning from BudgetRaised (L2-053 AC3)', () => {
+    const warned = {
+      ...project(),
+      directions: [{ ...project().directions[0]!, budgetWarned: true }],
+    };
+
+    const next = applyEvent(
+      warned,
+      event(2, 'BudgetRaised', { directionId: 'd', budgetUsd: 350, spendUsd: 250 }),
+    );
+
+    expect(next.directions[0]).toMatchObject({
+      budgetUsd: 350,
+      spendUsd: 250,
+      budgetWarned: false,
+    });
+  });
 });

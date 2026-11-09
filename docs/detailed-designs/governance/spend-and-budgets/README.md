@@ -20,7 +20,7 @@ The slice spans the worker's model-call meter, the spend ledger and budget guard
 - **`PriceTable`** — per-model prices in USD per million input and output tokens, from configuration (`Hewn:Prices:{model}`), defaulting to Anthropic's published prices. A price changes by configuration and restart; recorded calls keep their cost. An unknown model is priced at the table's highest rates (ADR 0010).
 - **`SpendLedger`** — table of model calls with cost, keyed by run, stage, direction and project; maintains running totals per direction and project and emits `SpendUpdated` (L2-031).
 - **`BudgetGuard`** — on each recorded call compares direction spend with its budget. Crossing 80% emits `BudgetWarning`; reaching 100% sets the direction Paused with reason "Budget reached" and returns `Stop` to the meter, which ends the run at a checkpoint after the current call.
-- **`RaiseAndResumeCommand`** — `POST /api/directions/{id}/raise-and-resume {budget}`, Owner policy. Rejects a budget at or below spend with 400; otherwise updates the budget and resumes in one transaction.
+- **`RaiseAndResumeCommand`** — `POST /api/projects/{projectId}/directions/{directionId}/raise-and-resume {budgetUsd, currentBudgetUsd}`, Owner policy. Rejects a budget at or below spend with 400; otherwise updates the budget and resumes in one transaction.
 - **`SpendBadge / BudgetBanner / RaiseBudgetDialog (Angular)`** — live spend on the project and direction, the 80% warning, and the "Budget reached" callout with Raise and resume.
 - **`DefaultBudgetSetting`** — Settings field for the default budget; the new-direction form pre-fills it and lets the Owner change it.
 
@@ -96,4 +96,19 @@ design above; ADR 0010 records them.
   (10 s, pauses on hover or focus). A budget-reached direction shows the "Paused · Budget reached" callout; its
   raise controls arrive with Raise and resume. Settings builds only the Direction defaults section's budget; the
   descope threshold, appearance, access and integrations arrive with their own journeys.
+
+Journey 5 built Raise and resume (L2-053 AC3, L2-029 AC5):
+
+- **One command.** `RaiseAndResumeCommand` takes the project lock, then checks that the budget the Owner saw is
+  still the budget (409 `budget_changed`), that the direction is Paused with "Budget reached" (409
+  `not_budget_paused`) and that the new budget is above the spend (400 on `budgetUsd`, "New budget must be more than
+  the $x already spent."). In one save it appends `BudgetRaised {directionId, budgetUsd, spendUsd, raisedBy}`,
+  queues the paused run again (same run, same checkpoint, next lease bumps the epoch), re-arms the 80% warning and
+  sends `StageChanged`, `DirectionChanged` and `ProjectChanged` as Running.
+- **The route** sits under the project, like every other project-scoped endpoint, so another project's direction is
+  404. Viewers get 403 from the Owner policy and see the callout without its controls.
+- **The dialog** is `RaiseBudgetDialog` on CDK Dialog (`backdrop` class, focus on the field, Escape and Cancel close
+  it). It refuses a budget at or below the spend inline before sending, shows the API's 400 on the field, and a 409
+  as "The budget wasn't changed". Its description reads "resumes from its last checkpoint": the project read model
+  does not carry the checkpoint's commit, so the mock's short SHA is left out.
 

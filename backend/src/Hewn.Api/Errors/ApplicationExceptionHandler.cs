@@ -16,6 +16,7 @@ public sealed class ApplicationExceptionHandler(IProblemDetailsService problems)
             FieldValidationException e => FieldProblem(e),
             NotFoundException => new ProblemDetails { Status = StatusCodes.Status404NotFound, Title = "Not found", Extensions = { ["code"] = "not_found" } },
             GitHubException e => new ProblemDetails { Status = StatusCodes.Status502BadGateway, Title = e.Message, Extensions = { ["code"] = "github_failed" } },
+            ConflictException e => new ProblemDetails { Status = StatusCodes.Status409Conflict, Title = e.Message, Extensions = { ["code"] = e.Code } },
             LeaseLostException => new ProblemDetails { Status = StatusCodes.Status409Conflict, Title = "Lease lost", Extensions = { ["code"] = "lease_lost" } },
             _ => null,
         };

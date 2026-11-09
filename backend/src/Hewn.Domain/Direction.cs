@@ -172,6 +172,34 @@ public sealed class Direction
         return stage;
     }
 
+    /// <summary>True when the direction stopped at its budget and only Raise and resume continues it.</summary>
+    public bool IsPausedAtBudget => Status == DirectionStatus.Paused && PauseReason == BudgetReached;
+
+    /// <summary>
+    /// Raises the budget above the spend so far and resumes the paused stage, in one action (L2-053 AC3). The 80%
+    /// warning applies again to the new budget.
+    /// </summary>
+    public StageState RaiseBudgetAndResume(decimal budgetUsd, int stageNumber)
+    {
+        if (!IsPausedAtBudget)
+        {
+            throw new InvalidOperationException($"Direction {Id} is not paused at its budget.");
+        }
+
+        if (budgetUsd <= SpendUsd)
+        {
+            throw new InvalidOperationException($"A budget of {budgetUsd} is not above the {SpendUsd} spent.");
+        }
+
+        BudgetUsd = budgetUsd;
+        BudgetWarned = false;
+        Status = DirectionStatus.Running;
+        PauseReason = null;
+        var stage = Stage(stageNumber);
+        stage.Resume();
+        return stage;
+    }
+
     public void FailStage(int number, DateTimeOffset now) => Stage(number).End(StageStatus.Failed, now);
 
     public StageState Stage(int number) => _stages.Single(s => s.Number == number);

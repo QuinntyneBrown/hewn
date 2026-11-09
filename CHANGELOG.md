@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Raise budget and resume (journey 5, L2-053 AC3, L2-029 AC5): on a direction Paused with "Budget reached", an
+  Owner enters a new budget above the spend and presses Raise and resume; the budget is raised and the direction
+  resumes from the step after its checkpoint in one action
+  (`POST /api/projects/{id}/directions/{d}/raise-and-resume`, `BudgetRaised`). A budget at or below the spend is
+  refused inline, a budget another session changed answers 409, and Viewers see no control and get 403.
 - Limit spending (journey 4, L2-052, L2-053 AC1-AC3):
   - workers report every model call (`POST /api/worker/runs/{id}/model-calls`); Hewn prices it from a configured
     price table and records its tokens, model and cost against its run, stage, direction and project (ADR 0010);

@@ -126,6 +126,23 @@
                 <div>
                   <p class="callout__title">Paused · Budget reached</p>
                   <p class="callout__body">{{ budgetReachedText(d.spendUsd, d.budgetUsd) }}</p>
+                  @if (session.isOwner()) {
+                    <div class="callout__actions">
+                      <div class="prefix" style="width: 8rem">
+                        <span class="prefix__sym" aria-hidden="true">$</span
+                        ><input
+                          class="input input--sm"
+                          aria-label="New budget"
+                          inputmode="decimal"
+                          [value]="newBudget(d)"
+                          (input)="setNewBudget(d.id, $any($event.target).value)"
+                        />
+                      </div>
+                      <button class="btn btn--sm" type="button" (click)="raiseAndResume(d)">
+                        Raise budget and resume
+                      </button>
+                    </div>
+                  }
                 </div>
               </div>
             }

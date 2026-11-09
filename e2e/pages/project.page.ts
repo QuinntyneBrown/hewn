@@ -25,6 +25,17 @@ export class ProjectPage {
   readonly spendMeter: Locator;
   readonly spendLabel: Locator;
   readonly budgetReachedCallout: Locator;
+  /** Raise and resume (L2-053 AC3): the callout's controls and the dialog they open. */
+  readonly calloutNewBudget: Locator;
+  readonly raiseBudget: Locator;
+  readonly raiseDialog: Locator;
+  readonly dialogBudget: Locator;
+  readonly dialogBudgetError: Locator;
+  readonly dialogConfirm: Locator;
+  readonly dialogCancel: Locator;
+  readonly dialogFailure: Locator;
+  readonly dialogPanel: Locator;
+  readonly dialogFooter: Locator;
   /** Live toasts, such as the 80% budget warning (L2-053 AC2). */
   readonly toasts: Locator;
   /** Any dialog asking the user for something; a run never needs one (L2-028). */
@@ -57,6 +68,16 @@ export class ProjectPage {
     this.spendLabel = page.locator('.phead__spend .phead__label');
     this.budgetReachedCallout = page.locator('.callout', { hasText: 'Paused · Budget reached' });
     this.toasts = page.locator('.toast-region .toast');
+    this.calloutNewBudget = this.budgetReachedCallout.getByLabel('New budget');
+    this.raiseBudget = this.budgetReachedCallout.getByRole('button', { name: 'Raise budget and resume' });
+    this.raiseDialog = page.getByRole('dialog', { name: /^Raise .+’s budget$/ });
+    this.dialogPanel = this.raiseDialog.locator('.dialog__panel');
+    this.dialogFooter = this.raiseDialog.locator('.dialog__footer');
+    this.dialogBudget = this.raiseDialog.getByLabel('New budget');
+    this.dialogBudgetError = this.raiseDialog.locator('#new-budget-err');
+    this.dialogConfirm = this.raiseDialog.getByRole('button', { name: /Raise and resume|Saving…/ });
+    this.dialogCancel = this.raiseDialog.getByRole('button', { name: 'Cancel' });
+    this.dialogFailure = this.raiseDialog.getByRole('alert').filter({ hasText: 'The budget wasn’t changed' });
   }
 
   /** The project's event stream from the start, as the API serves it to Mission Control. */
@@ -102,6 +123,12 @@ export class ProjectPage {
   }
 
   /** The running stage's live step and latest log line (L2-030 AC2). */
+  /** Rests the pointer on the dialog's title and focus in its field, so its buttons show at rest as the mocks do. */
+  async restInDialog(): Promise<void> {
+    await this.raiseDialog.getByRole('heading').hover();
+    await this.dialogBudget.focus();
+  }
+
   liveStep(name: string): Locator {
     return this.stage(name).locator('.stage__live-step');
   }

@@ -21,22 +21,24 @@ box "Frontend — Mission Control application" #E0F2FE
   participant "RaiseBudgetDialog" as dlg
 end box
 box "Backend — Hewn API application" #D1FADF
-  participant "DirectionsController" as ctrl
+  participant "ProjectsController" as ctrl
 end box
 box "Backend — Hewn Infrastructure" #FFF4E5
   database "Hewn database" as db
 end box
-form -> ctrl : GET /api/settings (default budget $40)
+form -> ctrl : GET /api/config (default budget from Settings)
 owner -> form : Submit with budget $60
 form -> ctrl : POST direction {budget: 60}
 ctrl -> db : Direction with Budget 60 (L2-053 AC1)
 == budget reached ==
 owner -> dlg : Raise to $90 and resume
-dlg -> ctrl : POST /api/directions/{id}/raise-and-resume {budget: 90}
-alt 90 <= spend so far
-  ctrl --> dlg : 400 "Enter a budget above the spend so far"
+dlg -> ctrl : POST /api/projects/{p}/directions/{d}/raise-and-resume {budgetUsd: 90, currentBudgetUsd: 60}
+alt budget changed by another session, or not paused at its budget
+  ctrl --> dlg : 409 budget_changed / not_budget_paused
+else 90 <= spend so far
+  ctrl --> dlg : 400 "New budget must be more than the $x already spent."
 else
-  ctrl -> db : Budget 90; direction Running; next run from checkpoint (one transaction) (L2-053 AC3)
-  ctrl --> dlg : 200
+  ctrl -> db : BudgetRaised; budget 90, warning re-armed; paused run queued with its checkpoint;\nstage, direction and project Running (one save) (L2-053 AC3)
+  ctrl --> dlg : 200 {budgetUsd, spendUsd, status}
 end
 @enduml
