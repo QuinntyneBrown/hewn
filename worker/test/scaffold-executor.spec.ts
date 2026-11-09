@@ -43,6 +43,7 @@ const leased: LeasedRun = {
     repository: 'hewn-builds/kiln-booking',
   },
   skillsSource: 'unused',
+  descopeThresholdDays: 3,
 };
 
 function context(checkResponses: CheckRun[][]) {
@@ -74,6 +75,9 @@ function context(checkResponses: CheckRun[][]) {
       return 'm3rge';
     },
     protectDefaultBranch: async (step, checks) => void calls.push(`protect ${step} ${checks.join(',')}`),
+    reportBacklog: async () => {
+      throw new Error('reportBacklog is only for stage 9');
+    },
   };
   return { ctx, calls, committed, logs };
 }

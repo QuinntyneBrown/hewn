@@ -38,6 +38,8 @@ Stages built so far:
   .NET 10 + Angular 21 + Playwright with a GitHub Actions workflow), commits it to `hewn/scaffold`, opens a pull
   request, waits for CI (`HEWN_CHECK_POLL_MS`, default 30000), squash-merges and requires the CI checks on the
   default branch. `node src/scaffold/generate-cli.ts <dir>` writes the default template for inspection.
+- **Stage 9, Estimates**: runs `estimating-designs`, then descopes and plans the backlog with the leased threshold,
+  writes `docs/estimates/README.md` and `backlog.json`, marks deferred L2s, commits and reports the backlog to Hewn.
 - `node src/magic-patterns/fake-server-main.ts` (with `PORT` and `MAGIC_PATTERNS_TOKEN`) runs the fake Magic
   Patterns MCP server the e2e stack uses.
 

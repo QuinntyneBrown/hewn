@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 01 part 7 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="01 · part 7" data-video-title="Build a new product, part seven" data-parts="Introduction|What we built|Design|Code|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 1 · Part 7</div>
+  <h1>Estimates and descoping</h1>
+  <p class="lead">Every design sized in ideal days, oversized or unneeded work deferred with a reason, and a backlog ordered by journey and dependency.</p>
+</section>
+
+<section id="agent" data-part="1" data-cue="Stage nine runs in two halves.">
+  <div class="code-file">docs/estimates/kiln.md · written by estimating-designs</div>
+  <pre class="code tight" data-lang="markdown">| Design | Estimate (days) | Complete |
+|---|---:|---:|
+| [calendar](../detailed-designs/kiln/calendar/README.md) | 2.5 | 0% |
+| [book-slot](../detailed-designs/kiln/book-slot/README.md) | 2 | 0% |
+| [waitlist](../detailed-designs/kiln/waitlist/README.md) | 5 | 0% |</pre>
+</section>
+
+<section id="planners" data-part="1" data-cue="Then deterministic code takes over.">
+  <h2>Hewn writes</h2>
+  <ul class="bullets small">
+    <li><span class="file">docs/estimates/README.md</span>: overall estimate, percent complete, roadmap, deferred</li>
+    <li><span class="file">docs/estimates/backlog.json</span>: increments and deferred designs</li>
+    <li><span class="file">docs/specs/L2.md</span>: <span class="file">**Status:** Deferred (reason)</span></li>
+  </ul>
+</section>
+
+<section id="rules" data-part="2" data-cue="A design is deferred for one of four reasons">
+  <h2>Descope rules, in order</h2>
+  <ul class="steps">
+    <li class="done">Above the threshold after splitting</li><li class="done">Out of scope or nice to have in the brief</li><li class="done">On no journey</li><li class="done">Depends on a deferred design</li>
+  </ul>
+</section>
+
+<section id="threshold" data-part="2" data-cue="The threshold defaults to three ideal days.">
+  <div class="code-file">GET /api/worker/runs/lease · stage 9</div>
+  <pre class="code tight" data-lang="json" data-mark="4">{
+  "stage": 9,
+  "stageName": "Estimates",
+  "descopeThresholdDays": 3
+}</pre>
+</section>
+
+<section id="order" data-part="3" data-cue="Increments follow the journeys in order.">
+  <div class="code-file">worker/src/estimates/backlog-planner.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="4-6">const parts: EstimatedDesign[][] = [];
+for (const design of sequence) {
+  const current = parts.at(-1);
+  const total = current?.reduce((sum, d) =&gt; sum + d.estimateDays, 0) ?? Infinity;
+  if (current &amp;&amp; total + design.estimateDays &lt;= threshold) current.push(design);
+  else parts.push([design]);
+}</pre>
+</section>
+
+<section id="endpoint" data-part="3" data-cue="When the commit lands">
+  <h2>PUT …/runs/{id}/backlog</h2>
+  <ul class="bullets small">
+    <li>Stage 9 only; others get <span class="file">mutation_not_allowed</span></li>
+    <li>Replaces the direction's rows in <span class="file">increments</span></li>
+    <li>Appends <span class="file">BacklogPlanned</span></li>
+    <li>Rejects gaps and dependencies on later increments</li>
+  </ul>
+</section>
+
+<section id="tests" data-part="4" data-cue="The backend gained thirteen tests">
+  <h2>Tests</h2>
+  <div class="cols cols--3">
+    <div class="card"><h3>94 backend</h3><p class="small">Threshold, backlog, dependency rules, stage 9 paths</p></div>
+    <div class="card"><h3>82 worker</h3><p class="small">Descope reasons, ordering, README, status lines</p></div>
+    <div class="card"><h3>18 e2e</h3><p class="small">Stage 9 runs for real in the pipeline specs</p></div>
+  </div>
+</section>
+
+<section id="clip" data-part="5" data-cue="Here is the real app with one worker." data-clip="clips/estimates.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Submit; stages 0 to 9 run for real; the direction completes</aside>
+</section>
+
+<section id="readme" data-part="5" data-cue="And this is the estimates read me">
+  <div class="code-file">docs/estimates/README.md</div>
+  <pre class="code tight" data-lang="markdown">| # | Increment                   | Journey | Days | Depends on |
+| 1 | Sign in                     | 1       | 1.5  | —          |
+| 2 | Book a firing (part 1 of 2) | 2       | 2.5  | —          |
+| 3 | Book a firing (part 2 of 2) | 2       | 2    | 2          |
+
+## Deferred
+| Waitlist       | 5 | Estimated at 5 days, above the 3-day threshold |
+| Payroll export | 2 | Listed as out of scope in the brief: Payroll  |
+| Glaze gallery  | 1 | Listed as nice-to-have in the brief           |</pre>
+</section>
+
+<section id="recap" data-part="6" data-cue="Every design now has an estimate">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Every design estimated in ideal days</li>
+    <li>Deferred work keeps its reason, in the requirements too</li>
+    <li>Next: stage 10 builds the increments</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

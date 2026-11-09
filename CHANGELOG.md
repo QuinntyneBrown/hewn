@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Stage 9, Estimates (journey 1, L2-018 AC1, L2-019 AC1-AC3, L2-020 AC1): estimates per design, automatic
+  descoping with reasons and Deferred status lines, and a backlog of increments ordered by journey and
+  dependency, stored in Hewn's new `increments` table through `PUT /api/worker/runs/{id}/backlog`.
 - Stage 6, Scaffold (journey 1, L2-015 AC1-AC4, L2-036 AC2): the default .NET + Angular + Playwright template with
   a CI workflow, committed to `hewn/scaffold`, merged through a pull request once CI passes, with the CI checks
   then required on the default branch. New broker mutations `open_pull_request`, `merge_pull_request` and

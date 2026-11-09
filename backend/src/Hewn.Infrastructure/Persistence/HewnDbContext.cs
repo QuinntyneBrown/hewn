@@ -22,6 +22,8 @@ public sealed class HewnDbContext(DbContextOptions<HewnDbContext> options) : DbC
 
     public DbSet<GitHubMutation> GitHubMutations => Set<GitHubMutation>();
 
+    public DbSet<Increment> Increments => Set<Increment>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(HewnDbContext).Assembly);

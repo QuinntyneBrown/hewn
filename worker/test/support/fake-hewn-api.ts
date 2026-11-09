@@ -44,6 +44,7 @@ export class FakeHewnApi implements HewnApi {
         repository: null,
       },
       skillsSource: 'https://github.com/QuinntyneBrown/greenlit.git',
+      descopeThresholdDays: 3,
     };
     this.lastStage = lastStage;
     this.queue.push(run);
@@ -102,6 +103,8 @@ export class FakeHewnApi implements HewnApi {
   }
 
   async protectDefaultBranch(): Promise<void> {}
+
+  async reportBacklog(): Promise<void> {}
 
   async listSkillFolders(): Promise<Record<string, string[]>> {
     return { '.claude/skills': [], '.agents/skills': [] };

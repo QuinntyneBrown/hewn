@@ -21,5 +21,7 @@ public interface IAppDbContext
 
     DbSet<GitHubMutation> GitHubMutations { get; }
 
+    DbSet<Increment> Increments { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

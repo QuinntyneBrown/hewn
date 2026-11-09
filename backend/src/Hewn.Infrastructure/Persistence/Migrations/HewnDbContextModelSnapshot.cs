@@ -113,6 +113,59 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.ToTable("github_mutations", (string)null);
                 });
 
+            modelBuilder.Entity("Hewn.Domain.Increment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DependsOn")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DirectionId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("EstimateDays")
+                        .HasPrecision(6, 1)
+                        .HasColumnType("REAL");
+
+                    b.Property<int?>("Journey")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("L2Ids")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("Number")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PullRequestNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DirectionId", "Number");
+
+                    b.ToTable("increments", (string)null);
+                });
+
             modelBuilder.Entity("Hewn.Domain.Project", b =>
                 {
                     b.Property<Guid>("Id")

@@ -40,6 +40,8 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
 
     public sealed record LogRequest(string WorkerId, long Epoch, IReadOnlyList<RunLogEntry> Lines);
 
+    public sealed record BacklogRequest(string WorkerId, long Epoch, IReadOnlyList<PlannedIncrement> Increments, IReadOnlyList<DeferredDesign> Deferred);
+
     [HttpPost("register")]
     public async Task<IActionResult> Register(RegisterRequest request, CancellationToken cancellationToken) =>
         Ok(new { workerId = await mediator.Send(new RegisterWorkerCommand(request.Name, request.Location, request.Host, request.Version), cancellationToken) });
@@ -109,6 +111,14 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
     [HttpGet("runs/{runId:guid}/pull-requests/{number:int}/checks")]
     public async Task<IActionResult> Checks(Guid runId, int number, [FromQuery] string workerId, [FromQuery] long epoch, CancellationToken cancellationToken) =>
         Ok(new { checks = await mediator.Send(new GetPullRequestChecksQuery(runId, workerId, epoch, number), cancellationToken) });
+
+    /// <summary>Stage 9's backlog: the ordered increments and the descoped designs with reasons.</summary>
+    [HttpPut("runs/{runId:guid}/backlog")]
+    public async Task<IActionResult> Backlog(Guid runId, BacklogRequest request, CancellationToken cancellationToken)
+    {
+        await mediator.Send(new RecordBacklogCommand(runId, request.WorkerId, request.Epoch, request.Increments ?? [], request.Deferred ?? []), cancellationToken);
+        return NoContent();
+    }
 
     [HttpPost("runs/{runId:guid}/logs")]
     public async Task<IActionResult> Logs(Guid runId, LogRequest request, CancellationToken cancellationToken)

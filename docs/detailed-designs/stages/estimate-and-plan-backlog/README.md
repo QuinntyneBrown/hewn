@@ -70,3 +70,27 @@ Estimates are written (L2-018 AC1). Oversized designs are split or deferred (L2-
 Active increments show status, estimate and PR link (L2-020 AC2); deferred items appear apart with reasons (L2-019 AC4).
 
 ![Sequence diagram: view the backlog](diagrams/sequence-view-backlog.png)
+
+## Decisions made while building the slice
+
+- **Agent then planners.** Stage 9 is a definition in `DocumentStageExecutor`. The `estimating-designs` agent writes
+  `docs/estimates/{subsystem}.md` (columns Design, Estimate (days), Complete) and splits oversized designs; the
+  deterministic `Descoper` and `BacklogPlanner` (`worker/src/estimates/backlog-planner.ts`) then write
+  `docs/estimates/README.md`, `docs/estimates/backlog.json` and the Deferred status lines.
+- **Splits.** The commit mutation cannot delete, so a split design's README gains `**Status:** Split into …` and is
+  ignored from then on; the new designs carry its L2s.
+- **Descope rules, in order.** Above the threshold after the split attempt; listed under the brief's Out of scope
+  or Nice to have (case-insensitive containment of the bullet and the design title); no L2 in any journey's
+  `**Covers:**`; depends on a deferred design (repeated until stable). Each deferred design keeps its first reason.
+- **Deferred L2s.** An L2 is marked only when every design covering it is deferred; the status line sits directly
+  under its heading and is replaced, not duplicated, on a rerun.
+- **Increments.** Journeys in number order; each journey's designs are placed after their dependencies (pulled
+  forward from later journeys when needed), then split greedily into parts of at most the threshold, titled
+  "{journey} (part k of n)". A dependency cycle fails the run naming the designs.
+- **Threshold.** `HEWN_DESCOPE_THRESHOLD_DAYS` on the API (default 3) is sent with every lease until the Settings
+  page (journey 28) stores it per project.
+- **`BacklogIndex`.** The `increments` table: number, title, journey, L2 IDs, estimate, depends-on, status
+  (Queued, InProgress, Blocked, Merged, Deferred), reason and pull request number. `PUT
+  /api/worker/runs/{id}/backlog` (stage 9 only) replaces a direction's rows and appends `BacklogPlanned`; the API
+  rejects numbering gaps and any dependency on a later or missing increment.
+- **Deferred.** The Backlog page (L2-019 AC4, L2-020 AC2) with journey 12.
