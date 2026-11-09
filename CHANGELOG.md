@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Review the backlog (journey 12, L2-020 AC2, L2-019 AC4, L2-018, L2-025 AC4): a project's Backlog tab
+  (`/projects/{id}/backlog`, beside Pipeline) lists the current direction's increments in order with status,
+  estimate and pull request link, the merged and estimated totals with percent complete, and the deferred designs
+  apart with their reasons. A blocked increment gets a callout with its iterations, failing tests and what Hewn
+  moved on to. The tab updates after every merge without a reload. New `GET /api/projects/{id}/backlog`. The
+  scripted agent lists an idea's "Nice to have" in the brief, and can block one increment
+  (`HEWN_SCRIPTED_BLOCK_INCREMENT`) or slow stage 10 (`HEWN_SCRIPTED_INCREMENT_MS`) for tests and videos.
+
 - Find a project (journey 11, L2-002, L2-045 AC1–AC2): the Projects page lists every project with its stage,
   status, percent complete, spend and last activity, newest first. A status filter in `?status=` survives a
   reload, the empty state offers New product to Owners only, and rows update in place from the hub's

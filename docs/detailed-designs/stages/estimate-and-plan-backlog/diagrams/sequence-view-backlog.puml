@@ -17,18 +17,33 @@ skinparam package {
 skinparam sequenceMessageAlign left
 actor "Owner or Viewer" as user
 box "Frontend — Mission Control application" #E0F2FE
-  participant "BacklogPage" as page
+  participant "ProjectPage\n(Backlog tab)" as page
+  participant "BacklogComponent" as backlog
 end box
 box "Backend — Hewn API application" #D1FADF
-  participant "BacklogController" as ctrl
+  participant "ProjectsController" as ctrl
+  participant "MissionControlHub" as hub
+end box
+box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "GetProjectBacklogHandler" as handler
+  participant "ProjectSummaryReader" as reader
 end box
 box "Backend — Hewn Infrastructure" #FFF4E5
   database "Hewn database" as db
 end box
-user -> page : Open Backlog
-page -> ctrl : GET /api/projects/{id}/backlog
-ctrl -> db : Read BacklogIndex and deferred items
-ctrl --> page : Increments and deferred
-page --> user : Active table: status, estimate, PR link (L2-020 AC2)
-page --> user : Deferred section with reasons (L2-019 AC4)
+user -> page : Open /projects/{id}/backlog
+page -> backlog : projectId, changes = 0
+backlog -> ctrl : GET /api/projects/{id}/backlog
+ctrl -> handler : GetProjectBacklogQuery
+handler -> db : The current direction's increments, deferred rows included
+handler -> reader : Percent complete, as Projects reads it
+handler --> ctrl : BacklogDto: increments, deferred, totals
+ctrl --> backlog : 200
+backlog --> user : Active backlog: status, estimate, PR link (L2-020 AC2)
+backlog --> user : Deferred section with reasons (L2-019 AC4)
+== An increment merges ==
+hub -> page : IncrementChanged (also BacklogPlanned, StageChanged, DirectionChanged)
+page -> backlog : changes + 1
+backlog -> ctrl : GET /api/projects/{id}/backlog
+ctrl --> backlog : Merged, merged totals and percent moved (L2-025 AC4)
 @enduml
