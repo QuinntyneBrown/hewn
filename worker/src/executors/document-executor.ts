@@ -14,6 +14,8 @@ import {
   validateTokenCoverage,
 } from '../validators/design-system-validators.ts';
 import { mockPath, readManifest, validateMocks } from '../validators/mock-validator.ts';
+import { validateEstimates } from '../validators/estimate-validator.ts';
+import { planBacklog, type Backlog } from '../estimates/backlog-planner.ts';
 import {
   type Problems,
   validateBrief,
@@ -42,6 +44,7 @@ interface StageHookContext {
   directory: string;
   context: RunContext;
   magicPatterns: MagicPatterns | undefined;
+  leased: LeasedRun;
 }
 
 interface StageDefinition {
@@ -55,6 +58,8 @@ interface StageDefinition {
   /** Runs after the agent and before validation, e.g. exporting designs. */
   afterAgent?(hook: StageHookContext): Promise<void>;
   validate(directory: string, leased: LeasedRun): Problems | Promise<Problems>;
+  /** Runs once the stage's commit has landed. */
+  afterCommit?(hook: StageHookContext): Promise<void>;
 }
 
 export const DOCUMENT_STAGES: ReadonlyMap<number, StageDefinition> = new Map([
@@ -130,6 +135,18 @@ export const DOCUMENT_STAGES: ReadonlyMap<number, StageDefinition> = new Map([
       task: 'Write docs/journeys.md as numbered journeys ("## {n}. {title}") with **Actor:**, **Mocks:**, **Covers:** (L2 IDs) and **Steps:**. Keep existing journey numbers; new journeys take the next free numbers. Cover every L2 with a user interface criterion.',
       commitMessage: 'Define the user journeys',
       validate: (d) => validateJourneys(d),
+    },
+  ],
+  [
+    9,
+    {
+      skill: 'estimating-designs',
+      outputs: ['docs/estimates/', 'docs/detailed-designs/', 'docs/specs/L2.md'],
+      task: 'Estimate every design under docs/detailed-designs/ in ideal days for one intermediate developer, in docs/estimates/{subsystem}.md as a table with the columns Design (a link to the design README), Estimate (days) and Complete (percent). First split any design above the descope threshold into designs at or below it: write the new designs, and mark the original README with "**Status:** Split into {subsystem}/{feature}, …". Hewn then descopes, plans the backlog and writes docs/estimates/README.md.',
+      commitMessage: 'Estimate the work and plan the backlog',
+      afterAgent: async ({ directory, leased }) => void planIfEstimated(directory, leased),
+      validate: (d) => validateEstimates(d),
+      afterCommit: reportBacklog,
     },
   ],
 ]);
@@ -219,7 +236,7 @@ export class DocumentStageExecutor implements StageExecutor {
       },
       signal,
     );
-    await definition.afterAgent?.({ directory, context, magicPatterns });
+    await definition.afterAgent?.({ directory, context, magicPatterns, leased });
 
     for (const { question, answer } of parseDecisions(readDecisions(directory)).slice(decisionsBefore)) {
       await context.log('info', `Question: ${question}`);
@@ -239,6 +256,7 @@ export class DocumentStageExecutor implements StageExecutor {
       }
     }
     await context.commit(COMMIT_STEP, definition.commitMessage, files);
+    await definition.afterCommit?.({ directory, context, magicPatterns, leased });
   }
 }
 
@@ -259,6 +277,21 @@ async function exportMocks({ directory, context, magicPatterns }: StageHookConte
     }
   }
   await context.log('info', `Exported ${screens.length} designs from Magic Patterns`);
+}
+
+/** Stage 9: plans only once every design has an estimate, so a missing one fails validation, not the planner. */
+function planIfEstimated(directory: string, leased: LeasedRun): void {
+  if (validateEstimates(directory).length === 0) planBacklog(directory, leased.descopeThresholdDays);
+}
+
+/** Stage 9 (L2-020): Hewn's copy of the committed plan, for stage 10 and the Backlog page. */
+async function reportBacklog({ directory, context }: StageHookContext): Promise<void> {
+  const plan = JSON.parse(await readFile(join(directory, 'docs/estimates/backlog.json'), 'utf8')) as Backlog;
+  await context.reportBacklog({
+    increments: plan.increments.map(({ designs: _designs, ...increment }) => increment),
+    deferred: plan.deferred.map(({ design: _design, ...deferred }) => deferred),
+  });
+  await context.log('info', `Planned ${plan.increments.length} increments; deferred ${plan.deferred.length} designs`);
 }
 
 /** Stage 3 (L2-012 AC3): logs Magic Patterns design-system colours the extracted tokens do not match. */

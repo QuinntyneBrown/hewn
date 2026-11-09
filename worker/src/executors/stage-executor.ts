@@ -1,4 +1,4 @@
-import type { CheckRun, CommitFile, LeasedRun, LogLevel, PullRequest } from '../api.ts';
+import type { BacklogReport, CheckRun, CommitFile, LeasedRun, LogLevel, PullRequest } from '../api.ts';
 
 export interface StageStep {
   name: string;
@@ -18,6 +18,8 @@ export interface RunContext {
   /** Opens a pull request into the default branch; keyed `{run}/{step}/pull-request`, so repeating it returns the first. */
   openPullRequest(step: number, request: { head: string; title: string; body: string }): Promise<PullRequest>;
   pullRequestChecks(number: number): Promise<CheckRun[]>;
+  /** Stage 9: replaces the direction's backlog in Hewn. */
+  reportBacklog(report: BacklogReport): Promise<void>;
   /** Squash-merges; keyed `{run}/{step}/merge`. */
   mergePullRequest(step: number, number: number): Promise<string>;
   /** Requires the checks on the default branch; keyed `{run}/{step}/protect`. */

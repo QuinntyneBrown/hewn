@@ -53,6 +53,7 @@ const leased = (stage: number, stageName: string, stackPreference: string | null
     repository: 'hewn-builds/ledgerline',
   },
   skillsSource: 'unused',
+  descopeThresholdDays: 3,
 });
 
 interface Recorded {

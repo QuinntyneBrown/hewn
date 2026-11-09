@@ -23,6 +23,8 @@ export interface LeasedRun {
   };
   /** Clone URL of the skill library stage 0 copies from. */
   skillsSource: string;
+  /** Designs estimated above this many ideal days are split or descoped (stage 9). */
+  descopeThresholdDays: number;
 }
 export type RunOutcome = { outcome: 'Succeeded' } | { outcome: 'Failed'; error: string };
 export class LeaseLostError extends Error {}
@@ -33,6 +35,19 @@ export interface CommitFile {
 }
 
 export type LogLevel = 'info' | 'warn' | 'error';
+
+/** Stage 9's plan, as Hewn stores it (L2-019, L2-020). */
+export interface BacklogReport {
+  increments: {
+    number: number;
+    title: string;
+    journey: number;
+    l2Ids: string[];
+    estimateDays: number;
+    dependsOn: number[];
+  }[];
+  deferred: { title: string; l2Ids: string[]; estimateDays: number; reason: string }[];
+}
 
 export interface PullRequest {
   number: number;
@@ -71,6 +86,7 @@ export interface HewnApi {
     request: { head: string; title: string; body: string },
   ): Promise<PullRequest>;
   pullRequestChecks(workerId: string, run: LeasedRun, number: number): Promise<CheckRun[]>;
+  reportBacklog(workerId: string, run: LeasedRun, report: BacklogReport): Promise<void>;
   mergePullRequest(workerId: string, run: LeasedRun, idempotencyKey: string, number: number): Promise<string>;
   protectDefaultBranch(workerId: string, run: LeasedRun, idempotencyKey: string, checks: string[]): Promise<void>;
   log(workerId: string, run: LeasedRun, lines: { level: LogLevel; text: string }[]): Promise<void>;

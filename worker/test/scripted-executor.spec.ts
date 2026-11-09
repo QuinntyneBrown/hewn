@@ -20,6 +20,7 @@ const run = (stage: number): LeasedRun => ({
   checkpointSha: null,
   project: { id: 'p', name: 'Ledgerline', idea: 'x', stackPreference: null, repository: null },
   skillsSource: 'unused',
+  descopeThresholdDays: 3,
 });
 
 describe('ScriptedStageExecutor', () => {

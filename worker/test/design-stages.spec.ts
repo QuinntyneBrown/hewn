@@ -58,6 +58,7 @@ const leased = (stage: number, stageName: string): LeasedRun => ({
     repository: 'hewn-builds/kiln',
   },
   skillsSource: 'unused',
+  descopeThresholdDays: 3,
 });
 
 function context() {

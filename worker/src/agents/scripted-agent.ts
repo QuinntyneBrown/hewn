@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import type { StageAgent, StageAgentTask } from './stage-agent.ts';
 import { appendDecision } from './decision-log.ts';
 import { colorsIn } from '../validators/colors.ts';
+import { designFolders } from '../estimates/backlog-planner.ts';
 
 /**
  * A deterministic stand-in for the model, used by tests and the e2e stack. It writes documents that pass each
@@ -174,6 +175,27 @@ export class ScriptedStageAgent implements StageAgent {
           'How are journeys numbered?',
           'Existing numbers are kept; new journeys take the next free numbers.',
           'Journey numbers appear in tests and videos, so they never change (L2-017).',
+        );
+        return;
+      }
+      case 9: {
+        const bySubsystem = new Map<string, string[]>();
+        for (const design of designFolders(directory)) {
+          const [subsystem, feature] = design.split('/') as [string, string];
+          bySubsystem.set(subsystem, [...(bySubsystem.get(subsystem) ?? []), feature]);
+        }
+        for (const [subsystem, features] of bySubsystem) {
+          write(
+            `docs/estimates/${subsystem}.md`,
+            `# ${subsystem}\n\n| Design | Estimate (days) | Complete |\n|---|---:|---:|\n${features
+              .map((f) => `| [${f}](../detailed-designs/${subsystem}/${f}/README.md) | 2 | 0% |`)
+              .join('\n')}\n`,
+          );
+        }
+        decide(
+          'How large is each design?',
+          'Two ideal days each, none split.',
+          'Each design is one page, one endpoint and one table, within the descope threshold.',
         );
         return;
       }

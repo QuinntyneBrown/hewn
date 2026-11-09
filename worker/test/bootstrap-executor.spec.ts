@@ -55,6 +55,7 @@ const run = (skillsSource: string): LeasedRun => ({
   checkpointSha: null,
   project: { id: 'p', name: 'Kiln Booking', idea: 'x', stackPreference: null, repository: 'hewn-builds/kiln-booking' },
   skillsSource,
+  descopeThresholdDays: 3,
 });
 
 interface Recorded {
