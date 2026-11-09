@@ -26,6 +26,11 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/project/project.page').then((m) => m.ProjectPage),
       },
       {
+        path: 'workers',
+        title: 'Workers · Hewn',
+        loadComponent: () => import('./pages/workers/workers.page').then((m) => m.WorkersPage),
+      },
+      {
         path: 'settings',
         title: 'Settings · Hewn',
         loadComponent: () => import('./pages/settings/settings.page').then((m) => m.SettingsPage),

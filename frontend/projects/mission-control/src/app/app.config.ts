@@ -14,6 +14,8 @@ import {
   PROJECTS_API,
   SESSION_API,
   SETTINGS_API,
+  HttpWorkersApi,
+  WORKERS_API,
   SignalRProjectEvents,
 } from '@hewn/api';
 import { routes } from './app.routes';
@@ -30,6 +32,7 @@ export const appConfig: ApplicationConfig = {
     { provide: PROJECTS_API, useClass: HttpProjectsApi },
     { provide: SESSION_API, useClass: HttpSessionApi },
     { provide: SETTINGS_API, useClass: HttpSettingsApi },
+    { provide: WORKERS_API, useClass: HttpWorkersApi },
     { provide: PROJECT_EVENTS, useClass: SignalRProjectEvents },
     provideAppInitializer(() => inject(SessionStore).load()),
   ],
