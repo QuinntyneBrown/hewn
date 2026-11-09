@@ -17,6 +17,7 @@ public static class DependencyInjection
         services.AddScoped<EventAppender>();
         services.AddScoped<PipelineOrchestrator>();
         services.AddScoped<LeaseService>();
+        services.AddSingleton<RunControlSignals>();
         services.AddScoped<Spend.PriceTable>();
         services.AddScoped<Spend.DirectionDefaultsReader>();
         services.AddScoped<RepositoryProvisioner>();

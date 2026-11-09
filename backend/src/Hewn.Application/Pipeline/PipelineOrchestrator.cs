@@ -144,6 +144,34 @@ public sealed class PipelineOrchestrator(IAppDbContext db, EventAppender events,
         await AppendProjectAsync(project, cancellationToken);
     }
 
+    /// <summary>
+    /// L2-029 AC3: the direction is Cancelled with its run and its running or paused stage. The next queued direction
+    /// starts (L2-004 AC4); with none, the project shows Cancelled.
+    /// </summary>
+    public async Task OnCancelledAsync(Run? run, Project project, Direction direction, string cancelledBy, CancellationToken cancellationToken)
+    {
+        var now = clock.GetUtcNow();
+        run?.Cancel(now);
+        if (direction.Cancel(cancelledBy, now) is { } stage)
+        {
+            await AppendStageAsync(direction, stage, cancellationToken);
+        }
+
+        await AppendDirectionAsync(direction, cancellationToken);
+        if (project.NextQueuedDirection(direction.Id) is { } queued)
+        {
+            await StartDirectionAsync(project, queued, cancellationToken);
+            return;
+        }
+
+        project.ChangeStatus(ProjectStatus.Cancelled);
+        await AppendProjectAsync(project, cancellationToken);
+    }
+
+    /// <summary>The direction's record changed after it ended (the worker stopped, pull requests were labelled).</summary>
+    public Task OnDirectionRecordChangedAsync(Direction direction, CancellationToken cancellationToken) =>
+        AppendDirectionAsync(direction, cancellationToken);
+
     public Task OnRepositoryAttachedAsync(Project project, CancellationToken cancellationToken) =>
         AppendProjectAsync(project, cancellationToken);
 
@@ -168,6 +196,10 @@ public sealed class PipelineOrchestrator(IAppDbContext db, EventAppender events,
             pauseRequested = direction.PauseRequestedBy is not null,
             pausedBy = direction.PausedBy,
             pausedAt = direction.PausedAt,
+            cancelledBy = direction.CancelledBy,
+            cancelledAt = direction.CancelledAt,
+            stoppedWithinSeconds = direction.StoppedWithinSeconds,
+            labelledPullRequests = direction.LabelledPullRequestNumbers,
         }, cancellationToken);
 
     private Task AppendProjectAsync(Project project, CancellationToken cancellationToken) =>

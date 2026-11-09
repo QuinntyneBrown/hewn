@@ -185,6 +185,20 @@ public class InMemoryGitHub(IConfiguration? configuration) : IGitHubRepositoryPr
         }
     }
 
+    public Task AddLabelAsync(string owner, string name, int number, string label, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            var pull = Existing(owner, name).PullRequests.Single(p => p.Number == number);
+            if (!pull.Labels.Contains(label))
+            {
+                pull.Labels.Add(label);
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
     public Task<IReadOnlyList<CheckRunInfo>> ListChecksAsync(string owner, string name, int number, CancellationToken cancellationToken)
     {
         lock (_lock)
@@ -350,4 +364,9 @@ public sealed class FakePullRequest(int number, string head, string title, strin
     public string Body { get; } = body;
 
     public bool Merged { get; set; }
+
+    /// <summary>Open until merged; nothing in Hewn closes a pull request without merging it.</summary>
+    public bool Open => !Merged;
+
+    public List<string> Labels { get; } = [];
 }

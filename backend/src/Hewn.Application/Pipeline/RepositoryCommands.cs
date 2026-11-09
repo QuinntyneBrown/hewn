@@ -139,7 +139,9 @@ public static class RunLog
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
-        var last = await db.RunLogLines.Where(l => l.RunId == run.Id).Select(l => (long?)l.Sequence).MaxAsync(cancellationToken) ?? 0;
+        var saved = await db.RunLogLines.Where(l => l.RunId == run.Id).Select(l => (long?)l.Sequence).MaxAsync(cancellationToken) ?? 0;
+        // Lines appended earlier in this unit of work are not saved yet.
+        var last = Math.Max(saved, db.RunLogLines.Local.Where(l => l.RunId == run.Id).Select(l => l.Sequence).DefaultIfEmpty(0).Max());
         var lines = entries.Select(line => new RunLogLine(run.Id, ++last, line.Level, SecretRedactor.Redact(line.Text), now)).ToList();
         db.RunLogLines.AddRange(lines);
         await events.AppendAsync(

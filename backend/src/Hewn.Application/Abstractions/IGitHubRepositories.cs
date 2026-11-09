@@ -47,6 +47,9 @@ public interface IGitHubRepositories
 
     Task<PullRequestInfo?> GetPullRequestAsync(string owner, string name, int number, CancellationToken cancellationToken);
 
+    /// <summary>Adds a label to a pull request, leaving it open (L2-029 AC3).</summary>
+    Task AddLabelAsync(string owner, string name, int number, string label, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<CheckRunInfo>> ListChecksAsync(string owner, string name, int number, CancellationToken cancellationToken);
 
     /// <summary>Squash-merges the pull request and returns the merge commit SHA; throws <see cref="GitHubBranchBehindException"/> when its branch is behind.</summary>

@@ -13,4 +13,7 @@ public sealed class PipelineOptions
 
     /// <summary>Implement-and-test iterations before an increment is Blocked (HEWN_MAX_ITERATIONS; L2-022 AC2).</summary>
     public int MaxIterations { get; set; } = 10;
+
+    /// <summary>How long Cancel waits for the worker to stop its run (Hewn:Control:StopDeadlineSeconds; L2-029 AC3).</summary>
+    public int StopDeadlineSeconds { get; set; } = 10;
 }

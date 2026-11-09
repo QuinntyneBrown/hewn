@@ -60,6 +60,16 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
     public Task<DirectionControlResult> Pause(Guid projectId, Guid directionId, CancellationToken cancellationToken) =>
         mediator.Send(new PauseDirectionCommand(projectId, directionId), cancellationToken);
 
+    /// <summary>
+    /// L2-029 AC3: the direction is Cancelled, its run stops within 10 seconds, open pull requests are labelled
+    /// hewn:cancelled, and the next queued direction starts (L2-004 AC4). Answers once the worker stopped or the
+    /// deadline passed.
+    /// </summary>
+    [HttpPost("{projectId:guid}/directions/{directionId:guid}/cancel")]
+    [Authorize(Policy = AuthSetup.OwnerPolicy)]
+    public Task<CancelDirectionResult> Cancel(Guid projectId, Guid directionId, CancellationToken cancellationToken) =>
+        mediator.Send(new CancelDirectionCommand(projectId, directionId), cancellationToken);
+
     /// <summary>L2-029 AC2: a paused direction continues from its next step.</summary>
     [HttpPost("{projectId:guid}/directions/{directionId:guid}/resume")]
     [Authorize(Policy = AuthSetup.OwnerPolicy)]

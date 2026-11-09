@@ -129,6 +129,12 @@ public sealed class GitHubAppRepositories(GitHubAppClient client) : IGitHubRepos
         return pull is null ? null : ToPullRequest(pull.Value);
     }
 
+    public async Task AddLabelAsync(string owner, string name, int number, string label, CancellationToken cancellationToken)
+    {
+        var token = await RepositoryTokenAsync(owner, name, cancellationToken);
+        await PostJsonAsync(token, $"repos/{owner}/{name}/issues/{number}/labels", new { labels = new[] { label } }, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<CheckRunInfo>> ListChecksAsync(string owner, string name, int number, CancellationToken cancellationToken)
     {
         var token = await RepositoryTokenAsync(owner, name, cancellationToken);

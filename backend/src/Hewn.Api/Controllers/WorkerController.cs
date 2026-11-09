@@ -86,6 +86,16 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
     public Task<CheckpointVerdict> Checkpoint(Guid runId, CheckpointRequest request, CancellationToken cancellationToken) =>
         mediator.Send(new ReportCheckpointCommand(runId, request.WorkerId, request.Epoch, request.Step, request.Sha), cancellationToken);
 
+    /// <summary>
+    /// The control poll, held open up to waitSeconds while the run executes: 200 {control: "Cancel"} the moment the
+    /// run is cancelled (L2-029 AC3), else 204 and the worker polls again.
+    /// </summary>
+    [HttpGet("runs/{runId:guid}/control")]
+    public async Task<IActionResult> Control(Guid runId, [FromQuery] string workerId, [FromQuery] long epoch, [FromQuery] int waitSeconds, CancellationToken cancellationToken) =>
+        await mediator.Send(new PollRunControlQuery(runId, workerId, epoch, waitSeconds), cancellationToken) is { } control
+            ? Ok(new { control })
+            : NoContent();
+
     [HttpPost("runs/{runId:guid}/result")]
     public async Task<IActionResult> Result(Guid runId, ResultRequest request, CancellationToken cancellationToken)
     {

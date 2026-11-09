@@ -45,6 +45,13 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.Property<bool>("BudgetWarned")
                         .HasColumnType("INTEGER");
 
+                    b.Property<long?>("CancelledAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CancelledBy")
+                        .HasMaxLength(39)
+                        .HasColumnType("TEXT");
+
                     b.Property<long?>("CompletedAt")
                         .HasColumnType("INTEGER");
 
@@ -59,6 +66,10 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.Property<string>("Kind")
                         .IsRequired()
                         .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LabelledPullRequests")
+                        .HasMaxLength(400)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("PauseReason")
@@ -86,6 +97,9 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("StoppedWithinSeconds")
+                        .HasColumnType("INTEGER");
 
                     b.Property<long>("SubmittedAt")
                         .HasColumnType("INTEGER");
@@ -392,6 +406,9 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("TEXT");
+
+                    b.Property<long?>("StopAcknowledgedAt")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("WorkerId")
                         .HasMaxLength(32)

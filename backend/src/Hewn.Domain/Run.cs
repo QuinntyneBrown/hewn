@@ -98,6 +98,34 @@ public sealed class Run
         Status = RunStatus.Queued;
     }
 
+    /// <summary>When the worker heard Cancel on its control poll and stopped the run.</summary>
+    public DateTimeOffset? StopAcknowledgedAt { get; private set; }
+
+    /// <summary>True when a worker held the run as it was cancelled, so Cancel waits for it to stop.</summary>
+    public bool HadWorkerWhenCancelled => Status == RunStatus.Cancelled && WorkerId is not null;
+
+    /// <summary>
+    /// Cancel (L2-029 AC3): the run ends and its lease no longer fences anything, so every write the worker tries is
+    /// refused. The worker and epoch are kept so its control poll can still hear the cancel.
+    /// </summary>
+    public void Cancel(DateTimeOffset now)
+    {
+        Status = RunStatus.Cancelled;
+        EndedAt = now;
+        LeaseExpiresAt = null;
+    }
+
+    public bool AcknowledgeStop(DateTimeOffset now)
+    {
+        if (StopAcknowledgedAt is not null)
+        {
+            return false;
+        }
+
+        StopAcknowledgedAt = now;
+        return true;
+    }
+
     public void Succeed(DateTimeOffset now) => End(RunStatus.Succeeded, null, now);
 
     public void Fail(string error, DateTimeOffset now) => End(RunStatus.Failed, error, now);

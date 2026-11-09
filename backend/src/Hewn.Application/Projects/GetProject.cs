@@ -36,7 +36,11 @@ public sealed record DirectionDto(
     string? PauseReason,
     bool PauseRequested,
     string? PausedBy,
-    DateTimeOffset? PausedAt);
+    DateTimeOffset? PausedAt,
+    string? CancelledBy,
+    DateTimeOffset? CancelledAt,
+    int? StoppedWithinSeconds,
+    IReadOnlyList<int> LabelledPullRequests);
 
 public sealed record ProjectDto(
     Guid Id,
@@ -123,5 +127,9 @@ public sealed class GetProjectHandler(IAppDbContext db) : IRequestHandler<GetPro
         d.PauseReason,
         d.PauseRequestedBy is not null,
         d.PausedBy,
-        d.PausedAt);
+        d.PausedAt,
+        d.CancelledBy,
+        d.CancelledAt,
+        d.StoppedWithinSeconds,
+        d.LabelledPullRequestNumbers);
 }
