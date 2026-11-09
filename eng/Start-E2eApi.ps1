@@ -20,6 +20,20 @@ $env:HEWN_GITHUB_OWNER = 'hewn-builds'
 $env:HEWN_DEFAULT_BUDGET_USD = '300'
 $env:HEWN_WORKER_TOKEN = 'e2e-worker-token-not-a-secret'
 
+# A small Greenlit for stage 0 to copy from: a git repository built from e2e/fixtures/greenlit.
+$greenlit = Join-Path $root 'backend/.e2e/greenlit'
+Remove-Item -Recurse -Force $greenlit -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force (Join-Path $greenlit '.claude') | Out-Null
+New-Item -ItemType Directory -Force (Join-Path $greenlit '.agents') | Out-Null
+$fixture = Join-Path $root 'e2e/fixtures/greenlit'
+Copy-Item -Recurse (Join-Path $fixture 'claude-skills') (Join-Path $greenlit '.claude/skills')
+Copy-Item -Recurse (Join-Path $fixture 'agents-skills') (Join-Path $greenlit '.agents/skills')
+Copy-Item (Join-Path $fixture 'README.md') $greenlit
+git -C $greenlit init -q -b main
+git -C $greenlit add .
+git -C $greenlit -c user.name=Hewn -c user.email=hewn@example.invalid commit -q -m 'Greenlit fixture'
+$env:HEWN_SKILLS_SOURCE = "file://$greenlit"
+
 $cli = Join-Path $root 'backend/src/Hewn.Cli'
 dotnet run --project $cli -- reset --yes
 if ($LASTEXITCODE) { exit $LASTEXITCODE }

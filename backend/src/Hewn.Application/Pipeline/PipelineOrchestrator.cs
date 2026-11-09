@@ -63,6 +63,9 @@ public sealed class PipelineOrchestrator(IAppDbContext db, EventAppender events,
         await AppendProjectAsync(project, cancellationToken);
     }
 
+    public Task OnRepositoryAttachedAsync(Project project, CancellationToken cancellationToken) =>
+        AppendProjectAsync(project, cancellationToken);
+
     private Task AppendStageAsync(Direction direction, StageState stage, CancellationToken cancellationToken) =>
         events.AppendAsync(direction.ProjectId, StageChanged, new
         {
@@ -83,5 +86,5 @@ public sealed class PipelineOrchestrator(IAppDbContext db, EventAppender events,
         }, cancellationToken);
 
     private Task AppendProjectAsync(Project project, CancellationToken cancellationToken) =>
-        events.AppendAsync(project.Id, ProjectChanged, new { status = project.Status.ToString() }, cancellationToken);
+        events.AppendAsync(project.Id, ProjectChanged, new { status = project.Status.ToString(), repository = project.Repository }, cancellationToken);
 }

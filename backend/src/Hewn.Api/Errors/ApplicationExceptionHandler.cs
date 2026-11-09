@@ -1,3 +1,4 @@
+using Hewn.Application.Abstractions;
 using Hewn.Application.Common;
 using Hewn.Application.Pipeline;
 using Microsoft.AspNetCore.Diagnostics;
@@ -14,6 +15,7 @@ public sealed class ApplicationExceptionHandler(IProblemDetailsService problems)
         {
             FieldValidationException e => FieldProblem(e),
             NotFoundException => new ProblemDetails { Status = StatusCodes.Status404NotFound, Title = "Not found", Extensions = { ["code"] = "not_found" } },
+            GitHubException e => new ProblemDetails { Status = StatusCodes.Status502BadGateway, Title = e.Message, Extensions = { ["code"] = "github_failed" } },
             LeaseLostException => new ProblemDetails { Status = StatusCodes.Status409Conflict, Title = "Lease lost", Extensions = { ["code"] = "lease_lost" } },
             _ => null,
         };

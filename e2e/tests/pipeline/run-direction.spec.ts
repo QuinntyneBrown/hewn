@@ -1,9 +1,9 @@
 // Acceptance Test
-// Traces to: L2-004, L2-030, L2-031
+// Traces to: L2-004, L2-007, L2-030, L2-031, L2-036
 // Description: A submitted product direction runs stages 0 to 10 in order on a worker and Mission Control shows it live to Complete
 
 import { expect, signIn, test, uniqueName } from '../../fixtures/test';
-import { startScriptedWorkers } from '../../support/scripted-workers';
+import { startWorkers } from '../../support/workers';
 
 const STATUSES = ['Pending', 'Running', 'Paused', 'Succeeded', 'Failed', 'Skipped', 'Cancelled'];
 
@@ -13,7 +13,7 @@ test.describe('Run a product direction', () => {
   let stopWorkers: () => Promise<void>;
 
   test.beforeAll(() => {
-    stopWorkers = startScriptedWorkers(3, 150);
+    stopWorkers = startWorkers(3, 150);
   });
 
   test.afterAll(async () => {
@@ -25,10 +25,14 @@ test.describe('Run a product direction', () => {
   });
 
   test('stages run in order, live, until the direction is complete', async ({ newDirection, project }) => {
+    const name = uniqueName('Ledgerline');
     await newDirection.open();
-    await newDirection.fill({ name: uniqueName('Ledgerline'), idea: 'A web app for small accounting teams to reconcile statements.' });
+    await newDirection.fill({ name, idea: 'A web app for small accounting teams to reconcile statements.' });
     await newDirection.submit();
     await project.heading.waitFor();
+
+    // Stage 0 creates the repository; the link appears without a reload.
+    await expect(project.repository).toHaveText(`hewn-builds/${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, { timeout: 60_000 });
 
     // While a stage runs, every earlier stage has Succeeded and every later stage is still Pending.
     await expect(project.currentStage()).toBeVisible({ timeout: 60_000 });

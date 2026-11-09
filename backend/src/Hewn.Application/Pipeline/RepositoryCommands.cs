@@ -1,0 +1,126 @@
+using System.Text.Json;
+using FluentValidation;
+using Hewn.Application.Abstractions;
+using Hewn.Application.Common;
+using Hewn.Domain;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+
+namespace Hewn.Application.Pipeline;
+
+public sealed record ListSkillFoldersQuery(Guid RunId, string WorkerId, long Epoch) : IRequest<IReadOnlyDictionary<string, IReadOnlyList<string>>>;
+
+public sealed class ListSkillFoldersHandler(IAppDbContext db, LeaseService leases, IGitHubRepositories gitHub)
+    : IRequestHandler<ListSkillFoldersQuery, IReadOnlyDictionary<string, IReadOnlyList<string>>>
+{
+    public static readonly string[] SkillRoots = [".claude/skills", ".agents/skills"];
+
+    public async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> Handle(ListSkillFoldersQuery query, CancellationToken cancellationToken)
+    {
+        var run = await leases.FenceAsync(query.RunId, query.WorkerId, query.Epoch, cancellationToken);
+        var project = await RunProject.RequireRepositoryAsync(db, run, cancellationToken);
+        var result = new Dictionary<string, IReadOnlyList<string>>();
+        foreach (var root in SkillRoots)
+        {
+            result[root] = await gitHub.ListDirectoriesAsync(project.RepositoryOwner!, project.RepositoryName!, root, cancellationToken);
+        }
+
+        return result;
+    }
+}
+
+public sealed record CommitFile(string Path, string ContentBase64);
+
+public sealed record CommitFilesCommand(Guid RunId, string WorkerId, long Epoch, string IdempotencyKey, string Message, IReadOnlyList<CommitFile> Files)
+    : IRequest<string>;
+
+public sealed class CommitFilesValidator : AbstractValidator<CommitFilesCommand>
+{
+    public CommitFilesValidator()
+    {
+        RuleFor(c => c.Message).NotEmpty().MaximumLength(500);
+        RuleFor(c => c.IdempotencyKey).NotEmpty().MaximumLength(200)
+            .Must((c, key) => key.StartsWith($"{c.RunId}/", StringComparison.Ordinal))
+            .WithMessage("The idempotency key must start with the run ID.");
+        RuleFor(c => c.Files).NotEmpty().Must(f => f.Count <= 5000);
+        RuleForEach(c => c.Files).Must(f => IsBase64(f.ContentBase64)).WithMessage("File content must be base64.");
+    }
+
+    private static bool IsBase64(string value) => Convert.TryFromBase64String(value, new byte[value.Length], out _);
+}
+
+/// <summary>
+/// The broker's commit mutation: fenced by lease, restricted by stage, and idempotent by key, so a resumed
+/// worker that repeats a request gets the first commit's SHA instead of a second commit.
+/// </summary>
+public sealed class CommitFilesHandler(IAppDbContext db, LeaseService leases, IGitHubRepositories gitHub, TimeProvider clock)
+    : IRequestHandler<CommitFilesCommand, string>
+{
+    private const string Kind = "commit";
+
+    public async Task<string> Handle(CommitFilesCommand command, CancellationToken cancellationToken)
+    {
+        var run = await leases.FenceAsync(command.RunId, command.WorkerId, command.Epoch, cancellationToken);
+        var done = await db.GitHubMutations.AsNoTracking()
+            .SingleOrDefaultAsync(m => m.IdempotencyKey == command.IdempotencyKey, cancellationToken);
+        if (done is not null)
+        {
+            return Sha(done.Result);
+        }
+
+        CommitPolicy.EnsureAllowed(run.Stage, command.Files.Select(f => f.Path));
+        var project = await RunProject.RequireRepositoryAsync(db, run, cancellationToken);
+        var sha = await gitHub.CommitAsync(
+            project.RepositoryOwner!,
+            project.RepositoryName!,
+            command.Message,
+            command.Files.Select(f => new RepositoryFile(f.Path, Convert.FromBase64String(f.ContentBase64))).ToList(),
+            cancellationToken);
+
+        db.GitHubMutations.Add(new GitHubMutation(run.Id, command.IdempotencyKey, Kind, JsonSerializer.Serialize(new { sha }), clock.GetUtcNow()));
+        await FencedSave.SaveAsync(db, cancellationToken);
+        return sha;
+    }
+
+    private static string Sha(string result) => JsonDocument.Parse(result).RootElement.GetProperty("sha").GetString()!;
+}
+
+public sealed record RunLogEntry(string Level, string Text);
+
+public sealed record AppendRunLogCommand(Guid RunId, string WorkerId, long Epoch, IReadOnlyList<RunLogEntry> Lines) : IRequest;
+
+public sealed class AppendRunLogValidator : AbstractValidator<AppendRunLogCommand>
+{
+    public AppendRunLogValidator()
+    {
+        RuleFor(c => c.Lines).NotEmpty().Must(l => l.Count <= 500);
+        RuleForEach(c => c.Lines).Must(l => l.Level is "info" or "warn" or "error").WithMessage("Level must be info, warn or error.");
+    }
+}
+
+public sealed class AppendRunLogHandler(IAppDbContext db, LeaseService leases, TimeProvider clock) : IRequestHandler<AppendRunLogCommand>
+{
+    public async Task Handle(AppendRunLogCommand command, CancellationToken cancellationToken)
+    {
+        var run = await leases.FenceAsync(command.RunId, command.WorkerId, command.Epoch, cancellationToken);
+        var last = await db.RunLogLines.Where(l => l.RunId == run.Id).Select(l => (long?)l.Sequence).MaxAsync(cancellationToken) ?? 0;
+        var now = clock.GetUtcNow();
+        foreach (var line in command.Lines)
+        {
+            db.RunLogLines.Add(new RunLogLine(run.Id, ++last, line.Level, SecretRedactor.Redact(line.Text), now));
+        }
+
+        await FencedSave.SaveAsync(db, cancellationToken);
+    }
+}
+
+internal static class RunProject
+{
+    public static async Task<Project> RequireRepositoryAsync(IAppDbContext db, Run run, CancellationToken cancellationToken)
+    {
+        var project = await db.Projects.AsNoTracking().SingleAsync(p => p.Id == run.ProjectId, cancellationToken);
+        return project.Repository is null
+            ? throw new GitHubException("The project has no repository yet.")
+            : project;
+    }
+}

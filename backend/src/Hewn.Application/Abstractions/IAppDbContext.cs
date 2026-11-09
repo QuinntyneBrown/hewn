@@ -17,5 +17,9 @@ public interface IAppDbContext
 
     DbSet<Worker> Workers { get; }
 
+    DbSet<RunLogLine> RunLogLines { get; }
+
+    DbSet<GitHubMutation> GitHubMutations { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

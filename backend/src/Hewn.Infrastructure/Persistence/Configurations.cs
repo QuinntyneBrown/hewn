@@ -102,3 +102,28 @@ internal sealed class WorkerConfiguration : IEntityTypeConfiguration<Worker>
         b.Property(w => w.Status).HasConversion<string>().HasMaxLength(16);
     }
 }
+
+internal sealed class RunLogLineConfiguration : IEntityTypeConfiguration<RunLogLine>
+{
+    public void Configure(EntityTypeBuilder<RunLogLine> b)
+    {
+        b.ToTable("run_log_lines");
+        b.HasKey(l => l.Id);
+        b.Property(l => l.Level).HasMaxLength(16);
+        b.Property(l => l.Text).HasMaxLength(RunLogLine.MaxTextLength);
+        b.HasIndex(l => new { l.RunId, l.Sequence }).IsUnique();
+    }
+}
+
+internal sealed class GitHubMutationConfiguration : IEntityTypeConfiguration<GitHubMutation>
+{
+    public void Configure(EntityTypeBuilder<GitHubMutation> b)
+    {
+        b.ToTable("github_mutations");
+        b.HasKey(m => m.Id);
+        b.Property(m => m.IdempotencyKey).HasMaxLength(200);
+        b.Property(m => m.Kind).HasMaxLength(32);
+        b.Property(m => m.Result).HasMaxLength(4000);
+        b.HasIndex(m => m.IdempotencyKey).IsUnique();
+    }
+}

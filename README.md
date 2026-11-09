@@ -233,7 +233,7 @@ Secrets are never written to configuration files in the repository.
 | `HEWN_WORKER_TOKEN`             | API, Worker | Worker token (secret). For now one shared value set on both; Mission Control will issue tokens |
 | `HEWN_API_URL`                  | Worker  | Where the worker connects                                                |
 | `HEWN_LOCATION`                 | Worker  | `Local` or `Cloud`                                                       |
-| `HEWN_EXECUTOR`                 | Worker  | `scripted` (deterministic stand-in until the real stage executors land)  |
+| `HEWN_EXECUTOR`                 | Worker  | `stages` (default: built stages run for real, the rest scripted) or `scripted` |
 
 ## Running the tests
 

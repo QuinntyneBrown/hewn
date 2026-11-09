@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Stage 0, Bootstrap (journey 1, L2-007, L2-036 AC1 and AC3): the API creates the private product repository
+  on the first lease and commits through a fenced, idempotent commit mutation; the worker copies Greenlit's
+  skills, keeps existing folders and writes `.hewn/skills.lock`.
 - Run a product direction through stages 0 to 10 (journey 1, L2-004 AC1-AC3): leased runs fenced by epoch,
   heartbeats and 60-second expiry, the pipeline orchestrator, the Mission Control hub with catch-up by
   sequence number, and the project page following the pipeline live to Complete.

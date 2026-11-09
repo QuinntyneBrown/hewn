@@ -1,5 +1,8 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { LeaseLostError, type HewnApi, type LeasedRun, type WorkerRegistration } from './api.ts';
-import type { StageExecutor } from './executors/stage-executor.ts';
+import type { RunContext, StageExecutor } from './executors/stage-executor.ts';
 import { sleep } from './sleep.ts';
 
 export type Log = (message: string, fields?: Record<string, unknown>) => void;
@@ -83,8 +86,17 @@ export class WorkLoop {
       }
     }, this.heartbeatIntervalMs);
 
+    // Synchronous on purpose: one small directory per run, and no I/O race with the heartbeat timer.
+    const workspace = mkdtempSync(join(tmpdir(), `hewn-run-${run.runId}-`));
+    const context: RunContext = {
+      workspace,
+      log: (level, text) => this.api.log(workerId, run, [{ level, text }]),
+      listSkillFolders: () => this.api.listSkillFolders(workerId, run),
+      commit: (step, message, files) => this.api.commit(workerId, run, `${run.runId}/${step}/commit`, message, files),
+    };
+
     try {
-      const steps = this.executor.plan(run);
+      const steps = this.executor.plan(run, context);
       for (let index = run.checkpointStep; index < steps.length; index++) {
         await steps[index]!.execute(lease.signal);
         if (lease.signal.aborted) return;
@@ -104,6 +116,7 @@ export class WorkLoop {
     } finally {
       clearInterval(heartbeat);
       stop.removeEventListener('abort', onStop);
+      rmSync(workspace, { recursive: true, force: true });
     }
   }
 }

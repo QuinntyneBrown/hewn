@@ -1,6 +1,6 @@
 import type { LeasedRun } from '../api.ts';
 import { sleep } from '../sleep.ts';
-import type { StageExecutor, StageStep } from './stage-executor.ts';
+import type { RunContext, StageExecutor, StageStep } from './stage-executor.ts';
 
 export interface ScriptedExecutorOptions {
   /** Time each step takes. */
@@ -20,7 +20,7 @@ export class ScriptedStageExecutor implements StageExecutor {
     this.options = options;
   }
 
-  plan(run: LeasedRun): StageStep[] {
+  plan(run: LeasedRun, _context?: RunContext): StageStep[] {
     return [
       this.step('Prepare workspace'),
       this.step(

@@ -78,3 +78,22 @@ A product direction without a repository gets a private kebab-case repository (L
 The worker asks the API to open a pull request. The broker fences the epoch inside the run write lock, checks the idempotency key and GitHub's current state, performs the write with a repository-scoped token (L2-036 AC3), and stores the result so a retry returns the same answer.
 
 ![Sequence diagram: broker a pull request mutation](diagrams/sequence-broker-mutation.png)
+
+## Decisions made while building the slice
+
+Journey 1, part 3 built L2-036 AC1 and AC3 for stage 0.
+
+- **When the repository is created.** `RepositoryProvisioner` runs when a worker first leases a product
+  direction's stage 0 run, and `ProjectChanged` carries the new `repository`. A refusal marks stage 0 Failed,
+  the project Blocked, and the lease answers 204.
+- **Adoption** means the repository has the `hewn` topic and at most its initial commit (created with
+  `auto_init` so the Git Data API has a branch to build on). Anything else with the name fails with
+  "{owner}/{name} already exists and was not created by Hewn."
+- **The write broker so far** has one kind, `commit`, fenced and idempotent, with the stage's path allow list
+  ([ADR 0006](../../../adr/0006-commit-mutation-before-git-proxy.md)). `GitPushProxy`, the `MutationQueue`
+  retrier, the `RunWriteLock` and branch protection (AC2, stage 6) come later.
+- **Tokens.** Repository-scoped installation tokens for reads and commits; an account-level installation
+  token only to create the repository. Neither leaves the API.
+- **Fakes.** `InMemoryGitHub` serves both tests and the e2e stack (`Hewn:Fakes:Enabled`), replacing the
+  scripted probe. The real `GitHubAppRepositories` is unverified against live GitHub until the App is
+  registered.

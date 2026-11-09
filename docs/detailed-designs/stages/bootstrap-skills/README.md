@@ -68,3 +68,22 @@ Files are copied to the same paths and committed with the Greenlit short SHA (L2
 The project page shows the update count to Owners (L2-008 AC1); Update skills opens a pull request that merges when checks pass (AC2).
 
 ![Sequence diagram: update a project's skills](diagrams/sequence-update.png)
+
+## Decisions made while building the slice
+
+Journey 1, part 3 built L2-007 AC1-AC3 and the failure of AC4 (retry comes with L2-006).
+
+- **Where the executor writes.** `BootstrapStageExecutor` commits through the API's `commit` mutation, not a
+  git push; see [ADR 0006](../../../adr/0006-commit-mutation-before-git-proxy.md). It reads existing skill
+  folders through `GET /api/worker/runs/{id}/repository/skill-folders`.
+- **Steps.** Two checkpointed steps: "Fetch Greenlit" (shallow clone of the lease's `skillsSource`) and
+  "Copy skills" (keep existing folders, write the lock, commit with key `{run}/2/commit`). A resumed run at
+  step 2 fetches again in its fresh workspace and repeats the commit, which returns the first SHA.
+- **Lock.** `{ "source": <clone URL without .git>, "sha": <40-hex>, "skills": [copied names, sorted] }`.
+  Names appear once even when a skill exists under both roots; kept folders are not listed.
+- **"Greenlit unreachable"** is the whole failure message: git's own output can echo the URL, so it is not
+  passed on.
+- **Source.** `HEWN_SKILLS_SOURCE` on the API (default `https://github.com/QuinntyneBrown/greenlit.git`)
+  travels with each lease. The e2e stack builds a fixture repository from `e2e/fixtures/greenlit`.
+- **Not built yet:** `SkillsUpdateChecker`, the update banner and dialog, and `UpdateSkillsExecutor`
+  (L2-008, a later journey).

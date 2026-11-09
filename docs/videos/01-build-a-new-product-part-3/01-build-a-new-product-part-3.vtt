@@ -1,0 +1,157 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:05.03
+Part two ran every stage with a scripted stand-in.
+
+00:00:05.03 --> 00:00:07.92
+In part three, stage zero does real work.
+
+00:00:07.92 --> 00:00:11.16
+Hewn creates the product's private repository,
+
+00:00:11.16 --> 00:00:16.45
+then copies the Greenlit skills into it and records exactly what it copied,
+
+00:00:16.45 --> 00:00:19.91
+so every later stage can rely on the same skills.
+
+00:00:21.06 --> 00:00:22.83
+Two pieces share the job.
+
+00:00:22.83 --> 00:00:28.42
+When a worker first leases stage zero, the API creates the repository under the
+
+00:00:28.42 --> 00:00:33.52
+configured GitHub owner, named from the project in lowercase kebab case.
+
+00:00:33.52 --> 00:00:39.11
+Then the worker's bootstrap executor clones Greenlit, copies the skill folders,
+
+00:00:39.11 --> 00:00:41.31
+writes a lock file and commits.
+
+00:00:41.66 --> 00:00:44.70
+The worker never holds a GitHub credential.
+
+00:00:44.70 --> 00:00:48.66
+It reads and writes the repository only through the API,
+
+00:00:48.66 --> 00:00:51.28
+which checks the lease on every call.
+
+00:00:52.43 --> 00:00:54.07
+Creation is idempotent.
+
+00:00:54.07 --> 00:00:59.59
+If an earlier attempt created the repository but crashed before recording it,
+
+00:00:59.59 --> 00:01:04.68
+the API finds a fresh repository carrying the hewn topic and adopts it.
+
+00:01:04.68 --> 00:01:09.12
+A name taken by anything else fails the stage with the reason,
+
+00:01:09.12 --> 00:01:11.26
+and the project shows Blocked.
+
+00:01:11.61 --> 00:01:17.12
+The commit goes through a fenced mutation with an idempotency key made of the run
+
+00:01:17.12 --> 00:01:18.00
+and the step.
+
+00:01:18.00 --> 00:01:23.51
+A worker that resumes after a crash repeats the request and gets the first commit
+
+00:01:23.51 --> 00:01:25.20
+back, never a second one.
+
+00:01:25.20 --> 00:01:30.91
+Stage zero may write only the two skill folders and the lock file; any other path is
+
+00:01:30.91 --> 00:01:31.45
+refused.
+
+00:01:32.60 --> 00:01:35.11
+The bootstrap executor has two steps.
+
+00:01:35.11 --> 00:01:38.78
+The first clones the skills source named in the lease.
+
+00:01:38.78 --> 00:01:42.71
+The second asks the API which skill folders already exist,
+
+00:01:42.71 --> 00:01:46.58
+keeps those untouched and logs each one as kept existing,
+
+00:01:46.58 --> 00:01:51.80
+then commits everything else with the message Bootstrap skills from greenlit,
+
+00:01:51.80 --> 00:01:53.43
+at the short commit SHA.
+
+00:01:53.78 --> 00:01:59.47
+The lock file records the source, the full commit SHA and the names of the skills it
+
+00:01:59.47 --> 00:01:59.95
+copied.
+
+00:01:59.95 --> 00:02:04.70
+If Greenlit can't be reached, the run fails with Greenlit unreachable,
+
+00:02:04.70 --> 00:02:05.85
+and nothing more.
+
+00:02:07.00 --> 00:02:12.93
+The backend gained thirteen acceptance tests against an in-memory GitHub: creation,
+
+00:02:12.93 --> 00:02:17.71
+adoption, a taken name, the path rules, idempotency, a stale epoch,
+
+00:02:17.71 --> 00:02:19.28
+and redacted run logs.
+
+00:02:19.28 --> 00:02:25.28
+The worker gained six, against a real local git repository standing in for Greenlit.
+
+00:02:25.28 --> 00:02:30.42
+Playwright builds the same kind of fixture and runs stage zero for real.
+
+00:02:31.57 --> 00:02:34.62
+Here is the real app, with one worker running.
+
+00:02:34.62 --> 00:02:37.27
+The Owner names the project and submits.
+
+00:02:37.27 --> 00:02:39.91
+The page opens with every stage Pending.
+
+00:02:39.91 --> 00:02:44.88
+Moments later the worker leases stage zero, the API creates the repository,
+
+00:02:44.88 --> 00:02:48.32
+and its link appears in the header without a reload.
+
+00:02:48.32 --> 00:02:53.74
+Stage zero copies the skills and succeeds, and stage one starts straight after it.
+
+00:02:53.74 --> 00:02:56.92
+The remaining stages are still scripted for now.
+
+00:02:57.27 --> 00:03:00.04
+The link sits beside the direction on desktop,
+
+00:03:00.04 --> 00:03:02.82
+and wraps neatly on a phone in the dark theme.
+
+00:03:03.97 --> 00:03:08.62
+Stage zero now creates the repository and installs the skills,
+
+00:03:08.62 --> 00:03:12.89
+with no credential on the worker and no repeated commits.
+
+00:03:12.89 --> 00:03:16.87
+Next, the document stages: idea, stack, requirements,
+
+00:03:16.87 --> 00:03:19.50
+detailed designs and user journeys.

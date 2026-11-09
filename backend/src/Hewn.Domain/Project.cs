@@ -59,6 +59,18 @@ public sealed class Project
     /// <summary>Running while a direction is active; Idle once none is; Blocked when a stage fails.</summary>
     public void ChangeStatus(ProjectStatus status) => Status = status;
 
+    /// <summary>Records the repository stage 0 created or adopted. A project's repository never changes once set.</summary>
+    public void AttachRepository(string owner, string name)
+    {
+        if (RepositoryOwner is not null)
+        {
+            throw new InvalidOperationException($"Project {Id} already has repository {Repository}.");
+        }
+
+        RepositoryOwner = owner;
+        RepositoryName = name;
+    }
+
     public static string Normalize(string name) => name.Trim().ToUpperInvariant();
 
     /// <summary>Creates a project with its first product direction queued and stage 0 Pending.</summary>
