@@ -1,0 +1,259 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:05.85
+This is journey twelve of Hewn, the software factory: review the backlog.
+
+00:00:05.85 --> 00:00:10.45
+After stage nine estimates a product, Hewn builds it one increment at a time.
+
+00:00:10.45 --> 00:00:15.40
+Owners and Viewers want to see that plan: what comes next, what is being built now,
+
+00:00:15.40 --> 00:00:18.20
+what has merged, and what was left out and why.
+
+00:00:18.20 --> 00:00:23.03
+This video walks through how it was built: the backlog endpoint, the Backlog tab,
+
+00:00:23.03 --> 00:00:27.21
+the deferred designs, blocked increments, live updates, and the tests.
+
+00:00:28.36 --> 00:00:32.86
+A user opens a project's Backlog and sees the increments in order,
+
+00:00:32.86 --> 00:00:38.53
+each with its status, its estimate, and a link to its pull request once one exists.
+
+00:00:38.53 --> 00:00:43.73
+Deferred designs appear apart from the active backlog, each with its reason.
+
+00:00:43.73 --> 00:00:45.71
+A blocked increment says why.
+
+00:00:45.71 --> 00:00:50.01
+And percent complete moves after every merge, without a reload.
+
+00:00:51.16 --> 00:00:52.34
+Here is the flow.
+
+00:00:52.34 --> 00:00:56.16
+The Backlog tab asks the API for the project's backlog.
+
+00:00:56.16 --> 00:01:00.87
+When an increment changes, the project page already hears the event,
+
+00:01:00.87 --> 00:01:03.79
+so the tab simply reads the backlog again.
+
+00:01:04.94 --> 00:01:10.16
+The increments table has existed since stage nine was built: the worker records the
+
+00:01:10.16 --> 00:01:13.94
+plan there, and stage ten reports each increment's progress.
+
+00:01:13.94 --> 00:01:16.33
+What was missing was a way to read it.
+
+00:01:16.33 --> 00:01:20.11
+The new backlog query takes the project's current direction,
+
+00:01:20.11 --> 00:01:24.89
+the same one Projects describes, and returns its increments in number order,
+
+00:01:24.89 --> 00:01:27.98
+with each pull request turned into a GitHub link.
+
+00:01:28.33 --> 00:01:33.73
+Deferred designs live in the same table without a number, so they come back apart,
+
+00:01:33.73 --> 00:01:34.98
+with their reasons.
+
+00:01:34.98 --> 00:01:38.27
+The totals count merged increments and ideal days,
+
+00:01:38.27 --> 00:01:42.94
+and percent complete comes from the same reader the Projects list uses,
+
+00:01:42.94 --> 00:01:44.52
+so the two always agree.
+
+00:01:45.67 --> 00:01:50.98
+In Mission Control, the project header gained section tabs, Pipeline and Backlog,
+
+00:01:50.98 --> 00:01:52.16
+as the mocks show.
+
+00:01:52.16 --> 00:01:56.49
+The Backlog is a tab of the project page, so it shares the header,
+
+00:01:56.49 --> 00:01:58.92
+the controls and the live connection.
+
+00:01:59.27 --> 00:02:04.17
+Each status reads with its own label and icon, never colour alone: Queued,
+
+00:02:04.17 --> 00:02:06.29
+In progress, Blocked and Merged.
+
+00:02:06.29 --> 00:02:10.07
+The pull request column shows the link once there is one,
+
+00:02:10.07 --> 00:02:13.05
+and "soon" while an increment is being built.
+
+00:02:14.20 --> 00:02:19.20
+When an increment uses up its ten implement-and-test iterations, it is blocked,
+
+00:02:19.20 --> 00:02:23.38
+and Hewn moves on to the next increment that doesn't depend on it.
+
+00:02:23.38 --> 00:02:28.63
+The callout says exactly that: how many iterations it used, which tests still fail,
+
+00:02:28.63 --> 00:02:33.38
+and which increment Hewn moved on to, skipping anything that depends on it,
+
+00:02:33.38 --> 00:02:35.15
+directly or through another.
+
+00:02:36.30 --> 00:02:40.02
+The project page already follows the project's events.
+
+00:02:40.02 --> 00:02:45.40
+Every backlog plan, increment change, stage change or direction change bumps a
+
+00:02:45.40 --> 00:02:50.50
+counter that the Backlog tab watches, and the tab reads the backlog again.
+
+00:02:50.50 --> 00:02:55.12
+It costs one small read per event, and the totals are always right.
+
+00:02:56.27 --> 00:03:00.16
+To show deferred and blocked increments through the real pipeline,
+
+00:03:00.16 --> 00:03:04.65
+the scripted agent, which stands in for Claude in tests, learned two things.
+
+00:03:04.65 --> 00:03:08.07
+An idea's "Nice to have" sentence now goes into the brief,
+
+00:03:08.07 --> 00:03:10.67
+so stage nine's descoper defers that design,
+
+00:03:10.67 --> 00:03:13.86
+with the reason "Listed as nice-to-have in the brief".
+
+00:03:13.86 --> 00:03:17.40
+And a test can name an increment the agent never implements,
+
+00:03:17.40 --> 00:03:19.64
+so its tests stay red until it blocks.
+
+00:03:19.64 --> 00:03:23.89
+A third option slows each increment down, so a test can watch it change.
+
+00:03:25.04 --> 00:03:28.53
+The backend tests came first, and failed with not found.
+
+00:03:28.53 --> 00:03:33.69
+Now four tests cover the order, statuses, estimates and pull request links with the
+
+00:03:33.69 --> 00:03:36.74
+deferred designs, the totals moving with a merge,
+
+00:03:36.74 --> 00:03:39.91
+a blocked increment's iterations and failing tests,
+
+00:03:39.91 --> 00:03:42.40
+and the empty backlog before stage nine.
+
+00:03:42.40 --> 00:03:45.64
+The worker gained four tests for the scripted agent,
+
+00:03:45.64 --> 00:03:48.44
+and the frontend six for statuses, estimates,
+
+00:03:48.44 --> 00:03:51.11
+pull request links and the blocked callout.
+
+00:03:51.46 --> 00:03:54.77
+All green, the backend has two hundred and six tests,
+
+00:03:54.77 --> 00:03:59.52
+the worker one hundred and forty four, and the frontend one hundred and ten.
+
+00:03:59.52 --> 00:04:03.84
+End to end, there are thirteen new tests: five for the page's states,
+
+00:04:03.84 --> 00:04:08.03
+three visual comparisons with the mocks, four accessibility checks,
+
+00:04:08.03 --> 00:04:13.28
+and one with a real worker, where the backlog fills and every increment goes from In
+
+00:04:13.28 --> 00:04:15.53
+progress to Merged without a reload.
+
+00:04:15.53 --> 00:04:20.71
+Matching the blocked callout to its mock also fixed the visual helper: it now moves
+
+00:04:20.71 --> 00:04:23.78
+a region onto the pixel grid before comparing it.
+
+00:04:24.93 --> 00:04:29.10
+Here is Kiln Booking's Backlog, open before stage nine has run.
+
+00:04:29.10 --> 00:04:30.49
+Then a worker starts.
+
+00:04:30.49 --> 00:04:35.33
+The backlog arrives in journey order, with review history deferred below,
+
+00:04:35.33 --> 00:04:37.72
+listed as nice-to-have in the brief.
+
+00:04:37.72 --> 00:04:42.49
+The first increment goes In progress, then Merged with its pull request,
+
+00:04:42.49 --> 00:04:46.13
+and the merged count and percent complete move with it.
+
+00:04:46.13 --> 00:04:47.33
+Then the next one.
+
+00:04:47.68 --> 00:04:51.57
+When every increment has merged, the backlog reads two of two,
+
+00:04:51.57 --> 00:04:53.01
+at one hundred percent.
+
+00:04:53.01 --> 00:04:55.33
+It works in dark mode and on a phone.
+
+00:04:55.68 --> 00:05:00.36
+And here is Parcel Post, whose main workflow increment never went green.
+
+00:05:00.36 --> 00:05:05.82
+It is blocked after ten iterations, and the callout names the test that still fails.
+
+00:05:06.97 --> 00:05:08.80
+Journey twelve is complete.
+
+00:05:08.80 --> 00:05:12.88
+The Backlog shows every increment in order, with its status,
+
+00:05:12.88 --> 00:05:14.65
+estimate and pull request.
+
+00:05:14.65 --> 00:05:18.05
+Deferred designs appear apart, with their reasons.
+
+00:05:18.05 --> 00:05:20.02
+A blocked increment says why.
+
+00:05:20.02 --> 00:05:22.94
+And the totals move with every merge, live.
+
+00:05:22.94 --> 00:05:24.85
+Next comes journey thirteen.

@@ -25,6 +25,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 09 | [Recover a failed stage](09-recover-a-failed-stage/README.md) | ~5:28 | Journey 9 |
 | 10 | [Queue further directions](10-queue-further-directions/README.md) | ~5:09 | Journey 10 |
 | 11 | [Find a project](11-find-a-project/README.md) | ~6:14 | Journey 11 |
+| 12 | [Review the backlog](12-review-the-backlog/README.md) | ~5:28 | Journey 12 |
 
 ## Voice
 
