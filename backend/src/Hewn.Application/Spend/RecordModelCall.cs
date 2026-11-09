@@ -47,6 +47,9 @@ public sealed class RecordModelCallHandler(
     public async Task<ModelCallVerdict> Handle(RecordModelCallCommand command, CancellationToken cancellationToken)
     {
         var run = await leases.FenceAsync(command.RunId, command.WorkerId, command.Epoch, cancellationToken);
+
+        // Spend is read, added to and saved; the project lock keeps two calls from both adding to the same total.
+        await events.LockAsync(run.ProjectId, cancellationToken);
         var project = await db.Projects.Include(p => p.Directions).SingleAsync(p => p.Id == run.ProjectId, cancellationToken);
         var direction = project.Directions.Single(d => d.Id == run.DirectionId);
         var model = SecretRedactor.Redact(command.Model);

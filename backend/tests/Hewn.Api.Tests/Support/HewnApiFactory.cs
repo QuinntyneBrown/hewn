@@ -13,11 +13,14 @@ using Microsoft.Extensions.Time.Testing;
 namespace Hewn.Api.Tests.Support;
 
 /// <summary>
-/// Hosts the real API on a per-fixture in-memory SQLite database, with GitHub replaced by a fake.
+/// Hosts the real API on a per-fixture in-memory SQLite database, with GitHub replaced by a fake. A test of
+/// concurrent requests asks for a database file instead, where each request opens its own connection as in production.
 /// </summary>
 public sealed class HewnApiFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
+
+    private readonly string? _databaseFile;
 
     private readonly List<(string Key, string Value)> _settings = [];
 
@@ -37,8 +40,14 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
         return this;
     }
 
-    public HewnApiFactory()
+    public HewnApiFactory(bool databaseFile = false)
     {
+        if (databaseFile)
+        {
+            _databaseFile = Path.Combine(Path.GetTempPath(), $"hewn-test-{Guid.NewGuid():N}.db");
+            return;
+        }
+
         _connection.Open();
     }
 
@@ -59,7 +68,17 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<HewnDbContext>>();
-            services.AddDbContext<HewnDbContext>(o => o.UseSqlite(_connection, s => s.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
+            services.AddDbContext<HewnDbContext>(o =>
+            {
+                if (_databaseFile is null)
+                {
+                    o.UseSqlite(_connection, s => s.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery));
+                }
+                else
+                {
+                    o.UseSqlite($"DataSource={_databaseFile}", s => s.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery));
+                }
+            });
             services.RemoveAll<IGitHubRepositoryProbe>();
             services.AddSingleton<IGitHubRepositoryProbe>(GitHub);
             services.AddSingleton<IGitHubRepositories>(GitHub);
@@ -126,5 +145,13 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
     {
         base.Dispose(disposing);
         _connection.Dispose();
+        if (_databaseFile is not null)
+        {
+            SqliteConnection.ClearAllPools();
+            foreach (var file in new[] { _databaseFile, $"{_databaseFile}-wal", $"{_databaseFile}-shm" })
+            {
+                File.Delete(file);
+            }
+        }
     }
 }

@@ -19,9 +19,12 @@ public sealed class SpendAndBudgetTests : IAsyncLifetime
 
     public async Task DisposeAsync() => await _factory.DisposeAsync();
 
-    private async Task<(HewnClient Owner, Guid ProjectId, Guid DirectionId)> SubmitAsync(decimal budgetUsd = 100m)
+    private async Task<(HewnClient Owner, Guid ProjectId, Guid DirectionId)> SubmitAsync(decimal budgetUsd = 100m) =>
+        await SubmitAsync(_factory, budgetUsd);
+
+    private static async Task<(HewnClient Owner, Guid ProjectId, Guid DirectionId)> SubmitAsync(HewnApiFactory factory, decimal budgetUsd)
     {
-        var owner = await _factory.SignInAsync("quinntynebrown", Role.Owner);
+        var owner = await factory.SignInAsync("quinntynebrown", Role.Owner);
         var response = await owner.PostAsync("/api/projects", new
         {
             name = "Kiln Booking",
@@ -60,6 +63,35 @@ public sealed class SpendAndBudgetTests : IAsyncLifetime
 
     private static async Task<JsonElement> ProjectAsync(HewnClient client, Guid projectId) =>
         await HewnClient.ReadJsonAsync(await client.GetAsync($"/api/projects/{projectId}"));
+
+    [Fact]
+    public async Task Model_calls_and_log_lines_arriving_together_all_succeed_with_gapless_sequence_numbers()
+    {
+        // A database file, so each request has its own connection, as in production.
+        await using var factory = new HewnApiFactory(databaseFile: true);
+        var (owner, projectId, _) = await SubmitAsync(factory, 1_000m);
+        var worker = await factory.RegisterWorkerAsync();
+        var run = await worker.LeaseAsync();
+
+        // The worker's log batcher sends on its own timer, so a batch and a model call often arrive at once.
+        var writes = Enumerable.Range(0, 20).SelectMany(i => new[]
+        {
+            CallAsync(worker, run!, $"c{i}", 1_000, 100),
+            worker.Http.PostAsJsonAsync($"/api/worker/runs/{run!.RunId}/logs", new
+            {
+                workerId = worker.WorkerId,
+                epoch = run.Epoch,
+                lines = new[] { new { level = "info", text = $"line {i}" } },
+            }),
+        });
+        var responses = await Task.WhenAll(writes);
+
+        Assert.All(responses, r => Assert.True(r.IsSuccessStatusCode, $"{r.RequestMessage!.RequestUri}: {(int)r.StatusCode}"));
+        var sequences = (await HewnClient.ReadJsonAsync(await owner.GetAsync($"/api/projects/{projectId}/events?after=0")))
+            .EnumerateArray().Select(e => e.GetProperty("sequence").GetInt64()).ToList();
+        Assert.Equal(Enumerable.Range(1, sequences.Count).Select(n => (long)n), sequences);
+        Assert.Equal(20, (await EventsAsync(owner, projectId, "SpendUpdated")).Count);
+    }
 
     [Fact]
     public async Task A_model_call_is_recorded_with_its_tokens_model_and_cost_against_its_run_stage_direction_and_project()
