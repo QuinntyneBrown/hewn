@@ -11,8 +11,17 @@ import { mockIncrement } from '../../support/mock-increment';
 import { xsrfToken } from '../../support/queue';
 import { cancelDirections } from '../../support/rate-limit';
 
-/** A real project for the breadcrumb; it is cancelled straight away so no worker picks it up. */
+/**
+ * A real project for the breadcrumb, made once per file and cancelled straight away so no worker picks it up. The
+ * increment itself is stubbed, so the tests can share it, and the suite stays under the direction submission limit.
+ */
+let shared: string | undefined;
 async function aProject(page: Page): Promise<string> {
+  shared ??= await createProject(page);
+  return shared;
+}
+
+async function createProject(page: Page): Promise<string> {
   const response = await page.request.post('/api/projects', {
     data: {
       name: uniqueName('Ledgerline'),

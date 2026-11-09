@@ -26,6 +26,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 10 | [Queue further directions](10-queue-further-directions/README.md) | ~5:09 | Journey 10 |
 | 11 | [Find a project](11-find-a-project/README.md) | ~6:14 | Journey 11 |
 | 12 | [Review the backlog](12-review-the-backlog/README.md) | ~5:28 | Journey 12 |
+| 13 | [Follow an increment to merge](13-follow-an-increment-to-merge/README.md) | ~5:53 | Journey 13 |
 
 ## Voice
 
