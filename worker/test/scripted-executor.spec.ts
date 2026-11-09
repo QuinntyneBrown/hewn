@@ -42,4 +42,34 @@ describe('ScriptedStageExecutor', () => {
 
     await expect(main!.execute(new AbortController().signal)).rejects.toThrow('Scripted failure in stage 3');
   });
+
+  it('opens a pull request in the configured stage, as Scaffold does, before its log lines', async () => {
+    const calls: string[] = [];
+    const prContext = {
+      commit: async (_step: unknown, message: string, files: { path: string }[], branch?: string) => {
+        calls.push(`commit ${branch} ${files.map((f) => f.path).join(',')} ${message}`);
+        return 'sha';
+      },
+      openPullRequest: async (_step: unknown, request: { head: string; title: string }) => {
+        calls.push(`pr ${request.head} ${request.title}`);
+        return { number: 1, url: 'u' };
+      },
+      log: async (_level: string, text: string) => {
+        calls.push(text);
+      },
+    } as unknown as RunContext;
+    const executor = new ScriptedStageExecutor({ stepMs: 0, logLines: 1, pullRequestStage: 6 });
+
+    const [, main] = executor.plan({ ...run(6), stageName: 'Scaffold' }, prContext);
+    await main!.execute(new AbortController().signal);
+    const [, other] = executor.plan(run(5), prContext);
+    await other!.execute(new AbortController().signal);
+
+    expect(calls).toEqual([
+      'commit hewn/scaffold README.md Scaffold the solution',
+      'pr hewn/scaffold Scaffold the solution',
+      'Scaffold · line 1 of 1',
+      'Idea · line 1 of 1',
+    ]);
+  });
 });
