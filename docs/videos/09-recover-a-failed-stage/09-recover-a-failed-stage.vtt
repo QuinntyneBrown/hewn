@@ -1,0 +1,256 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:05.96
+This is journey nine of Hewn, the software factory: recover a failed stage.
+
+00:00:05.96 --> 00:00:06.55
+Runs fail.
+
+00:00:06.55 --> 00:00:10.47
+A skill's output doesn't validate, a service is down for a minute,
+
+00:00:10.47 --> 00:00:11.66
+or a check goes red.
+
+00:00:11.66 --> 00:00:16.24
+Most of those failures pass on a second try, so Hewn should retry on its own,
+
+00:00:16.24 --> 00:00:21.23
+give up cleanly when it really is stuck, and let an Owner start the stage again once
+
+00:00:21.23 --> 00:00:21.89
+it's fixed.
+
+00:00:21.89 --> 00:00:26.52
+This video walks through how it was built: the backoff, the retries, blocking,
+
+00:00:26.52 --> 00:00:28.72
+Retry stage, the page, and the tests.
+
+00:00:29.87 --> 00:00:33.91
+When a run fails, Hewn retries it automatically, up to three times,
+
+00:00:33.91 --> 00:00:37.47
+waiting thirty seconds, then two minutes, then ten minutes.
+
+00:00:37.47 --> 00:00:42.17
+When the third retry fails too, the stage is Failed and the direction Blocked.
+
+00:00:42.17 --> 00:00:47.11
+Mission Control hears about it with the reason and the last two hundred log lines,
+
+00:00:47.11 --> 00:00:49.40
+and every other project keeps running.
+
+00:00:49.40 --> 00:00:54.34
+Then an Owner presses Retry stage, and the failed stage runs again from its start,
+
+00:00:54.34 --> 00:00:56.09
+with its retry counter reset.
+
+00:00:57.24 --> 00:00:58.63
+Here is the schedule.
+
+00:00:58.63 --> 00:01:01.87
+Attempt one fails, and Hewn waits thirty seconds.
+
+00:01:01.87 --> 00:01:04.78
+Attempt two fails, and it waits two minutes.
+
+00:01:04.78 --> 00:01:07.83
+Attempt three fails, and it waits ten minutes.
+
+00:01:07.83 --> 00:01:12.52
+When attempt four fails, the stage is Failed and the direction Blocked,
+
+00:01:12.52 --> 00:01:14.84
+until an Owner presses Retry stage.
+
+00:01:15.99 --> 00:01:18.83
+Each retry is a new run of the same stage.
+
+00:01:18.83 --> 00:01:24.43
+When a run fails below the limit, the orchestrator queues the next attempt straight
+
+00:01:24.43 --> 00:01:27.74
+away, with a not before time: now, plus the wait.
+
+00:01:27.74 --> 00:01:32.60
+The run log says which attempt failed, why, and when the next one comes,
+
+00:01:32.60 --> 00:01:35.64
+and a retry scheduled event carries the same.
+
+00:01:35.99 --> 00:01:37.80
+The lease does the waiting.
+
+00:01:37.80 --> 00:01:42.71
+Its query skips any run whose time hasn't come, using the injected clock.
+
+00:01:42.71 --> 00:01:46.27
+Workers need no timers, a restart keeps the schedule,
+
+00:01:46.27 --> 00:01:49.77
+and other projects' runs are leased in the meantime.
+
+00:01:50.12 --> 00:01:53.30
+The first test failed before any of this existed.
+
+00:01:53.30 --> 00:01:57.85
+It fails a run, moves the test clock to one second short of each wait,
+
+00:01:57.85 --> 00:02:01.61
+and checks that nothing can be leased, then one second on,
+
+00:02:01.61 --> 00:02:03.30
+that the next attempt can.
+
+00:02:04.45 --> 00:02:07.30
+When attempt four fails, the stage is Failed,
+
+00:02:07.30 --> 00:02:11.48
+and the direction and the project are Blocked, holding the reason.
+
+00:02:11.48 --> 00:02:16.67
+A stage blocked event carries the reason and the run's last two hundred log lines.
+
+00:02:16.67 --> 00:02:21.41
+They were redacted when they were stored, so no secret leaves in the event.
+
+00:02:22.56 --> 00:02:26.81
+Retry stage is a new endpoint under the project, for Owners only.
+
+00:02:26.81 --> 00:02:30.79
+It refuses anything but a Blocked direction, with a conflict.
+
+00:02:30.79 --> 00:02:34.77
+It queues attempt one of the failed stage with no checkpoint,
+
+00:02:34.77 --> 00:02:38.88
+so it starts from the beginning, and the log records who asked.
+
+00:02:40.03 --> 00:02:44.76
+On the project page, the stage's live line counts down to each retry,
+
+00:02:44.76 --> 00:02:45.99
+beside the reason.
+
+00:02:45.99 --> 00:02:51.26
+Once the stage blocks, the header shows Blocked, with Retry stage and Cancel,
+
+00:02:51.26 --> 00:02:56.40
+and the failed stage opens with a callout: the reason, the waits Hewn used,
+
+00:02:56.40 --> 00:02:59.82
+and that the last two hundred log lines are below.
+
+00:02:59.82 --> 00:03:05.30
+If the page is open when it happens, a danger toast says the project is blocked.
+
+00:03:05.30 --> 00:03:09.88
+It stays until it's dismissed, and offers Open log and Retry stage.
+
+00:03:09.88 --> 00:03:14.88
+It works in dark mode and on a phone, and a Viewer sees why it's blocked,
+
+00:03:14.88 --> 00:03:16.25
+with no Retry stage.
+
+00:03:17.40 --> 00:03:20.14
+Each slice began with its tests failing.
+
+00:03:20.14 --> 00:03:24.79
+The backend gained four tests against the real API: the three waits,
+
+00:03:24.79 --> 00:03:29.78
+blocking with the last two hundred lines while another project is leased,
+
+00:03:29.78 --> 00:03:34.44
+Retry stage from the start with the counter reset, and the refusals.
+
+00:03:34.44 --> 00:03:39.57
+The worker's scripted stages can now fail a set number of times, then pass.
+
+00:03:39.92 --> 00:03:43.83
+All green, the backend has one hundred and ninety four tests,
+
+00:03:43.83 --> 00:03:48.64
+the worker one hundred and forty, and the frontend ninety three unit tests.
+
+00:03:48.64 --> 00:03:53.76
+End to end, a new pipeline test runs a real worker whose stage fails four times.
+
+00:03:53.76 --> 00:03:57.42
+It watches the countdown, the Blocked page and the toast,
+
+00:03:57.42 --> 00:04:02.29
+checks that a Viewer is refused, then presses Retry stage and sees the stage
+
+00:04:02.29 --> 00:04:02.80
+succeed.
+
+00:04:02.80 --> 00:04:05.75
+There are fifty three end to end tests in all.
+
+00:04:06.90 --> 00:04:08.29
+Here is Parcel Post.
+
+00:04:08.29 --> 00:04:10.86
+Bootstrap has passed, and Idea fails.
+
+00:04:10.86 --> 00:04:16.07
+The live line counts down to retry one of three, with the reason beside it.
+
+00:04:16.07 --> 00:04:20.52
+For this recording the waits are five, eight and twelve seconds,
+
+00:04:20.52 --> 00:04:24.34
+instead of thirty seconds, two minutes and ten minutes.
+
+00:04:24.34 --> 00:04:29.20
+Each retry is a fresh run on the same worker, so its log starts empty,
+
+00:04:29.20 --> 00:04:33.37
+and the countdown always shows when the next attempt begins.
+
+00:04:33.37 --> 00:04:37.12
+Retry two, retry three, and the third retry fails too.
+
+00:04:37.12 --> 00:04:40.53
+The project is Blocked, the callout explains why,
+
+00:04:40.53 --> 00:04:45.81
+the header offers Retry stage and Cancel, and the toast offers the way back.
+
+00:04:46.16 --> 00:04:49.51
+The Runs tab lists all four attempts, each one failed.
+
+00:04:49.86 --> 00:04:52.24
+Now the Owner presses Retry stage.
+
+00:04:52.24 --> 00:04:55.67
+Idea runs again from its start, passes this time,
+
+00:04:55.67 --> 00:04:58.97
+and the direction carries on to the next stage.
+
+00:05:00.12 --> 00:05:01.65
+Journey nine is complete.
+
+00:05:01.65 --> 00:05:05.21
+A failed run is retried three times, after thirty seconds,
+
+00:05:05.21 --> 00:05:10.18
+two minutes and ten minutes, and each retry is a new run that waits for its time.
+
+00:05:10.18 --> 00:05:14.60
+When the retries run out, the stage is Failed and the direction Blocked,
+
+00:05:14.60 --> 00:05:19.14
+with the reason and the last log lines, while other projects keep running.
+
+00:05:19.14 --> 00:05:21.90
+And Retry stage runs it again from the start.
+
+00:05:21.90 --> 00:05:24.91
+Next comes journey ten: queue further directions.
