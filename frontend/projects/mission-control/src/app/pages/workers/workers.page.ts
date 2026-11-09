@@ -25,14 +25,17 @@ export class WorkersPage implements OnDestroy {
   private readonly tick = setInterval(() => this.now.set(Date.now()), 1_000);
 
   protected readonly rows = computed(() =>
-    (this.store.view()?.workers ?? []).map((w: Worker) => ({
-      ...w,
-      shortId: `wk-${w.id.slice(0, 4)}`,
-      state: workerStatus(w.status),
-      activity: workerActivity(w),
-      seen: seenAgo(w.lastSeenAt, this.now()),
-      connected: w.online ? connectedFor(w.registeredAt, this.now()) : '—',
-    })),
+    [...(this.store.view()?.workers ?? [])]
+      // Online workers first, then by host name.
+      .sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name))
+      .map((w: Worker) => ({
+        ...w,
+        shortId: `wk-${w.id.slice(-4)}`,
+        state: workerStatus(w.status),
+        activity: workerActivity(w),
+        seen: seenAgo(w.lastSeenAt, this.now()),
+        connected: w.online ? connectedFor(w.registeredAt, this.now()) : '—',
+      })),
   );
 
   constructor() {
