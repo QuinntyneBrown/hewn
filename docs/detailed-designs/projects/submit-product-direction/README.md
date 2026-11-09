@@ -31,6 +31,15 @@ The slice runs from the New direction page to the Hewn database. All names are i
 - **`IGitHubRepositoryProbe`** — port implemented by the GitHub App client; it reports `Writable`, `NotFound` or `NoAccess` for a repository.
 - **`HewnDbContext`** — persistence for projects and directions.
 
+Decisions made while building the slice:
+
+- **Uniqueness is across all projects.** Every allow-listed user can see every project ([Sign-in and access](../../security/sign-in-and-access/README.md)), so "unique among their projects" means unique among all projects. The comparison ignores case and surrounding spaces (`Project.NormalizedName`, a unique index), and a name taken between validation and commit is reported as the same field error.
+- **Field errors carry two texts.** `400 application/problem+json` holds `errors{field: [inline message]}` plus a `summary{field: line}` extension for the linked error summary, and a `code` (`validation_failed`, `repository_not_writable` or `repository_not_found`). Field names are `name`, `idea`, `stackPreference`, `repositoryUrl` and `budgetUsd`.
+- **Validation runs on the server only.** `NewDirectionPage` posts and renders what comes back, so the rules live in one place.
+- **`GET /api/config`** gives the page the repository owner for the "Creates {owner}/{name}" placeholder (`HEWN_GITHUB_OWNER`) and the default budget (`HEWN_DEFAULT_BUDGET_USD`, 300 when unset).
+- **The first event.** The handler appends `DirectionQueued` with sequence 1 to the event store in the same unit of work as the project.
+- **Feature directions** keep their option on the page, marked `aria-disabled` until [Run a direction through the pipeline](../../pipeline/run-direction/README.md) adds them (journey 2).
+
 The handler acknowledges the request only after the commit, so an acknowledged direction is already durable (L2-050). Workers learn of the queued direction through the lease mechanism designed in [Worker loop](../../agent-runtime/worker-loop/README.md). The 2-second navigation target in L2-001 AC1 covers the round trip and the client-side route change; it does not wait for a worker to lease the run.
 
 ## Requirements
