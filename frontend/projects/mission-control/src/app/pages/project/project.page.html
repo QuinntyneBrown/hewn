@@ -170,7 +170,9 @@
                 <div>
                   <p class="callout__title">{{ cancelledTitle(d.cancelledBy, d.cancelledAt) }}</p>
                   <p class="callout__body">
-                    {{ cancelledBody(d.stoppedWithinSeconds, d.labelledPullRequests) }}
+                    {{
+                      cancelledBody(d.stoppedWithinSeconds, d.labelledPullRequests, d.awaitingStop)
+                    }}
                   </p>
                 </div>
               </div>

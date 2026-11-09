@@ -63,9 +63,14 @@ export function cancelledTitle(
 }
 
 /** How fast the run stopped, which pull requests were labelled, and what to do next. */
-export function cancelledBody(stoppedWithinSeconds: number | null, labelled: number[]): string {
-  const stopped =
-    stoppedWithinSeconds === null
+export function cancelledBody(
+  stoppedWithinSeconds: number | null,
+  labelled: number[],
+  awaitingStop = false,
+): string {
+  const stopped = awaitingStop
+    ? 'The worker hasn’t confirmed the run stopped; Hewn refuses anything more from it.'
+    : stoppedWithinSeconds === null
       ? 'No run was in progress.'
       : `The active run stopped within ${stoppedWithinSeconds} ${stoppedWithinSeconds === 1 ? 'second' : 'seconds'}.`;
   const numbers = labelled.map((n) => `#${n}`);

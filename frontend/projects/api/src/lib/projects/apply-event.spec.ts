@@ -32,6 +32,7 @@ const project = (): Project => ({
       cancelledBy: null,
       cancelledAt: null,
       stoppedWithinSeconds: null,
+      awaitingStop: false,
       labelledPullRequests: [],
       stages: [0, 1].map((number) => ({
         number,
@@ -301,6 +302,7 @@ describe('applyEvent', () => {
         cancelledBy: 'quinntynebrown',
         cancelledAt: '2026-11-08T17:01:36Z',
         stoppedWithinSeconds: 4,
+        awaitingStop: false,
         labelledPullRequests: [9],
       }),
     );
@@ -309,6 +311,7 @@ describe('applyEvent', () => {
       cancelledBy: 'quinntynebrown',
       cancelledAt: '2026-11-08T17:01:36Z',
       stoppedWithinSeconds: 4,
+      awaitingStop: false,
       labelledPullRequests: [9],
     });
   });

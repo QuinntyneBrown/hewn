@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Hewn.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(HewnDbContext))]
-    [Migration("20261109123958_CancelDirection")]
+    [Migration("20261109132402_CancelDirection")]
     partial class CancelDirection
     {
         /// <inheritdoc />
@@ -41,6 +41,9 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("AwaitingStop")
+                        .HasColumnType("INTEGER");
 
                     b.Property<double>("BudgetUsd")
                         .HasColumnType("REAL");

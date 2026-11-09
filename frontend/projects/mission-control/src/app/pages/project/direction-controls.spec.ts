@@ -102,6 +102,9 @@ describe('cancel', () => {
     expect(cancelledBody(null, [])).toBe(
       'No run was in progress. Merged work is kept. Submit a new direction to continue.',
     );
+    expect(cancelledBody(null, [], true)).toBe(
+      'The worker hasn’t confirmed the run stopped; Hewn refuses anything more from it. Merged work is kept. Submit a new direction to continue.',
+    );
   });
 
   it('names the worker that did not answer', () => {

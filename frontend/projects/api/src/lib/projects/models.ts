@@ -46,6 +46,8 @@ export interface Direction {
   cancelledAt: string | null;
   /** Seconds from Cancel to the worker stopping; null when no run was in progress. */
   stoppedWithinSeconds: number | null;
+  /** The worker that held the run hasn't confirmed it stopped yet. */
+  awaitingStop: boolean;
   /** Open pull requests labelled hewn:cancelled. */
   labelledPullRequests: number[];
 }

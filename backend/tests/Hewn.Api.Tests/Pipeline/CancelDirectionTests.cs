@@ -123,13 +123,16 @@ public sealed class CancelDirectionTests : IAsyncLifetime
         Assert.Equal("Cancelled", body.GetProperty("status").GetString());
         Assert.False(body.GetProperty("stopped").GetBoolean());
         Assert.Equal("test-worker", body.GetProperty("worker").GetString());
-        Assert.Equal("Cancelled", (await DirectionsAsync(s.Owner, s.ProjectId))[0].GetProperty("status").GetString());
+        var waiting = (await DirectionsAsync(s.Owner, s.ProjectId))[0];
+        Assert.Equal("Cancelled", waiting.GetProperty("status").GetString());
+        Assert.True(waiting.GetProperty("awaitingStop").GetBoolean());
         Assert.Equal(HttpStatusCode.Conflict, (await s.Worker.HeartbeatAsync(run)).StatusCode);
 
         // The worker comes back and polls: it hears Cancel, and trying again reports the stop.
         Assert.Equal("Cancel", (await HewnClient.ReadJsonAsync(await ControlAsync(s.Worker, run))).GetProperty("control").GetString());
         var again = await HewnClient.ReadJsonAsync(await CancelAsync(s.Owner, s.ProjectId, s.DirectionId));
         Assert.True(again.GetProperty("stopped").GetBoolean());
+        Assert.False((await DirectionsAsync(s.Owner, s.ProjectId))[0].GetProperty("awaitingStop").GetBoolean());
     }
 
     [Fact]
@@ -144,7 +147,9 @@ public sealed class CancelDirectionTests : IAsyncLifetime
         var body = await HewnClient.ReadJsonAsync(response);
         Assert.True(body.GetProperty("stopped").GetBoolean());
         Assert.Equal(JsonValueKind.Null, body.GetProperty("stoppedWithinSeconds").ValueKind);
-        Assert.Equal("Cancelled", (await DirectionsAsync(s.Owner, s.ProjectId))[0].GetProperty("status").GetString());
+        var cancelled = (await DirectionsAsync(s.Owner, s.ProjectId))[0];
+        Assert.Equal("Cancelled", cancelled.GetProperty("status").GetString());
+        Assert.False(cancelled.GetProperty("awaitingStop").GetBoolean());
         Assert.Null(await s.Worker.LeaseAsync());
     }
 

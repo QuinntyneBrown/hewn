@@ -16,6 +16,13 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                 type: "INTEGER",
                 nullable: true);
 
+            migrationBuilder.AddColumn<bool>(
+                name: "AwaitingStop",
+                table: "directions",
+                type: "INTEGER",
+                nullable: false,
+                defaultValue: false);
+
             migrationBuilder.AddColumn<long>(
                 name: "CancelledAt",
                 table: "directions",
@@ -49,6 +56,10 @@ namespace Hewn.Infrastructure.Persistence.Migrations
             migrationBuilder.DropColumn(
                 name: "StopAcknowledgedAt",
                 table: "runs");
+
+            migrationBuilder.DropColumn(
+                name: "AwaitingStop",
+                table: "directions");
 
             migrationBuilder.DropColumn(
                 name: "CancelledAt",

@@ -183,6 +183,8 @@ test.describe('Cancel a direction', () => {
 
     await project.keepRunning.click();
     await expect(project.projectStatus).toHaveText('Cancelled');
-    await expect(project.cancelledCallout).toBeVisible();
+    await expect(project.cancelledCallout).toContainText(
+      'The worker hasn’t confirmed the run stopped; Hewn refuses anything more from it.',
+    );
   });
 });

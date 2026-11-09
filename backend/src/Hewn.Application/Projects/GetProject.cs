@@ -40,6 +40,7 @@ public sealed record DirectionDto(
     string? CancelledBy,
     DateTimeOffset? CancelledAt,
     int? StoppedWithinSeconds,
+    bool AwaitingStop,
     IReadOnlyList<int> LabelledPullRequests);
 
 public sealed record ProjectDto(
@@ -131,5 +132,6 @@ public sealed class GetProjectHandler(IAppDbContext db) : IRequestHandler<GetPro
         d.CancelledBy,
         d.CancelledAt,
         d.StoppedWithinSeconds,
+        d.AwaitingStop,
         d.LabelledPullRequestNumbers);
 }

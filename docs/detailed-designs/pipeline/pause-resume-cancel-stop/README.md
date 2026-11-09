@@ -117,8 +117,8 @@ Journey 7 built Cancel (L2-029 AC3, AC5, L2-004 AC4).
   The run's lease stops fencing at once, so the worker's writes are refused even before it hears.
 - **The answer reports the stop:** `{directionId, status, stopped, stoppedWithinSeconds, worker}`. When the worker
   does not answer in time, the dialog's failed state names it ("{worker} stopped answering…"), and Try again waits
-  again. The direction records `cancelledBy`, `cancelledAt`, `stoppedWithinSeconds` and `labelledPullRequests` for
-  the callout "Cancelled by {login} on {date} at {time}".
+  again. The direction records `cancelledBy`, `cancelledAt`, `stoppedWithinSeconds`, `labelledPullRequests` and
+  `awaitingStop` (true until the worker confirms) for the callout "Cancelled by {login} on {date} at {time}".
 - **`PullRequestLabeler` is part of the cancel handler.** It reads the pull requests the direction's runs opened
   from the mutation ledger, labels each unmerged one through the new `IGitHubRepositories.AddLabelAsync`, and logs
   `gh pr edit {n} --add-label hewn:cancelled`. A label GitHub refuses is logged as a warning, and the cancel still

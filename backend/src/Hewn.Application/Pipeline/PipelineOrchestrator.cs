@@ -152,7 +152,7 @@ public sealed class PipelineOrchestrator(IAppDbContext db, EventAppender events,
     {
         var now = clock.GetUtcNow();
         run?.Cancel(now);
-        if (direction.Cancel(cancelledBy, now) is { } stage)
+        if (direction.Cancel(cancelledBy, now, run?.HadWorkerWhenCancelled ?? false) is { } stage)
         {
             await AppendStageAsync(direction, stage, cancellationToken);
         }
@@ -199,6 +199,7 @@ public sealed class PipelineOrchestrator(IAppDbContext db, EventAppender events,
             cancelledBy = direction.CancelledBy,
             cancelledAt = direction.CancelledAt,
             stoppedWithinSeconds = direction.StoppedWithinSeconds,
+            awaitingStop = direction.AwaitingStop,
             labelledPullRequests = direction.LabelledPullRequestNumbers,
         }, cancellationToken);
 

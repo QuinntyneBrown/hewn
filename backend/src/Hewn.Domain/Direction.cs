@@ -66,6 +66,9 @@ public sealed class Direction
 
     public DateTimeOffset? CancelledAt { get; private set; }
 
+    /// <summary>True from a Cancel until the worker that held the run confirms it stopped.</summary>
+    public bool AwaitingStop { get; private set; }
+
     /// <summary>Seconds from Cancel to the worker stopping its run; null when no worker held a run.</summary>
     public int? StoppedWithinSeconds { get; private set; }
 
@@ -303,7 +306,7 @@ public sealed class Direction
     /// Cancel (L2-029 AC3): the direction is Cancelled for good and its running or paused stage with it. Returns the
     /// stage when its status changed.
     /// </summary>
-    public StageState? Cancel(string cancelledBy, DateTimeOffset now)
+    public StageState? Cancel(string cancelledBy, DateTimeOffset now, bool awaitingStop)
     {
         if (!IsActive)
         {
@@ -313,6 +316,7 @@ public sealed class Direction
         Status = DirectionStatus.Cancelled;
         CancelledBy = cancelledBy;
         CancelledAt = now;
+        AwaitingStop = awaitingStop;
         PauseRequestedBy = null;
         PauseReason = null;
         var stage = _stages.FirstOrDefault(s => s.Status is StageStatus.Running or StageStatus.Paused);
@@ -325,6 +329,7 @@ public sealed class Direction
     {
         var seconds = CancelledAt is { } at ? (int)Math.Ceiling((now - at).TotalSeconds) : 1;
         StoppedWithinSeconds = Math.Max(1, seconds);
+        AwaitingStop = false;
     }
 
     public void RecordLabelled(IReadOnlyList<int> numbers) =>

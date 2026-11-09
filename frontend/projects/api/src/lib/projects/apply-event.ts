@@ -69,6 +69,7 @@ export function applyEvent(project: Project, event: ProjectEvent): Project {
               cancelledBy: (p['cancelledBy'] as string | null) ?? null,
               cancelledAt: (p['cancelledAt'] as string | null) ?? null,
               stoppedWithinSeconds: (p['stoppedWithinSeconds'] as number | null) ?? null,
+              awaitingStop: (p['awaitingStop'] as boolean | undefined) ?? false,
               labelledPullRequests: (p['labelledPullRequests'] as number[] | undefined) ?? [],
             },
       );

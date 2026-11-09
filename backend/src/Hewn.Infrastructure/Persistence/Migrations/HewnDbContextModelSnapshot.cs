@@ -39,6 +39,9 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("AwaitingStop")
+                        .HasColumnType("INTEGER");
+
                     b.Property<double>("BudgetUsd")
                         .HasColumnType("REAL");
 
