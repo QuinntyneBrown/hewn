@@ -124,9 +124,18 @@ public static class CommitPolicy
             return false;
         }
 
+        // L2-054 AC2: a stage that may log decisions may also record an architecture decision as a numbered ADR.
+        if (rule.Exact.Contains(Decisions, StringComparer.Ordinal) && IsAdr(path))
+        {
+            return true;
+        }
+
         return rule.Exact.Contains(path, StringComparer.Ordinal) ||
                rule.Prefixes.Any(p => path.StartsWith(p, StringComparison.Ordinal) && path.Length > p.Length);
     }
+
+    private static bool IsAdr(string path) =>
+        System.Text.RegularExpressions.Regex.IsMatch(path, "^docs/adr/[0-9]{4}-[a-z0-9]+(-[a-z0-9]+)*\\.md$");
 
     // Relative, forward slashes only, no empty, "." or ".." segments.
     private static bool IsPlainRelative(string path) =>
