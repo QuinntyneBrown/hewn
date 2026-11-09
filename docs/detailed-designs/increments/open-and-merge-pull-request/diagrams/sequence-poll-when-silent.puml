@@ -1,5 +1,5 @@
 @startuml
-title UML sequence behaviour — Poll checks when no webhook arrives
+title UML sequence behaviour — Poll checks when GitHub is silent
 skinparam backgroundColor #FFFFFF
 skinparam shadowing false
 skinparam roundcorner 12
@@ -15,21 +15,29 @@ skinparam package {
   BackgroundColor #F9FAFB
 }
 skinparam sequenceMessageAlign left
-box "Backend — Hewn Infrastructure" #FFF4E5
-  participant "CheckPoller" as poll
-  database "Hewn database" as db
+box "Backend — Hewn API application" #D1FADF
+  participant "CheckPollerService" as service
 end box
 box "Backend — Hewn Application and Domain" #ECFDF3
-  participant "CheckStatusProjector" as proj
+  participant "CheckPoller" as poll
+  participant "CheckRecorder" as recorder
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
 end box
 box "External systems" #F2F4F7
   participant "GitHub" as gh
 end box
-loop every 60 s
-  poll -> db : Open PRs with no webhook in the last 60 s
-  poll -> gh : GET /repos/{repo}/commits/{sha}/check-runs
-  gh --> poll : Check states
-  poll -> proj : Changed states only
-  proj -> db : Store; emit CheckChanged (L2-031)
+loop every 10 s
+  service -> poll : PollAsync
+  poll -> db : InProgress increments with a PR whose ChecksHeardAt\n(or PR opened) is over 60 s ago
+  loop each pull request due
+    poll -> gh : GET /repos/{repo}/commits/{sha}/check-runs
+    gh --> poll : Check states
+    poll -> recorder : RecordAsync
+    recorder -> db : ChecksHeardAt = now; changed rows in increment_checks
+    recorder -> db : CheckChanged events, next per-project sequence (L2-031)
+  end
 end
+note over poll : A webhook, a worker's read or a poll each set ChecksHeardAt,\nso a pull request is polled only after 60 s of silence (L2-037 AC1)
 @enduml

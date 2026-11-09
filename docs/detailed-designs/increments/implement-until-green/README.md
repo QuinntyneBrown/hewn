@@ -19,9 +19,9 @@ The slice is the Implement step of the increment run.
 - **`TestGate`** — runs the stack's commands in order (for the default stack: `dotnet test`, `npm run lint`, `npm test`, `npx playwright test`) and returns a `GateResult` with per-suite counts and failing test names.
 - **`IncrementBlocker`** — on exhausting iterations, reports `IncrementBlocked(failingTests)` and asks `BacklogCursor` for the next increment with no dependency on the blocked one.
 - **`BacklogCursor`** — API service that returns the next runnable increment, skipping those that depend on a Blocked increment.
-- **`IterationProgress (Angular)`** — "Implement iteration n of 10" on the project page and dashboard, updated live.
+- **`IncrementPage (Angular)`** — "Implementing · iteration n of 10" on the increment page, updated live from `IncrementChanged`; the worker reports each iteration with `PUT …/increments/{n}`.
 
-Where the iteration cap is configured is <TO SUPPLY>; the Settings page does not expose it.
+The iteration cap is `HEWN_MAX_ITERATIONS` on the API (default 10); the Settings page does not expose it yet.
 
 ## Requirements
 
@@ -74,4 +74,9 @@ Done means the whole gate passes (L2-022 AC1). After 10 failing iterations the i
   (InProgress, Blocked with failing tests, Merged) and appends `IncrementChanged`; failing tests are redacted.
 - **Scripted gate.** The e2e stack runs `HEWN_GATE=scripted`: acceptance tests fail until the scripted agent's
   implementation file exists, which keeps the pipeline fast while every step and API call is real.
-- **Deferred:** live iteration progress in Mission Control (journey 13).
+- **Live progress** (journey 13). The worker reports `{InProgress, iterations}` as each iteration starts and
+  `{iterations, greenAfter}` on green, then the video as Recorded or Failed with its reason (cut to 500 characters
+  and redacted). The increment page shows "Implementing · iteration n of 10", "Green after n iterations", or
+  "Blocked after 10 iterations" with "k of m failing: …" and the increment Hewn moved on to: the first later one
+  that does not depend on it, directly or transitively, else "Every increment left depends on it" (L2-022 AC2).
+- **Failing tests are one line each**, stored newline-separated, so the page lists them as they came.
