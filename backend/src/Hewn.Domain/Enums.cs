@@ -64,6 +64,8 @@ public enum RunStatus
     Cancelled,
     /// <summary>Stopped with its direction (for example at the budget); keeps its checkpoint for a resume.</summary>
     Paused,
+    /// <summary>Stopped by Stop all workers (L2-029 AC4); keeps its worker, epoch and checkpoint until Start workers queues it again.</summary>
+    Halted,
 }
 
 public enum IncrementStatus

@@ -29,7 +29,7 @@ public sealed class PauseDirectionHandler(
         await events.LockAsync(command.ProjectId, cancellationToken);
         var (project, direction) = await DirectionControl.LoadAsync(db, command.ProjectId, command.DirectionId, cancellationToken);
         var run = await db.Runs.SingleOrDefaultAsync(
-            r => r.DirectionId == direction.Id && (r.Status == RunStatus.Queued || r.Status == RunStatus.Leased),
+            r => r.DirectionId == direction.Id && (r.Status == RunStatus.Queued || r.Status == RunStatus.Leased || r.Status == RunStatus.Halted),
             cancellationToken);
         if (run is null || direction.Status is not (DirectionStatus.Queued or DirectionStatus.Running))
         {
@@ -44,9 +44,9 @@ public sealed class PauseDirectionHandler(
         var now = clock.GetUtcNow();
         await events.AppendAsync(project.Id, PauseRequested, new { directionId = direction.Id, requestedBy = user.Login }, cancellationToken);
         await RunLog.InfoAsync(db, events, run, $"Pause requested by {user.Login}", now, cancellationToken);
-        if (run.Status == RunStatus.Queued)
+        if (run.Status is RunStatus.Queued or RunStatus.Halted)
         {
-            // No step is in progress, so there is nothing to wait for.
+            // No step is in progress (or all workers are stopped), so there is nothing to wait for.
             await pipeline.OnPauseTakesEffectAsync(run, project, direction, cancellationToken);
         }
 

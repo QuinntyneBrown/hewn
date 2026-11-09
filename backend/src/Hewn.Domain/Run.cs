@@ -115,6 +115,32 @@ public sealed class Run
         LeaseExpiresAt = null;
     }
 
+    /// <summary>
+    /// Stop all workers (L2-029 AC4): the lease no longer fences anything, so the worker's writes are refused, and the
+    /// checkpoint is kept. The worker and epoch stay so its control poll can still hear the halt.
+    /// </summary>
+    public void Halt()
+    {
+        Status = RunStatus.Halted;
+        LeaseExpiresAt = null;
+        StopAcknowledgedAt = null;
+    }
+
+    /// <summary>Start workers: a halted run waits for a worker again and carries on after its checkpoint.</summary>
+    public void Release()
+    {
+        if (Status != RunStatus.Halted)
+        {
+            throw new InvalidOperationException($"Run {Id} is {Status}; only a halted run is released.");
+        }
+
+        Status = RunStatus.Queued;
+        WorkerId = null;
+        CurrentStep = null;
+        CurrentStepName = null;
+        StopAcknowledgedAt = null;
+    }
+
     public bool AcknowledgeStop(DateTimeOffset now)
     {
         if (StopAcknowledgedAt is not null)

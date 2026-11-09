@@ -50,7 +50,7 @@ public sealed class CancelDirectionHandler(
         var run = again
             ? await db.Runs.Where(r => r.DirectionId == direction.Id && r.Status == RunStatus.Cancelled).OrderByDescending(r => r.EndedAt).FirstOrDefaultAsync(cancellationToken)
             : await db.Runs.SingleOrDefaultAsync(
-                r => r.DirectionId == direction.Id && (r.Status == RunStatus.Queued || r.Status == RunStatus.Leased || r.Status == RunStatus.Paused),
+                r => r.DirectionId == direction.Id && (r.Status == RunStatus.Queued || r.Status == RunStatus.Leased || r.Status == RunStatus.Paused || r.Status == RunStatus.Halted),
                 cancellationToken);
         if (!again)
         {
@@ -130,7 +130,8 @@ public sealed class CancelDirectionHandler(
 
 /// <summary>
 /// The worker's control poll: held open up to <c>WaitSeconds</c> while its run executes, it answers <c>Cancel</c>
-/// the moment the run is cancelled and records that the worker heard it. Null means carry on and poll again.
+/// the moment the run is cancelled, or <c>Halt</c> when all workers are stopped, and records that the worker heard
+/// it. Null means carry on and poll again.
 /// </summary>
 public sealed record PollRunControlQuery(Guid RunId, string WorkerId, long Epoch, int WaitSeconds) : IRequest<string?>;
 
@@ -142,6 +143,8 @@ public sealed class PollRunControlHandler(
     TimeProvider clock) : IRequestHandler<PollRunControlQuery, string?>
 {
     public const string Cancel = "Cancel";
+
+    public const string Halt = "Halt";
 
     public const int MaxWaitSeconds = 30;
 
@@ -159,13 +162,13 @@ public sealed class PollRunControlHandler(
             status = await StatusAsync(query, cancellationToken);
         }
 
-        if (status != RunStatus.Cancelled)
+        if (status is not (RunStatus.Cancelled or RunStatus.Halted))
         {
             return null;
         }
 
         await AcknowledgeAsync(query.RunId, cancellationToken);
-        return Cancel;
+        return status == RunStatus.Halted ? Halt : Cancel;
     }
 
     /// <summary>The run's status for this worker and epoch; another holder means the lease is lost.</summary>
@@ -189,7 +192,15 @@ public sealed class PollRunControlHandler(
         await events.LockAsync(projectId, cancellationToken);
         var run = await db.Runs.SingleAsync(r => r.Id == runId, cancellationToken);
         var now = clock.GetUtcNow();
-        if (run.AcknowledgeStop(now))
+        if (run.Status == RunStatus.Halted)
+        {
+            if (run.AcknowledgeStop(now))
+            {
+                await RunLog.InfoAsync(db, events, run, $"Run halted at step {run.CurrentStep ?? run.CheckpointStep + 1}", now, cancellationToken);
+                await db.SaveChangesAsync(cancellationToken);
+            }
+        }
+        else if (run.AcknowledgeStop(now))
         {
             var direction = await db.Directions.SingleAsync(d => d.Id == run.DirectionId, cancellationToken);
             direction.RecordStop(now);

@@ -150,6 +150,17 @@ internal sealed class ModelCallConfiguration : IEntityTypeConfiguration<ModelCal
     }
 }
 
+internal sealed class LeasingSwitchConfiguration : IEntityTypeConfiguration<LeasingSwitch>
+{
+    public void Configure(EntityTypeBuilder<LeasingSwitch> b)
+    {
+        b.ToTable("leasing_switches");
+        b.HasKey(s => s.Id);
+        b.Property(s => s.Id).ValueGeneratedNever();
+        b.Property(s => s.ChangedBy).HasMaxLength(39);
+    }
+}
+
 internal sealed class DirectionDefaultsConfiguration : IEntityTypeConfiguration<DirectionDefaults>
 {
     public void Configure(EntityTypeBuilder<DirectionDefaults> b)

@@ -21,6 +21,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 05 | [Raise budget and resume](05-raise-budget-and-resume/README.md) | ~4:32 | Journey 5 |
 | 06 | [Pause and resume a direction](06-pause-and-resume-a-direction/README.md) | ~4:48 | Journey 6 |
 | 07 | [Cancel a direction](07-cancel-a-direction/README.md) | ~5:35 | Journey 7 |
+| 08 | [Stop and restart all workers](08-stop-and-restart-all-workers/README.md) | ~5:08 | Journey 8 |
 
 ## Voice
 

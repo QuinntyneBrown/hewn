@@ -21,6 +21,7 @@ public sealed class LeaseService(IAppDbContext db, TimeProvider clock)
             var candidate = await db.Runs.AsNoTracking()
                 .Where(r => r.Status == RunStatus.Queued)
                 .Where(r => !db.Runs.Any(o => o.ProjectId == r.ProjectId && o.Status == RunStatus.Leased))
+                .Where(r => !db.LeasingSwitches.Any(s => s.Stopped))
                 .OrderBy(r => r.CreatedAt)
                 .Select(r => new { r.Id, r.ProjectId })
                 .FirstOrDefaultAsync(cancellationToken);
@@ -34,6 +35,8 @@ public sealed class LeaseService(IAppDbContext db, TimeProvider clock)
             var granted = await db.Runs
                 .Where(r => r.Id == candidate.Id && r.Status == RunStatus.Queued)
                 .Where(r => !db.Runs.Any(o => o.ProjectId == candidate.ProjectId && o.Status == RunStatus.Leased))
+                // Checked in the same statement, so nothing is leased once Stop all workers has saved the switch.
+                .Where(r => !db.LeasingSwitches.Any(s => s.Stopped))
                 .ExecuteUpdateAsync(set => set
                     .SetProperty(r => r.Status, RunStatus.Leased)
                     .SetProperty(r => r.WorkerId, workerId)

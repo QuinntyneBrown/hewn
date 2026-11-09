@@ -24,6 +24,30 @@
         }
       </nav>
       <div class="sidebar__foot">
+        @if (session.isOwner() && workers.view()) {
+          @if (workers.stopped()) {
+            <button
+              class="btn btn--sm"
+              type="button"
+              style="width: 100%; margin-top: var(--space-3)"
+              [disabled]="starting()"
+              [attr.aria-busy]="starting() || null"
+              (click)="startWorkers()"
+            >
+              <svg hw-icon [name]="starting() ? 'spinner' : 'play'" class="icon--sm"></svg
+              >{{ starting() ? 'Starting workers…' : 'Start workers' }}
+            </button>
+          } @else {
+            <button
+              class="btn btn--danger btn--sm"
+              type="button"
+              style="width: 100%; margin-top: var(--space-3)"
+              (click)="openStopWorkers()"
+            >
+              <svg hw-icon name="octagonX" class="icon--sm"></svg>Stop all workers
+            </button>
+          }
+        }
         @if (session.me(); as me) {
           <div class="user">
             <span class="avatar" aria-hidden="true">{{ initials() }}</span>
@@ -40,6 +64,14 @@
     <header class="topbar">
       <hw-wordmark [small]="true" />
     </header>
+    @if (workers.leasing(); as leasing) {
+      @if (leasing.stopped) {
+        <div class="strip strip--warn" role="status">
+          <svg hw-icon name="octagonX" class="icon--sm"></svg
+          ><span class="strip__text">{{ banner(leasing) }}</span>
+        </div>
+      }
+    }
     <main id="main" class="shell__main">
       <router-outlet />
     </main>

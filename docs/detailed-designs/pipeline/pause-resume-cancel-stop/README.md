@@ -79,7 +79,7 @@ Every worker halts its active run within 10 seconds and leases nothing until Sta
 
 ## Decisions made while building Pause and Resume
 
-Journey 6 built Pause and Resume (L2-029 AC1, AC2, AC5). Cancel and Stop all come with journeys 7 and 8.
+Journey 6 built Pause and Resume (L2-029 AC1, AC2, AC5). Cancel came with journey 7, and Stop all with journey 8.
 
 - **Pause is answered on the checkpoint call, not a control channel** ([ADR 0011](../../../adr/0011-pause-takes-effect-at-the-next-checkpoint.md)).
   `POST /api/projects/{projectId}/directions/{directionId}/pause` records the request (`PauseRequested`, "Pause
@@ -132,3 +132,29 @@ Journey 7 built Cancel (L2-029 AC3, AC5, L2-004 AC4).
   it ended.
 - **Not built yet:** audit entries for Cancel (the audit log is journey 32).
 
+## Decisions made while building Stop all workers
+
+Journey 8 built Stop all workers and Start workers (L2-029 AC4, AC5).
+
+- **Halt rides the control poll, and the leasing switch is stored** ([ADR 0013](../../../adr/0013-stop-all-workers-halts-runs-on-the-control-poll.md)).
+  `POST /api/workers/stop` saves `LeasingSwitch` (`leasing_switches`, one row) first, then halts every leased run
+  under its project's lock: the run turns `Halted`, keeps its checkpoint and stops fencing, and the log reads
+  "Halted: all workers stopped by {login}; resumes from step {n}". Each worker's poll answers `{control: "Halt"}`
+  and records "Run halted at step {n}". The lease grant checks the switch in the same `UPDATE`, so nothing is leased
+  once Stop has saved it, and a restart keeps it.
+- **The answer names the workers that didn't hear:** `{stopped, halted, unconfirmed}` after up to 10 seconds. The
+  dialog's failed state ("1 worker didn't confirm…") offers Try again, which waits for them again.
+- **Start workers** (`POST /api/workers/start`) queues each halted run again ("Queued again: workers started by
+  {login}") and then switches leasing on; the next lease raises the epoch and carries on after the checkpoint.
+  `LeasingSwitch` is the design's `LeasingSwitch`; `RunQueue` is `LeaseService`.
+- **A halted run's direction stays Running.** Pause or Cancel on it takes effect at once, since no step is in
+  progress.
+- **`GET /api/workers`** gives the switch and every worker: status (Busy shows as Leased, Idle, or Offline after
+  60 seconds without a heartbeat), what it works on, and `holding` while a run it halted waits. The shell refreshes
+  it on every navigation and every 5 seconds; worker activity goes live with journey 25.
+- **The banner** follows the system-banner warning mock ("All workers stopped by {login} at {time}. Nothing new
+  will be leased until you start them again.") on every page, for Owners and Viewers. The sidebar shows Stop all
+  workers or Start workers to Owners only. The Workers page follows the stopped mock without New worker token and
+  Revoke (journey 24), using the design system's `rows--workers-viewer` columns.
+- **Not built yet:** the dashboard (its "held at checkpoint" tiles), the sidebar's connection line, and audit
+  entries for Stop and Start (journey 32).

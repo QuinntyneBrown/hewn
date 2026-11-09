@@ -140,7 +140,7 @@ export interface CheckRun {
 export type CheckpointVerdict = 'Continue' | 'Pause';
 
 /** What the control poll can tell a running worker. */
-export type RunControl = 'Cancel';
+export type RunControl = 'Cancel' | 'Halt';
 
 export interface HewnApi {
   register(registration: WorkerRegistration): Promise<string>;

@@ -1,0 +1,235 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:06.48
+This is journey eight of Hewn, the software factory: stop and restart all workers.
+
+00:00:06.48 --> 00:00:11.53
+Sometimes everything needs to pause at once: a bad model release, a spending scare,
+
+00:00:11.53 --> 00:00:13.78
+or maintenance on the build machines.
+
+00:00:13.78 --> 00:00:17.30
+An Owner needs one switch that halts every worker quickly,
+
+00:00:17.30 --> 00:00:20.95
+keeps every project's progress, and holds until they say go.
+
+00:00:20.95 --> 00:00:25.94
+This video walks through how it was built: the flow, the leasing switch, the halt,
+
+00:00:25.94 --> 00:00:28.12
+the worker, the page, and the tests.
+
+00:00:29.27 --> 00:00:32.45
+An Owner presses Stop all workers and confirms.
+
+00:00:32.45 --> 00:00:37.57
+Every worker halts its active run within ten seconds and leases no new work.
+
+00:00:37.57 --> 00:00:42.90
+A banner shows that workers are stopped, until the Owner presses Start workers,
+
+00:00:42.90 --> 00:00:46.82
+and each halted run then resumes from its last checkpoint.
+
+00:00:46.82 --> 00:00:52.08
+Viewers see the banner, never the controls, and the API answers four oh three.
+
+00:00:53.23 --> 00:00:54.70
+Here is the whole flow.
+
+00:00:54.70 --> 00:00:59.82
+Each worker holds its control request open while it works, as it did for Cancel.
+
+00:00:59.82 --> 00:01:04.74
+Stop all workers saves the leasing switch first, then halts every leased run,
+
+00:01:04.74 --> 00:01:05.95
+project by project.
+
+00:01:05.95 --> 00:01:10.69
+Each held request answers Halt, and the worker stops the step in progress.
+
+00:01:10.69 --> 00:01:15.23
+Start workers queues the halted runs again, then turns leasing back on,
+
+00:01:15.23 --> 00:01:18.49
+and the next lease carries on after the checkpoint.
+
+00:01:19.64 --> 00:01:24.65
+The switch is one row in the database, so a restarted server stays stopped.
+
+00:01:24.65 --> 00:01:30.19
+The lease is granted in a single update, and that update now checks the switch too.
+
+00:01:30.19 --> 00:01:33.87
+Once Stop has saved it, no worker can be granted a run,
+
+00:01:33.87 --> 00:01:37.47
+and a run granted a moment before is found and halted.
+
+00:01:38.62 --> 00:01:43.52
+The stop command saves the switch, then halts each leased run under its project's
+
+00:01:43.52 --> 00:01:43.82
+lock.
+
+00:01:43.82 --> 00:01:47.45
+A halted run keeps its worker, its epoch and its checkpoint,
+
+00:01:47.45 --> 00:01:52.10
+but it no longer fences anything, so every write the worker tries is refused.
+
+00:01:52.10 --> 00:01:56.82
+The run log says who stopped the workers, and which step the run resumes from.
+
+00:01:56.82 --> 00:02:01.59
+Then the command wakes every held control request and waits, up to ten seconds,
+
+00:02:01.59 --> 00:02:03.05
+for each worker to hear.
+
+00:02:03.05 --> 00:02:05.89
+Any worker that doesn't is named in the answer.
+
+00:02:06.24 --> 00:02:11.07
+On the API side, the control poll now answers Halt for a halted run,
+
+00:02:11.07 --> 00:02:14.13
+and records Run halted at step, in the log.
+
+00:02:15.28 --> 00:02:20.54
+In the worker, a Halt answer aborts the step in progress, exactly like Cancel.
+
+00:02:20.54 --> 00:02:25.06
+After Start workers, the same run is leased again with a new epoch,
+
+00:02:25.06 --> 00:02:29.17
+and the worker carries on from the step after its checkpoint.
+
+00:02:30.32 --> 00:02:33.92
+Owners get Stop all workers at the foot of the sidebar.
+
+00:02:33.92 --> 00:02:38.82
+It opens a confirmation listing every online worker and what it is running.
+
+00:02:38.82 --> 00:02:42.95
+While Hewn waits, the button counts the workers it is stopping.
+
+00:02:43.30 --> 00:02:48.26
+Once they have stopped, a banner on every page says who stopped them and when,
+
+00:02:48.26 --> 00:02:50.61
+and the sidebar offers Start workers.
+
+00:02:50.61 --> 00:02:54.75
+The new Workers page shows each worker holding at its checkpoint.
+
+00:02:54.75 --> 00:02:59.14
+If a worker doesn't answer, the dialog names it and offers Try again.
+
+00:02:59.14 --> 00:03:04.48
+It works in dark mode and on a phone, and a Viewer sees the banner with no controls.
+
+00:03:05.63 --> 00:03:08.24
+Each slice began with its tests failing.
+
+00:03:08.24 --> 00:03:13.51
+The backend gained five tests against the real API: stopping two running projects
+
+00:03:13.51 --> 00:03:17.61
+within ten seconds, starting them again from their checkpoints,
+
+00:03:17.61 --> 00:03:22.10
+the switch surviving a server restart, a worker that does not answer,
+
+00:03:22.10 --> 00:03:23.08
+and the Viewer.
+
+00:03:23.08 --> 00:03:28.16
+The worker gained a test that halts a run and resumes it after its checkpoint.
+
+00:03:28.51 --> 00:03:31.85
+All green, the backend has one hundred and ninety tests,
+
+00:03:31.85 --> 00:03:36.56
+the worker one hundred and thirty nine, and the frontend eighty one unit tests.
+
+00:03:36.56 --> 00:03:39.66
+End to end, two new pipeline tests use real workers.
+
+00:03:39.66 --> 00:03:43.90
+One stops two running projects, checks the banner and the Workers page,
+
+00:03:43.90 --> 00:03:48.37
+and starts them again, checking that each run resumes at the step after its
+
+00:03:48.37 --> 00:03:49.03
+checkpoint.
+
+00:03:49.03 --> 00:03:52.79
+The other stops a silent worker, and checks what a Viewer sees.
+
+00:03:52.79 --> 00:03:55.41
+There are fifty two end to end tests in all.
+
+00:03:56.56 --> 00:04:01.74
+Here are two projects, Ledgerline and Tidewater, each leased by its own worker.
+
+00:04:01.74 --> 00:04:06.92
+The Owner presses Stop all workers, and the dialog lists both workers and their
+
+00:04:06.92 --> 00:04:07.51
+projects.
+
+00:04:07.51 --> 00:04:08.63
+Stop all workers.
+
+00:04:08.63 --> 00:04:11.84
+Stopping two workers, while each worker hears it.
+
+00:04:11.84 --> 00:04:16.76
+Then the banner appears, and both workers are holding at their checkpoints.
+
+00:04:17.11 --> 00:04:21.80
+On Ledgerline's page, the log shows the halt, and the step it resumes from,
+
+00:04:21.80 --> 00:04:23.17
+under the same banner.
+
+00:04:23.52 --> 00:04:25.77
+Now the Owner presses Start workers.
+
+00:04:25.77 --> 00:04:30.65
+The banner goes, the run is queued again, and it carries on where it left off.
+
+00:04:31.00 --> 00:04:35.79
+And when the workers have gone silent, the dialog says they didn't confirm,
+
+00:04:35.79 --> 00:04:37.89
+names them, and offers Try again.
+
+00:04:37.89 --> 00:04:41.09
+A Viewer sees the banner, with no controls at all.
+
+00:04:42.24 --> 00:04:44.01
+Journey eight is complete.
+
+00:04:44.01 --> 00:04:48.04
+Stop all workers halts every active run within ten seconds,
+
+00:04:48.04 --> 00:04:51.51
+over the control request each worker already holds.
+
+00:04:51.51 --> 00:04:56.36
+The leasing switch is stored, so nothing is leased until Start workers,
+
+00:04:56.36 --> 00:04:57.79
+even after a restart.
+
+00:04:57.79 --> 00:05:01.13
+And every halted run resumes from its checkpoint.
+
+00:05:01.13 --> 00:05:04.40
+Next comes journey nine: recover a failed stage.

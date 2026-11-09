@@ -20,24 +20,32 @@ box "Frontend — Mission Control application" #E0F2FE
   participant "StopWorkersDialog" as dlg
 end box
 box "Backend — Hewn API application" #D1FADF
-  participant "WorkersControlController" as wc
-  participant "WorkerControlChannel" as chan
+  participant "WorkersController" as wc
+  participant "StopWorkersHandler" as stop
+  participant "PollRunControlHandler" as poll
+  participant "WorkerController" as wk
 end box
 box "Backend — Hewn Application and Domain" #ECFDF3
   participant "LeasingSwitch" as switch
+  participant "Run" as run
 end box
 box "Backend — Worker application" #D1FADF
-  participant "RunSupervisor" as sup
+  participant "WorkLoop" as loop
 end box
+loop -> poll : GET /api/worker/runs/{id}/control (held up to 20 s)
 owner -> dlg : Confirm Stop all workers
-dlg -> wc : POST /api/workers/stop-all
-wc -> switch : Disable() - no new leases
-wc -> chan : HaltRun to every connected worker
-chan -> sup : HaltRun
-sup -> sup : Stop at once; last checkpoint is kept
-sup --> chan : Halted (deadline 10 s, L2-029 AC4)
-wc --> dlg : Banner "All workers stopped"; sidebar shows Start workers
+dlg -> wc : POST /api/workers/stop
+wc -> stop : StopWorkersCommand
+stop -> switch : Stopped = true (saved first; no lease after this)
+stop -> run : Halt() for each leased run, per project lock\n"Halted: all workers stopped by {login}; resumes from step {n}"
+stop -> poll : RequestStop(run) for each halted run
+poll --> loop : 200 {control: "Halt"}; "Run halted at step {n}"
+loop -> loop : Abort the step in progress; report nothing more
+stop --> dlg : {stopped, halted, unconfirmed} (waits up to 10 s, L2-029 AC4)
+dlg --> owner : Banner "All workers stopped by {login} at {time}"; sidebar shows Start workers
 owner -> wc : POST /api/workers/start
-wc -> switch : Enable()
-note over sup : Halted runs are leased again and resume from their checkpoints
+wc -> run : Release() each halted run: "Queued again: workers started by {login}"
+wc -> switch : Stopped = false
+loop -> wk : POST /api/worker/lease
+note over loop : The halted run is leased with a new epoch and resumes after its checkpoint
 @enduml

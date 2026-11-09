@@ -29,5 +29,7 @@ public interface IAppDbContext
 
     DbSet<DirectionDefaults> DirectionDefaults { get; }
 
+    DbSet<LeasingSwitch> LeasingSwitches { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

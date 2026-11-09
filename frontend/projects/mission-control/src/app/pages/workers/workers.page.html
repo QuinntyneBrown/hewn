@@ -1,0 +1,91 @@
+<div class="page-header">
+  <div class="truncate">
+    <h1>Workers</h1>
+    <p class="page-header__desc">
+      One container image, local or cloud. At most one worker leases a project at a time.
+    </p>
+  </div>
+</div>
+<div class="pad" style="padding-bottom: var(--space-10)">
+  @if (store.view(); as view) {
+    @if (rows().length === 0) {
+      <p class="text-muted">No worker has registered yet.</p>
+    } @else {
+      <div class="rows rows--workers-viewer">
+        <div class="rows__head" aria-hidden="true">
+          <span>Host</span><span>Location</span><span>Version</span><span>Status</span
+          ><span>Working on</span><span class="row__end">Heartbeat</span
+          ><span class="row__end">Connected</span>
+        </div>
+        <ul aria-label="Workers">
+          @for (w of rows(); track w.id) {
+            <li class="row">
+              <span class="truncate"
+                ><span class="mono truncate" style="display: block; font-size: 0.8125rem">{{
+                  w.name
+                }}</span
+                ><span class="text-mono-xs text-subtle">{{ w.shortId }}</span></span
+              >
+              <span class="lg-hide"
+                ><span class="status status--{{ w.state.tone }}"
+                  ><svg
+                    hw-icon
+                    [name]="w.state.icon"
+                    [class.icon--spin]="w.state.tone === 'run'"
+                  ></svg
+                  >{{ w.state.label }}</span
+                ></span
+              >
+              <span class="cluster text-muted" style="gap: var(--space-1-5)"
+                ><svg
+                  hw-icon
+                  [name]="w.location === 'Cloud' ? 'cloud' : 'laptop'"
+                  class="icon--sm"
+                ></svg
+                >{{ w.location
+                }}<span class="text-mono-xs text-subtle lg-hide">· {{ w.version }}</span></span
+              >
+              <span class="lg-only text-mono-xs text-muted">{{ w.version }}</span>
+              <span class="lg-only"
+                ><span class="status status--{{ w.state.tone }}"
+                  ><svg
+                    hw-icon
+                    [name]="w.state.icon"
+                    [class.icon--spin]="w.state.tone === 'run'"
+                  ></svg
+                  >{{ w.state.label }}</span
+                ></span
+              >
+              <span class="row__span truncate">
+                @if (w.workingOn; as on) {
+                  <a style="color: inherit" [routerLink]="['/projects', on.projectId]">{{
+                    on.projectName
+                  }}</a>
+                } @else {
+                  <span class="text-subtle">{{ w.activity }}</span>
+                }
+              </span>
+              <span
+                class="tabular lg-row-end"
+                [class.text-muted]="w.online"
+                [class.text-danger]="!w.online"
+                >{{ w.seen }}</span
+              >
+              <span class="lg-only tabular text-subtle row__end">{{ w.connected }}</span>
+            </li>
+          }
+        </ul>
+      </div>
+    }
+    @if (view.leasing.stopped) {
+      <p class="text-caption mt-4">
+        Leasing is off. Each halted run resumes from its last checkpoint when you start workers.
+      </p>
+    } @else {
+      <p class="text-caption mt-4">
+        A worker that misses heartbeats for 60 seconds loses its lease; the run resumes elsewhere
+        from its last checkpoint.
+      </p>
+    }
+  }
+</div>
