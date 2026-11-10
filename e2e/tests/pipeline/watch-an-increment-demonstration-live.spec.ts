@@ -33,15 +33,18 @@ test.describe('Watch an increment demonstration, live', () => {
     const { projectId } = (await submitted.json()) as { projectId: string };
 
     stopWorkers = startWorkers(1, 150);
+    // The whole direction, so no run is left leased to a stopped worker.
     await expect
       .poll(
         async () => {
-          const response = await page.request.get(`/api/projects/${projectId}/increments/1`);
-          return response.ok() ? ((await response.json()) as { status: string }).status : null;
+          const project = (await (await page.request.get(`/api/projects/${projectId}`)).json()) as {
+            directions: { status: string }[];
+          };
+          return project.directions[0]!.status;
         },
         { timeout: 240_000, intervals: [1_000] },
       )
-      .toBe('Merged');
+      .toBe('Complete');
 
     await increment.open(projectId, 1);
     await expect(increment.videoFooter).toContainText(/^Captioned walkthrough · 1080p · 0:0[1-9]/);
