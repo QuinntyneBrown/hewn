@@ -30,6 +30,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 14 | [Preview product designs](14-preview-product-designs/README.md) | ~5:43 | Journey 14 |
 | 15 | [Browse the design system](15-browse-the-design-system/README.md) | ~5:25 | Journey 15 |
 | 16 | [Inspect versioned artifacts](16-inspect-versioned-artifacts/README.md) | ~4:17 | Journey 16 |
+| 17 | [Trace a requirement](17-trace-a-requirement/README.md) | ~4:58 | Journey 17 |
 
 ## Voice
 

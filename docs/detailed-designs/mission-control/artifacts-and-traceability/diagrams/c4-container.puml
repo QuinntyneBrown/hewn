@@ -13,9 +13,9 @@ System_Boundary(hewn, "Hewn") {
 }
 System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
 
-Rel(worker, api, "RunSucceeded with commit SHA", "HTTPS (outbound)")
-Rel(api, github, "Reads files at SHA for indexing", "HTTPS")
-Rel(api, db, "Stores artifacts and trace links", "SQL")
+Rel(worker, api, "Commits through the broker; RunSucceeded", "HTTPS (outbound)")
+Rel(api, github, "Commits; reads the archive and pull requests at the head", "HTTPS")
+Rel(api, db, "Stores commit records (github_mutations)", "SQL")
 Rel(spa, api, "GET artifacts, trace", "JSON/HTTPS")
 Rel(owner, spa, "Opens Artifacts or Traceability", "HTTPS")
 @enduml

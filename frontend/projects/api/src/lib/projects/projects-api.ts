@@ -5,6 +5,7 @@ import { toFieldErrors } from '../problems/field-errors';
 import { toRateLimited } from '../problems/rate-limited';
 import {
   Artifacts,
+  Traceability,
   Backlog,
   Designs,
   DesignSystem,
@@ -40,6 +41,8 @@ export interface ProjectsApi {
   getDesignSystem(projectId: string): Observable<DesignSystem>;
   /** Each stage's artifacts with path, version (commit SHA), time and a GitHub link at that SHA (L2-034 AC2). */
   getArtifacts(projectId: string): Observable<Artifacts>;
+  /** Every L2 with its L1, designs, journeys, tests and pull requests (L2-035). */
+  getTraceability(projectId: string): Observable<Traceability>;
   /** Adds a feature direction (L2-005). Errors with FieldErrorsProblem when a field rule is broken. */
   submitFeatureDirection(
     projectId: string,
@@ -106,6 +109,12 @@ export class HttpProjectsApi implements ProjectsApi {
 
   getDesigns(projectId: string): Observable<Designs> {
     return this.http.get<Designs>(`/api/projects/${encodeURIComponent(projectId)}/designs`);
+  }
+
+  getTraceability(projectId: string): Observable<Traceability> {
+    return this.http.get<Traceability>(
+      `/api/projects/${encodeURIComponent(projectId)}/traceability`,
+    );
   }
 
   getArtifacts(projectId: string): Observable<Artifacts> {

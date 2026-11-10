@@ -11,40 +11,62 @@ skinparam class {
 }
 title Class structure — Artifacts and traceability
 
-class Artifact {
-  +ProjectId ProjectId
+class GetArtifactsHandler {
+  +Handle(q: GetArtifactsQuery): ArtifactsDto
+}
+class ArtifactsDto {
+  +string? Repository
+}
+class StageArtifactsDto {
   +int Stage
+  +string Name
+}
+class VersionedArtifactDto {
   +string Path
+  +bool Folder
   +string Sha
-  +DateTimeOffset At
-  +Uri GitHubUrl
+  +DateTimeOffset CommittedAt
+  +string? Url
 }
-class TraceLink {
-  +string L2Id
-  +TraceKind Kind
-  +string Target
+class GetTraceabilityHandler {
+  +Handle(q: GetTraceabilityQuery): TraceabilityDto
 }
-enum TraceKind {
-  L1
-  Design
-  Journey
-  Test
-  PullRequest
+class TraceabilityDto {
+  +string? Repository
+  +string? Commit
 }
-class Requirement {
-  +string L2Id
+class RequirementTraceDto {
+  +string Id
   +string Title
-  +bool Deferred
+  +string? Deferred
   +bool NoAcceptanceTest
+  +string[] Tests
 }
-class TraceIndexer {
-  +RebuildAsync(p: ProjectId, sha: string): Task
+class ParentRequirementDto {
+  +string Id
+  +string Title
 }
-class ArtifactRecorder {
-  +On(e: RunSucceeded): Task
+class TracedDesignDto {
+  +string Title
+  +string Path
 }
-ArtifactRecorder ..> Artifact : records
-TraceIndexer ..> TraceLink : rebuilds
-TraceLink --> TraceKind
-Requirement "1" o-- "*" TraceLink
+class TracedJourneyDto {
+  +int Number
+  +string Title
+}
+class TracedPullRequestDto {
+  +int Number
+  +string Title
+  +string Url
+  +bool Merged
+}
+GetArtifactsHandler ..> ArtifactsDto : builds from github_mutations
+ArtifactsDto "1" *-- "*" StageArtifactsDto
+StageArtifactsDto "1" *-- "*" VersionedArtifactDto
+GetTraceabilityHandler ..> TraceabilityDto : builds from the archive and pull requests
+TraceabilityDto "1" *-- "*" RequirementTraceDto
+RequirementTraceDto --> "0..1" ParentRequirementDto : L1
+RequirementTraceDto "1" *-- "*" TracedDesignDto
+RequirementTraceDto "1" *-- "*" TracedJourneyDto
+RequirementTraceDto "1" *-- "*" TracedPullRequestDto
 @enduml

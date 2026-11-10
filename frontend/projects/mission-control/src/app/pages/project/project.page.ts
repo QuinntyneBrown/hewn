@@ -41,6 +41,7 @@ import { BacklogComponent } from './backlog.component';
 import { DesignsComponent } from './designs.component';
 import { DesignSystemComponent } from './design-system.component';
 import { ArtifactsComponent } from './artifacts.component';
+import { TraceabilityComponent } from './traceability.component';
 import { LiveLogComponent } from './live-log.component';
 import { RaiseBudgetDialog, RaiseBudgetData } from './raise-budget.dialog';
 import { suggestedBudget } from './raise-budget';
@@ -132,6 +133,7 @@ const BACKLOG_EVENTS = new Set([
     DesignsComponent,
     DesignSystemComponent,
     ArtifactsComponent,
+    TraceabilityComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project.page.html',
@@ -146,10 +148,12 @@ export class ProjectPage {
   readonly projectId = input.required<string>();
   /** `?stage=` from the URL: the stage the user selected. */
   readonly stage = input<string>();
-  /** The section tab, from the route's data: the pipeline, or `/projects/{id}/` backlog, designs, design-system or artifacts. */
-  readonly section = input<'pipeline' | 'backlog' | 'designs' | 'design-system' | 'artifacts'>(
-    'pipeline',
-  );
+  /** The L2 the Traceability tab opens (`?l2=`). */
+  readonly l2 = input<string>();
+  /** The section tab, from the route's data: the pipeline, or `/projects/{id}/` backlog, designs, design-system, artifacts or traceability. */
+  readonly section = input<
+    'pipeline' | 'backlog' | 'designs' | 'design-system' | 'artifacts' | 'traceability'
+  >('pipeline');
 
   /** Bumped by "Try again" to load the project once more. */
   private readonly attempt = signal(0);
@@ -205,6 +209,15 @@ export class ProjectPage {
   protected readonly backlogChanges = toSignal(
     this.events$.pipe(
       filter((e) => BACKLOG_EVENTS.has(e.type)),
+      scan((n) => n + 1, 0),
+    ),
+    { initialValue: 0 },
+  );
+
+  /** Counts stage and increment changes, so the Traceability tab reads the repository again (L2-035). */
+  protected readonly traceChanges = toSignal(
+    this.events$.pipe(
+      filter((e) => e.type === 'StageChanged' || e.type === 'IncrementChanged'),
       scan((n) => n + 1, 0),
     ),
     { initialValue: 0 },

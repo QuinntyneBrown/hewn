@@ -1,0 +1,38 @@
+{
+  "commit": "f25478d",
+  "requirements": [
+    {
+      "id": "L2-001",
+      "title": "Sign in",
+      "l1": {
+        "id": "L1-001",
+        "title": "Sign in"
+      },
+      "deferred": null,
+      "noAcceptanceTest": false,
+      "designs": [
+        {
+          "title": "Sign in",
+          "path": "docs/detailed-designs/product/sign-in/README.md"
+        }
+      ],
+      "journeys": [
+        {
+          "number": 1,
+          "title": "Sign in"
+        }
+      ],
+      "tests": [
+        "e2e/tests/sign-in.spec.ts"
+      ],
+      "pullRequests": [
+        {
+          "number": 2,
+          "title": "Sign in (journey 1, L2-001)",
+          "url": "https://github.com/hewn-builds/kiln-booking/pull/2",
+          "merged": true
+        }
+      ]
+    }
+  ]
+}

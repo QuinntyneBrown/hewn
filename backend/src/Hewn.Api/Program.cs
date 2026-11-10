@@ -66,6 +66,10 @@ if (app.Configuration.GetValue<bool>("Hewn:Fakes:Enabled"))
         return Results.Ok(new { sha });
     });
 
+    // Opens (and optionally merges) a pull request on a fake repository, as someone outside Hewn would.
+    app.MapPost("/api/fakes/github/{owner}/{name}/pulls", (string owner, string name, FakePullRequestRequest request, Hewn.Infrastructure.Fakes.InMemoryGitHub gitHub) =>
+        Results.Ok(new { Number = gitHub.AddPullRequest(owner, name, request.Title, request.Merged, request.Head) }));
+
     // How long each check takes in the fake CI, so a test or a video can watch checks turn green (0: at once).
     app.MapPut("/api/fakes/github/check-seconds", (CheckPace pace, Hewn.Infrastructure.Fakes.InMemoryGitHub gitHub) =>
     {
@@ -79,3 +83,5 @@ app.Run();
 public partial class Program;
 
 internal sealed record CheckPace(double Seconds);
+
+internal sealed record FakePullRequestRequest(string Title, string? Head, bool Merged);

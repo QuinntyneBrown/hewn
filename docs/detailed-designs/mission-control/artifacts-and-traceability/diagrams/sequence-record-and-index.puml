@@ -1,5 +1,5 @@
 @startuml
-title UML sequence behaviour — Record artifacts and index traces
+title UML sequence behaviour — Record artifacts
 skinparam backgroundColor #FFFFFF
 skinparam shadowing false
 skinparam roundcorner 12
@@ -20,7 +20,6 @@ box "Backend — Worker application" #D1FADF
 end box
 box "Backend — Hewn Application and Domain" #ECFDF3
   participant "CommitFilesHandler" as rec
-  participant "TraceIndexer" as idx
 end box
 box "Backend — Hewn Infrastructure" #FFF4E5
   database "Hewn database" as db
@@ -33,8 +32,4 @@ rec -> gh : Commit to the default branch
 gh --> rec : sha f61a2d8
 rec -> db : Insert github_mutation (sha, paths, branch, time)
 worker -> db : RunSucceeded — the commit is now the artifacts' version (L2-034 AC1)
-note over idx : Planned for L2-035
-db -> idx : RebuildAsync(project, f61a2d8)
-idx -> gh : Read specs, designs, journeys, test headers, PR titles at SHA
-idx -> db : Replace trace_links for project
 @enduml

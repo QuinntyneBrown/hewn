@@ -221,6 +221,25 @@ public class InMemoryGitHub(IConfiguration? configuration) : IGitHubRepositoryPr
         }
     }
 
+    /// <summary>Adds a pull request someone outside Hewn opened (and maybe merged), under the fake's lock.</summary>
+    public int AddPullRequest(string owner, string name, string title, bool merged, string? head = null)
+    {
+        lock (_lock)
+        {
+            var repository = Repository(owner, name) ?? Seed(owner, name, topics: ["hewn"]);
+            return repository.AddPullRequest(title, merged, head).Number;
+        }
+    }
+
+    public Task<IReadOnlyList<PullRequestInfo>> ListPullRequestsAsync(string owner, string name, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            var repository = Existing(owner, name);
+            return Task.FromResult<IReadOnlyList<PullRequestInfo>>([.. repository.PullRequests.OrderByDescending(p => p.Number).Select(repository.PullRequestInfo)]);
+        }
+    }
+
     public Task AddLabelAsync(string owner, string name, int number, string label, CancellationToken cancellationToken)
     {
         lock (_lock)
@@ -356,6 +375,14 @@ public sealed class FakeRepository(string owner, string name, bool isPrivate, Li
     public Dictionary<string, int> BranchBases { get; } = new(StringComparer.Ordinal);
 
     public List<FakePullRequest> PullRequests { get; } = [];
+
+    /// <summary>Adds a pull request someone outside Hewn opened, without needing its branch.</summary>
+    public FakePullRequest AddPullRequest(string title, bool merged, string? head = null)
+    {
+        var pull = new FakePullRequest(PullRequests.Count + 1, head ?? $"feature/pull-{PullRequests.Count + 1}", title, string.Empty) { Merged = merged };
+        PullRequests.Add(pull);
+        return pull;
+    }
 
     public List<string> RequiredChecks { get; } = [];
 

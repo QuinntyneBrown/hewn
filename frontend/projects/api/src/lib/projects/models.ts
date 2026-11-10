@@ -364,3 +364,45 @@ export interface Artifacts {
   repository: string | null;
   stages: StageArtifacts[];
 }
+
+export interface TracedDesign {
+  title: string;
+  /** Such as `docs/detailed-designs/reconciliation/match-card-lines/README.md`. */
+  path: string;
+}
+
+export interface TracedJourney {
+  number: number;
+  title: string;
+}
+
+export interface TracedPullRequest {
+  number: number;
+  title: string;
+  url: string;
+  merged: boolean;
+}
+
+/** One L2 and where it stands (L2-035 AC1). */
+export interface RequirementTrace {
+  id: string;
+  title: string;
+  l1: { id: string; title: string } | null;
+  /** The reason on its Deferred status line; null when it is not deferred. */
+  deferred: string | null;
+  /** No test names it and it is not deferred (L2-035 AC2). */
+  noAcceptanceTest: boolean;
+  designs: TracedDesign[];
+  journeys: TracedJourney[];
+  /** Paths of the test files whose `Traces to:` header names it. */
+  tests: string[];
+  pullRequests: TracedPullRequest[];
+}
+
+/** GET /api/projects/{id}/traceability: every L2, read at the default branch's head. */
+export interface Traceability {
+  repository: string | null;
+  /** The short SHA the repository was read at. */
+  commit: string | null;
+  requirements: RequirementTrace[];
+}

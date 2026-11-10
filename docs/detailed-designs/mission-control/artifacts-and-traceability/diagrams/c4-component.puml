@@ -9,9 +9,8 @@ ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Pro
 Container_Boundary(api_b, "Hewn API") {
   Component(broker, "CommitFilesHandler", "GitHub broker", "Commits a stage's files; records SHA, paths, branch")
   Component(rec, "GetArtifactsHandler", "Read model", "Artifact = path + latest commit SHA of a succeeded run")
-  Component(idx, "TraceIndexer", "Background job", "Builds trace links at a SHA")
-  Component(actrl, "ProjectsController", "ASP.NET Core controller", "GET /api/projects/{id}/artifacts")
-  Component(tctrl, "TraceabilityController", "ASP.NET Core controller", "Trace for an L2")
+  Component(actrl, "ProjectsController", "ASP.NET Core controller", "GET artifacts, GET traceability")
+  Component(idx, "GetTraceabilityHandler", "Read model", "Every L2 and its trace at the head")
 }
 System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
 
@@ -19,11 +18,9 @@ Rel(worker, broker, "Commit files", "HTTPS")
 Rel(broker, github, "Commits", "HTTPS")
 Rel(broker, db, "Inserts github_mutations", "SQL")
 Rel(rec, db, "Reads succeeded runs' commits", "SQL")
-Rel(rec, idx, "Planned: triggers after stages 5, 7, 8, merges (L2-035)")
-Rel(idx, github, "Reads files at SHA", "HTTPS")
-Rel(idx, db, "Rebuilds trace_links", "SQL")
+Rel(idx, github, "Downloads the archive; lists pull requests", "HTTPS")
+Rel(idx, db, "Finds the project's repository", "SQL")
 Rel(spa, actrl, "GET", "JSON/HTTPS")
-Rel(spa, tctrl, "GET", "JSON/HTTPS")
 Rel(actrl, rec, "Sends GetArtifactsQuery")
-Rel(tctrl, db, "Reads", "SQL")
+Rel(actrl, idx, "Sends GetTraceabilityQuery")
 @enduml

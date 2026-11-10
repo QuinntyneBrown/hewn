@@ -52,6 +52,11 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
     public Task<Hewn.Application.Designs.DesignSystemDto> DesignSystem(Guid projectId, CancellationToken cancellationToken) =>
         mediator.Send(new Hewn.Application.Designs.GetDesignSystemQuery(projectId), cancellationToken);
 
+    /// <summary>L2-035: every L2 with its L1, designs, journeys, tests and pull requests, read at the head.</summary>
+    [HttpGet("{projectId:guid}/traceability")]
+    public Task<TraceabilityDto> Traceability(Guid projectId, CancellationToken cancellationToken) =>
+        mediator.Send(new GetTraceabilityQuery(projectId), cancellationToken);
+
     /// <summary>L2-034 AC2: each stage's artifacts with path, version (commit SHA), time and a GitHub link at that SHA.</summary>
     [HttpGet("{projectId:guid}/artifacts")]
     public Task<ArtifactsDto> Artifacts(Guid projectId, CancellationToken cancellationToken) =>

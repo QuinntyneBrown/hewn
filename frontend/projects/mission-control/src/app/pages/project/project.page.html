@@ -140,6 +140,11 @@
           [routerLink]="['/projects', p.id, 'artifacts']"
           [attr.aria-current]="section() === 'artifacts' ? 'page' : null"
           >Artifacts</a
+        ><a
+          class="tab"
+          [routerLink]="['/projects', p.id, 'traceability']"
+          [attr.aria-current]="section() === 'traceability' ? 'page' : null"
+          >Traceability</a
         >
       </div>
     </nav>
@@ -152,6 +157,13 @@
     <hw-design-system [projectId]="p.id" />
   } @else if (section() === 'artifacts') {
     <hw-artifacts [projectId]="p.id" [repository]="p.repository" [changes]="artifactChanges()" />
+  } @else if (section() === 'traceability') {
+    <hw-traceability
+      [projectId]="p.id"
+      [projectName]="p.name"
+      [selected]="l2()"
+      [changes]="traceChanges()"
+    />
   } @else {
     <div class="pad section">
       <div class="split split--pipeline">
