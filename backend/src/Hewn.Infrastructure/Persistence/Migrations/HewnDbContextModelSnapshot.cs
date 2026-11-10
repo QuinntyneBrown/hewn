@@ -151,6 +151,9 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.Property<double>("DefaultBudgetUsd")
                         .HasColumnType("REAL");
 
+                    b.Property<int?>("DescopeThresholdDays")
+                        .HasColumnType("INTEGER");
+
                     b.Property<long>("UpdatedAt")
                         .HasColumnType("INTEGER");
 

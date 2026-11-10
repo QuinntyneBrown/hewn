@@ -76,6 +76,7 @@ public sealed class LeaseRunHandler(
     RepositoryProvisioner provisioner,
     EventAppender events,
     IOptions<PipelineOptions> options,
+    Spend.DirectionDefaultsReader defaults,
     TimeProvider clock) : IRequestHandler<LeaseRunCommand, LeasedRunDto?>
 {
     public async Task<LeasedRunDto?> Handle(LeaseRunCommand command, CancellationToken cancellationToken)
@@ -123,7 +124,8 @@ public sealed class LeaseRunHandler(
             new LeasedRunProject(project.Id, project.Name, project.Idea, project.StackPreference, project.Repository),
             new LeasedRunDirection(direction.Kind.ToString(), direction.Idea, direction.HasUiChange),
             options.Value.SkillsSource,
-            options.Value.DescopeThresholdDays,
+            // The Owner's threshold from Settings, read at each lease (L2-019 AC1).
+            (await defaults.ReadAsync(cancellationToken)).DescopeThresholdDays,
             options.Value.MaxIterations,
             run.Attempt);
     }
