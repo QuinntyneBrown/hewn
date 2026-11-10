@@ -62,6 +62,8 @@ test.describe('Review agent decisions, live', () => {
       paths: string[];
     }[];
     expect(commits.find((c) => c.sha === sha)?.paths).toContain('docs/decisions.md');
+    const log = await page.request.get(`/api/fakes/github/${repository}/contents/docs/decisions.md?ref=${sha}`);
+    expect(await log.text()).toMatch(/· Stage 4 Stack\n\n\*\*Question:\*\* Which stack should the product use\?/);
 
     await decisions.filterBy('Stack');
     expect(await decisions.questions()).toEqual(['Which stack should the product use?']);
