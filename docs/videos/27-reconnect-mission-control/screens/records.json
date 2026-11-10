@@ -1,0 +1,8 @@
+{
+  "droppedAt": 1794328581893,
+  "linesWhenDropped": 2,
+  "linesBeforeReconnect": 2,
+  "reconnectedAfterMs": 12364,
+  "caughtUp": "Reconnected. Caught up 12 missed events, #10 to #21.",
+  "linesAfterReconnect": 2
+}

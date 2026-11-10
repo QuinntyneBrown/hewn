@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 27 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="27" data-video-title="Reconnect Mission Control" data-parts="Introduction|Goal|Before|Dropping|Schedule|First connection|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 27</div>
+  <h1>Reconnect Mission Control</h1>
+  <p class="lead">Say it dropped, retry on schedule, catch up every event once.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video shows Mission Control noticing">
+  <figure><img src="screens/project-reconnected.png" alt="Reconnected. Caught up 12 missed events, #10 to #21; the pipeline has moved on to Designs"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="When the live connection drops, Mission Control shows Reconnecting">
+  <ul class="bullets">
+    <li>Reconnecting…; retries after 0, 2, 10, 30 s, then every 30 s (L2-032 AC1)</li>
+    <li>Every event after the last sequence, applied once (AC2, L2-031 AC2)</li>
+    <li>The banner goes when catch-up finishes (AC3)</li>
+  </ul>
+</section>
+
+<section id="before" data-part="2" data-cue="Catch-up already worked.">
+  <figure class="diagram"><img src="../../detailed-designs/mission-control/real-time-events/diagrams/c4-component.png" alt="Real-time events components: the event store, the hub, the events controller and the client service"></figure>
+</section>
+
+<section id="clip-drop" data-part="3" data-cue="Here a project is running" data-clip="clips/drop-and-catch-up.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Dropped; the log freezes; back at the 12-second attempt; caught up</aside>
+</section>
+
+<section id="caught" data-part="3" data-cue="The worker keeps going, but nothing new reaches the page.">
+  <div class="cols">
+    <figure><img src="screens/project-reconnecting.png" alt="Reconnecting… next attempt in 2 s. Missed events will catch up from #9. Sidebar: Reconnecting…"></figure>
+    <figure><img src="screens/project-reconnected.png" alt="Reconnected. Caught up 12 missed events, #10 to #21. Sidebar: Live"></figure>
+  </div>
+</section>
+
+<section id="schedule" data-part="4" data-cue="A small class, the reconnector, owns the schedule.">
+  <div class="code-file">frontend/projects/api/src/lib/live/reconnector.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1">export const RECONNECT_DELAYS_MS = [0, 2_000, 10_000, 30_000] as const;</pre>
+  <div class="code-file">frontend/projects/api/src/lib/live/reconnector.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2,5,9">  private schedule(): void {
+    const delay = RECONNECT_DELAYS_MS[this.failed] ?? EVERY_MS;
+    const nextAttemptAt = Date.now() + delay;
+    this.status$.next({
+      state: this.failed &gt;= RECONNECT_DELAYS_MS.length ? 'offline' : 'reconnecting',
+      nextAttemptAt,
+    });
+    this.clear();
+    this.timer = setTimeout(() =&gt; void this.attempt(), delay);
+  }</pre>
+</section>
+
+<section id="attempt" data-part="4" data-cue="Each attempt starts the connection">
+  <div class="code-file">frontend/projects/api/src/lib/live/project-events.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2-3,11">  private async reconnect(): Promise&lt;void&gt; {
+    if (this.connection.state === HubConnectionState.Disconnected) await this.connection.start();
+    const results = await Promise.all([...this.rejoins].map((rejoin) =&gt; rejoin()));
+    const summary: CatchUp = { count: 0, from: null, to: null };
+    for (const r of results) {
+      if (!r) continue;
+      summary.count += r.count;
+      if (r.from !== null) summary.from = Math.min(summary.from ?? r.from, r.from);
+      if (r.to !== null) summary.to = Math.max(summary.to ?? r.to, r.to);
+    }
+    this.caught.next(summary);
+  }</pre>
+</section>
+
+<section id="sequence" data-part="4" data-cue="so the banner goes when catch-up finishes">
+  <figure class="diagram"><img src="../../detailed-designs/mission-control/real-time-events/diagrams/sequence-reconnect.png" alt="Reconnect and catch up: Reconnector retries on the schedule; each subscription joins again and fetches events after its last sequence; then the status is live and the banner says what it caught up"></figure>
+</section>
+
+<section id="clip-lost" data-part="4" data-cue="Here, on a fake clock, the schedule runs out." data-clip="clips/lost-and-retry.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Reconnecting, then Connection lost; Retry now brings it back</aside>
+</section>
+
+<section id="banner-code" data-part="4" data-cue="The banner's text is one small function">
+  <div class="code-file">frontend/projects/mission-control/src/app/layout/connection-banner.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2-3,5,10">    case 'reconnecting': {
+      const seconds = Math.ceil((status.nextAttemptAt - now) / 1000);
+      const next = seconds &gt; 0 ? ` next attempt in ${seconds} s.` : '';
+      const from =
+        lastSequence === null ? '' : ` Missed events will catch up from ${number(lastSequence)}.`;
+      return { tone: 'warn', text: `Reconnecting…${next}${from}` };
+    }
+    case 'offline':
+      return {
+        tone: 'danger',
+        text: 'Connection lost. Retrying every 30 s; agents keep working and nothing is lost.',
+        retry: true,
+      };</pre>
+</section>
+
+<section id="connecting" data-part="5" data-cue="When the first connection is slow">
+  <figure><img src="screens/connecting.png" alt="Connecting to Mission Control… live updates start in a moment."></figure>
+</section>
+
+<section id="test-unit" data-part="6" data-cue="The reconnector's unit tests use fake timers.">
+  <div class="code-file">frontend/projects/api/src/lib/live/reconnector.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1,5,7">  it('retries after 0, 2, 10 and 30 seconds, then every 30 seconds (L2-032 AC1)', async () =&gt; {
+    const { reconnector, attempts } = setup();
+
+    reconnector.dropped();
+    await vi.advanceTimersByTimeAsync(0 + 2_000 + 10_000 + 30_000 + 30_000 + 30_000);
+
+    expect(attempts).toEqual([0, 2_000, 12_000, 42_000, 72_000, 102_000]);
+  });</pre>
+  <div class="result red">✘ Could not resolve "./reconnector"</div>
+  <div class="result green">✔ api 25 · mission-control 140</div>
+</section>
+
+<section id="test-route" data-part="6" data-cue="End to end, a page object routes">
+  <div class="code-file">e2e/pages/live-connection.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3-5">  /** The network drops: the open connection closes and every attempt is refused until `restore`. */
+  async drop(): Promise&lt;void&gt; {
+    this.down = true;
+    await Promise.all([...this.sockets].map((ws) =&gt; ws.close({ code: 4000, reason: 'Network down' })));
+    this.sockets.clear();
+  }</pre>
+  <div class="code-file">e2e/tests/behavior/reconnect-mission-control.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1,3,6-7,9">    await live.drop();
+    // The first attempt is at once; it fails, and the next is 2 s later.
+    await expect(live.banner).toHaveText(/^Reconnecting… next attempt in [12] s\./);
+    await expect(live.state).toHaveText('Reconnecting…');
+    const tried = live.attempts.length;
+    await page.clock.runFor(2_000);
+    await expect(live.banner).toHaveText(/^Reconnecting… next attempt in (9|10) s\./);
+    await page.clock.runFor(10_000);
+    await expect(live.banner).toHaveText(/^Reconnecting… next attempt in (29|30) s\./);
+    expect(live.attempts.length, 'one attempt after 2 s and one after 10 s more').toBe(tried + 2);
+    await page.clock.runFor(30_000);</pre>
+</section>
+
+<section id="test-catch-up" data-part="6" data-cue="A pipeline test cuts the connection while a worker logs.">
+  <div class="code-file">e2e/tests/pipeline/reconnect-catch-up.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="11-12">      // A fresh load shows exactly the same pipeline and log: nothing missed, nothing twice.
+      const fresh = await browser.newPage();
+      await signIn(fresh, 'quinntynebrown');
+      const reloaded = new ProjectPage(fresh);
+      await fresh.goto(`/projects/${projectId}`);
+      await expect(reloaded.pipeline).toBeVisible();
+      await reloaded.selectStage('Bootstrap');
+      await expect(reloaded.logLines.first()).toBeVisible();
+      // Running stages show a ticking duration; the rest must be identical.
+      const stages = async (p: ProjectPage) =&gt; (await p.pipeline.innerText()).replace(/\d+:\d\d(:\d\d)?/g, 'm:ss');
+      expect(await stages(project)).toBe(await stages(reloaded));
+      expect(await project.logLines.allInnerTexts()).toEqual(await reloaded.logLines.allInnerTexts());</pre>
+  <div class="result red">✘ Expected substring: "Reconnecting…" · element(s) not found</div>
+  <div class="result green">✔ behaviour 2 · pipeline 1 · visual 2 · a11y 1</div>
+</section>
+
+<section id="lost" data-part="6" data-cue="Visual tests match the connecting and lost strips">
+  <figure><img src="screens/workers-lost.png" alt="Connection lost. Retrying every 30 s; agents keep working and nothing is lost. Retry now. Sidebar: Offline"></figure>
+</section>
+
+<section id="screens" data-part="7" data-cue="The strip reads the same in dark mode">
+  <div class="cols">
+    <figure><img src="screens/project-reconnecting-dark.png" alt="Reconnecting in dark mode"></figure>
+    <figure class="phone"><img src="screens/project-reconnecting-phone.png" alt="Reconnecting on a phone"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="8" data-cue="Journey twenty seven is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Says when the connection drops, and when it's lost</li>
+    <li>Retries after 0, 2, 10, 30 s, then every 30 s</li>
+    <li>Catches up every missed event once, then the banner goes</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

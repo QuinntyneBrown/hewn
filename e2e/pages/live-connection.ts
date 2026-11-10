@@ -17,8 +17,10 @@ export class LiveConnection {
   private readonly sockets = new Set<WebSocketRoute>();
   private down = false;
   private negotiateDelayMs = 0;
+  private readonly page: Page;
 
-  constructor(private readonly page: Page) {
+  constructor(page: Page) {
+    this.page = page;
     this.banner = page
       .locator('.strip')
       .filter({ hasText: /Connecting to Mission Control|Reconnecting|Reconnected|Connection lost/ });
