@@ -2,7 +2,9 @@
 # Starts the API for Playwright: a fresh SQLite database, a seeded allow list, dev sign-in,
 # and fake GitHub (and, as later slices add them, a fake worker, model and Magic Patterns).
 param(
-    [int]$Port = 5300
+    [int]$Port = 5300,
+    # Restart on the database as it is, as after a server crash (L2-050 AC2), instead of a fresh one.
+    [switch]$KeepDatabase
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -48,8 +50,10 @@ git -C $greenlit -c user.name=Hewn -c user.email=hewn@example.invalid commit -q 
 $env:HEWN_SKILLS_SOURCE = "file://$greenlit"
 
 $cli = Join-Path $root 'backend/src/Hewn.Cli'
-dotnet run --project $cli -- reset --yes
-if ($LASTEXITCODE) { exit $LASTEXITCODE }
-dotnet run --project $cli -- seed
-if ($LASTEXITCODE) { exit $LASTEXITCODE }
+if (-not $KeepDatabase) {
+    dotnet run --project $cli -- reset --yes
+    if ($LASTEXITCODE) { exit $LASTEXITCODE }
+    dotnet run --project $cli -- seed
+    if ($LASTEXITCODE) { exit $LASTEXITCODE }
+}
 dotnet run --project (Join-Path $root 'backend/src/Hewn.Api') --no-launch-profile
