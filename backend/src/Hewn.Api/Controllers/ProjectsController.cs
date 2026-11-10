@@ -47,6 +47,11 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
     public Task<Hewn.Application.Designs.DesignsDto> Designs(Guid projectId, CancellationToken cancellationToken) =>
         mediator.Send(new Hewn.Application.Designs.GetDesignsQuery(projectId), cancellationToken);
 
+    /// <summary>L2-012 AC4: the design system's token and component pages, each with a signed preview URL.</summary>
+    [HttpGet("{projectId:guid}/design-system")]
+    public Task<Hewn.Application.Designs.DesignSystemDto> DesignSystem(Guid projectId, CancellationToken cancellationToken) =>
+        mediator.Send(new Hewn.Application.Designs.GetDesignSystemQuery(projectId), cancellationToken);
+
     [HttpGet("{projectId:guid}/backlog")]
     public Task<BacklogDto> Backlog(Guid projectId, CancellationToken cancellationToken) =>
         mediator.Send(new GetProjectBacklogQuery(projectId), cancellationToken);

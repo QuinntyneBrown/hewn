@@ -6,16 +6,26 @@ title Components — Preview designs and the design system
 System_Ext(gh, "GitHub", "The project's repository: docs/mocks/ and docs/design-system/")
 Container_Boundary(spa_b, "Mission Control (localhost / app origin)") {
   Component(designs, "DesignsComponent", "Angular, Designs tab of ProjectPage", "Screens and states with live thumbnails and Magic Patterns links")
+  Component(ds, "DesignSystemComponent", "Angular, Design system tab of ProjectPage", "Token pages and component pages, chosen into the same preview")
+  Component(ctl, "PreviewControlsComponent", "Angular component", "Width XS-XL and Theme radio groups, shared by both tabs")
   Component(prev, "SandboxedPreviewComponent", "Angular component", "Iframe sandbox=allow-scripts at 375-1200 px, light or dark")
 }
 Container_Boundary(api_b, "Hewn API") {
-  Component(ctrl, "ProjectsController", "ASP.NET Core", "GET /api/projects/{id}/designs, session required")
+  Component(ctrl, "ProjectsController", "ASP.NET Core", "GET /api/projects/{id}/designs and /design-system, session required")
   Component(list, "GetDesignsHandler", "MediatR", "Reads docs/mocks/manifest.json at the head; signs preview URLs")
+  Component(dsl, "GetDesignSystemHandler", "MediatR", "Reads docs/design-system/tokens.json at the head; lists foundations/ and components/ at that commit; signs preview URLs")
   Component(tok, "PreviewTokens", "HMAC-SHA256", "{project}.{sha}.{expiry}, 60 minutes")
   Component(host, "PreviewEndpoint + ServePreviewHandler", "Minimal API on the preview host only", "GET /preview/{token}/{path}; CSP sandbox; no cookies")
 }
 
 Rel(designs, prev, "Uses")
+Rel(designs, ctl, "Uses")
+Rel(ds, prev, "Uses")
+Rel(ds, ctl, "Uses")
+Rel(ds, ctrl, "GET design-system", "JSON/HTTPS")
+Rel(ctrl, dsl, "Sends GetDesignSystemQuery")
+Rel(dsl, tok, "Signs")
+Rel(dsl, gh, "Reads tokens.json; lists the pages at its commit")
 Rel(designs, ctrl, "GET designs", "JSON/HTTPS")
 Rel(ctrl, list, "Sends GetDesignsQuery")
 Rel(list, tok, "Signs")

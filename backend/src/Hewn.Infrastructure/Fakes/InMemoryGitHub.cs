@@ -122,6 +122,22 @@ public class InMemoryGitHub(IConfiguration? configuration) : IGitHubRepositoryPr
         }
     }
 
+    public Task<IReadOnlyList<string>> ListFilesAsync(string owner, string name, string path, string sha, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            var prefix = path.TrimEnd('/') + "/";
+            IReadOnlyList<string> names = Existing(owner, name).Snapshots.TryGetValue(sha, out var tree)
+                ? tree.Keys
+                    .Where(p => p.StartsWith(prefix, StringComparison.Ordinal) && p.IndexOf('/', prefix.Length) < 0)
+                    .Select(p => p[prefix.Length..])
+                    .Order(StringComparer.Ordinal)
+                    .ToList()
+                : [];
+            return Task.FromResult(names);
+        }
+    }
+
     public Task<Stream> DownloadArchiveAsync(string owner, string name, CancellationToken cancellationToken)
     {
         lock (_lock)

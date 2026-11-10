@@ -36,7 +36,8 @@ export async function serveMissionControl(port: number): Promise<Server> {
         res.writeHead(r.statusCode ?? 502, r.headers);
         r.pipe(res);
       });
-      upstream.on('error', () => res.writeHead(502).end());
+      upstream.on('error', () => (res.headersSent ? res.destroy() : res.writeHead(502).end()));
+      res.on('error', () => upstream.destroy());
       req.pipe(upstream);
       return;
     }
@@ -63,7 +64,10 @@ export async function serveMissionControl(port: number): Promise<Server> {
       upstream.write(head);
       socket.pipe(upstream).pipe(socket);
     });
+    // Either side may close first (Lighthouse closes the page while the API is still sending): end the other side
+    // rather than let a write to the closed one throw EPIPE.
     upstream.on('error', () => socket.destroy());
+    socket.on('error', () => upstream.destroy());
   });
   await new Promise<void>((done) => server.listen(port, done));
   return server;

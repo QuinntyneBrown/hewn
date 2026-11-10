@@ -13,8 +13,8 @@ import {
   previewHost,
   previewSrc,
   selection,
-  WIDTHS,
 } from './designs-view';
+import { PreviewControlsComponent } from './preview-controls.component';
 import { SandboxedPreviewComponent } from './sandboxed-preview.component';
 
 type Loaded =
@@ -27,7 +27,7 @@ type Loaded =
  */
 @Component({
   selector: 'hw-designs',
-  imports: [IconComponent, RouterLink, SandboxedPreviewComponent],
+  imports: [IconComponent, RouterLink, PreviewControlsComponent, SandboxedPreviewComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './designs.component.html',
   styles: `
@@ -57,11 +57,6 @@ export class DesignsComponent {
   /** Bumped by Try again. */
   private readonly attempt = signal(0);
 
-  protected readonly widths = WIDTHS;
-  protected readonly themes: { id: PreviewTheme; label: string; icon: 'sun' | 'moon' }[] = [
-    { id: 'light', label: 'Light', icon: 'sun' },
-    { id: 'dark', label: 'Dark', icon: 'moon' },
-  ];
   protected readonly width = signal<number>(992);
   protected readonly theme = signal<PreviewTheme>('light');
   /** The chosen state's path; null shows the first. */
@@ -126,28 +121,6 @@ export class DesignsComponent {
   protected retry(): void {
     this.attempt.update((n) => n + 1);
   }
-
-  /** Radio-group keys: arrows move the choice within the group, as a native radio group does. */
-  protected step<T>(
-    event: KeyboardEvent,
-    options: readonly T[],
-    current: T,
-    set: (value: T) => void,
-  ): void {
-    const delta = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
-    if (!delta) return;
-    event.preventDefault();
-    const index = (options.indexOf(current) + delta + options.length) % options.length;
-    set(options[index]);
-    // The radios are in the options' order, so the next one can take focus before the view updates.
-    const group = (event.currentTarget as HTMLElement).closest('[role="radiogroup"]');
-    group?.querySelectorAll<HTMLElement>('[role="radio"]')[index]?.focus();
-  }
-
-  protected setWidth = (px: number) => this.width.set(px);
-  protected setTheme = (theme: PreviewTheme) => this.theme.set(theme);
-  protected readonly widthValues = WIDTHS.map((w) => w.px as number);
-  protected readonly themeValues: PreviewTheme[] = ['light', 'dark'];
 }
 
 /** The manifest's problem names the commit it couldn't read; anything else says what the API did. */

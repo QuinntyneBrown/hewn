@@ -144,10 +144,7 @@ export class ScriptedStageAgent implements StageAgent {
           motion: { fast: { $type: 'duration', $value: '150ms' } },
         };
         write('docs/design-system/tokens.json', `${JSON.stringify(tokens, null, 2)}\n`);
-        write(
-          'docs/design-system/components/button.html',
-          '<!doctype html>\n<html lang="en">\n<head><meta charset="utf-8"><title>Button</title></head>\n<body><h1>Button</h1><p>Primary action. Uses color tokens and radius md.</p></body>\n</html>\n',
-        );
+        for (const [file, html] of designSystemPages(tokens)) write(`docs/design-system/${file}`, html);
         decide(
           'How are colour tokens named?',
           'By order of first use until a designer names them.',
@@ -402,4 +399,120 @@ function recordStillVideo(directory: string, slug: string, title: string): void 
         : 'ffmpeg could not record the video',
     );
   }
+}
+
+type TokenGroup = Record<string, { $type: string; $value: string }>;
+
+/**
+ * The token pages under foundations/ and the button's page under components/, as the extracting-design-systems
+ * skill writes them: each follows `<html data-theme>`, and the swatches show the light or dark colour tokens.
+ */
+export function designSystemPages(tokens: {
+  color: { light: TokenGroup; dark: TokenGroup };
+  typography: TokenGroup;
+  spacing: TokenGroup;
+  radius: TokenGroup;
+  elevation: TokenGroup;
+  motion: TokenGroup;
+}): [string, string][] {
+  const vars = (group: TokenGroup) =>
+    Object.entries(group)
+      .map(([name, t]) => `--${name}: ${t.$value};`)
+      .join(' ');
+  const rows = (group: TokenGroup, sample: (value: string) => string) =>
+    Object.entries(group)
+      .map(
+        ([name, t]) =>
+          `<tr><td><code>${name}</code></td><td><code>${t.$value}</code></td><td>${sample(t.$value)}</td></tr>`,
+      )
+      .join('\n');
+  const page = (title: string, lede: string, body: string) => `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${title} · Design system</title>
+<style>
+:root { color-scheme: light; --page: #ffffff; --ink: #14181d; --muted: #5b6573; --line: #dde1e6; --accent: #2f6fed; ${vars(tokens.color.light)} }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; --page: #14181d; --ink: #f4f5f7; --muted: #a3acb9; --line: #2c333c; --accent: #6f9bff; ${vars(tokens.color.dark)} } }
+:root[data-theme="dark"] { color-scheme: dark; --page: #14181d; --ink: #f4f5f7; --muted: #a3acb9; --line: #2c333c; --accent: #6f9bff; ${vars(tokens.color.dark)} }
+body { margin: 0; padding: 32px; background: var(--page); color: var(--ink); font: 16px/1.5 system-ui, sans-serif; }
+h1 { margin: 0 0 4px; font-size: 28px; } p { margin: 0 0 24px; color: var(--muted); }
+table { width: 100%; border-collapse: collapse; } td { padding: 10px 8px; border-top: 1px solid var(--line); vertical-align: middle; }
+code { font: 13px ui-monospace, monospace; }
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; }
+.swatch { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; } .swatch span { display: block; height: 72px; }
+.swatch div { padding: 8px; font-size: 13px; }
+.btn { font: inherit; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--accent); cursor: pointer; }
+.btn--primary { background: var(--accent); color: #fff; } .btn--secondary { background: transparent; color: var(--accent); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; } .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+</style>
+</head>
+<body>
+<h1>${title}</h1>
+<p>${lede}</p>
+${body}
+</body>
+</html>
+`;
+  const swatches = Object.keys(tokens.color.light)
+    .map(
+      (name) =>
+        `<div class="swatch"><span style="background: var(--${name})"></span><div><code>${name}</code></div></div>`,
+    )
+    .join('\n');
+  return [
+    [
+      'foundations/colour.html',
+      page(
+        'Colour',
+        `${Object.keys(tokens.color.light).length} colour tokens, light and dark. Switch the theme to see the dark values.`,
+        `<div class="swatches">\n${swatches}\n</div>`,
+      ),
+    ],
+    [
+      'foundations/typography.html',
+      page(
+        'Typography',
+        'The type families every screen uses.',
+        `<table>${rows(tokens.typography, (v) => `<span style="font-family: ${v}">Reconcile the statement</span>`)}</table>`,
+      ),
+    ],
+    [
+      'foundations/spacing.html',
+      page(
+        'Spacing',
+        'The spacing scale.',
+        `<table>${rows(tokens.spacing, (v) => `<span style="display: inline-block; height: 12px; width: ${v}; background: var(--accent)"></span>`)}</table>`,
+      ),
+    ],
+    [
+      'foundations/radius.html',
+      page(
+        'Radius',
+        'Corner radii.',
+        `<table>${rows(tokens.radius, (v) => `<span style="display: inline-block; width: 48px; height: 32px; border: 2px solid var(--accent); border-radius: ${v}"></span>`)}</table>`,
+      ),
+    ],
+    [
+      'foundations/elevation.html',
+      page(
+        'Elevation',
+        'Shadows for raised surfaces.',
+        `<table>${rows(tokens.elevation, (v) => `<span style="display: inline-block; width: 64px; height: 40px; border-radius: 8px; background: var(--page); box-shadow: ${v}"></span>`)}</table>`,
+      ),
+    ],
+    [
+      'foundations/motion.html',
+      page('Motion', 'Durations for transitions.', `<table>${rows(tokens.motion, (v) => `<span>${v}</span>`)}</table>`),
+    ],
+    [
+      'components/button.html',
+      page(
+        'Button',
+        'Primary and secondary actions. Uses the accent colour and radius md.',
+        '<div class="row"><button class="btn btn--primary" type="button">Save</button><button class="btn btn--secondary" type="button">Cancel</button><button class="btn btn--primary" type="button" disabled>Saving…</button></div>',
+      ),
+    ],
+  ];
 }

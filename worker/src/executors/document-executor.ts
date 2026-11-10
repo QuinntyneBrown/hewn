@@ -103,7 +103,7 @@ export const DOCUMENT_STAGES: ReadonlyMap<number, StageDefinition> = new Map([
     {
       skill: 'extracting-design-systems',
       outputs: ['docs/design-system/'],
-      task: 'Extract the design system from docs/mocks/ into docs/design-system/: tokens.json (DTCG) with color.light, color.dark, typography, spacing, radius, elevation and motion, and one page per component under components/. Every colour used in the mocks must match a colour token.',
+      task: 'Extract the design system from docs/mocks/ into docs/design-system/: tokens.json (DTCG) with color.light, color.dark, typography, spacing, radius, elevation and motion; one token page per group under foundations/ (colour, typography, spacing, radius, elevation and motion); and one page per component under components/. Pages follow <html data-theme="light|dark"> as the mocks do. Every colour used in the mocks must match a colour token.',
       commitMessage: 'Extract the design system',
       magicPatterns: 'optional',
       afterAgent: compareWithMagicPatterns,

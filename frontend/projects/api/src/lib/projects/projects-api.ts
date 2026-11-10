@@ -6,6 +6,7 @@ import { toRateLimited } from '../problems/rate-limited';
 import {
   Backlog,
   Designs,
+  DesignSystem,
   IncrementDetail,
   LogLine,
   Project,
@@ -34,6 +35,8 @@ export interface ProjectsApi {
   getIncrement(projectId: string, number: number): Observable<IncrementDetail>;
   /** Every exported screen and state with signed preview URLs; an unreadable manifest is 502 `github_failed`. */
   getDesigns(projectId: string): Observable<Designs>;
+  /** The design system's token and component pages with signed preview URLs; unreadable tokens are 502 `github_failed`. */
+  getDesignSystem(projectId: string): Observable<DesignSystem>;
   /** Adds a feature direction (L2-005). Errors with FieldErrorsProblem when a field rule is broken. */
   submitFeatureDirection(
     projectId: string,
@@ -100,6 +103,12 @@ export class HttpProjectsApi implements ProjectsApi {
 
   getDesigns(projectId: string): Observable<Designs> {
     return this.http.get<Designs>(`/api/projects/${encodeURIComponent(projectId)}/designs`);
+  }
+
+  getDesignSystem(projectId: string): Observable<DesignSystem> {
+    return this.http.get<DesignSystem>(
+      `/api/projects/${encodeURIComponent(projectId)}/design-system`,
+    );
   }
 
   submitFeatureDirection(

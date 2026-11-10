@@ -17,6 +17,32 @@ class DesignsComponent <<Angular>> {
   +theme: Signal<'light' | 'dark'>
   -chosen: Signal<string | null>
 }
+class DesignSystemComponent <<Angular>> {
+  +projectId: input<string>
+  +width: Signal<number>
+  +theme: Signal<'light' | 'dark'>
+  -chosen: Signal<string | null>
+}
+class PreviewControlsComponent <<Angular>> {
+  +width: model<number>
+  +theme: model<'light' | 'dark'>
+}
+class DesignSystemDto {
+  +Sha: string?
+  +Foundations: DesignSystemPageDto[]
+  +Components: DesignSystemPageDto[]
+}
+class DesignSystemPageDto {
+  +Page: string
+  +Title: string
+  +Path: string
+  +PreviewUrl: string
+  +TokenCount: int?
+  +LightAndDark: bool
+}
+class GetDesignSystemHandler <<MediatR>> {
+  +Handle(GetDesignSystemQuery): DesignSystemDto
+}
 class SandboxedPreviewComponent <<Angular>> {
   +url: input<string>
   +width: input<number>
@@ -60,8 +86,16 @@ class PreviewOptions {
 }
 interface IGitHubRepositories {
   +ReadFileAsync(owner, name, path, sha?): RepositoryContent?
+  +ListFilesAsync(owner, name, path, sha): string[]
 }
 DesignsComponent *-- SandboxedPreviewComponent
+DesignsComponent *-- PreviewControlsComponent
+DesignSystemComponent *-- SandboxedPreviewComponent
+DesignSystemComponent *-- PreviewControlsComponent
+DesignSystemComponent ..> DesignSystemDto : GET /api/projects/{id}/design-system
+DesignSystemDto *-- DesignSystemPageDto
+GetDesignSystemHandler ..> PreviewTokens : signs
+GetDesignSystemHandler ..> IGitHubRepositories
 DesignsComponent ..> DesignsDto : GET /api/projects/{id}/designs
 DesignsDto *-- DesignScreenDto
 DesignScreenDto *-- DesignStateDto

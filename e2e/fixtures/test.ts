@@ -4,6 +4,7 @@ import { ProjectPage } from '../pages/project.page';
 import { BacklogPage } from '../pages/backlog.page';
 import { IncrementPage } from '../pages/increment.page';
 import { DesignsPage } from '../pages/designs.page';
+import { DesignSystemPage } from '../pages/design-system.page';
 import { ProjectsPage } from '../pages/projects.page';
 import { SettingsPage } from '../pages/settings.page';
 
@@ -28,6 +29,7 @@ interface Pages {
   backlog: BacklogPage;
   increment: IncrementPage;
   designs: DesignsPage;
+  designSystem: DesignSystemPage;
   settings: SettingsPage;
 }
 
@@ -38,6 +40,7 @@ export const test = base.extend<Pages>({
   backlog: async ({ page }, use) => use(new BacklogPage(page)),
   increment: async ({ page }, use) => use(new IncrementPage(page)),
   designs: async ({ page }, use) => use(new DesignsPage(page)),
+  designSystem: async ({ page }, use) => use(new DesignSystemPage(page)),
   settings: async ({ page }, use) => use(new SettingsPage(page)),
 });
 

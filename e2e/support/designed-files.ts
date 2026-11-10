@@ -66,3 +66,61 @@ export function designedFiles(): Record<string, string> {
     'docs/mocks/reconcile-statement/upload-error.html': mockPage('The statement couldn’t upload'),
   };
 }
+
+/**
+ * A design-system page as stage 3 writes it: themed by `data-theme` on `<html>`, and reporting the theme and width it
+ * sees from inside the preview frame (L2-012 AC4).
+ */
+export function systemPage(title: string, body = ''): string {
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>
+<style>
+html { --accent: #2f6fed; --surface: #ffffff; --text: #14181d; background: var(--surface); color: var(--text); font: 16px system-ui; }
+html[data-theme="dark"] { --accent: #6f9bff; --surface: #14181d; --text: #f4f5f7; }
+main { padding: 24px; } .swatch { display: inline-block; width: 64px; height: 40px; border-radius: 8px; margin-right: 8px; border: 1px solid #8884; }
+.btn { font: inherit; padding: 8px 16px; border-radius: 8px; border: 0; background: var(--accent); color: #fff; }
+</style></head><body><main><h1>${title}</h1>${body}
+<p id="seen">Theme <span data-probe="theme"></span> · <span data-probe="width"></span> px</p></main>
+<script>
+  const show = () => {
+    document.querySelector('[data-probe="theme"]').textContent = document.documentElement.dataset.theme || 'none';
+    document.querySelector('[data-probe="width"]').textContent = String(innerWidth);
+  };
+  show();
+  addEventListener('resize', show);
+</script></body></html>
+`;
+}
+
+/** What stage 3 leaves in docs/design-system/: tokens.json, the token pages and the component pages. */
+export function extractedFiles(): Record<string, string> {
+  const color = (accent: string, surface: string, text: string) => ({
+    accent: { $type: 'color', $value: accent },
+    surface: { $type: 'color', $value: surface },
+    text: { $type: 'color', $value: text },
+  });
+  const tokens = {
+    color: { light: color('#2f6fed', '#ffffff', '#14181d'), dark: color('#6f9bff', '#14181d', '#f4f5f7') },
+    typography: { body: { $type: 'fontFamily', $value: 'system-ui, sans-serif' } },
+    spacing: { '2': { $type: 'dimension', $value: '8px' }, '4': { $type: 'dimension', $value: '16px' } },
+    radius: { md: { $type: 'dimension', $value: '8px' } },
+    elevation: { '1': { $type: 'shadow', $value: '0 1px 2px rgb(0 0 0 / 10%)' } },
+    motion: { fast: { $type: 'duration', $value: '150ms' } },
+  };
+  const swatches =
+    '<p><span class="swatch" style="background: var(--accent)"></span><span class="swatch" style="background: var(--surface)"></span><span class="swatch" style="background: var(--text)"></span></p>';
+  return {
+    'docs/design-system/tokens.json': `${JSON.stringify(tokens, null, 2)}\n`,
+    'docs/design-system/foundations/colour.html': systemPage('Colour', swatches),
+    'docs/design-system/foundations/typography.html': systemPage('Typography', '<p>Reconcile the statement</p>'),
+    'docs/design-system/foundations/spacing.html': systemPage('Spacing'),
+    'docs/design-system/foundations/radius.html': systemPage('Radius'),
+    'docs/design-system/foundations/elevation.html': systemPage('Elevation'),
+    'docs/design-system/foundations/motion.html': systemPage('Motion'),
+    'docs/design-system/components/button.html': systemPage(
+      'Button',
+      '<p><button class="btn" type="button">Save</button></p>',
+    ),
+    'docs/design-system/components/status-badge.html': systemPage('Status badge', '<p>Running · Blocked · Complete</p>'),
+  };
+}

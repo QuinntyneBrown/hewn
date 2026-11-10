@@ -66,6 +66,22 @@ public sealed class GitHubAppRepositories(GitHubAppClient client) : IGitHubRepos
             .ToList();
     }
 
+    public async Task<IReadOnlyList<string>> ListFilesAsync(string owner, string name, string path, string sha, CancellationToken cancellationToken)
+    {
+        var token = await RepositoryTokenAsync(owner, name, cancellationToken);
+        var listing = await GetJsonAsync(token, $"repos/{owner}/{name}/contents/{Uri.EscapeDataString(path.TrimEnd('/')).Replace("%2F", "/", StringComparison.Ordinal)}?ref={sha}", cancellationToken);
+        if (listing is not { ValueKind: JsonValueKind.Array } entries)
+        {
+            return [];
+        }
+
+        return entries.EnumerateArray()
+            .Where(e => e.GetProperty("type").GetString() == "file")
+            .Select(e => e.GetProperty("name").GetString()!)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+    }
+
     public async Task<RepositoryContent?> ReadFileAsync(string owner, string name, string path, string? sha, CancellationToken cancellationToken)
     {
         var token = await RepositoryTokenAsync(owner, name, cancellationToken);

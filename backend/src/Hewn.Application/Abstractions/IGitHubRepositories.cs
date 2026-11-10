@@ -36,6 +36,9 @@ public interface IGitHubRepositories
     /// </summary>
     Task<RepositoryContent?> ReadFileAsync(string owner, string name, string path, string? sha, CancellationToken cancellationToken);
 
+    /// <summary>Names of the files directly under <paramref name="path"/> at commit <paramref name="sha"/>; empty when the path is absent.</summary>
+    Task<IReadOnlyList<string>> ListFilesAsync(string owner, string name, string path, string sha, CancellationToken cancellationToken);
+
     /// <summary>The default branch as a gzipped tarball with one top-level folder, as GitHub serves it.</summary>
     Task<Stream> DownloadArchiveAsync(string owner, string name, CancellationToken cancellationToken);
 

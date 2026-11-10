@@ -30,3 +30,5 @@ e2e/blob-report/
 .cache/
 tools/video-audio/.venv/
 backend/.e2e/
+
+.DS_Store

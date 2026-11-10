@@ -318,3 +318,25 @@ export interface Designs {
   stateCount: number;
   screens: DesignScreen[];
 }
+
+/** A token (foundation) or component page of the design system, on the separate preview origin (L2-012 AC4). */
+export interface DesignSystemPage {
+  /** The file's name without `.html`, such as `status-badge`. */
+  page: string;
+  title: string;
+  /** Such as `docs/design-system/foundations/colour.html`. */
+  path: string;
+  previewUrl: string;
+  /** For a token page, how many tokens its group holds (one theme's for colour); null for a component. */
+  tokenCount: number | null;
+  /** The token group has light and dark values. */
+  lightAndDark: boolean;
+}
+
+/** GET /api/projects/{id}/design-system: the pages stage 3 wrote to `docs/design-system/`, at one commit. */
+export interface DesignSystem {
+  /** The commit everything was read at; null before stage 3. */
+  sha: string | null;
+  foundations: DesignSystemPage[];
+  components: DesignSystemPage[];
+}

@@ -97,38 +97,7 @@
                   >· {{ s.state.label }}</span
                 >
               </h2>
-              <div class="segmented" role="radiogroup" aria-label="Width">
-                @for (w of widths; track w.px) {
-                  <button
-                    class="segmented__opt"
-                    type="button"
-                    role="radio"
-                    [attr.aria-checked]="width() === w.px"
-                    [attr.tabindex]="width() === w.px ? 0 : -1"
-                    [title]="w.px + ' px'"
-                    (click)="width.set(w.px)"
-                    (keydown)="step($event, widthValues, width(), setWidth)"
-                  >
-                    {{ w.size }}
-                  </button>
-                }
-              </div>
-              <div class="segmented" role="radiogroup" aria-label="Theme">
-                @for (t of themes; track t.id) {
-                  <button
-                    class="segmented__opt"
-                    type="button"
-                    role="radio"
-                    [attr.aria-checked]="theme() === t.id"
-                    [attr.tabindex]="theme() === t.id ? 0 : -1"
-                    [attr.aria-label]="t.label"
-                    (click)="theme.set(t.id)"
-                    (keydown)="step($event, themeValues, theme(), setTheme)"
-                  >
-                    <svg hw-icon [name]="t.icon" class="icon--sm"></svg>
-                  </button>
-                }
-              </div>
+              <hw-preview-controls [(width)]="width" [(theme)]="theme" />
               @if (s.screen.magicPatternsUrl) {
                 <a
                   class="btn btn--outline-accent btn--sm"

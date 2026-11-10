@@ -88,7 +88,9 @@ test.describe('Monitor a direction', () => {
     await workers(page, 12_000, { executor: 'scripted', logLines: 240 });
     await submit(newDirection, 'Live log');
 
-    await expect.poll(() => project.logLines.count(), { timeout: 30_000 }).toBeGreaterThan(40);
+    // An idle worker polls every 15 s and the run's first step takes 12 s, so the lines can start nearly 30 s after
+    // submitting; allow for that rather than for how fast they arrive.
+    await expect.poll(() => project.logLines.count(), { timeout: 60_000 }).toBeGreaterThan(40);
     await expect.poll(async () => (await project.logPosition()).atEnd).toBe(true);
 
     await project.scrollLogTo(0);
