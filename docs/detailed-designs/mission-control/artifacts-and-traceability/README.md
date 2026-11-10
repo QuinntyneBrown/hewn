@@ -16,8 +16,9 @@ Terms used in this design:
 
 The slice is two read models fed by stage events and repository indexing.
 
-- **`ArtifactRecorder`** — on `RunSucceeded`, records each output path of the stage with the run's commit SHA and time, and emits `ArtifactRecorded`.
-- **`ArtifactsPage (Angular)`** — groups artifacts by stage, newest stage first; each row links to `https://github.com/{repo}/blob/{sha}/{path}`.
+- **`CommitFilesHandler`** — the GitHub broker that commits a stage's files. It records each commit's SHA, paths and branch in `github_mutations` against the run. No separate artifacts table is kept: once the run succeeds, that commit is the version of the files it holds (L2-034 AC1).
+- **`GetArtifactsHandler`** — `GET /api/projects/{id}/artifacts` reads the commits that succeeded runs made to the default branch and returns each stage's artifacts, newest stage first. Each path's version is the latest such commit. A failed run's commits are ignored, so a retry's commit becomes the version. Commits to `hewn/scaffold` or `feature/*` branches are not listed. The decision log every stage appends to (`docs/decisions.md`) has its own tab, so it is left out. Files in a subfolder of the stage's output folder (`CommitPolicy`) fold into that subfolder, such as `docs/mocks/statements/`, and link as a tree.
+- **`ArtifactsComponent (Angular)`** — `hw-artifacts` on the Artifacts tab (`/projects/{id}/artifacts`). It groups artifacts by stage, newest stage first, and each row shows the path, short SHA and time, and links to `https://github.com/{repo}/blob/{sha}/{path}` (`tree` for a folder). It reads the artifacts again on each `StageChanged` event and has loading, empty and error states.
 - **`TraceIndexer`** — after stages 5, 7, 8 and each increment merge, parses `docs/specs/`, `docs/detailed-designs/*/README.md`, `docs/journeys.md`, test file headers and merged PR titles at the new SHA, and rebuilds the `trace_links` table for the project.
 - **`TraceabilityController`** — `GET /api/projects/{id}/trace?l2=` returns the L2 list and the trace for one ID, including `Deferred` and `NoAcceptanceTest` flags.
 - **`TraceabilityPage (Angular)`** — searchable L2 list with markers for no test and Deferred, and the trace panel with five groups.
@@ -41,7 +42,7 @@ Users read artifacts and traces in Hewn; Hewn reads the underlying files from Gi
 
 ### Containers
 
-Workers report each success with its commit SHA; the Hewn API records artifacts and indexes traces at that SHA.
+Workers commit through the Hewn API's GitHub broker, which records each commit's SHA. The Hewn API derives artifacts from those records and will index traces at that SHA.
 
 ![C4 container view for artifacts and traceability](diagrams/c4-container.png)
 
@@ -59,9 +60,15 @@ A `Requirement` has `TraceLink`s of five kinds. `NoAcceptanceTest` is true when 
 
 ### Behaviour — record artifacts and index traces
 
-The artifact version is the run's commit SHA (L2-034 AC1). Traces are rebuilt at that SHA.
+The artifact version is the commit SHA the broker recorded for a run that succeeded (L2-034 AC1). Traces will be rebuilt at that SHA (L2-035).
 
 ![Sequence diagram: record artifacts and index traces](diagrams/sequence-record-and-index.png)
+
+### Behaviour — view artifacts
+
+The handler keeps only succeeded runs' commits to the default branch, folds subfolders and takes the latest commit per path (L2-034 AC2).
+
+![Sequence diagram: view artifacts](diagrams/sequence-view-artifacts.png)
 
 ### Behaviour — view artifacts and a trace
 

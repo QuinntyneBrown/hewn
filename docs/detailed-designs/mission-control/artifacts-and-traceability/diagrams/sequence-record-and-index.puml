@@ -19,7 +19,7 @@ box "Backend — Worker application" #D1FADF
   participant "WorkerHost" as worker
 end box
 box "Backend — Hewn Application and Domain" #ECFDF3
-  participant "ArtifactRecorder" as rec
+  participant "CommitFilesHandler" as rec
   participant "TraceIndexer" as idx
 end box
 box "Backend — Hewn Infrastructure" #FFF4E5
@@ -28,10 +28,13 @@ end box
 box "External systems" #F2F4F7
   participant "GitHub" as gh
 end box
-worker -> rec : RunSucceeded(stage 5, sha f61a2d8, outputs)
-rec -> db : Insert artifacts (path, sha, time) (L2-034 AC1)
-rec -> rec : Emit ArtifactRecorded
-rec -> idx : RebuildAsync(project, f61a2d8)
+worker -> rec : Commit(stage 5, docs/specs/L1.md, docs/specs/L2.md)
+rec -> gh : Commit to the default branch
+gh --> rec : sha f61a2d8
+rec -> db : Insert github_mutation (sha, paths, branch, time)
+worker -> db : RunSucceeded — the commit is now the artifacts' version (L2-034 AC1)
+note over idx : Planned for L2-035
+db -> idx : RebuildAsync(project, f61a2d8)
 idx -> gh : Read specs, designs, journeys, test headers, PR titles at SHA
 idx -> db : Replace trace_links for project
 @enduml

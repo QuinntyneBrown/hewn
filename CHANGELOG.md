@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Inspect versioned artifacts (journey 16, L2-034): a project's Artifacts tab (`/projects/{id}/artifacts`) lists each
+  stage's artifacts, newest stage first, with path, version (short commit SHA), time and a link that opens the file
+  (or folder) on GitHub at that commit. `GET /api/projects/{id}/artifacts` derives them from the commits succeeded
+  runs made to the default branch; commit records now keep their branch. The tab refreshes when a stage changes.
 - Browse the design system (journey 15, L2-012 AC4): a project's Design system tab (`/projects/{id}/design-system`)
   lists the token pages under `docs/design-system/foundations/`, each with its group's token count, and the component
   pages under `components/`. The chosen page opens in the same sandboxed, separate-origin preview as Designs, at XS to
