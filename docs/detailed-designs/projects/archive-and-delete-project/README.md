@@ -4,24 +4,24 @@
 
 A finished or abandoned project can leave the default Projects list in two ways. *Archive* is the soft path: the project moves under the Archived filter and can be restored. *Delete* is the hard path: Hewn removes its own records, logs and stored artifacts for the project, and leaves the GitHub repository untouched.
 
-Both actions are refused while the project has an active direction (Running, Paused or Blocked). Mission Control shows the row actions disabled with the reason "Cancel the running direction first", and the API refuses the request with the same message. Delete asks the Owner to type the project name exactly before it proceeds.
+Both actions are refused while the project has an active direction (Queued, Running, Paused or Blocked). Mission Control shows the row actions disabled with the reason "Cancel the running direction first", and the API refuses the request with the same message. Delete asks the Owner to type the project name exactly before it proceeds.
 
 Terms used in this design:
 
-- **active direction** — direction whose status is Running, Paused or Blocked
+- **active direction** — direction whose status is Queued, Running, Paused or Blocked (`Direction.IsActive`)
 - **archived project** — project hidden from the default list, shown under the Archived filter, restorable
 
 ## Description
 
 The slice spans the Projects page, the delete dialog, three endpoints and a purge job.
 
-- **`ProjectsPage`** — renders Archive and Delete per row for Owners. On projects with an active direction both render disabled, with the accessible name and tooltip "Cancel the running direction first". The Archived filter lists archived projects with Restore.
+- **`ProjectsPage`** — renders Archive and Delete per row for Owners. On projects with an active direction both render disabled, with the accessible name and tooltip "Cancel the running direction first". The Archived filter lists archived projects with Restore; Viewers see the filter without actions.
 - **`DeleteProjectDialog`** — confirmation dialog. It states that the GitHub repository is kept, enables Delete only when the typed text equals the project name, and shows busy, invalid and failed states.
 - **`ProjectsController`** — `POST /api/projects/{id}/archive`, `POST /api/projects/{id}/restore` and `DELETE /api/projects/{id}` with body `{ confirmName }`. All require the `Owner` policy.
-- **`ArchiveProjectHandler / RestoreProjectHandler`** — set or clear `Project.Archived` after `Project.EnsureNoActiveDirection()`.
+- **`ArchiveProjectHandler / RestoreProjectHandler`** — refuse a project with `Project.HasActiveDirection` (409 `active_direction`), then set or clear `Project.ArchivedAt` and append `ProjectArchived` or `ProjectRestored`.
 - **`DeleteProjectHandler`** — checks the guard and the typed name, marks the project `Deleting`, and enqueues `PurgeProjectJob`.
 - **`PurgeProjectJob`** — background job that deletes the project's directions, runs, events, logs, decisions index, spend records and stored artifacts from Hewn storage. It never calls GitHub.
-- **`Project.EnsureNoActiveDirection`** — domain guard that throws `ActiveDirectionException` with the message "Cancel the running direction first".
+- **`Project.HasActiveDirection`** — true while any direction is active; `Project.Archive` throws if called then, and the handlers answer 409 `active_direction` with the title "Cancel the running direction first".
 
 Audit entries survive the purge, because L2-044 entries cannot be edited or removed through any API. Whether project deletion itself is an audited action is <TO SUPPLY>; L2-044 AC1 does not list it.
 
@@ -70,3 +70,21 @@ The guard refuses projects with an active direction (L2-003 AC2). A mismatched n
 Archive moves the project under the Archived filter; Restore returns it to the default list (L2-003 AC1).
 
 ![Sequence diagram: archive and restore](diagrams/sequence-archive-restore.png)
+
+## Decisions made while archiving and restoring (journey 30)
+
+- **A flag beside the status** ([ADR 0031](../../../adr/0031-archiving-is-a-flag-beside-the-projects-status.md)). `projects.ArchivedAt`
+  and `ArchivedBy` record the archive; the project keeps its status (Idle, Complete or Cancelled). Restore clears
+  them, so the row shows the status it had.
+- **The list filters on the client.** `GET /api/projects` returns every project with `archived`. All, each status
+  tab and the counts leave archived projects out, and `?status=archived` lists only them, as the other filters do
+  (ADR 0016). Archived has no count in the mock, so it shows none.
+- **Queued counts as active.** A queued direction would start while the project was archived, so archiving is
+  refused for it too.
+- **An archived project takes no new direction.** `POST /api/projects/{id}/directions` answers 409
+  `project_archived` ("Restore the project first").
+- **Feedback.** Archive and Restore answer 204 and append `ProjectArchived` or `ProjectRestored`, so every open
+  Projects page gets the changed row live. The Owner sees a success toast (with "Show archived" after archiving),
+  or a danger toast with the API's reason. Both reuse the live-toast mocks, so no new mock was needed.
+- **Activity older than a week** reads as a date ("12 Oct"), as `pages/projects/archived.html` shows.
+- **Delete** (AC3) is journey 31; until then the row shows Archive only.

@@ -14,18 +14,21 @@ title Class structure — Archive and delete a project
 class Project {
   +ProjectId Id
   +string Name
-  +bool Archived
+  +DateTimeOffset? ArchivedAt
+  +string? ArchivedBy
+  +bool IsArchived
+  +bool HasActiveDirection
   +ProjectLifecycle Lifecycle
-  +EnsureNoActiveDirection(): void
-  +Archive(): void
-  +Restore(): void
+  +Archive(login, now): bool
+  +Restore(): bool
   +MarkDeleting(): void
 }
 enum ProjectLifecycle {
   Active
   Deleting
 }
-class ActiveDirectionException {
+class ConflictException {
+  +string Code = "active_direction"
   +string Message = "Cancel the running direction first"
 }
 class DeleteProjectCommand {
@@ -36,7 +39,10 @@ class DeleteProjectHandler {
   +Handle(cmd: DeleteProjectCommand): Task<Result>
 }
 class ArchiveProjectHandler {
-  +Handle(cmd: ArchiveProjectCommand): Task<Result>
+  +Handle(cmd: ArchiveProjectCommand): Task
+}
+class RestoreProjectHandler {
+  +Handle(cmd: RestoreProjectCommand): Task
 }
 class PurgeProjectJob {
   +ProjectId ProjectId
@@ -46,6 +52,8 @@ DeleteProjectHandler ..> DeleteProjectCommand : handles
 DeleteProjectHandler --> Project : guards / marks
 DeleteProjectHandler ..> PurgeProjectJob : enqueues
 ArchiveProjectHandler --> Project : archives
-Project ..> ActiveDirectionException : throws
+RestoreProjectHandler --> Project : restores
+ArchiveProjectHandler ..> ConflictException : throws
+DeleteProjectHandler ..> ConflictException : throws
 Project --> ProjectLifecycle
 @enduml

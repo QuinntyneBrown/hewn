@@ -21,24 +21,36 @@ box "Frontend — Mission Control application" #E0F2FE
 end box
 box "Backend — Hewn API application" #D1FADF
   participant "ProjectsController" as ctrl
+  participant "Mission Control hub" as hub
 end box
 box "Backend — Hewn Application and Domain" #ECFDF3
-  participant "ArchiveProjectHandler" as arch
+  participant "ArchiveProjectHandler / RestoreProjectHandler" as arch
   participant "Project" as proj
 end box
 box "Backend — Hewn Infrastructure" #FFF4E5
   database "Hewn database" as db
 end box
-owner -> page : Press Archive
-page -> ctrl : POST /api/projects/{id}/archive
-ctrl -> arch : ArchiveProjectCommand
-arch -> proj : EnsureNoActiveDirection(); Archive()
-arch -> db : Save
-ctrl --> page : 204; row moves under Archived (L2-003 AC1)
-owner -> page : Open Archived filter; press Restore
+alt a direction is queued, running, paused or blocked
+  page -> page : Archive disabled: "Cancel the running direction first"
+else no active direction
+  owner -> page : Archive
+  page -> ctrl : POST /api/projects/{id}/archive
+  ctrl -> arch : ArchiveProjectCommand
+  arch -> proj : HasActiveDirection
+  alt a direction started meanwhile
+    ctrl --> page : 409 active_direction "Cancel the running direction first" (L2-003 AC2)
+    page -> page : Toast: "{name} wasn't archived"
+  else
+    arch -> proj : Archive(login, now)
+    arch -> db : Append ProjectArchived; save
+    ctrl --> page : 204; toast; the row leaves All (L2-003 AC1)
+    arch -> hub : ProjectSummary {archived: true} to every Projects page
+  end
+end
+owner -> page : Archived filter; Restore
 page -> ctrl : POST /api/projects/{id}/restore
 ctrl -> arch : RestoreProjectCommand
 arch -> proj : Restore()
-arch -> db : Save
-ctrl --> page : 204; row returns to the default list
+arch -> db : Append ProjectRestored; save
+ctrl --> page : 204; the row returns to All
 @enduml

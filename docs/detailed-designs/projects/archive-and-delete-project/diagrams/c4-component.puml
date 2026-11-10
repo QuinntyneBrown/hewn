@@ -9,7 +9,7 @@ Container_Boundary(api_b, "Hewn API") {
   Component(ctrl, "ProjectsController", "ASP.NET Core controller", "Archive, restore, delete endpoints")
   Component(arch, "ArchiveProjectHandler", "Command handler", "Archive and restore")
   Component(del, "DeleteProjectHandler", "Command handler", "Guards, checks typed name, enqueues purge")
-  Component(guard, "Project", "Domain aggregate", "EnsureNoActiveDirection guard")
+  Component(guard, "Project", "Domain aggregate", "HasActiveDirection guard")
   Component(purge, "PurgeProjectJob", "Background job", "Removes Hewn records, logs and artifacts")
 }
 

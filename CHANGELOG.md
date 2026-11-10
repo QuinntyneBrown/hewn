@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Archive and restore a project (journey 30, L2-003 AC1, AC2): an Owner archives a project with no active direction
+  from its row on the Projects page. It leaves All and the status tabs, appears under the new Archived filter, and
+  Restore brings it back. Archive is disabled with "Cancel the running direction first" while a direction is queued,
+  running, paused or blocked. `POST /api/projects/{id}/archive` answers 409 `active_direction` then. An archived
+  project takes no new direction until restored. Activity older than a week reads as a date.
 - Update project skills (journey 29, L2-008): when Greenlit's default branch is ahead of `.hewn/skills.lock`, an Owner
   sees "Skills update available (n commits)" on the project page; Viewers don't. Update skills lists the commits and
   opens a pull request on `hewn/update-skills-{short-sha}` that updates the skill files and the lock. It merges once
