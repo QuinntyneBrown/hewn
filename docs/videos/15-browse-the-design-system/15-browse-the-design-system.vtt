@@ -1,0 +1,229 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:06.98
+This is journey fifteen of Hewn, the software factory: browse the design system.
+
+00:00:06.98 --> 00:00:12.81
+Stage three extracts a design system from the exported mocks, with tokens for colour,
+
+00:00:12.81 --> 00:00:18.01
+type, spacing, radius, elevation and motion, and a page for every component.
+
+00:00:18.01 --> 00:00:23.15
+Owners and Viewers want to look through it without leaving Mission Control,
+
+00:00:23.15 --> 00:00:24.59
+in light and in dark.
+
+00:00:24.59 --> 00:00:29.39
+This video walks through how it was built: the design system endpoint,
+
+00:00:29.39 --> 00:00:34.73
+the token pages stage three now writes, the tab that reuses journey fourteen's
+
+00:00:34.73 --> 00:00:36.99
+sandboxed preview, and the tests.
+
+00:00:38.14 --> 00:00:44.13
+A user opens a project's Design system and sees its token pages under Foundations
+
+00:00:44.13 --> 00:00:47.16
+and its component pages under Components.
+
+00:00:47.16 --> 00:00:51.81
+Choosing one opens it in the same sandboxed preview as Designs,
+
+00:00:51.81 --> 00:00:56.98
+served from the separate preview origin, at any width from X S to X L,
+
+00:00:56.98 --> 00:00:58.24
+in light or dark.
+
+00:00:59.39 --> 00:01:00.58
+Here is the flow.
+
+00:01:00.58 --> 00:01:03.58
+The tab asks the API for the design system.
+
+00:01:03.58 --> 00:01:08.05
+The API reads tokens dot json at the head of the default branch,
+
+00:01:08.05 --> 00:01:11.96
+lists the token and component pages at that same commit,
+
+00:01:11.96 --> 00:01:14.33
+and signs one preview link for it.
+
+00:01:14.33 --> 00:01:19.99
+The frame then loads each page from the preview host that journey fourteen built,
+
+00:01:19.99 --> 00:01:21.38
+in the same sandbox.
+
+00:01:22.53 --> 00:01:25.13
+The new pieces sit beside the old ones.
+
+00:01:25.13 --> 00:01:30.80
+A design system component and a design system handler are new; the sandboxed preview,
+
+00:01:30.80 --> 00:01:34.87
+the preview tokens and the preview host are reused unchanged,
+
+00:01:34.87 --> 00:01:40.41
+and the width and theme controls moved into a small component that both tabs share.
+
+00:01:41.56 --> 00:01:45.44
+Stage three writes no manifest, so the folders are the list.
+
+00:01:45.44 --> 00:01:49.97
+A project has a design system once tokens dot json exists at the head.
+
+00:01:49.97 --> 00:01:55.28
+The handler reads it, then lists the files under foundations and components at the
+
+00:01:55.28 --> 00:02:00.13
+commit it was read at, so one signed token covers every page and its links.
+
+00:02:00.13 --> 00:02:04.27
+If the tokens can't be parsed, or GitHub can't list the folders,
+
+00:02:04.27 --> 00:02:07.50
+the answer is a five oh two that names the commit.
+
+00:02:07.85 --> 00:02:12.05
+Token pages come in the order of the token groups, colour first,
+
+00:02:12.05 --> 00:02:14.28
+each with its group's token count.
+
+00:02:14.28 --> 00:02:19.59
+Colour has light and dark values, so it counts one theme and says light and dark.
+
+00:02:20.74 --> 00:02:23.93
+The token pages come from stage three itself.
+
+00:02:23.93 --> 00:02:28.40
+Its task now asks for a page per token group under foundations,
+
+00:02:28.40 --> 00:02:33.09
+following the html element's data theme attribute as the mocks do.
+
+00:02:33.09 --> 00:02:39.12
+The scripted agent the tests and videos use writes them from the tokens it extracted,
+
+00:02:39.12 --> 00:02:42.18
+with the dark values under data theme dark.
+
+00:02:43.33 --> 00:02:48.00
+In Mission Control, the tab shows the page's title with its token count,
+
+00:02:48.00 --> 00:02:53.19
+the shared width and theme controls, and the same sandboxed preview component as
+
+00:02:53.19 --> 00:02:53.71
+Designs.
+
+00:02:53.71 --> 00:02:59.10
+The caption says it was served from the preview origin in the same sandboxed frame,
+
+00:02:59.10 --> 00:03:01.37
+at what width, and from which path.
+
+00:03:02.52 --> 00:03:07.08
+Here is what the preview host answers for the colour page in dark.
+
+00:03:07.08 --> 00:03:12.81
+A sandbox content security policy, no sniffing, no referrer, a short private cache,
+
+00:03:12.81 --> 00:03:14.26
+and no cookie at all.
+
+00:03:14.26 --> 00:03:18.05
+The page runs in an opaque origin on another host name,
+
+00:03:18.05 --> 00:03:21.85
+so it can't reach Mission Control's cookies or storage.
+
+00:03:23.00 --> 00:03:28.14
+The backend tests came first, and failed with not found: there was no route.
+
+00:03:28.14 --> 00:03:32.80
+Six tests now cover the listing in the token order, the token counts,
+
+00:03:32.80 --> 00:03:37.40
+both kinds of page opening in the same sandbox with their own links,
+
+00:03:37.40 --> 00:03:41.52
+a project before stage three, unreadable tokens, and Viewers.
+
+00:03:41.87 --> 00:03:47.45
+End to end, a test checks the frame's source is on the preview origin and sandboxed,
+
+00:03:47.45 --> 00:03:52.83
+reads the theme and background inside the real frame as it switches from light to
+
+00:03:52.83 --> 00:03:57.42
+dark, then opens a component page that keeps the theme and the width.
+
+00:03:57.77 --> 00:04:01.75
+All green, the backend has two hundred and twenty eight tests,
+
+00:04:01.75 --> 00:04:06.62
+the worker one hundred and forty four, and the frontend four new view tests.
+
+00:04:06.62 --> 00:04:10.41
+End to end, there are twelve new tests: four for behaviour,
+
+00:04:10.41 --> 00:04:14.90
+four visual comparisons with the mocks, and four accessibility checks.
+
+00:04:16.05 --> 00:04:20.89
+Here is Kiln Booking, after a real worker ran stages zero to three.
+
+00:04:20.89 --> 00:04:25.15
+Its Design system tab lists six token pages and the button.
+
+00:04:25.15 --> 00:04:30.49
+Typography, spacing, then colour, in dark, then the button, back to light,
+
+00:04:30.49 --> 00:04:31.65
+and phone width.
+
+00:04:32.00 --> 00:04:37.31
+The colour tokens in light, then in dark, where every swatch takes its dark value
+
+00:04:37.31 --> 00:04:38.36
+from the tokens.
+
+00:04:38.36 --> 00:04:43.47
+The button in dark, then in light, with the accent colour following the theme.
+
+00:04:43.82 --> 00:04:48.02
+The tab works in Mission Control's dark mode and on a phone.
+
+00:04:48.02 --> 00:04:52.35
+A project before stage three says it has no design system yet,
+
+00:04:52.35 --> 00:04:56.41
+while unreadable tokens name their commit, with try again.
+
+00:04:57.56 --> 00:04:59.54
+Journey fifteen is complete.
+
+00:04:59.54 --> 00:05:05.33
+The design system tab lists token and component pages from the folders stage three
+
+00:05:05.33 --> 00:05:08.58
+wrote, with token counts from tokens dot json.
+
+00:05:08.58 --> 00:05:13.25
+Every page opens in the same signed, sandboxed preview as Designs,
+
+00:05:13.25 --> 00:05:14.52
+on its own origin.
+
+00:05:14.52 --> 00:05:19.61
+And light and dark, and every width, work just as they do for the mocks.
+
+00:05:19.61 --> 00:05:21.52
+Next comes journey sixteen.

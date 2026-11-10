@@ -1,0 +1,8 @@
+GET /preview/{token}/docs/design-system/foundations/colour.html?theme=dark
+200 OK
+content-type: text/html
+content-security-policy: sandbox allow-scripts
+x-content-type-options: nosniff
+referrer-policy: no-referrer
+cache-control: private, max-age=300
+set-cookie: (none)
