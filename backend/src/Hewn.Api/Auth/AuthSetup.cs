@@ -24,6 +24,7 @@ public static class AuthSetup
                 o.LoginPath = "/sign-in";
                 o.Events.OnRedirectToLogin = ctx => Challenge(ctx, StatusCodes.Status401Unauthorized);
                 o.Events.OnRedirectToAccessDenied = ctx => Challenge(ctx, StatusCodes.Status403Forbidden);
+                o.Events.OnValidatePrincipal = RefuseSignedOutSessions;
             })
             .AddScheme<AuthenticationSchemeOptions, WorkerTokenAuthenticationHandler>(WorkerTokenAuthenticationHandler.SchemeName, null);
 
@@ -34,10 +35,27 @@ public static class AuthSetup
         return services;
     }
 
+    /// <summary>The session's id, so signing out can refuse the cookie if it is replayed (L2-038 AC3).</summary>
+    public const string SessionIdClaim = "hewn:sid";
+
     public static ClaimsPrincipal Principal(AllowListEntry entry) =>
         new(new ClaimsIdentity(
-            [new Claim(ClaimTypes.Name, entry.Login), new Claim(ClaimTypes.Role, entry.Role.ToString())],
+            [
+                new Claim(ClaimTypes.Name, entry.Login),
+                new Claim(ClaimTypes.Role, entry.Role.ToString()),
+                new Claim(SessionIdClaim, Guid.NewGuid().ToString()),
+            ],
             CookieAuthenticationDefaults.AuthenticationScheme));
+
+    private static async Task RefuseSignedOutSessions(CookieValidatePrincipalContext ctx)
+    {
+        var sid = ctx.Principal?.FindFirstValue(SessionIdClaim);
+        var mediator = ctx.HttpContext.RequestServices.GetRequiredService<MediatR.IMediator>();
+        if (!Guid.TryParse(sid, out var id) || await mediator.Send(new Hewn.Application.Auth.IsSessionRevokedQuery(id), ctx.HttpContext.RequestAborted))
+        {
+            ctx.RejectPrincipal();
+        }
+    }
 
     public static AuthenticationProperties SessionProperties(TimeProvider clock) => new()
     {

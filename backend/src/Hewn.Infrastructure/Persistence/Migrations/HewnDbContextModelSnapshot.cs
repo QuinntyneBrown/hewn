@@ -460,6 +460,19 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.ToTable("projects", (string)null);
                 });
 
+            modelBuilder.Entity("Hewn.Domain.RevokedSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("ExpiresAt")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("revoked_sessions", (string)null);
+                });
+
             modelBuilder.Entity("Hewn.Domain.Run", b =>
                 {
                     b.Property<Guid>("Id")

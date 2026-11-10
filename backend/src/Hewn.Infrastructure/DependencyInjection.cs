@@ -24,6 +24,12 @@ public static class DependencyInjection
             o.PrivateKey = configuration["HEWN_GITHUB_APP_PRIVATE_KEY"];
         });
 
+        services.Configure<GitHubOAuthOptions>(o =>
+        {
+            o.ClientId = configuration["HEWN_GITHUB_CLIENT_ID"];
+            o.ClientSecret = configuration["HEWN_GITHUB_CLIENT_SECRET"];
+        });
+
         services.Configure<SpendOptions>(o =>
         {
             if (decimal.TryParse(configuration["HEWN_DEFAULT_BUDGET_USD"], System.Globalization.CultureInfo.InvariantCulture, out var budget) && budget > 0)
@@ -95,9 +101,11 @@ public static class DependencyInjection
             services.AddSingleton<InMemoryGitHub>(sp => new InMemoryGitHub(configuration));
             services.AddSingleton<IGitHubRepositoryProbe>(sp => sp.GetRequiredService<InMemoryGitHub>());
             services.AddSingleton<IGitHubRepositories>(sp => sp.GetRequiredService<InMemoryGitHub>());
+            services.AddSingleton<IGitHubIdentity, FakeGitHubIdentity>();
         }
         else
         {
+            services.AddHttpClient<IGitHubIdentity, GitHubOAuthIdentity>();
             services.AddHttpClient<GitHubAppClient>();
             services.AddScoped<IGitHubRepositoryProbe, GitHubAppRepositoryProbe>();
             services.AddScoped<IGitHubRepositories, GitHubAppRepositories>();

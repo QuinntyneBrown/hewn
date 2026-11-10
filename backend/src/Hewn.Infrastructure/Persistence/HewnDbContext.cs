@@ -8,6 +8,8 @@ public sealed class HewnDbContext(DbContextOptions<HewnDbContext> options) : DbC
 {
     public DbSet<AllowListEntry> AllowList => Set<AllowListEntry>();
 
+    public DbSet<RevokedSession> RevokedSessions => Set<RevokedSession>();
+
     public DbSet<Project> Projects => Set<Project>();
 
     public DbSet<Direction> Directions => Set<Direction>();
