@@ -6,6 +6,7 @@ import {
   playerTime,
   playerValueText,
   pullRequestMeta,
+  videoFolder,
   videoPlaceholder,
 } from './increment-view';
 
@@ -264,6 +265,10 @@ describe('the increment video (L2-023)', () => {
     expect(
       videoPlaceholder(detail({ video: 'Recorded', videoNote: 'docs/videos/reconcile/' })),
     ).toBeNull();
+    expect(videoFolder(detail({ video: 'Recorded', videoNote: 'docs/videos/reconcile/' }))).toBe(
+      'docs/videos/reconcile/',
+    );
+    expect(videoFolder(detail({ video: 'Failed', videoNote: 'browser crashed' }))).toBeNull();
   });
 
   it('says why the video failed, and that the pull request went ahead', () => {

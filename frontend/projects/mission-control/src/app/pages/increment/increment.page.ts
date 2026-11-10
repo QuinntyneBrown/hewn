@@ -17,7 +17,13 @@ import {
   switchMap,
 } from 'rxjs';
 import { incrementLook } from '../project/backlog-view';
-import { checkLine, incrementTimeline, pullRequestMeta, videoPlaceholder } from './increment-view';
+import {
+  checkLine,
+  incrementTimeline,
+  pullRequestMeta,
+  videoFolder,
+  videoPlaceholder,
+} from './increment-view';
 import { IncrementVideoComponent } from './increment-video.component';
 
 type Loaded =
@@ -114,6 +120,11 @@ export class IncrementPage {
   protected readonly placeholder = computed(() => {
     const increment = this.increment();
     return increment ? videoPlaceholder(increment) : null;
+  });
+
+  protected readonly folder = computed(() => {
+    const increment = this.increment();
+    return increment ? videoFolder(increment) : null;
   });
 
   protected readonly timeline = computed(() => {

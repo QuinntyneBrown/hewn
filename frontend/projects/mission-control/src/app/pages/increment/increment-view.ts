@@ -248,3 +248,8 @@ export function videoPlaceholder(
         : 'The walkthrough records once every test is green.',
   };
 }
+
+/** The recorded video's folder, as the worker reports it (`docs/videos/{slug}/`), for the player's footer. */
+export function videoFolder(d: IncrementDetail): string | null {
+  return d.video === 'Recorded' && d.videoNote?.startsWith('docs/videos/') ? d.videoNote : null;
+}
