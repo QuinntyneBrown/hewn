@@ -16,6 +16,12 @@ public sealed class LeaseService(IAppDbContext db, TimeProvider clock)
     /// <summary>Leases the oldest queued run whose project has no lease, or returns null when there is none.</summary>
     public async Task<Run?> TryLeaseAsync(string workerId, CancellationToken cancellationToken)
     {
+        // A held lease request may outlive its worker's revocation (L2-041 AC2): a revoked worker leases nothing.
+        if (await db.Workers.AnyAsync(w => w.Id == workerId && w.RevokedAt != null, cancellationToken))
+        {
+            return null;
+        }
+
         for (var attempt = 0; attempt < Attempts; attempt++)
         {
             var due = clock.GetUtcNow();

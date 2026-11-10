@@ -9,7 +9,8 @@ using Microsoft.Extensions.Options;
 
 namespace Hewn.Application.Pipeline;
 
-public sealed record RegisterWorkerCommand(string Name, string Location, string Host, string Version) : IRequest<string>;
+/// <summary><c>TokenId</c> is the issued token the worker connected with; null for the configured development token.</summary>
+public sealed record RegisterWorkerCommand(string Name, string Location, string Host, string Version, string? TokenId = null) : IRequest<string>;
 
 public sealed class RegisterWorkerValidator : AbstractValidator<RegisterWorkerCommand>
 {
@@ -27,7 +28,7 @@ public sealed class RegisterWorkerHandler(IAppDbContext db, IWorkersNotifier wor
 {
     public async Task<string> Handle(RegisterWorkerCommand command, CancellationToken cancellationToken)
     {
-        var worker = new Worker(command.Name, Enum.Parse<WorkerLocation>(command.Location, ignoreCase: true), command.Host, command.Version, clock.GetUtcNow());
+        var worker = new Worker(command.Name, Enum.Parse<WorkerLocation>(command.Location, ignoreCase: true), command.Host, command.Version, clock.GetUtcNow(), command.TokenId);
         db.Workers.Add(worker);
         await db.SaveChangesAsync(cancellationToken);
         await workers.WorkersChangedAsync(cancellationToken);

@@ -8,8 +8,9 @@ public sealed class Worker
         Id = Name = Host = Version = string.Empty;
     }
 
-    public Worker(string name, WorkerLocation location, string host, string version, DateTimeOffset now)
+    public Worker(string name, WorkerLocation location, string host, string version, DateTimeOffset now, string? tokenId = null)
     {
+        TokenId = tokenId;
         Id = $"wkr_{Guid.NewGuid():N}"[..16];
         Name = name;
         Location = location;
@@ -35,6 +36,14 @@ public sealed class Worker
     public DateTimeOffset RegisteredAt { get; private set; }
 
     public DateTimeOffset LastSeenAt { get; private set; }
+
+    /// <summary>The issued token it registered with; null for the API's configured development token.</summary>
+    public string? TokenId { get; private set; }
+
+    /// <summary>Set when its token is revoked (L2-041 AC2); a revoked worker leaves Workers and leases nothing.</summary>
+    public DateTimeOffset? RevokedAt { get; private set; }
+
+    public void Revoke(DateTimeOffset now) => RevokedAt ??= now;
 
     public void Seen(DateTimeOffset now, WorkerStatus status)
     {

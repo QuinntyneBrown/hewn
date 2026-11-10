@@ -65,7 +65,7 @@ public sealed class GetWorkersHandler(IAppDbContext db, TimeProvider clock) : IR
     public async Task<WorkersDto> Handle(GetWorkersQuery query, CancellationToken cancellationToken)
     {
         var leasing = await Leasing.ReadAsync(db, cancellationToken);
-        var workers = await db.Workers.AsNoTracking().OrderBy(w => w.Name).ToListAsync(cancellationToken);
+        var workers = await db.Workers.AsNoTracking().Where(w => w.RevokedAt == null).OrderBy(w => w.Name).ToListAsync(cancellationToken);
         var runs = await db.Runs.AsNoTracking()
             .Where(r => r.WorkerId != null && (r.Status == RunStatus.Leased || r.Status == RunStatus.Halted))
             .Join(db.Projects, r => r.ProjectId, p => p.Id, (r, p) => new { r.WorkerId, r.Status, r.ProjectId, ProjectName = p.Name, r.Stage })

@@ -10,6 +10,8 @@ public sealed class HewnDbContext(DbContextOptions<HewnDbContext> options) : DbC
 
     public DbSet<RevokedSession> RevokedSessions => Set<RevokedSession>();
 
+    public DbSet<WorkerToken> WorkerTokens => Set<WorkerToken>();
+
     public DbSet<Project> Projects => Set<Project>();
 
     public DbSet<Direction> Directions => Set<Direction>();
