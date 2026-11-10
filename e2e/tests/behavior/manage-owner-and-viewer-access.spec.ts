@@ -13,6 +13,8 @@ test.describe('Manage Owner and Viewer access', () => {
     await signIn(page, 'quinntynebrown');
     await settings.open();
     await expect(settings.accessRow('quinntynebrown').remove).toHaveCount(0);
+    await expect(signInPage.sidebarNav).toHaveText(['Dashboard', 'Projects', 'Workers', 'Audit', 'Settings']);
+    await expect(signInPage.newDirection).toBeVisible();
 
     await settings.fillAdd(login.toUpperCase());
     await expect(settings.addViewer).toBeChecked();
@@ -27,6 +29,8 @@ test.describe('Manage Owner and Viewer access', () => {
     await signInPage.continueWithGitHub.click();
     await signInPage.authorizeOnGitHub(login);
     await expect(page.locator('.sidebar__foot')).toContainText(`${login}Viewer`);
+    await expect(signInPage.sidebarNav).toHaveText(['Dashboard', 'Projects', 'Workers', 'Settings']);
+    await expect(signInPage.newDirection).toHaveCount(0);
     await settings.open();
     await expect(settings.addLogin).toHaveCount(0);
     await expect(settings.accessRows.getByRole('button')).toHaveCount(0);
