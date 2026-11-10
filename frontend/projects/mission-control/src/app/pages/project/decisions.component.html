@@ -1,0 +1,126 @@
+<div class="pad section">
+  <div class="narrow">
+    <div class="cluster cluster--between" style="align-items: flex-end">
+      <div>
+        <h2 class="section__title">Decisions</h2>
+        <p class="section__desc">
+          Every question a skill would have asked you, answered by the agent from the direction and
+          the artifacts. Recorded in <code>docs/decisions.md</code>.
+        </p>
+      </div>
+      <label class="inline-label"
+        >Stage
+        <select class="select select--auto input--sm" (change)="choose($event)">
+          <option value="" [selected]="filter() === undefined">All stages</option>
+          @for (s of stages; track s.number) {
+            <option [value]="s.number" [selected]="filter() === s.number">{{ s.name }}</option>
+          }
+        </select></label
+      >
+    </div>
+    @switch (loaded().state) {
+      @case ('loading') {
+        <div aria-busy="true" aria-live="polite">
+          <p class="visually-hidden">Loading decisions</p>
+          @for (n of [1, 2, 3, 4]; track n) {
+            <div class="decision" aria-hidden="true">
+              <span class="stack stack--sm"
+                ><span class="skeleton skeleton--w75" aria-hidden="true"></span
+                ><span class="skeleton skeleton--w50" aria-hidden="true"></span></span
+              ><span class="stack stack--sm"
+                ><span class="skeleton skeleton--line" aria-hidden="true"></span
+                ><span class="skeleton skeleton--w75" aria-hidden="true"></span
+                ><span class="skeleton skeleton--w66" aria-hidden="true"></span
+              ></span>
+            </div>
+          }
+        </div>
+      }
+      @case ('error') {
+        <div class="empty empty--error" role="alert">
+          <svg hw-icon name="warning"></svg>
+          <div>
+            <h2 class="empty__title">Decisions couldn’t load</h2>
+            <p class="empty__text">{{ $any(loaded()).message }}</p>
+          </div>
+          <div class="cluster">
+            <button class="btn" type="button" (click)="retry()">
+              <svg hw-icon name="refresh"></svg>Try again
+            </button>
+          </div>
+        </div>
+      }
+      @default {
+        @let list = $any(loaded()).decisions.decisions;
+        @if (list.length) {
+          <ol class="mt-6">
+            @for (d of list; track d.id) {
+              <li class="decision">
+                <div class="decision__when">
+                  <span class="text-muted">{{ recordedText(d.recordedAt) }}</span
+                  ><span class="text-subtle">{{ d.stageName }}</span>
+                </div>
+                <div class="truncate" style="white-space: normal">
+                  <p class="decision__q">{{ d.question }}</p>
+                  <p class="decision__a">{{ d.answer }}</p>
+                  @if (d.rationale) {
+                    <p class="decision__why">{{ d.rationale }}</p>
+                  }
+                  @if (d.commitUrl || d.adr) {
+                    <div class="decision__links">
+                      @if (d.commitUrl) {
+                        <a
+                          class="quiet-link mono"
+                          [href]="d.commitUrl"
+                          target="_blank"
+                          rel="noopener"
+                          [attr.aria-label]="commitLabel(d.commit)"
+                          ><svg hw-icon name="commit" class="icon--xs"></svg>
+                          {{ d.commit.slice(0, 7) }}</a
+                        >
+                      }
+                      @if (d.adr) {
+                        @if (d.adr.url) {
+                          <a class="quiet-link" [href]="d.adr.url" target="_blank" rel="noopener"
+                            ><svg hw-icon name="file" class="icon--xs"></svg> {{ d.adr.title }}</a
+                          >
+                        } @else {
+                          <span class="quiet-link"
+                            ><svg hw-icon name="file" class="icon--xs"></svg>
+                            {{ d.adr.title }}</span
+                          >
+                        }
+                      }
+                    </div>
+                  }
+                </div>
+              </li>
+            }
+          </ol>
+        } @else if (filter() !== undefined) {
+          <div class="empty empty--tight">
+            <svg hw-icon name="search"></svg>
+            <div>
+              <h2 class="empty__title">No decisions in {{ filterName() }}</h2>
+              <p class="empty__text">The agent didn’t need to decide anything during that stage.</p>
+            </div>
+            <a class="btn" [routerLink]="['/projects', projectId(), 'decisions']"
+              >Show all stages</a
+            >
+          </div>
+        } @else {
+          <div class="empty">
+            <svg hw-icon name="commit"></svg>
+            <div>
+              <h2 class="empty__title">No decisions yet</h2>
+              <p class="empty__text">
+                When a skill would ask you something, the agent answers it and records the answer
+                here with its reasoning. None so far.
+              </p>
+            </div>
+          </div>
+        }
+      }
+    }
+  </div>
+</div>

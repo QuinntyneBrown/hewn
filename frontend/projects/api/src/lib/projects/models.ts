@@ -406,3 +406,24 @@ export interface Traceability {
   commit: string | null;
   requirements: RequirementTrace[];
 }
+
+/** GET /api/projects/{id}/decisions: the project's decisions, newest first (L2-054 AC3). */
+export interface Decisions {
+  repository: string | null;
+  decisions: ProjectDecision[];
+}
+
+export interface ProjectDecision {
+  id: number;
+  stage: number;
+  stageName: string;
+  question: string;
+  answer: string;
+  rationale: string;
+  recordedAt: string;
+  /** The commit that recorded the decision in docs/decisions.md; null if none did. */
+  commit: string | null;
+  commitUrl: string | null;
+  /** The ADR the decision also wrote (L2-054 AC2). */
+  adr: { path: string; title: string; url: string | null } | null;
+}

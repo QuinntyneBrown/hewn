@@ -6,6 +6,7 @@ import { toRateLimited } from '../problems/rate-limited';
 import {
   Artifacts,
   Traceability,
+  Decisions,
   Backlog,
   Designs,
   DesignSystem,
@@ -43,6 +44,8 @@ export interface ProjectsApi {
   getArtifacts(projectId: string): Observable<Artifacts>;
   /** Every L2 with its L1, designs, journeys, tests and pull requests (L2-035). */
   getTraceability(projectId: string): Observable<Traceability>;
+  /** L2-054 AC3: newest first, of one stage when `stage` is set. */
+  getDecisions(projectId: string, stage?: number): Observable<Decisions>;
   /** Adds a feature direction (L2-005). Errors with FieldErrorsProblem when a field rule is broken. */
   submitFeatureDirection(
     projectId: string,
@@ -115,6 +118,12 @@ export class HttpProjectsApi implements ProjectsApi {
     return this.http.get<Traceability>(
       `/api/projects/${encodeURIComponent(projectId)}/traceability`,
     );
+  }
+
+  getDecisions(projectId: string, stage?: number): Observable<Decisions> {
+    return this.http.get<Decisions>(`/api/projects/${encodeURIComponent(projectId)}/decisions`, {
+      params: stage === undefined ? {} : { stage },
+    });
   }
 
   getArtifacts(projectId: string): Observable<Artifacts> {
