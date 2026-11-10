@@ -69,7 +69,7 @@ def _sidebar(role="owner", conn="live", stopped=False, current="dashboard", uid=
     who, rl, ini = ("quinntynebrown", "Owner", "QB") if owner else ("ama-osei", "Viewer", "AO")
     b = f'<div class="sidebar__brand">{wordmark("", "#overview", "Hewn, go to dashboard")}</div>' if brand else ""
     f = (f'<div class="sidebar__foot"><div class="conn">{_conn(conn)}<span class="tabular text-subtle">{"0" if stopped else "3"} of 4 workers</span></div>{stop}'
-         f'<div class="user"><span class="avatar" aria-hidden="true">{ini}</span><div class="truncate"><div class="user__name truncate">{who}</div><div class="user__role">{rl}</div></div></div></div>') if foot else ""
+         f'<div class="user"><span class="avatar" aria-hidden="true">{ini}</span><div class="truncate"><div class="user__name truncate">{who}</div><div class="user__role">{rl}</div></div><a class="btn btn--ghost btn--icon btn--sm" href="#overview" aria-label="Sign out" title="Sign out" style="margin-left: auto">{icon("log-out", "icon--sm")}</a></div></div>') if foot else ""
     label = "Primary"
     return (f'<div class="sidebar" style="min-height: 0;">{b}{cta}<nav class="sidebar__nav" aria-label="{label}">{nav}</nav>'
             f'{sec}{projects}</ul>{f}</div>')
@@ -229,7 +229,7 @@ SPECS["sidebar-nav"] = {
                  ("Navigation", "<code>&lt;nav class=\"sidebar__nav\" aria-label=\"Primary\"&gt;</code> of <code>.nav-link</code>s: 20px icon, label, optional count badge."),
                  ("Section label", "<code>.sidebar__section</code>, overline type, labels the list with <code>aria-labelledby</code>."),
                  ("Active directions", "<code>.sidebar__projects</code> of <code>.side-project</code>: status icon, truncating name, hidden status word, tabular percent."),
-                 ("Footer", "<code>.sidebar__foot</code>: <code>.conn</code>, Stop all workers, <code>.user</code> with avatar, name and role.")]),
+                 ("Footer", "<code>.sidebar__foot</code>: <code>.conn</code>, Stop all workers, <code>.user</code> with avatar, name and role, and a ghost icon button, Sign out, that ends the session and opens sign-in's signed-out state.")]),
     "variants": f"""<p>The role decides what is shown. Owners get the primary action, Audit and Stop all workers; Viewers get neither the actions nor Audit, rather than disabled copies of them.</p>
 {ex(_SB_VARIANTS, "Owner (quinntynebrown) on the Dashboard; Viewer (ama-osei) on Projects: no New direction, no Audit, no Stop all workers.")}
 <h3>Footer states</h3>

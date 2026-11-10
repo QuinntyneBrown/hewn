@@ -63,7 +63,7 @@ python3 .claude/skills/writing-html-mocks/scripts/screenshot_mocks.py docs/mocks
 - **Settings is not in the Magic Patterns prototype.** It is designed here from L2-038 (allow list), L2-040 (secrets), L2-048 (theme) and L2-053 (budgets), using the prototype's components. It should go back into Magic Patterns as a frame.
 - **The light theme is derived.** Magic Patterns only defines dark. Light keeps the same hues on a stone canvas and passes AA.
 - **The Owner is "Owner", the second role is "Viewer"**, matching AGENTS.md. Viewers can change their own theme and nothing else (no dashboard layout editing either).
-- **Sign-out is a sign-in state** (`signed-out`), not its own page.
+- **Sign-out is a sign-in state** (`signed-out`), not its own page. It is reached from the Sign out icon button beside the signed-in user at the foot of the sidebar (added to the Magic Patterns shell for journey 20).
 - **Dashboard layout editing is desktop-only** (≥ 992 px). Below that the tiles stack and the Edit button is hidden.
 - **The design preview** is shown as a schematic, because the real preview is a sandboxed iframe on a separate origin (L2-011), which a mock opened from disk can't reproduce.
 - **Delete is typed-confirmation** and is only offered on projects that are not Running, Paused or Blocked. Archive is the soft alternative.
