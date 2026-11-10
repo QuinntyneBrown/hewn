@@ -228,7 +228,9 @@ describe('stage 10, Increments', () => {
     ]);
     expect(h.pulls[0]!.title).toBe('Sign in (journey 1, L2-001)');
     expect(h.pulls[0]!.head).toBe('feature/sign-in');
-    expect(h.pulls[0]!.body).toContain('[Video](docs/videos/sign-in/sign-in.mp4)');
+    expect(h.pulls[0]!.body).toContain(
+      '[Video](https://github.com/hewn-builds/kiln/blob/c0ffee/docs/videos/sign-in/sign-in.mp4)',
+    );
     expect(h.pulls[0]!.body).toContain('Red recorded: 1 new acceptance tests failed on the test commit.');
     expect(h.merges).toEqual(['i1/merge-1']);
   });

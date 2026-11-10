@@ -124,10 +124,11 @@ export class IncrementStageExecutor implements StageExecutor {
     const commitChanges = async (step: StepKey, message: string) => {
       const now = snapshot(directory);
       const paths = [...now.keys()].filter((p) => now.get(p) !== committed.get(p));
-      if (paths.length === 0) return;
-      await context.commit(step, message, read(directory, paths), branch);
+      if (paths.length === 0) return undefined;
+      const sha = await context.commit(step, message, read(directory, paths), branch);
       committed = now;
       if (paths.includes(DECISIONS)) await reportDecisions();
+      return sha;
     };
 
     try {
@@ -191,8 +192,12 @@ export class IncrementStageExecutor implements StageExecutor {
 
       // Video (L2-023 AC1, AC3): tried at most twice, never blocking the increment.
       const video = await this.video(leased, directory, slug, task('video'), signal);
-      if ('path' in video) await commitChanges(key('video'), `Record the video for ${increment.title}`);
-      else {
+      if ('path' in video) {
+        // L2-023 AC2: a relative link in a PR body resolves under /pull/N, so link the file at the commit that holds it.
+        const sha = await commitChanges(key('video'), `Record the video for ${increment.title}`);
+        const repository = leased.project.repository;
+        if (sha && repository) video.url = `https://github.com/${repository}/blob/${sha}/${video.path}`;
+      } else {
         rmSync(join(directory, 'docs/videos', slug), { recursive: true, force: true });
         await context.log('warn', `Increment ${n}: video failed: ${video.failed}`);
       }
@@ -302,7 +307,7 @@ export class IncrementStageExecutor implements StageExecutor {
     slug: string,
     task: IncrementTask,
     signal: AbortSignal,
-  ): Promise<{ path: string } | { failed: string }> {
+  ): Promise<{ path: string; url?: string } | { failed: string }> {
     let reason = 'unknown';
     for (let attempt = 1; attempt <= VIDEO_ATTEMPTS; attempt++) {
       try {
