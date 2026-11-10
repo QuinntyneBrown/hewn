@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 22 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="22" data-video-title="Connect a GitHub repository" data-parts="Introduction|Goal|Existing repository|New repository|Scoped tokens|Protection|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 22</div>
+  <h1>Connect a GitHub repository</h1>
+  <p class="lead">Use an existing repository, or get a protected private one.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video walks through how that works">
+  <figure><img src="screens/project-complete.png" alt="Kiln Scheduler complete, its repository hewn-builds/kiln-scheduler linked under the title"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="An existing repository must be a GitHub URL">
+  <ul class="bullets">
+    <li>An existing repository must be writable (L2-001 AC4)</li>
+    <li>Otherwise stage 0 creates it private; stage 6 protects it (L2-036 AC1, AC2)</li>
+    <li>Every token is limited to the project's repository (AC3)</li>
+  </ul>
+</section>
+
+<section id="submit" data-part="2" data-cue="When the Owner submits, the URL is checked first">
+  <div class="code-file">backend/src/Hewn.Application/Projects/SubmitProductDirection.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="3,7-9,11-13">    private async Task EnsureWritableAsync(RepositoryRef repository, CancellationToken cancellationToken)
+    {
+        var access = await gitHub.ProbeAsync(repository.Owner, repository.Name, cancellationToken);
+        var fullName = $"{repository.Owner}/{repository.Name}";
+        switch (access)
+        {
+            case RepositoryAccess.NotFound:
+                throw new FieldValidationException(
+                    [new FieldError("repositoryUrl", $"Hewn can’t find {fullName} on GitHub. Check the URL, or leave this empty to create one.", "Hewn can’t find this repository")],
+                    "repository_not_found");
+            case RepositoryAccess.NoAccess:
+                throw new FieldValidationException(
+                    [new FieldError("repositoryUrl", $"Hewn’s GitHub App can’t write to {fullName}. Install the app on that repository, or leave this empty to create one.", "Hewn can’t write to this repository")],
+                    "repository_not_writable");
+        }
+    }</pre>
+</section>
+
+<section id="clip-existing" data-part="2" data-cue="Here the Owner names a repository the App isn't installed on." data-clip="clips/existing-repository.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">northwind/handover is refused; acme/handover connects</aside>
+</section>
+
+<section id="flow" data-part="3" data-cue="Here is the flow when there is no repository.">
+  <figure class="diagram"><img src="../../detailed-designs/source-control/connect-to-github/diagrams/sequence-provision.png" alt="Sequence diagram: on the first stage 0 lease the provisioner looks up the kebab-case name, creates it private with an administration-only token, tags it with a repository token; after stage 6 the protect handler requires the checks"></figure>
+</section>
+
+<section id="clip-new" data-part="3" data-cue="Here, Kiln Scheduler is submitted with no repository." data-clip="clips/new-repository.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Stage 0 creates hewn-builds/kiln-scheduler</aside>
+</section>
+
+<section id="record" data-part="3" data-cue="The fake GitHub keeps the record.">
+  <div class="code-file">The fake GitHub's record, after the run (screens/records.json)</div>
+  <pre class="code tight" data-lang="json" data-mark="5,10-14">GET /api/fakes/github/hewn-builds/kiln-scheduler
+{
+  "owner": "hewn-builds",
+  "name": "kiln-scheduler",
+  "private": true,
+  "topics": [
+    "hewn"
+  ],
+  "requiredChecks": [
+    "backend",
+    "frontend",
+    "e2e"
+  ]
+}</pre>
+</section>
+
+<section id="repo-token" data-part="4" data-cue="This is the change journey twenty two made.">
+  <div class="code-file">backend/src/Hewn.Infrastructure/GitHub/GitHubAppClient.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="11-12">        using var lookup = Request(HttpMethod.Get, $"repos/{owner}/{repo}/installation", jwt);
+        using var installationResponse = await http.SendAsync(lookup, cancellationToken);
+        if (installationResponse.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        installationResponse.EnsureSuccessStatusCode();
+        var installation = await installationResponse.Content.ReadFromJsonAsync&lt;Installation&gt;(cancellationToken);
+
+        using var exchange = Request(HttpMethod.Post, $"app/installations/{installation!.Id}/access_tokens", jwt);
+        exchange.Content = JsonContent.Create(new { repositories = new[] { repo } });
+        using var tokenResponse = await http.SendAsync(exchange, cancellationToken);
+        tokenResponse.EnsureSuccessStatusCode();
+        var token = await tokenResponse.Content.ReadFromJsonAsync&lt;AccessToken&gt;(cancellationToken);
+        return token!.Token;</pre>
+</section>
+
+<section id="account-token" data-part="4" data-cue="Creating a repository can't name it yet.">
+  <div class="code-file">backend/src/Hewn.Infrastructure/GitHub/GitHubAppClient.cs · before</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1-2">        using var exchange = Request(HttpMethod.Post, $"app/installations/{installation.Id}/access_tokens", jwt);
+        using var tokenResponse = await http.SendAsync(exchange, cancellationToken);
+        tokenResponse.EnsureSuccessStatusCode();
+        return (await tokenResponse.Content.ReadFromJsonAsync&lt;AccessToken&gt;(cancellationToken))!.Token;</pre>
+  <div class="code-file">backend/src/Hewn.Infrastructure/GitHub/GitHubAppClient.cs · now</div>
+  <pre class="code tight" data-lang="csharp" data-mark="2">        using var exchange = Request(HttpMethod.Post, $"app/installations/{installation.Id}/access_tokens", jwt);
+        exchange.Content = JsonContent.Create(new { permissions = new { administration = "write" } });
+        using var tokenResponse = await http.SendAsync(exchange, cancellationToken);
+        tokenResponse.EnsureSuccessStatusCode();
+        return (await tokenResponse.Content.ReadFromJsonAsync&lt;AccessToken&gt;(cancellationToken))!.Token;
+    }</pre>
+</section>
+
+<section id="create" data-part="4" data-cue="And it's used for one call.">
+  <div class="code-file">backend/src/Hewn.Infrastructure/GitHub/GitHubAppRepositories.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,5,9-10,12">        var token = await client.GetAccountTokenAsync(owner, cancellationToken)
+            ?? throw new GitHubException($"Hewn's GitHub App is not installed on {owner}, so it cannot create {owner}/{name}.");
+
+        using var created = await client.SendAsRepositoryAsync(
+            HttpMethod.Post, $"orgs/{owner}/repos", token, cancellationToken,
+            new { name, description, @private = true, auto_init = true });
+        Ensure(created, $"create {owner}/{name}");
+
+        // From here on, only a token limited to the new repository (L2-036 AC3).
+        var repositoryToken = await RepositoryTokenAsync(owner, name, cancellationToken);
+        using var topics = await client.SendAsRepositoryAsync(
+            HttpMethod.Put, $"repos/{owner}/{name}/topics", repositoryToken, cancellationToken, new { names = new[] { "hewn" } });
+        Ensure(topics, $"tag {owner}/{name}");
+        return new GitHubRepositoryInfo(owner, name, true, ["hewn"], 1);
+    }</pre>
+</section>
+
+<section id="protect" data-part="5" data-cue="Branch protection is a request the worker makes">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/PullRequestCommands.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="6,12,14">public sealed class ProtectDefaultBranchHandler(IAppDbContext db, LeaseService leases, IGitHubRepositories gitHub, TimeProvider clock)
+    : IRequestHandler&lt;ProtectDefaultBranchCommand&gt;
+{
+    public async Task Handle(ProtectDefaultBranchCommand command, CancellationToken cancellationToken)
+    {
+        var run = await leases.FenceAsync(command.RunId, command.WorkerId, command.Epoch, cancellationToken);
+        if (await MutationLedger.FindAsync(db, command.IdempotencyKey, cancellationToken) is not null)
+        {
+            return;
+        }
+
+        CommitPolicy.EnsureProtectAllowed(run.Stage);
+        var project = await RunProject.RequireRepositoryAsync(db, run, cancellationToken);
+        await gitHub.ProtectDefaultBranchAsync(project.RepositoryOwner!, project.RepositoryName!, command.Checks, cancellationToken);
+        await MutationLedger.RecordAsync(db, run, command.IdempotencyKey, "protect_branch", new { checks = command.Checks }, clock, cancellationToken);
+    }</pre>
+</section>
+
+<section id="test" data-part="6" data-cue="The new tests record every token exchange">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/GitHub/InstallationTokenScopeTests.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="8-9">    public async Task Creating_a_repository_uses_a_token_that_can_only_administer_repositories_and_then_one_for_the_new_repository()
+    {
+        var (repositories, _, gitHub) = Create();
+
+        await repositories.CreatePrivateAsync("acme", "shop", "A shop", CancellationToken.None);
+
+        var calls = gitHub.RepositoryCalls().ToList();
+        Assert.Equal(("POST orgs/acme/repos", """{"permissions":{"administration":"write"}}"""), calls[0]);
+        Assert.Equal(("PUT repos/acme/shop/topics", OnlyShop), calls[1]);
+        Assert.Equal(2, calls.Count);
+    }</pre>
+  <div class="result red">✘ Expected {"permissions":{"administration":"write"}} · Actual "" (no scope)</div>
+  <div class="result green">✔ 3 passed · backend 279 of 279</div>
+</section>
+
+<section id="e2e" data-part="6" data-cue="End to end, the run pipeline test now reads">
+  <div class="code-file">e2e/tests/pipeline/run-direction.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="4-6">    // Stage 0 creates a private repository; the link appears without a reload.
+    const repository = `hewn-builds/${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    await expect(project.repository).toHaveText(repository, { timeout: 60_000 });
+    const created = await project.gitHubRepository(repository);
+    expect(created.private).toBe(true);
+    expect(created.topics).toContain('hewn');</pre>
+  <div class="code-file">e2e/tests/pipeline/run-direction.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2">    // Stage 6 left the default branch requiring the scaffold's CI checks.
+    expect((await project.gitHubRepository(repository)).requiredChecks).toEqual(['backend', 'frontend', 'e2e']);</pre>
+</section>
+
+<section id="screens" data-part="7" data-cue="The repository error reads the same in dark mode">
+  <div class="cols">
+    <figure><img src="screens/repo-no-access-dark.png" alt="New direction in dark mode with the error: Hewn's GitHub App can't write to northwind/handover"></figure>
+    <figure class="phone"><img src="screens/repo-no-access-phone.png" alt="New direction on a phone with the repository error"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="8" data-cue="Journey twenty two is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>An existing repository must be writable</li>
+    <li>Otherwise stage 0 creates it private; stage 6 protects it</li>
+    <li>Every token is limited to one repository</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

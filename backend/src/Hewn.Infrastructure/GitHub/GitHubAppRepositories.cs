@@ -6,8 +6,8 @@ using Hewn.Application.Abstractions;
 namespace Hewn.Infrastructure.GitHub;
 
 /// <summary>
-/// Repository operations as the Hewn GitHub App: account tokens to create repositories, repository-scoped
-/// tokens for everything else, and the Git Data API for commits. Errors carry GitHub's status and message only.
+/// Repository operations as the Hewn GitHub App: an account token that can only administer repositories to create
+/// one, and tokens limited to the one repository for everything else, and the Git Data API for commits. Errors carry GitHub's status and message only.
 /// </summary>
 public sealed class GitHubAppRepositories(GitHubAppClient client) : IGitHubRepositories
 {
@@ -44,8 +44,10 @@ public sealed class GitHubAppRepositories(GitHubAppClient client) : IGitHubRepos
             new { name, description, @private = true, auto_init = true });
         Ensure(created, $"create {owner}/{name}");
 
+        // From here on, only a token limited to the new repository (L2-036 AC3).
+        var repositoryToken = await RepositoryTokenAsync(owner, name, cancellationToken);
         using var topics = await client.SendAsRepositoryAsync(
-            HttpMethod.Put, $"repos/{owner}/{name}/topics", token, cancellationToken, new { names = new[] { "hewn" } });
+            HttpMethod.Put, $"repos/{owner}/{name}/topics", repositoryToken, cancellationToken, new { names = new[] { "hewn" } });
         Ensure(topics, $"tag {owner}/{name}");
         return new GitHubRepositoryInfo(owner, name, true, ["hewn"], 1);
     }

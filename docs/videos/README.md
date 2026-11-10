@@ -35,6 +35,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 19 | [Watch an increment demonstration](19-watch-an-increment-demonstration/README.md) | ~4:54 | Journey 19 |
 | 20 | [Sign in and sign out](20-sign-in-and-sign-out/README.md) | ~4:40 | Journey 20 |
 | 21 | [Manage Owner and Viewer access](21-manage-owner-and-viewer-access/README.md) | ~4:07 | Journey 21 |
+| 22 | [Connect a GitHub repository](22-connect-a-github-repository/README.md) | ~4:19 | Journey 22 |
 
 ## Voice
 

@@ -44,7 +44,10 @@ public sealed class GitHubAppClient(HttpClient http, IOptions<GitHubAppOptions> 
         return token!.Token;
     }
 
-    /// <summary>Returns an installation token for an account (to create repositories), or null when the App is not installed there.</summary>
+    /// <summary>
+    /// Returns an installation token for an account that can only administer repositories, which is what creating one
+    /// needs, or null when the App is not installed there. Everything after creation uses a repository token (L2-036 AC3).
+    /// </summary>
     public async Task<string?> GetAccountTokenAsync(string owner, CancellationToken cancellationToken)
     {
         if (!_options.IsConfigured)
@@ -71,6 +74,7 @@ public sealed class GitHubAppClient(HttpClient http, IOptions<GitHubAppOptions> 
         }
 
         using var exchange = Request(HttpMethod.Post, $"app/installations/{installation.Id}/access_tokens", jwt);
+        exchange.Content = JsonContent.Create(new { permissions = new { administration = "write" } });
         using var tokenResponse = await http.SendAsync(exchange, cancellationToken);
         tokenResponse.EnsureSuccessStatusCode();
         return (await tokenResponse.Content.ReadFromJsonAsync<AccessToken>(cancellationToken))!.Token;

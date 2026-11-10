@@ -51,6 +51,13 @@ app.MapMissionControl();
 
 if (app.Configuration.GetValue<bool>("Hewn:Fakes:Enabled"))
 {
+    // The e2e stack and demos only: a repository as the fake GitHub holds it, so a test can see that stage 0 made it
+    // private and stage 6 protected its default branch (L2-036).
+    app.MapGet("/api/fakes/github/{owner}/{name}", (string owner, string name, Hewn.Infrastructure.Fakes.InMemoryGitHub gitHub) =>
+        gitHub.Repository(owner, name) is { } repository
+            ? Results.Ok(new { repository.Owner, repository.Name, Private = repository.IsPrivate, Topics = repository.Topics.ToList(), RequiredChecks = repository.RequiredChecks.ToList() })
+            : Results.NotFound());
+
     // The e2e stack and demos only: what the fake GitHub holds, so a test can see a pull request's labels.
     app.MapGet("/api/fakes/github/{owner}/{name}/pulls", (string owner, string name, Hewn.Infrastructure.Fakes.InMemoryGitHub gitHub) =>
         gitHub.Repository(owner, name) is { } repository

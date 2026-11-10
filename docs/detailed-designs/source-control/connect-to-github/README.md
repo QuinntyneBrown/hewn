@@ -29,7 +29,7 @@ The slice is a set of API services; workers call them and never call GitHub.
 - **`RepoNameFormatter`** — lowercases, replaces runs of non-alphanumerics with one hyphen and trims hyphens.
 - **`BranchProtectionConfigurer`** — invoked when stage 6 succeeds; requires the stack template's CI checks on the default branch ([Scaffold the solution](../../stages/scaffold-solution/README.md)).
 
-The GitHub App's exact permission set (contents, pull requests, checks, administration for branch protection) is <TO SUPPLY> until the App is registered.
+The GitHub App's permissions are set out in [ADR 0024](../../../adr/0024-installation-tokens-are-limited-to-one-repository.md): repository Administration, Contents and Pull requests (write), Checks, Commit statuses and Metadata (read).
 
 Routing pushes through the API costs latency and bandwidth: a Local worker pushes through the cloud API, and a large repository makes the proxy the bottleneck. The design accepts this for what it buys: no GitHub credential in any worker, one fencing point for every write, and ref-level control over what a run may push. `git-upload-pack` (fetch and clone) goes through the same proxy so that workers need no read token either.
 
@@ -97,3 +97,25 @@ Journey 1, part 3 built L2-036 AC1 and AC3 for stage 0.
 - **Fakes.** `InMemoryGitHub` serves both tests and the e2e stack (`Hewn:Fakes:Enabled`), replacing the
   scripted probe. The real `GitHubAppRepositories` is unverified against live GitHub until the App is
   registered.
+
+## Decisions made while connecting a repository
+
+Journey 22 checked L2-001 AC4 and L2-036 AC1 and AC2, which earlier journeys built, and finished AC3
+([ADR 0024](../../../adr/0024-installation-tokens-are-limited-to-one-repository.md)).
+
+- **The token that creates a repository can only administer repositories.** `GetAccountTokenAsync` asks for
+  `permissions: {administration: write}`; it used to ask for the installation's every permission. Tagging the new
+  repository already uses a token limited to it, like every other call.
+- **No `RepositoryTokenBroker` or token cache.** `GitHubAppClient` exchanges a fresh token, with
+  `repositories: [name]`, for each operation. Caching tokens for their hour is deferred until GitHub's rate limit
+  calls for it.
+- **Repository tokens carry the App's repository permissions.** They are limited to the one repository, not
+  narrowed per call.
+- **Protection is a worker mutation.** The scaffold executor sends `protect_branch` after merging the scaffold;
+  `ProtectDefaultBranchHandler` fences the lease and refuses it outside stage 6 (there is no
+  `BranchProtectionConfigurer`).
+- **Repositories are created under an organization** (`POST orgs/{owner}/repos`). A GitHub App's installation
+  token can't create a repository under a personal account.
+- **Tests.** `InstallationTokenScopeTests` records each token exchange against a stub GitHub and checks every
+  call's scope. The fake GitHub serves `GET /api/fakes/github/{owner}/{name}` in the e2e stack, and the run
+  pipeline test checks the new repository is private and its default branch requires the scaffold's checks.
