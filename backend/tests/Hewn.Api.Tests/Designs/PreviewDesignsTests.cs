@@ -198,7 +198,7 @@ public sealed class PreviewDesignsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
         var problem = await HewnClient.ReadJsonAsync(response);
         Assert.Equal("github_failed", problem.GetProperty("code").GetString());
-        Assert.Equal($"docs/mocks/manifest.json couldn't be read at {head[..7]}", problem.GetProperty("title").GetString());
+        Assert.Equal($"docs/mocks/manifest.json couldn’t be read at {head[..7]}", problem.GetProperty("title").GetString());
     }
 
     [Fact]

@@ -1,0 +1,174 @@
+@switch (loaded().state) {
+  @case ('loading') {
+    <div class="pad section">
+      <div class="split split--nav">
+        <div aria-busy="true" aria-live="polite">
+          <p class="visually-hidden">Loading designs</p>
+          <div class="stack">
+            @for (n of [1, 2, 3, 4, 5, 6, 7, 8]; track n) {
+              <span class="skeleton skeleton--line" aria-hidden="true"></span>
+            }
+          </div>
+        </div>
+        <div class="stack">
+          <span class="skeleton skeleton--w50" aria-hidden="true"></span>
+          <span class="skeleton skeleton--block" style="height: 24rem" aria-hidden="true"></span>
+        </div>
+      </div>
+    </div>
+  }
+  @case ('error') {
+    <div class="pad">
+      <div class="empty empty--error" role="alert">
+        <svg hw-icon name="warning"></svg>
+        <div>
+          <h2 class="empty__title">Designs couldn’t load</h2>
+          <p class="empty__text">{{ $any(loaded()).message }}</p>
+        </div>
+        <div class="cluster">
+          <button class="btn" type="button" (click)="retry()">Try again</button>
+          <a class="btn btn--ghost" [routerLink]="['/projects', projectId()]">Open the pipeline</a>
+        </div>
+      </div>
+    </div>
+  }
+  @default {
+    @if (selected(); as s) {
+      <div class="pad section">
+        <div class="split split--nav">
+          <nav aria-label="Screens and states" class="truncate" style="white-space: normal">
+            <p class="text-caption">{{ caption() }}</p>
+            <ul class="stack mt-3">
+              @for (screen of designs()!.screens; track screen.screen) {
+                <li>
+                  <div class="text-sm" style="font-weight: var(--font-weight-medium)">
+                    {{ screen.title }}
+                  </div>
+                  <ul class="state-list">
+                    @for (state of screen.states; track state.path) {
+                      <li class="state-item">
+                        <a
+                          class="state-link"
+                          href="#preview"
+                          [attr.aria-current]="state.path === s.state.path ? 'true' : null"
+                          (click)="choose(state.path, $event)"
+                          ><span class="state-thumb" aria-hidden="true"
+                            ><span></span><span></span><span></span
+                            ><iframe
+                              sandbox="allow-scripts"
+                              referrerpolicy="no-referrer"
+                              loading="lazy"
+                              tabindex="-1"
+                              [title]="'Thumbnail of ' + screen.title + ' · ' + state.label"
+                              [src]="thumbnail(state.previewUrl)"
+                            ></iframe></span
+                          >{{ state.label }}</a
+                        >
+                        @if (screen.magicPatternsUrl) {
+                          <a
+                            class="state-mp"
+                            [href]="screen.magicPatternsUrl"
+                            target="_blank"
+                            rel="noopener"
+                            [attr.aria-label]="
+                              'Open ' + screen.title + ' · ' + state.label + ' in Magic Patterns'
+                            "
+                            title="Open in Magic Patterns"
+                            ><svg hw-icon name="externalLink" class="icon--xs"></svg
+                          ></a>
+                        }
+                      </li>
+                    }
+                  </ul>
+                </li>
+              }
+            </ul>
+          </nav>
+          <section
+            aria-label="Preview"
+            class="truncate"
+            style="white-space: normal; overflow: visible"
+            id="preview"
+          >
+            <div class="cluster">
+              <h2 class="section__title" style="margin-right: auto">
+                {{ s.screen.title }}
+                <span class="text-muted" style="font-weight: var(--font-weight-regular)"
+                  >· {{ s.state.label }}</span
+                >
+              </h2>
+              <div class="segmented" role="radiogroup" aria-label="Width">
+                @for (w of widths; track w.px) {
+                  <button
+                    class="segmented__opt"
+                    type="button"
+                    role="radio"
+                    [attr.aria-checked]="width() === w.px"
+                    [attr.tabindex]="width() === w.px ? 0 : -1"
+                    [title]="w.px + ' px'"
+                    (click)="width.set(w.px)"
+                    (keydown)="step($event, widthValues, width(), setWidth)"
+                  >
+                    {{ w.size }}
+                  </button>
+                }
+              </div>
+              <div class="segmented" role="radiogroup" aria-label="Theme">
+                @for (t of themes; track t.id) {
+                  <button
+                    class="segmented__opt"
+                    type="button"
+                    role="radio"
+                    [attr.aria-checked]="theme() === t.id"
+                    [attr.tabindex]="theme() === t.id ? 0 : -1"
+                    [attr.aria-label]="t.label"
+                    (click)="theme.set(t.id)"
+                    (keydown)="step($event, themeValues, theme(), setTheme)"
+                  >
+                    <svg hw-icon [name]="t.icon" class="icon--sm"></svg>
+                  </button>
+                }
+              </div>
+              @if (s.screen.magicPatternsUrl) {
+                <a
+                  class="btn btn--outline-accent btn--sm"
+                  [href]="s.screen.magicPatternsUrl"
+                  target="_blank"
+                  rel="noopener"
+                  >Open in Magic Patterns<svg hw-icon name="externalLink" class="icon--sm"></svg
+                ></a>
+              }
+            </div>
+            <div class="preview">
+              <hw-sandboxed-preview
+                [url]="s.state.previewUrl"
+                [width]="width()"
+                [theme]="theme()"
+                [label]="label()"
+              />
+            </div>
+            <p class="text-caption cluster mt-3">
+              <svg hw-icon name="shieldCheck" class="icon--xs"></svg> Served from {{ host() }} in a
+              sandboxed frame · {{ width() }} px · <span class="mono">{{ s.state.path }}</span>
+            </p>
+          </section>
+        </div>
+      </div>
+    } @else {
+      <div class="pad section">
+        <div class="empty">
+          <svg hw-icon name="layout"></svg>
+          <div>
+            <h2 class="empty__title">No designs yet</h2>
+            <p class="empty__text">
+              Stage 2 designs every screen and state in Magic Patterns and exports them to
+              docs/mocks/.
+              {{ projectName() }} hasn’t reached it yet.
+            </p>
+          </div>
+          <a class="btn" [routerLink]="['/projects', projectId()]">Open the pipeline</a>
+        </div>
+      </div>
+    }
+  }
+}

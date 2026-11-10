@@ -40,7 +40,7 @@ public sealed class GetDesignsHandler(IAppDbContext db, IGitHubRepositories gitH
         }
         catch (GitHubException)
         {
-            throw new GitHubException($"{Manifest} couldn't be read");
+            throw new GitHubException($"{Manifest} couldn’t be read");
         }
 
         if (manifest is null)
@@ -55,7 +55,7 @@ public sealed class GetDesignsHandler(IAppDbContext db, IGitHubRepositories gitH
         }
         catch (JsonException)
         {
-            throw new GitHubException($"{Manifest} couldn't be read at {manifest.Sha[..7]}");
+            throw new GitHubException($"{Manifest} couldn’t be read at {manifest.Sha[..7]}");
         }
 
         var token = tokens.Sign(project.Id, manifest.Sha);
