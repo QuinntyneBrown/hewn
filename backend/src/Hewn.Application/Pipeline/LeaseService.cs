@@ -1,4 +1,5 @@
 using Hewn.Application.Abstractions;
+using Hewn.Application.Events;
 using Hewn.Domain;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,7 +10,7 @@ namespace Hewn.Application.Pipeline;
 /// Leased only if no other run of the same project is leased, so at most one worker holds a project (L2-026 AC4).
 /// Every grant raises the run's epoch; LeaseEpoch is a concurrency token, so a write based on an older read fails.
 /// </summary>
-public sealed class LeaseService(IAppDbContext db, TimeProvider clock, RunWriteLock locks)
+public sealed class LeaseService(IAppDbContext db, TimeProvider clock, RunWriteLock locks, EventAppender events)
 {
     private const int Attempts = 5;
 
@@ -78,6 +79,10 @@ public sealed class LeaseService(IAppDbContext db, TimeProvider clock, RunWriteL
         return run;
     }
 
+    /// <summary>"after step 2", or "from the start" before any checkpoint.</summary>
+    public static string After(int checkpointStep) =>
+        checkpointStep > 0 ? $"after step {checkpointStep}" : "from the start";
+
     /// <summary>
     /// Fences a GitHub write and holds the run's write lock until the result is disposed, so the lease cannot be
     /// moved between the fence check and the write's saved record.
@@ -109,13 +114,24 @@ public sealed class LeaseService(IAppDbContext db, TimeProvider clock, RunWriteL
         {
             // Waits for a write in flight under this lease; a heartbeat that renewed it meanwhile keeps it.
             using var held = await locks.HoldAsync(runId, cancellationToken);
-            expired += await db.Runs
-                .Where(r => r.Id == runId && r.Status == RunStatus.Leased && r.LeaseExpiresAt < now)
-                .ExecuteUpdateAsync(set => set
-                    .SetProperty(r => r.Status, RunStatus.Queued)
-                    .SetProperty(r => r.WorkerId, (string?)null)
-                    .SetProperty(r => r.LeaseExpiresAt, (DateTimeOffset?)null),
-                    cancellationToken);
+            var run = await db.Runs.SingleOrDefaultAsync(
+                r => r.Id == runId && r.Status == RunStatus.Leased && r.LeaseExpiresAt < now, cancellationToken);
+            if (run is null)
+            {
+                continue;
+            }
+
+            var worker = await db.Workers.AsNoTracking().Where(w => w.Id == run.WorkerId).Select(w => w.Name)
+                .FirstOrDefaultAsync(cancellationToken) ?? run.WorkerId;
+            await events.LockAsync(run.ProjectId, cancellationToken);
+            run.ExpireLease();
+            await RunLog.InfoAsync(
+                db, events, run,
+                $"Lease expired: no heartbeat from {worker} for {Run.LeaseDuration.TotalSeconds:0} seconds; queued again {After(run.CheckpointStep)}",
+                now, cancellationToken);
+            await db.SaveChangesAsync(cancellationToken);
+            await events.PublishAsync(cancellationToken);
+            expired++;
         }
 
         return expired;

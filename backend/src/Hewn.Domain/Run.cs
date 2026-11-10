@@ -94,6 +94,14 @@ public sealed class Run
         }
     }
 
+    /// <summary>No heartbeat for 60 seconds: back to the queue with its checkpoint, for another worker (L2-026 AC3).</summary>
+    public void ExpireLease()
+    {
+        Status = RunStatus.Queued;
+        WorkerId = null;
+        LeaseExpiresAt = null;
+    }
+
     /// <summary>Releases the lease and keeps the checkpoint, so a resume carries on from the last completed step.</summary>
     public void Pause()
     {
