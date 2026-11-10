@@ -44,6 +44,8 @@ export interface ReportedDecision {
   question: string;
   answer: string;
   rationale: string;
+  /** The ADR the decision also wrote, as docs/adr/NNNN-slug.md (L2-054 AC2). */
+  adr?: string;
 }
 
 export interface ScopeReport {

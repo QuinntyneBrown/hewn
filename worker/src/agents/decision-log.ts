@@ -96,7 +96,7 @@ export function linkedAdrs(directory: string): string[] {
 }
 
 /** Decisions in the log text, in order; entries that are missing a field are skipped. */
-export function parseDecisions(text: string): { question: string; answer: string; rationale: string }[] {
+export function parseDecisions(text: string): { question: string; answer: string; rationale: string; adr?: string }[] {
   return text
     .split(/^## /m)
     .slice(1)
@@ -104,7 +104,9 @@ export function parseDecisions(text: string): { question: string; answer: string
       const question = /\*\*Question:\*\*\s*(.+)/.exec(entry)?.[1]?.trim();
       const answer = /\*\*Answer:\*\*\s*(.+)/.exec(entry)?.[1]?.trim();
       const rationale = /\*\*Rationale:\*\*\s*(.+)/.exec(entry)?.[1]?.trim() ?? '';
-      return question && answer ? [{ question, answer, rationale }] : [];
+      // L2-054 AC2: the ADR an architecture decision links, as docs/adr/NNNN-slug.md.
+      const adr = /\*\*ADR:\*\*.*\]\(adr\/(\d{4}-[a-z0-9-]+\.md)\)/.exec(entry)?.[1];
+      return question && answer ? [{ question, answer, rationale, ...(adr ? { adr: `docs/adr/${adr}` } : {}) }] : [];
     });
 }
 
