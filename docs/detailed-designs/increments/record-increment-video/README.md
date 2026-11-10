@@ -60,6 +60,12 @@ A valid video is saved with its script (L2-023 AC1) and linked from the PR (AC2)
 
 ![Sequence diagram: record or fail the video](diagrams/sequence-record.png)
 
+### Behaviour — play the video
+
+The increment page asks the API for the video and its captions; the API reads both from GitHub at the stage 10 commit that recorded them (AC2, ADR 0021). A failed video shows its reason instead (AC3).
+
+![Sequence diagram: play the video, or say why there is none](diagrams/sequence-play.png)
+
 ## Decisions made while building the slice
 
 - The agent runs `creating-videos`; the worker then checks `docs/videos/{slug}/` for `{slug}.mp4`, `{slug}.vtt`

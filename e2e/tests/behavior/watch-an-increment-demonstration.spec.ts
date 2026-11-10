@@ -78,6 +78,7 @@ test.describe('Watch an increment demonstration', () => {
     await expect(increment.video).toHaveCount(0);
     await expect(increment.step('Video failed').detail).toContainText('browser crashed during capture');
     await expect(increment.pullRequest).toBeVisible();
+    await expect(increment.body).toContainText('Video failed: browser crashed during capture');
   });
 
   test('before green, and when Blocked, the page says when a walkthrough is recorded', async ({ page, increment }) => {

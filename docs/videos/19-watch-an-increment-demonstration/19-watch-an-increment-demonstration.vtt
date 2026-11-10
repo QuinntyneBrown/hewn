@@ -1,0 +1,235 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:06.19
+This is journey nineteen of Hewn, the software factory: watch an increment
+
+00:00:06.19 --> 00:00:07.07
+demonstration.
+
+00:00:07.07 --> 00:00:12.40
+Once an increment's tests are green, stage ten records a short captioned walkthrough
+
+00:00:12.40 --> 00:00:16.70
+of it in the running app and commits it to the product's repository.
+
+00:00:16.70 --> 00:00:21.90
+Owners and Viewers want to watch that walkthrough without leaving Mission Control,
+
+00:00:21.90 --> 00:00:24.81
+and when it couldn't be recorded, to know why.
+
+00:00:24.81 --> 00:00:29.94
+This video walks through how it was built: serving the video from the repository,
+
+00:00:29.94 --> 00:00:33.05
+the player, the pull request link, and the tests.
+
+00:00:34.20 --> 00:00:39.44
+A user opens an increment and plays its walkthrough right on the page, with captions,
+
+00:00:39.44 --> 00:00:42.09
+play and pause, a seek bar and full screen.
+
+00:00:42.09 --> 00:00:46.47
+When the recording failed, the page says Video failed, with the reason,
+
+00:00:46.47 --> 00:00:49.43
+and that the pull request went ahead without it.
+
+00:00:50.58 --> 00:00:52.50
+Here is how the page plays it.
+
+00:00:52.50 --> 00:00:57.12
+The increment's details now carry two links when its video was recorded,
+
+00:00:57.12 --> 00:00:59.88
+one for the video and one for its captions.
+
+00:00:59.88 --> 00:01:04.31
+The player asks the API for the video in byte ranges, so it can seek.
+
+00:01:04.31 --> 00:01:07.90
+The API finds the stage ten commit that wrote the video,
+
+00:01:07.90 --> 00:01:12.97
+reads the file from GitHub at that commit, and answers with the part asked for.
+
+00:01:12.97 --> 00:01:14.96
+The captions come the same way.
+
+00:01:15.31 --> 00:01:20.98
+Product repositories are private, so the browser can't fetch from GitHub itself.
+
+00:01:20.98 --> 00:01:25.94
+Serving through the API keeps the session's rules: a Viewer can watch,
+
+00:01:25.94 --> 00:01:28.28
+and anyone signed out is refused.
+
+00:01:28.28 --> 00:01:30.91
+That is recorded as A D R twenty one.
+
+00:01:32.06 --> 00:01:36.04
+The handler takes the video's folder, which the worker reported,
+
+00:01:36.04 --> 00:01:37.73
+and builds the file's path.
+
+00:01:37.73 --> 00:01:41.34
+It then looks through the stage ten commits, newest first,
+
+00:01:41.34 --> 00:01:45.76
+for the one whose paths include that file, and reads it at that commit.
+
+00:01:45.76 --> 00:01:49.93
+The branch is deleted after the squash merge, but the commit stays.
+
+00:01:50.28 --> 00:01:53.97
+The endpoint returns the file with range processing on,
+
+00:01:53.97 --> 00:01:56.85
+so a seek asks only for the bytes it needs,
+
+00:01:56.85 --> 00:02:00.14
+and the captions endpoint returns the text track.
+
+00:02:00.49 --> 00:02:05.25
+Here is what the API answers for Kiln Booking's first increment: recorded,
+
+00:02:05.25 --> 00:02:07.51
+with its folder, and the two links.
+
+00:02:08.66 --> 00:02:10.41
+The player takes those links.
+
+00:02:10.41 --> 00:02:14.16
+Captions load as a text track, which the browser keeps hidden,
+
+00:02:14.16 --> 00:02:18.94
+so the player draws the current caption over the picture in the design system's
+
+00:02:18.94 --> 00:02:21.91
+style, and the captions button can turn them off.
+
+00:02:22.26 --> 00:02:25.99
+The seek bar is a slider: arrow keys move five seconds,
+
+00:02:25.99 --> 00:02:29.04
+and Home and End go to the start and the end.
+
+00:02:29.04 --> 00:02:32.16
+It speaks its position in minutes and seconds.
+
+00:02:32.51 --> 00:02:34.85
+Without a video, the page says why.
+
+00:02:34.85 --> 00:02:37.00
+A failed video gives its reason.
+
+00:02:37.00 --> 00:02:40.42
+A Blocked increment records none, and before green,
+
+00:02:40.42 --> 00:02:44.24
+it says the walkthrough records once every test is green.
+
+00:02:45.39 --> 00:02:49.18
+The pull request body linked the video by a relative path,
+
+00:02:49.18 --> 00:02:53.43
+and on GitHub that resolves under the pull request's own address,
+
+00:02:53.43 --> 00:02:54.93
+so the link was broken.
+
+00:02:54.93 --> 00:02:58.91
+Now the worker links the file at the commit that recorded it.
+
+00:03:00.06 --> 00:03:05.00
+The backend tests came first, and failed with not found: there was no route.
+
+00:03:05.00 --> 00:03:10.53
+Four now cover the video and captions served from the recording commit, a byte range,
+
+00:03:10.53 --> 00:03:13.32
+a failed video with no player, and Viewers.
+
+00:03:13.32 --> 00:03:16.64
+The worker test now expects the link at the commit.
+
+00:03:16.99 --> 00:03:21.68
+End to end, a live test runs a real worker through a whole direction,
+
+00:03:21.68 --> 00:03:26.37
+then opens the first increment and plays the walkthrough it recorded,
+
+00:03:26.37 --> 00:03:29.36
+served by the API, with its caption showing.
+
+00:03:29.71 --> 00:03:33.69
+All green, the backend has two hundred and forty eight tests,
+
+00:03:33.69 --> 00:03:38.64
+the worker one hundred and forty five, and the frontend four new view tests.
+
+00:03:38.64 --> 00:03:43.80
+End to end, there are ten new tests: four for behaviour, one live pipeline run,
+
+00:03:43.80 --> 00:03:48.36
+three visual comparisons with the mocks, and two accessibility checks.
+
+00:03:49.51 --> 00:03:53.10
+Here is Kiln Booking, built end to end by a real worker.
+
+00:03:53.10 --> 00:03:57.66
+From the backlog, its first increment opens with the walkthrough ready.
+
+00:03:57.66 --> 00:04:00.35
+Everything here is done from the keyboard.
+
+00:04:00.35 --> 00:04:03.56
+Space plays it, with the caption over the picture.
+
+00:04:03.56 --> 00:04:08.18
+The scripted worker records a three second title card in place of a real
+
+00:04:08.18 --> 00:04:08.95
+walkthrough.
+
+00:04:08.95 --> 00:04:13.18
+The arrow keys and Home seek, Enter turns the captions off and on,
+
+00:04:13.18 --> 00:04:14.79
+and Space plays it again.
+
+00:04:15.14 --> 00:04:19.13
+As a Viewer the player reads the same in dark mode, and on a phone.
+
+00:04:19.48 --> 00:04:22.73
+When the recording failed, the page gives the reason,
+
+00:04:22.73 --> 00:04:25.87
+and the timeline shows the pull request went ahead,
+
+00:04:25.87 --> 00:04:28.14
+with the same reason under its Notes.
+
+00:04:28.49 --> 00:04:32.95
+Before green, and when Blocked, the page says when a walkthrough is recorded.
+
+00:04:34.10 --> 00:04:36.02
+Journey nineteen is complete.
+
+00:04:36.02 --> 00:04:39.66
+An increment's captioned walkthrough plays on its page,
+
+00:04:39.66 --> 00:04:42.31
+served from the commit that recorded it.
+
+00:04:42.31 --> 00:04:46.02
+A failed video says why, and never blocks the increment.
+
+00:04:46.02 --> 00:04:49.40
+And the pull request's link to the video now works.
+
+00:04:49.40 --> 00:04:51.12
+Next comes journey twenty.

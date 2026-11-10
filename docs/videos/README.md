@@ -17,9 +17,9 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 01 | [Build a new product](01-build-a-new-product/README.md) | ~7:19 | Journey 1, full |
 | 02 | [Add a feature](02-add-a-feature/README.md) | ~5:07 | Journey 2 |
 | 03 | [Monitor a direction](03-monitor-a-direction/README.md) | ~4:52 | Journey 3 |
-| 04 | [Limit spending](04-limit-spending/README.md) | ~4:48 | Journey 4 |
+| 04 | [Limit spending](04-limit-spending/README.md) | ~4:54 | Journey 4 |
 | 05 | [Raise budget and resume](05-raise-budget-and-resume/README.md) | ~4:32 | Journey 5 |
-| 06 | [Pause and resume a direction](06-pause-and-resume-a-direction/README.md) | ~4:48 | Journey 6 |
+| 06 | [Pause and resume a direction](06-pause-and-resume-a-direction/README.md) | ~4:54 | Journey 6 |
 | 07 | [Cancel a direction](07-cancel-a-direction/README.md) | ~5:35 | Journey 7 |
 | 08 | [Stop and restart all workers](08-stop-and-restart-all-workers/README.md) | ~5:08 | Journey 8 |
 | 09 | [Recover a failed stage](09-recover-a-failed-stage/README.md) | ~5:28 | Journey 9 |
@@ -32,6 +32,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 16 | [Inspect versioned artifacts](16-inspect-versioned-artifacts/README.md) | ~4:17 | Journey 16 |
 | 17 | [Trace a requirement](17-trace-a-requirement/README.md) | ~4:58 | Journey 17 |
 | 18 | [Review agent decisions](18-review-agent-decisions/README.md) | ~4:51 | Journey 18 |
+| 19 | [Watch an increment demonstration](19-watch-an-increment-demonstration/README.md) | ~4:54 | Journey 19 |
 
 ## Voice
 

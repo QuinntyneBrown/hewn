@@ -117,6 +117,15 @@ export function mockIncrement(state: IncrementMockState = 'default') {
         videoNote: 'browser crashed during capture',
         videoUrl: null,
         captionsUrl: null,
+        // As the worker writes it: the reason goes under Notes, and the pull request goes ahead (L2-023 AC3).
+        pullRequest: {
+          ...pullRequest('open'),
+          sections: pullRequest('open').sections.map((s) =>
+            s.heading === 'Notes'
+              ? { ...s, text: 'Red recorded before implementation.\nVideo failed: browser crashed during capture' }
+              : s,
+          ),
+        },
       };
     case 'merged':
       return {
