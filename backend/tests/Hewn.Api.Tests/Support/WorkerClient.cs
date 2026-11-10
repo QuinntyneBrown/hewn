@@ -30,6 +30,13 @@ public sealed class WorkerClient
         return new WorkerClient(http, body.GetProperty("workerId").GetString()!);
     }
 
+    /// <summary>The same worker talking to another host, as after the API restarts.</summary>
+    public WorkerClient Reconnect(HttpClient http)
+    {
+        http.DefaultRequestHeaders.Authorization = _http.DefaultRequestHeaders.Authorization;
+        return new WorkerClient(http, WorkerId);
+    }
+
     /// <summary>Returns the leased run, or null when there is no work.</summary>
     /// <summary>Asks for a run; with <paramref name="waitSeconds"/>, the API holds the request until work is queued or the wait ends.</summary>
     public async Task<LeasedRun?> LeaseAsync(int waitSeconds = 0)
