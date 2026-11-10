@@ -96,4 +96,4 @@ Journey 20 built L2-038 AC1 to AC4 ([ADR 0022](../../../adr/0022-the-api-serves-
   states from its query. The sidebar's Sign out icon button, added to the Magic Patterns shell and the mocks for
   this journey, reloads at `/sign-in?reason=signed-out`. `sessionExpiryInterceptor` turns a 401 once signed in into
   `/sign-in?reason=expired&returnUrl=`.
-- **Not built in this journey:** the allow list in Settings (AC5) and pruning expired revocations.
+- **Not built in this journey:** the allow list in Settings (AC5). Revocations past their 8 hours are pruned at each sign-out.

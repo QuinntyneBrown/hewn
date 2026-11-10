@@ -48,6 +48,6 @@ tests need to run sign-in without GitHub.
 
 - The revoked set lives in each API process. Hewn runs one API instance; a second would need the set shared or the
   database read per request.
-- Revoked rows can be pruned once past their expiry; nothing prunes them yet.
+- Revoked rows past their 8 hours are pruned at each sign-out, so the set stays small.
 - A change to Angular's stylesheet loader changes the hash, and the page's styles fail to apply; the e2e and
   visual tests catch it only if they run against the API, not `ng serve`.
