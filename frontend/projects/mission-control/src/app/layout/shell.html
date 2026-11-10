@@ -24,6 +24,16 @@
         }
       </nav>
       <div class="sidebar__foot">
+        @if (connection(); as conn) {
+          <div class="conn">
+            <span class="conn__state"
+              ><span class="dot {{ conn.dot }}"></span>{{ conn.label }}</span
+            >
+            @if (workerCount(); as count) {
+              <span class="tabular text-subtle">{{ count }}</span>
+            }
+          </div>
+        }
         @if (session.isOwner() && workers.view()) {
           @if (workers.stopped()) {
             <button
@@ -83,6 +93,25 @@
           ><span class="strip__text">{{ banner(leasing) }}</span>
         </div>
       }
+    }
+    @if (connectionBanner(); as strip) {
+      <div
+        class="strip strip--{{ strip.tone }}"
+        [attr.role]="strip.tone === 'danger' ? 'alert' : 'status'"
+      >
+        <svg
+          hw-icon
+          [name]="stripIcon[strip.tone]"
+          class="icon--sm"
+          [class.icon--spin]="strip.tone === 'info' || strip.tone === 'warn'"
+        ></svg
+        ><span class="strip__text">{{ strip.text }}</span>
+        @if (strip.retry) {
+          <button class="btn btn--sm" type="button" (click)="retryNow()">
+            <svg hw-icon name="refresh"></svg>Retry now
+          </button>
+        }
+      </div>
     }
     <main id="main" class="shell__main">
       <router-outlet />

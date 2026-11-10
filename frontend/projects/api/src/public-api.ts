@@ -11,5 +11,6 @@ export * from './lib/session/session-api';
 export * from './lib/settings/settings-api';
 export * from './lib/live/project-event';
 export * from './lib/live/project-events';
+export * from './lib/live/reconnector';
 export * from './lib/projects/apply-event';
 export * from './lib/workers/workers-api';

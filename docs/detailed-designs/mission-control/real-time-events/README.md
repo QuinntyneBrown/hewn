@@ -25,7 +25,8 @@ The slice spans the event store, the outbox dispatcher, the hub, the backplane a
 - **`MissionControlHub`** — SignalR hub. `JoinProject(id)` checks access (L2-039) before adding the connection to the group.
 - **`EventsController`** — `GET /api/projects/{id}/events?after={seq}` returns missed events in order for catch-up.
 - **`LiveEventsService (Angular)`** — single SignalR connection with the retry schedule `[0, 2000, 10000, 30000]` then 30 s. It keeps `lastSeq` per project: an event with `seq <= lastSeq` is dropped as a duplicate, `seq == lastSeq + 1` is applied, and `seq > lastSeq + 1` means a gap, so the service fetches `after=lastSeq` from `EventsController` and applies the result in order before continuing.
-- **`ConnectionBanner (Angular)`** — shows "Reconnecting… next attempt in {n} s" while disconnected and "Reconnected. Caught up {n} missed events" briefly after catch-up.
+- **`Reconnector (Angular)`** — runs the retry schedule for `LiveEventsService` (`SignalRProjectEvents`): after a drop it tries after 0, 2, 10 and 30 s, then every 30 s for as long as it takes; Retry now tries at once. An attempt counts only once every subscription has joined again and caught up. Its status is `connecting`, `live`, `reconnecting` or `offline` (after the four scheduled attempts), with the next attempt's time.
+- **`ConnectionBanner (Angular)`** — the strip above every page and the sidebar's state, from that status: "Connecting to Mission Control…" when the first connection takes over a second; "Reconnecting… next attempt in {n} s. Missed events will catch up from #{seq}."; "Connection lost. Retrying every 30 s; agents keep working and nothing is lost." with Retry now; and "Reconnected. Caught up {n} missed events, #{from} to #{to}." for 5 seconds after catch-up.
 
 The 1-second p95 target holds at 200 events per second across all projects (L2-045 AC3); the load test for it is described in [Responsive, accessible and themed UI](../responsive-accessible-ui/README.md). The dispatcher exports `hewn_outbox_unpublished` and `hewn_outbox_lag_seconds` so a stuck outbox is visible (L2-049 AC3).
 
@@ -98,6 +99,24 @@ Journey 3 built L2-031 for stage, step, log and decision events. See
 - **Publishing.** Events are broadcast to the project's hub group right after the commit. The outbox dispatcher,
   claim columns and `CommitNudge` are not built yet: a crash between commit and broadcast is covered by the client,
   which catches up from `GET /api/projects/{id}/events?after=` whenever it joins or reconnects.
-- **Not built yet:** the reconnect banner, the retry schedule and the catch-up count (journey 27), the outbox
+- **Not built yet:** the outbox
   dispatcher and its metrics, and the p95 latency load test (L2-045).
 
+## Decisions made while reconnecting Mission Control
+
+Journey 27 built L2-032 and checked L2-031 AC2 end to end.
+
+- **Our own schedule, not SignalR's automatic reconnect.** `withAutomaticReconnect` takes a fixed list of delays and
+  then gives up; L2-032 wants retries for as long as the connection is down, and the danger mock offers Retry now. The
+  client closes nothing on its own: on `onclose` it hands over to `Reconnector`, which calls `start()` itself. A
+  first start that fails is treated as a drop too.
+- **Offline after the scheduled attempts.** The mocks distinguish Reconnecting (warning) from Connection lost
+  (danger). The banner turns to danger once the 0, 2, 10 and 30-second attempts have failed and retries are every
+  30 seconds.
+- **Rejoin through one registry.** Each subscription (`follow`, `followProjects`, `followWorkers`) registers what it
+  does after a reconnect and removes it when it closes, so a closed page does no work on the next reconnect.
+- **The count comes from what catch-up applies.** Each `follow` counts the events it emits from the catch-up pages
+  and the buffer; the shell sums them across projects. Pages that follow no project say "Nothing was missed".
+- **Tested by cutting the socket.** The e2e `LiveConnection` routes the hub's negotiate request and WebSocket through
+  Playwright, closes the socket and refuses attempts. The clock is faked for the schedule. A pipeline test compares
+  the page with a fresh load after catching up on events written while it was cut off.

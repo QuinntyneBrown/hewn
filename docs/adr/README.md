@@ -31,3 +31,4 @@ Read the ADRs that cover an area before changing it. New ADRs take the next numb
 | [0025](0025-runs-are-isolated-in-the-worker-by-a-proxy-and-tool-gates.md) | Runs are isolated in the worker by an egress proxy, tool gates and a command sandbox | Accepted |
 | [0026](0026-worker-tokens-are-hashed-and-revoked-through-the-control-poll.md) | Worker tokens are hashed, name their worker, and are revoked through the control poll | Accepted |
 | [0027](0027-github-writes-and-lease-changes-share-a-run-lock.md) | GitHub writes and lease changes share a run lock | Accepted |
+| [0028](0028-mission-control-runs-its-own-reconnect-schedule.md) | Mission Control runs its own reconnect schedule | Accepted |

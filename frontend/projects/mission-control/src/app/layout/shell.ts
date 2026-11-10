@@ -7,14 +7,15 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { Leasing, PROJECT_EVENTS, WORKERS_API } from '@hewn/api';
+import { CatchUp, ConnectionStatus, Leasing, PROJECT_EVENTS, WORKERS_API } from '@hewn/api';
 import { IconComponent, IconName } from '@hewn/components';
 import { SessionStore } from '../core/session-store';
 import { Toasts } from '../core/toasts';
 import { WorkersStore } from '../core/workers-store';
 import { stoppedBanner } from '../pages/workers/workers-text';
+import { ConnectionBanner, connectionBanner, connectionState } from './connection-banner';
 import { filter } from 'rxjs';
 import { ToastRegionComponent } from './toast-region';
 import { WordmarkComponent } from './wordmark';
@@ -49,8 +50,54 @@ export class ShellComponent {
   private readonly toasts = inject(Toasts);
   protected readonly starting = signal(false);
   protected readonly signingOut = signal(false);
+  private readonly events = inject(PROJECT_EVENTS);
+  private readonly status = toSignal(this.events.status(), {
+    initialValue: { state: 'connecting' } as ConnectionStatus,
+  });
+  /** What the last reconnect caught up, shown for a few seconds once live (L2-032 AC3). */
+  private readonly caughtUp = signal<CatchUp | null>(null);
+  private readonly now = signal(Date.now());
+  private readonly openedAt = Date.now();
+  protected readonly stripIcon: Record<ConnectionBanner['tone'], IconName> = {
+    info: 'spinner',
+    warn: 'refresh',
+    danger: 'wifiOff',
+    ok: 'checkCircle',
+  };
+
+  protected readonly connection = computed(() => connectionState(this.status()));
+  protected readonly connectionBanner = computed(() => {
+    const status = this.status();
+    // A quick first connection shows no banner at all.
+    if (status.state === 'connecting' && this.now() - this.openedAt < 1_000) return null;
+    return connectionBanner(status, this.now(), this.events.lastSequence(), this.caughtUp());
+  });
+  protected readonly workerCount = computed(() => {
+    const all = this.workers.view()?.workers;
+    if (!all?.length) return null;
+    return `${all.filter((w) => w.status !== 'Offline').length} of ${all.length} workers`;
+  });
 
   constructor() {
+    const tick = setInterval(() => this.now.set(Date.now()), 1_000);
+    inject(DestroyRef).onDestroy(() => clearInterval(tick));
+    let hide: ReturnType<typeof setTimeout> | undefined;
+    this.events
+      .caughtUp()
+      .pipe(takeUntilDestroyed())
+      .subscribe((caught) => {
+        this.caughtUp.set(caught);
+        clearTimeout(hide);
+        hide = setTimeout(() => this.caughtUp.set(null), 5_000);
+      });
+    this.events
+      .status()
+      .pipe(takeUntilDestroyed())
+      .subscribe((s) => {
+        this.now.set(Date.now());
+        if (s.state !== 'live') this.caughtUp.set(null);
+      });
+
     // The leasing switch is global: refresh it on every navigation and every few seconds.
     void this.workers.refresh();
     inject(Router)
@@ -62,10 +109,14 @@ export class ShellComponent {
     const timer = setInterval(() => void this.workers.refresh(), 5_000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
     // A worker registering, leasing or finishing shows at once (L2-026 AC1); the timer covers heartbeats.
-    inject(PROJECT_EVENTS)
+    this.events
       .followWorkers()
       .pipe(takeUntilDestroyed())
       .subscribe({ next: () => void this.workers.refresh(), error: () => undefined });
+  }
+
+  protected retryNow(): void {
+    this.events.retryNow();
   }
 
   protected banner(leasing: Leasing): string {
