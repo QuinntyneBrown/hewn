@@ -79,9 +79,8 @@ function context() {
   return { ctx, commits, reports, order };
 }
 
-async function execute(agent: StageAgent, ctx: RunContext): Promise<void> {
-  for (const step of new DocumentStageExecutor(agent).plan(leased, ctx))
-    await step.execute(new AbortController().signal);
+async function execute(agent: StageAgent, ctx: RunContext, run: LeasedRun = leased): Promise<void> {
+  for (const step of new DocumentStageExecutor(agent).plan(run, ctx)) await step.execute(new AbortController().signal);
 }
 
 describe('stage 9, Estimates', () => {
@@ -114,6 +113,19 @@ describe('stage 9, Estimates', () => {
         },
       ],
     });
+  });
+
+  it('tells the agent the threshold from the lease, to split against (L2-019 AC1)', async () => {
+    const { ctx } = context();
+    const instructions: string[] = [];
+
+    await execute(
+      { run: async (task) => (instructions.push(task.instructions), new ScriptedStageAgent().run(task)) },
+      ctx,
+      { ...leased, descopeThresholdDays: 5 },
+    );
+
+    expect(instructions[0]).toContain('First split any design above the descope threshold of 5 ideal days');
   });
 
   it('uses the threshold from the lease', async () => {

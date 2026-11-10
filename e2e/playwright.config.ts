@@ -32,7 +32,8 @@ export default defineConfig({
       url: 'http://localhost:5300/health/live',
       reuseExistingServer: !process.env['CI'],
       timeout: 180_000,
-      stdout: 'ignore',
+      // HEWN_E2E_API_LOGS prints the API's log (CI sets warnings and errors only), so a 500 says why.
+      stdout: process.env['HEWN_E2E_API_LOGS'] ? 'pipe' : 'ignore',
     },
     {
       command: 'npm --prefix ../frontend start -- --port 4300 --proxy-config proxy.e2e.conf.json',

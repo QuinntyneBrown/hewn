@@ -67,6 +67,23 @@ public sealed class LeaseService(IAppDbContext db, TimeProvider clock, RunWriteL
         return null;
     }
 
+    /// <summary>
+    /// Puts back a lease the worker never received: the grant commits on its own, so when the rest of the lease
+    /// request fails (or the worker has gone) the run would otherwise wait out the 60-second lease on a worker that
+    /// doesn't know it holds it, and a cancel would wait on that worker too. Only this grant (worker and epoch) is undone.
+    /// </summary>
+    public async Task ReturnUndeliveredAsync(Run run, string workerId)
+    {
+        var epoch = run.LeaseEpoch;
+        await db.Runs
+            .Where(r => r.Id == run.Id && r.Status == RunStatus.Leased && r.WorkerId == workerId && r.LeaseEpoch == epoch)
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(r => r.Status, RunStatus.Queued)
+                .SetProperty(r => r.WorkerId, (string?)null)
+                .SetProperty(r => r.LeaseExpiresAt, (DateTimeOffset?)null),
+                CancellationToken.None);
+    }
+
     /// <summary>Loads the run for a worker request, refusing when the worker or the epoch no longer match.</summary>
     public async Task<Run> FenceAsync(Guid runId, string workerId, long epoch, CancellationToken cancellationToken)
     {

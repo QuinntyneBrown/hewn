@@ -105,9 +105,11 @@ export interface RaiseAndResumeResult {
   status: DirectionStatus;
 }
 
-/** What every new direction starts with, set by an Owner in Settings (L2-053 AC1). */
+/** What every new direction starts with, set by an Owner in Settings (L2-053 AC1, L2-019 AC1). */
 export interface DirectionDefaults {
   defaultBudgetUsd: number;
+  /** Ideal days above which stage 9 splits or defers a design: a whole number from 1 to 20. */
+  descopeThresholdDays: number;
 }
 
 /** A project's row on the Projects page (L2-002); also sent live as each project changes. */

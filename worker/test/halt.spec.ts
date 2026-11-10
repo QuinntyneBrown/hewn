@@ -67,4 +67,25 @@ describe('stopping all workers', () => {
     expect(api.calls.filter((c) => c.method === 'step').map((c) => c.step)).toEqual([1, 2, 2, 3]);
     expect(api.count('result')).toBe(1);
   });
+
+  it('asks once more when a write is refused, so a halt it raced is still heard and acknowledged', async () => {
+    api.enqueueStage(3, 0, 3);
+    const finished: string[] = [];
+    void new WorkLoop({ api, executor: slowSteps(3, finished), registration, log: (m) => logs.push(m) }).run(
+      stop.signal,
+    );
+    await vi.advanceTimersByTimeAsync(4_000);
+
+    // The halt is saved, its checkpoint is refused, and the held poll hasn't answered yet.
+    api.haltBeforeThePollAnswers();
+    await vi.advanceTimersByTimeAsync(1_100);
+
+    expect(finished).toEqual(['s3.1']);
+    const controls = api.calls.filter((c) => c.method === 'control');
+    expect(controls.length).toBe(2);
+    expect(logs).toContain('Halted: all workers stopped; the run waits at its checkpoint');
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(api.count('step')).toBe(1);
+    expect(api.count('result')).toBe(0);
+  });
 });

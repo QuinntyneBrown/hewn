@@ -1,0 +1,211 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:06.86
+This is journey twenty eight of Hewn, the software factory: configure automatic
+
+00:00:06.86 --> 00:00:07.54
+descoping.
+
+00:00:07.54 --> 00:00:10.80
+Stage nine estimates every design in ideal days.
+
+00:00:10.80 --> 00:00:15.75
+Anything above the descope threshold is split, or deferred with a reason.
+
+00:00:15.75 --> 00:00:20.16
+Until now that threshold was fixed in the server's configuration.
+
+00:00:20.16 --> 00:00:23.49
+This video shows an Owner setting it in Settings,
+
+00:00:23.49 --> 00:00:25.86
+and stage nine planning against it.
+
+00:00:27.01 --> 00:00:32.76
+In Settings, an Owner sets the descope threshold in ideal days, three by default.
+
+00:00:32.76 --> 00:00:38.57
+Stage nine uses it: a design above the threshold is first split into designs at or
+
+00:00:38.57 --> 00:00:41.34
+below it, and descoped if it cannot be.
+
+00:00:41.34 --> 00:00:43.61
+Viewers see the value read-only.
+
+00:00:43.61 --> 00:00:47.79
+This is for Owners, who decide how big an increment may be.
+
+00:00:48.94 --> 00:00:53.97
+Here an Owner opens Settings, under Direction defaults, beside the default budget.
+
+00:00:53.97 --> 00:00:55.20
+They try half a day.
+
+00:00:55.20 --> 00:00:59.07
+Save defaults refuses it: the error summary links to the field,
+
+00:00:59.07 --> 00:01:04.16
+and the field says the threshold must be a whole number of days from one to twenty.
+
+00:01:04.16 --> 00:01:06.80
+The link puts the cursor back in the field.
+
+00:01:06.80 --> 00:01:08.03
+One day is accepted.
+
+00:01:08.03 --> 00:01:12.38
+The callout says new directions start with a one-day descope threshold,
+
+00:01:12.38 --> 00:01:15.33
+and that directions already running keep theirs.
+
+00:01:16.48 --> 00:01:22.13
+The threshold is saved beside the default budget, in the same direction defaults row,
+
+00:01:22.13 --> 00:01:24.59
+through the same Owner-only endpoint.
+
+00:01:24.59 --> 00:01:28.18
+The validator takes a whole number from one to twenty,
+
+00:01:28.18 --> 00:01:30.57
+with the mock's message and summary.
+
+00:01:30.57 --> 00:01:33.63
+A save that leaves it out keeps the one saved.
+
+00:01:33.98 --> 00:01:36.66
+The callout's promise decides the design.
+
+00:01:36.66 --> 00:01:40.85
+A direction records the threshold in force when it is submitted,
+
+00:01:40.85 --> 00:01:42.81
+as it already does its budget.
+
+00:01:42.81 --> 00:01:47.91
+So changing the setting never changes the plan of a direction already running.
+
+00:01:48.26 --> 00:01:50.47
+This sequence shows the whole path.
+
+00:01:50.47 --> 00:01:51.47
+The Owner saves.
+
+00:01:51.47 --> 00:01:55.06
+Later a direction is submitted and records the threshold.
+
+00:01:55.06 --> 00:01:59.53
+When stage nine is leased, the lease carries the direction's threshold,
+
+00:01:59.53 --> 00:02:03.43
+or the current setting for directions from before this change.
+
+00:02:04.58 --> 00:02:09.60
+Stage nine's agent was told to split designs above the descope threshold,
+
+00:02:09.60 --> 00:02:11.38
+but never told the number.
+
+00:02:11.38 --> 00:02:16.60
+Now its task names it: split any design above the threshold of n ideal days.
+
+00:02:16.60 --> 00:02:21.27
+What is still above it after the agent's split, the descoper defers,
+
+00:02:21.27 --> 00:02:22.37
+with its reason.
+
+00:02:22.72 --> 00:02:26.94
+Here a new direction is submitted with the threshold at one day,
+
+00:02:26.94 --> 00:02:28.33
+and a worker runs it.
+
+00:02:28.33 --> 00:02:32.68
+The fake agent estimates every design at two days and splits none.
+
+00:02:32.68 --> 00:02:38.08
+When stage nine finishes, the Backlog shows each design deferred: estimated at two
+
+00:02:38.08 --> 00:02:41.90
+days, above the one-day threshold, and could not be split.
+
+00:02:43.05 --> 00:02:45.74
+The backend tests go through the real API.
+
+00:02:45.74 --> 00:02:48.80
+The threshold is three until an Owner saves one,
+
+00:02:48.80 --> 00:02:51.55
+and the next lease carries the saved value.
+
+00:02:51.55 --> 00:02:54.62
+Zero, twenty one and two and a half are refused.
+
+00:02:54.62 --> 00:02:56.15
+A Viewer gets forbidden.
+
+00:02:56.15 --> 00:03:01.45
+And a direction submitted before a change keeps the threshold it started with; that
+
+00:03:01.45 --> 00:03:04.84
+test failed first, with one where three was expected.
+
+00:03:04.84 --> 00:03:07.71
+All three hundred and six backend tests pass.
+
+00:03:08.06 --> 00:03:12.31
+The worker test checks the agent's task names the leased threshold.
+
+00:03:12.31 --> 00:03:15.91
+It failed first, then passed with the other worker tests.
+
+00:03:16.26 --> 00:03:20.96
+End to end, a behaviour test saves five days, and refuses half a day,
+
+00:03:20.96 --> 00:03:24.90
+twenty one and an empty field, each with its linked error.
+
+00:03:24.90 --> 00:03:27.21
+A Viewer sees the field read-only.
+
+00:03:27.21 --> 00:03:32.18
+Before the field existed, the first of these failed with nothing to find.
+
+00:03:32.53 --> 00:03:36.92
+A pipeline test sets one day in Settings, starts a real worker,
+
+00:03:36.92 --> 00:03:42.42
+and waits for stage nine to defer every two-day design with the one-day reason.
+
+00:03:42.42 --> 00:03:48.27
+Visual tests compare the field with its mocks, by default, invalid and for a Viewer.
+
+00:03:49.42 --> 00:03:54.78
+The Viewer sees the threshold read-only, with a notice that an Owner manages the
+
+00:03:54.78 --> 00:03:55.38
+defaults.
+
+00:03:55.38 --> 00:03:59.00
+The field reads the same in dark mode, and on a phone.
+
+00:04:00.15 --> 00:04:02.36
+Journey twenty eight is complete.
+
+00:04:02.36 --> 00:04:05.37
+Owners set the descope threshold in Settings,
+
+00:04:05.37 --> 00:04:08.58
+a whole number of ideal days from one to twenty.
+
+00:04:08.58 --> 00:04:12.39
+Each direction keeps the threshold it was submitted with.
+
+00:04:12.39 --> 00:04:15.34
+And stage nine splits and defers against it.
+
+00:04:15.34 --> 00:04:17.41
+Next comes journey twenty nine.

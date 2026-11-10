@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 28 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="28" data-video-title="Configure automatic descoping" data-parts="Introduction|Goal|Setting|Where it lives|Stage 9|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 28</div>
+  <h1>Configure automatic descoping</h1>
+  <p class="lead">An Owner sets the threshold; stage 9 splits and defers against it.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video shows an Owner setting it in Settings">
+  <figure><img src="screens/backlog-deferred.png" alt="The Backlog: three designs deferred, each estimated at 2 days, above the 1-day threshold, and could not be split"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="In Settings, an Owner sets the descope threshold in ideal days">
+  <ul class="bullets">
+    <li>Settings: descope threshold in ideal days, 3 by default (L2-019 AC1)</li>
+    <li>Stage 9 splits designs above it, else descopes them</li>
+    <li>Viewers see it read-only</li>
+  </ul>
+</section>
+
+<section id="clip-set" data-part="2" data-cue="Here an Owner opens Settings" data-clip="clips/set-the-threshold.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Half a day is refused with a linked error; one day is saved</aside>
+</section>
+
+<section id="settings-states" data-part="2" data-cue="One day is accepted.">
+  <div class="cols">
+    <figure><img src="screens/settings-invalid.png" alt="1 thing to fix: Descope threshold must be 1 to 20 days; the field shows 0.5 with its error"></figure>
+    <figure><img src="screens/settings-saved.png" alt="Defaults saved: New directions start with a $300.00 budget and a 1-day descope threshold. Directions already running keep theirs."></figure>
+  </div>
+</section>
+
+<section id="validator" data-part="3" data-cue="The threshold is saved beside the default budget">
+  <div class="code-file">backend/src/Hewn.Application/Spend/DirectionDefaultsCommands.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="5-8">        RuleFor(c =&gt; c.DefaultBudgetUsd)
+            .InclusiveBetween(DirectionDefaults.MinBudgetUsd, DirectionDefaults.MaxBudgetUsd)
+            .WithMessage("Default budget must be between $10.00 and $10,000.00.")
+            .WithState(_ =&gt; "Default budget is out of range");
+        RuleFor(c =&gt; c.DescopeThresholdDays)
+            .Must(d =&gt; d is null || (d % 1 == 0 &amp;&amp; d &gt;= DirectionDefaults.MinDescopeThresholdDays &amp;&amp; d &lt;= DirectionDefaults.MaxDescopeThresholdDays))
+            .WithMessage("Descope threshold must be a whole number of days from 1 to 20.")
+            .WithState(_ =&gt; "Descope threshold must be 1 to 20 days");</pre>
+  <div class="code-file">backend/src/Hewn.Domain/Direction.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="5,7">    /// &lt;summary&gt;
+    /// The descope threshold in ideal days stage 9 splits and defers against, fixed when the direction is submitted
+    /// (L2-019 AC1). Null for directions submitted before it was recorded; they use the current default.
+    /// &lt;/summary&gt;
+    public int? DescopeThresholdDays { get; private set; }
+
+    public void StartWithDescopeThreshold(decimal days) =&gt; DescopeThresholdDays = (int)days;</pre>
+</section>
+
+<section id="submit" data-part="3" data-cue="A direction records the threshold in force when it is submitted">
+  <div class="code-file">backend/src/Hewn.Application/Projects/SubmitProductDirection.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="1,7,11">        var startsWith = await defaults.ReadAsync(cancellationToken);
+        var project = Project.CreateWithProductDirection(
+            command.Name!,
+            command.Idea!,
+            string.IsNullOrWhiteSpace(command.StackPreference) ? null : command.StackPreference.Trim(),
+            repository,
+            command.BudgetUsd ?? startsWith.DefaultBudgetUsd,
+            user.Login,
+            clock.GetUtcNow());
+        var direction = project.Directions[0];
+        direction.StartWithDescopeThreshold(startsWith.DescopeThresholdDays);</pre>
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/WorkerCommands.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="2">            // The threshold the direction was submitted with; older directions use the current default (L2-019 AC1).
+            direction.DescopeThresholdDays ?? (await defaults.ReadAsync(cancellationToken)).DescopeThresholdDays,</pre>
+</section>
+
+<section id="sequence" data-part="3" data-cue="This sequence shows the whole path.">
+  <figure class="diagram"><img src="../../detailed-designs/stages/estimate-and-plan-backlog/diagrams/sequence-set-threshold.png" alt="Set the descope threshold: the Owner saves it in Settings; a submitted direction records it; the stage 9 lease carries it to the worker"></figure>
+</section>
+
+<section id="agent" data-part="4" data-cue="Stage nine's agent was told to split designs">
+  <div class="code-file">worker/test/estimate-stage.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="7,11">  it('tells the agent the threshold from the lease, to split against (L2-019 AC1)', async () =&gt; {
+    const { ctx } = context();
+    const instructions: string[] = [];
+
+    await execute(
+      { run: async (task) =&gt; (instructions.push(task.instructions), new ScriptedStageAgent().run(task)) },
+      ctx,
+      { ...leased, descopeThresholdDays: 5 },
+    );
+
+    expect(instructions[0]).toContain('First split any design above the descope threshold of 5 ideal days');
+  });</pre>
+  <div class="code-file">worker/src/estimates/backlog-planner.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2,5">    const rule =
+      d.estimateDays &gt; threshold
+        ? {
+            rule: 0,
+            reason: `Estimated at ${d.estimateDays} days, above the ${threshold}-day threshold, and could not be split`,
+          }</pre>
+</section>
+
+<section id="clip-defer" data-part="4" data-cue="Here a new direction is submitted with the threshold at one day" data-clip="clips/stage-9-defers.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Stage 9 under a 1-day threshold: every 2-day design deferred</aside>
+</section>
+
+<section id="test-api" data-part="5" data-cue="The backend tests go through the real API.">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Settings/DescopeThresholdTests.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="1">    public async Task A_direction_submitted_before_the_change_keeps_the_threshold_it_started_with()</pre>
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Settings/DescopeThresholdTests.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="3,6">        Assert.Equal(HttpStatusCode.Created, submitted.StatusCode);
+
+        (await owner.PutAsync("/api/settings/direction-defaults", new { defaultBudgetUsd = 300m, descopeThresholdDays = 1m })).EnsureSuccessStatusCode();
+
+        var run = (await (await _factory.RegisterWorkerAsync()).LeaseAsync())!;
+        Assert.Equal(3m, run.Body.GetProperty("descopeThresholdDays").GetDecimal());</pre>
+  <div class="result red">✘ Expected: 3 · Actual: 1</div>
+  <div class="result green">✔ backend 306</div>
+</section>
+
+<section id="test-worker" data-part="5" data-cue="The worker test checks the agent's task">
+  <div class="result red">✘ expected 'You are stage 9 (Estimates) of Hewn…' to contain 'First split any design above the desc…'</div>
+  <div class="result green">✔ worker 156</div>
+</section>
+
+<section id="test-behaviour" data-part="5" data-cue="End to end, a behaviour test saves five days">
+  <div class="code-file">e2e/tests/behavior/configure-automatic-descoping.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1,8,13-14">  for (const days of ['0.5', '21', '']) {
+    test(`"${days}" is refused with a linked error and nothing is saved`, async ({ page, settings }) =&gt; {
+      await signIn(page, 'quinntynebrown');
+      await settings.open();
+
+      await settings.setThreshold(days);
+
+      await expect(settings.errorSummary).toContainText('Descope threshold must be 1 to 20 days');
+      await expect(settings.thresholdError).toHaveText(
+        /Descope threshold must be a whole number of days from 1 to 20\./,
+      );
+      await expect(settings.threshold).toHaveAttribute('aria-invalid', 'true');
+      await settings.errorSummary.getByRole('link', { name: 'Descope threshold must be 1 to 20 days' }).click();
+      await expect(settings.threshold).toBeFocused();
+      await settings.open();
+      await expect(settings.threshold).toHaveValue('3');</pre>
+  <div class="result red">✘ expect(locator).toHaveValue · element(s) not found</div>
+</section>
+
+<section id="test-pipeline" data-part="5" data-cue="A pipeline test sets one day in Settings">
+  <div class="code-file">e2e/tests/pipeline/descope-with-the-owners-threshold.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1">    await settings.setThreshold('1');
+    await expect(settings.savedCallout).toContainText('a 1-day descope threshold');</pre>
+  <div class="code-file">e2e/tests/pipeline/descope-with-the-owners-threshold.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1,4-5,9">    stopWorkers = startWorkers(1, 150);
+
+    // Every design the agent estimated at 2 days is above the 1-day threshold, and none was split.
+    await expect(backlog.deferredItem(0).reason).toHaveText(
+      'Estimated at 2 days, above the 1-day threshold, and could not be split',
+      { timeout: 120_000 },
+    );
+    expect(await backlog.deferred.count()).toBeGreaterThan(0);
+    await expect(backlog.deferred.filter({ hasNotText: 'above the 1-day threshold' })).toHaveCount(0);
+  });</pre>
+  <div class="result green">✔ behaviour 8 · pipeline 1 · visual 68 · a11y 65</div>
+</section>
+
+<section id="viewer" data-part="6" data-cue="The Viewer sees the threshold read-only">
+  <figure><img src="screens/settings-viewer.png" alt="Read-only for Viewers: the default budget and the descope threshold, both read-only"></figure>
+</section>
+
+<section id="screens" data-part="6" data-cue="The field reads the same in dark mode">
+  <div class="cols">
+    <figure><img src="screens/settings-dark.png" alt="Direction defaults in dark mode"></figure>
+    <figure class="phone"><img src="screens/settings-phone.png" alt="Direction defaults on a phone"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="7" data-cue="Journey twenty eight is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Owners set 1 to 20 ideal days in Settings</li>
+    <li>Each direction keeps the threshold it was submitted with</li>
+    <li>Stage 9 splits and defers against it</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

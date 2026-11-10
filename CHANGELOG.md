@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Configure automatic descoping (journey 28, L2-019): an Owner sets the descope threshold in ideal days (a whole
+  number from 1 to 20, default 3) in Settings beside the default budget; Viewers see it read-only. Each direction
+  keeps the threshold in force when it was submitted, and stage 9's agent is told the number of days to split
+  against before Hewn defers what is still above it.
 - Reconnect Mission Control (journey 27, L2-032, L2-031): when the live connection drops, a strip says
   "Reconnecting… next attempt in n s" and Mission Control retries after 0, 2, 10 and 30 seconds, then every
   30 seconds, with Retry now once the connection counts as lost. On reconnect it catches up every missed event once

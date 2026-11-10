@@ -23,7 +23,9 @@ test.describe('Direction defaults', () => {
 
     await settings.setDefaultBudget('350');
 
-    await expect(settings.savedCallout).toContainText('New directions start with a $350.00 budget.');
+    await expect(settings.savedCallout).toContainText(
+      'New directions start with a $350.00 budget and a 3-day descope threshold.',
+    );
     await expect(settings.defaultBudget).toHaveValue('350.00');
     await newDirection.open();
     await expect(newDirection.budget).toHaveValue('350.00');

@@ -76,6 +76,7 @@ public sealed class LeaseRunHandler(
     RepositoryProvisioner provisioner,
     EventAppender events,
     IOptions<PipelineOptions> options,
+    Spend.DirectionDefaultsReader defaults,
     TimeProvider clock) : IRequestHandler<LeaseRunCommand, LeasedRunDto?>
 {
     public async Task<LeasedRunDto?> Handle(LeaseRunCommand command, CancellationToken cancellationToken)
@@ -89,6 +90,20 @@ public sealed class LeaseRunHandler(
             return null;
         }
 
+        try
+        {
+            return await DeliverAsync(worker, run, cancellationToken);
+        }
+        catch
+        {
+            await leases.ReturnUndeliveredAsync(run, worker.Id);
+            throw;
+        }
+    }
+
+    /// <summary>Everything after the grant; if any of it fails, or the worker has gone, the caller puts the lease back.</summary>
+    private async Task<LeasedRunDto?> DeliverAsync(Worker worker, Run run, CancellationToken cancellationToken)
+    {
         var project = await db.Projects.Include(p => p.Directions).SingleAsync(p => p.Id == run.ProjectId, cancellationToken);
         var direction = project.Directions.Single(d => d.Id == run.DirectionId);
         if (run.Stage == 0 && !await ProvisionAsync(run, project, direction, cancellationToken))
@@ -110,6 +125,9 @@ public sealed class LeaseRunHandler(
         worker.Seen(clock.GetUtcNow(), WorkerStatus.Busy);
         await db.SaveChangesAsync(cancellationToken);
         await events.PublishAsync(cancellationToken);
+        var threshold = direction.DescopeThresholdDays ?? (await defaults.ReadAsync(cancellationToken)).DescopeThresholdDays;
+        // A worker that gave up waiting won't read the answer.
+        cancellationToken.ThrowIfCancellationRequested();
 
         return new LeasedRunDto(
             run.Id,
@@ -123,7 +141,8 @@ public sealed class LeaseRunHandler(
             new LeasedRunProject(project.Id, project.Name, project.Idea, project.StackPreference, project.Repository),
             new LeasedRunDirection(direction.Kind.ToString(), direction.Idea, direction.HasUiChange),
             options.Value.SkillsSource,
-            options.Value.DescopeThresholdDays,
+            // The threshold the direction was submitted with; older directions use the current default (L2-019 AC1).
+            threshold,
             options.Value.MaxIterations,
             run.Attempt);
     }

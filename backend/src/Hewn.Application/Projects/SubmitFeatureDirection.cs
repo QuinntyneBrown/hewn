@@ -45,7 +45,9 @@ public sealed class SubmitFeatureDirectionHandler(
             .SingleOrDefaultAsync(p => p.Id == command.ProjectId, cancellationToken)
             ?? throw new NotFoundException();
 
-        var startsNow = project.AddFeatureDirection(command.Idea!, command.BudgetUsd ?? (await defaults.ReadAsync(cancellationToken)).DefaultBudgetUsd, user.Login, clock.GetUtcNow(), out var direction);
+        var startsWith = await defaults.ReadAsync(cancellationToken);
+        var startsNow = project.AddFeatureDirection(command.Idea!, command.BudgetUsd ?? startsWith.DefaultBudgetUsd, user.Login, clock.GetUtcNow(), out var direction);
+        direction.StartWithDescopeThreshold(startsWith.DescopeThresholdDays);
         db.Directions.Add(direction); // a new child with its own key; EF would otherwise treat it as an existing row
         await events.AppendAsync(
             project.Id,

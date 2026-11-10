@@ -30,7 +30,7 @@ The feature realizes the following level-2 (L2) requirements. Each L2 requiremen
 | L2 ID | Refines (L1) | Requirement |
 |-------|--------------|-------------|
 | `L2-018` | `L1-012` | **Estimate the work.**<br>1. Given stage 9 runs with `estimating-designs`, when it completes, then `docs/estimates/README.md` gives the overall estimate, percent complete and roadmap, and `docs/estimates/{subsystem}.md` gives an estimate in ideal days for each detailed design. |
-| `L2-019` | `L1-012` | **Descope automatically.**<br>1. Given a design estimated at more than the descope threshold (3 ideal days by default, set by an Owner in Settings), when stage 9 runs, then the agent first tries to split it into designs of 3 days or less. If that fails, the design is descoped.<br>2. Given a design whose L2s appear in no journey's main path, or which the brief lists as out of scope or nice-to-have, when stage 9 runs, then it is descoped.<br>3. Given a design is descoped, when stage 9 completes, then it appears under "Deferred" in `docs/estimates/README.md` with its reason, and its L2s in `docs/specs/L2.md` gain the line `**Status:** Deferred ({reason})`.<br>4. Given deferred items, when a user opens the project's Backlog in Mission Control, then they are shown apart from the active backlog, with their reasons. |
+| `L2-019` | `L1-012` | **Descope automatically.**<br>1. Given a design estimated at more than the descope threshold (3 ideal days by default; an Owner sets a whole number from 1 to 20 in Settings, Viewers see it read-only, and each direction keeps the threshold in force when it was submitted), when stage 9 runs, then the agent first tries to split it into designs at or below the threshold. If that fails, the design is descoped.<br>2. Given a design whose L2s appear in no journey's main path, or which the brief lists as out of scope or nice-to-have, when stage 9 runs, then it is descoped.<br>3. Given a design is descoped, when stage 9 completes, then it appears under "Deferred" in `docs/estimates/README.md` with its reason, and its L2s in `docs/specs/L2.md` gain the line `**Status:** Deferred ({reason})`.<br>4. Given deferred items, when a user opens the project's Backlog in Mission Control, then they are shown apart from the active backlog, with their reasons. |
 | `L2-020` | `L1-012` | **Order the backlog.**<br>1. Given stage 9 completes, when the backlog is produced, then each increment covers one journey, or one part of a journey, with its L2 IDs, ordered by journey number, and no increment comes before an increment it depends on.<br>2. Given the backlog, when a user opens Backlog, then each increment shows its status (Queued, In progress, Blocked, Merged, Deferred), its estimate and a link to its pull request once one exists. |
 
 ## Diagrams
@@ -65,6 +65,12 @@ Estimates are written (L2-018 AC1). Oversized designs are split or deferred (L2-
 
 ![Sequence diagram: estimate, descope and plan](diagrams/sequence-estimate-and-plan.png)
 
+### Behaviour — set the threshold
+
+An Owner saves the threshold in Settings; each direction records the one in force when it is submitted, and stage 9 is leased with it (L2-019 AC1).
+
+![Sequence diagram: set the descope threshold](diagrams/sequence-set-threshold.png)
+
 ### Behaviour — view the backlog
 
 Active increments show status, estimate and PR link (L2-020 AC2); deferred items appear apart with reasons (L2-019 AC4).
@@ -87,8 +93,8 @@ Active increments show status, estimate and PR link (L2-020 AC2); deferred items
 - **Increments.** Journeys in number order; each journey's designs are placed after their dependencies (pulled
   forward from later journeys when needed), then split greedily into parts of at most the threshold, titled
   "{journey} (part k of n)". A dependency cycle fails the run naming the designs.
-- **Threshold.** `HEWN_DESCOPE_THRESHOLD_DAYS` on the API (default 3) is sent with every lease until the Settings
-  page (journey 28) stores it per project.
+- **Threshold.** `HEWN_DESCOPE_THRESHOLD_DAYS` on the API (default 3) is sent with every lease. Journey 28 replaced
+  this with the Owner's setting; see below.
 - **`BacklogIndex`.** The `increments` table: number, title, journey, L2 IDs, estimate, depends-on, status
   (Queued, InProgress, Blocked, Merged, Deferred), reason and pull request number. `PUT
   /api/worker/runs/{id}/backlog` (stage 9 only) replaces a direction's rows and appends `BacklogPlanned`; the API
@@ -109,3 +115,21 @@ Active increments show status, estimate and PR link (L2-020 AC2); deferred items
 - **Not in the mock's header.** The project header has no "Complete" figure yet, so the totals line adds
   "· {n}% complete" after the ideal days. Increment titles are plain text until the increment page (journey 13)
   exists.
+
+## Decisions made while configuring automatic descoping (journey 28)
+
+- **Where it is stored.** `direction_defaults` gains `DescopeThresholdDays` beside the default budget, so the
+  Settings form saves both through `PUT /api/settings/direction-defaults` (Owner only; Viewers get 403) and reads
+  them through `GET`. Until an Owner saves one it is `HEWN_DESCOPE_THRESHOLD_DAYS` (default 3). A save that leaves
+  the threshold out keeps the saved one.
+- **Validation.** A whole number of ideal days from 1 to 20, as the mock's error says ("Descope threshold must be a
+  whole number of days from 1 to 20.", summary "Descope threshold must be 1 to 20 days"). Text that is not a number
+  is sent as 0, so it gets the same field error.
+- **Running directions keep theirs.** The mock's callout says "Directions already running keep theirs", so a
+  direction records the threshold in force when it is submitted (`directions.DescopeThresholdDays`), as it does its
+  budget, and every lease carries that one. Directions submitted before journey 28 have none and use the current
+  setting ([ADR 0029](../../../adr/0029-a-direction-keeps-the-descope-threshold-it-was-submitted-with.md)).
+- **The agent is told the number.** The stage 9 task says "split any design above the descope threshold of
+  {n} ideal days"; before journey 28 it named the threshold without its value.
+- **No new mocks.** `pages/settings/{default,invalid,submitting,success,viewer}.html` already show the field, its
+  error, the saved callout and the read-only Viewer view.
