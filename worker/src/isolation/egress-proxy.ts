@@ -19,7 +19,7 @@ export function egressAllowList(options: { magicPatternsUrl?: string } = {}): st
 }
 
 /**
- * A run's only route out (L2-042 AC2): an HTTP proxy on the worker's loopback that tunnels (CONNECT) or forwards
+ * A run's only route out (L2-042 AC2): an HTTP proxy on the worker that tunnels (CONNECT) or forwards
  * requests to allowed hosts and answers 403 to the rest, reporting each blocked host. One per run, so a blocked
  * request is logged against the run that made it.
  */

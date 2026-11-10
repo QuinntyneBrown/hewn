@@ -1,0 +1,17 @@
+{
+  "localShownAfterMs": 371,
+  "local": {
+    "location": "Local",
+    "status": "Leased"
+  },
+  "cloud": {
+    "location": "Cloud",
+    "status": "Idle"
+  },
+  "log": [
+    "08:23:10\nerror\nSecurity event: tool Bash denied; it is not on this stage's allow list (L2-042)",
+    "08:23:10\nwarn\nEgress blocked: exfiltrate.example is not an allowed host (L2-042)",
+    "08:23:10\ninfo\nQuestion: Who is the primary user?",
+    "08:23:10\ninfo\nAnswer: The people the direction describes: book firing slots for a shared pottery kiln."
+  ]
+}

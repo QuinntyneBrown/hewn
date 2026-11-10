@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 23 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="23" data-video-title="Run workers locally or in the cloud" data-parts="Introduction|Goal|One image|Showing up at once|The work loop|Isolation|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 23</div>
+  <h1>Run workers locally or in the cloud</h1>
+  <p class="lead">One image, anywhere; every run kept to itself.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video shows one worker image">
+  <figure><img src="screens/workers-local-and-cloud.png" alt="Workers listing cloud-zqbs (Cloud, Idle) and laptop-zqbs (Local, Leased), both version 0.1.0"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="The same worker, configured as Local or as Cloud">
+  <ul class="bullets">
+    <li>Local or Cloud from one build; in Workers within 2 s (L2-027 AC1, L2-026 AC1)</li>
+    <li>Idle workers lease new work at once and heartbeat (L2-026 AC2, AC5)</li>
+    <li>Own workspace and container; allowed hosts and tools only, the rest logged (L2-042)</li>
+  </ul>
+</section>
+
+<section id="dockerfile" data-part="2" data-cue="Here is the worker image.">
+  <div class="code-file">worker/Dockerfile</div>
+  <pre class="code tight" data-lang="dockerfile" data-mark="3-5,10-13">FROM node:24-bookworm-slim
+# git for workspaces; ffmpeg for increment videos.
+RUN apt-get update \
+  &amp;&amp; apt-get install -y --no-install-recommends git ffmpeg ca-certificates \
+  &amp;&amp; rm -rf /var/lib/apt/lists/*
+WORKDIR /worker
+COPY --from=build /worker/package.json ./
+COPY --from=build /worker/node_modules ./node_modules
+COPY --from=build /worker/dist ./dist
+ENV NODE_ENV=production \
+    HEWN_LOCATION=Local
+USER node
+ENTRYPOINT ["node", "dist/main.js"]</pre>
+</section>
+
+<section id="docker-run" data-part="2" data-cue="Location, API address, token and name are environment variables">
+  <div class="code-file">Starting the same image twice</div>
+  <pre class="code tight" data-lang="sh" data-mark="4,6">$ docker build -t hewn-worker:dev worker
+$ docker run -d --rm --name laptop \
+    -e HEWN_API_URL=http://host.docker.internal:5300 \
+    -e HEWN_WORKER_TOKEN=… -e HEWN_LOCATION=Local \
+    hewn-worker:dev
+$ docker run -d --rm --name cloud … -e HEWN_LOCATION=Cloud hewn-worker:dev</pre>
+</section>
+
+<section id="clip-appear" data-part="2" data-cue="Here Workers is already open." data-clip="clips/workers-appear.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Two docker runs; both rows appear without a reload</aside>
+</section>
+
+<section id="rows" data-part="2" data-cue="Each row shows the host, location and version">
+  <figure><img src="screens/workers-local-and-cloud.png" alt="Each worker row: host and id, Local or Cloud, version 0.1.0, status, what it works on and its heartbeat"></figure>
+</section>
+
+<section id="register" data-part="3" data-cue="Workers used to refresh every five seconds.">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/WorkerCommands.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,8">public sealed class RegisterWorkerHandler(IAppDbContext db, IWorkersNotifier workers, TimeProvider clock) : IRequestHandler&lt;RegisterWorkerCommand, string&gt;
+{
+    public async Task&lt;string&gt; Handle(RegisterWorkerCommand command, CancellationToken cancellationToken)
+    {
+        var worker = new Worker(command.Name, Enum.Parse&lt;WorkerLocation&gt;(command.Location, ignoreCase: true), command.Host, command.Version, clock.GetUtcNow());
+        db.Workers.Add(worker);
+        await db.SaveChangesAsync(cancellationToken);
+        await workers.WorkersChangedAsync(cancellationToken);
+        return worker.Id;
+    }
+}</pre>
+</section>
+
+<section id="shell" data-part="3" data-cue="The shell subscribes through the live client">
+  <div class="code-file">frontend/projects/mission-control/src/app/layout/shell.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3-7">    const timer = setInterval(() =&gt; void this.workers.refresh(), 5_000);
+    inject(DestroyRef).onDestroy(() =&gt; clearInterval(timer));
+    // A worker registering, leasing or finishing shows at once (L2-026 AC1); the timer covers heartbeats.
+    inject(PROJECT_EVENTS)
+      .followWorkers()
+      .pipe(takeUntilDestroyed())
+      .subscribe({ next: () =&gt; void this.workers.refresh(), error: () =&gt; undefined });
+  }</pre>
+</section>
+
+<section id="loop" data-part="4" data-cue="Here is the work loop.">
+  <figure class="diagram"><img src="../../detailed-designs/agent-runtime/worker-loop/diagrams/sequence-register-and-lease.png" alt="Sequence diagram: the worker registers and Workers is told; it asks for a lease with a wait; the API holds it until the work signal fires, then leases at once"></figure>
+</section>
+
+<section id="held" data-part="4" data-cue="Every stored event pulses a work signal">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/WorkSignal.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="4,8,11">    public async Task&lt;LeasedRunDto?&gt; LeaseAsync(string workerId, int waitSeconds, CancellationToken cancellationToken)
+    {
+        // Wall-clock time, not the domain clock: this holds an HTTP request open.
+        var wait = TimeSpan.FromSeconds(Math.Clamp(waitSeconds, 0, MaxWaitSeconds));
+        var held = System.Diagnostics.Stopwatch.StartNew();
+        while (true)
+        {
+            var changed = signal.Next;
+            using (var scope = scopes.CreateScope())
+            {
+                var run = await scope.ServiceProvider.GetRequiredService&lt;IMediator&gt;().Send(new LeaseRunCommand(workerId), cancellationToken);
+                if (run is not null)
+                {
+                    return run;
+                }
+            }</pre>
+</section>
+
+<section id="clip-leased" data-part="4" data-cue="Here a direction is submitted while both workers are idle." data-clip="clips/run-leased.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Leased at once; the heartbeat keeps refreshing</aside>
+</section>
+
+<section id="isolation" data-part="5" data-cue="Now isolation.">
+  <div class="code-file">worker/src/work-loop.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2-3">      if (this.isolation) {
+        isolated = await startRunIsolation(this.isolation, run.runId, (level, text) =&gt; logs.add({ level, text }));
+        context.isolation = isolated.isolation;
+      }</pre>
+</section>
+
+<section id="proxy" data-part="5" data-cue="The proxy allows the model API">
+  <div class="code-file">worker/src/isolation/egress-proxy.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2">export function egressAllowList(options: { magicPatternsUrl?: string } = {}): string[] {
+  const hosts = ['api.anthropic.com', 'registry.npmjs.org', 'api.nuget.org', 'www.nuget.org'];
+  if (options.magicPatternsUrl) hosts.push(new URL(options.magicPatternsUrl).hostname);
+  return hosts;</pre>
+  <div class="code-file">worker/src/isolation/egress-proxy.ts · tunnel</div>
+  <pre class="code tight" data-lang="ts" data-mark="3-5">  private tunnel(req: IncomingMessage, client: Socket, head: Buffer): void {
+    const [host = '', port = '443'] = (req.url ?? '').split(':');
+    if (!this.allows(host)) {
+      this.onBlocked(host);
+      client.end('HTTP/1.1 403 Forbidden\r\n\r\n');
+      return;
+    }</pre>
+</section>
+
+<section id="gate" data-part="5" data-cue="The tool gate is built from the stage's allowed tools.">
+  <div class="code-file">worker/src/isolation/tool-gate.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3-5">  /** Throws {@link ToolDeniedError}, after reporting it, unless the stage allows the tool. */
+  require(tool: string): void {
+    if (this.allowed.has(tool)) return;
+    this.onDenied(tool);
+    throw new ToolDeniedError(tool);
+  }</pre>
+</section>
+
+<section id="sandbox" data-part="5" data-cue="Commands the run executes get none">
+  <div class="code-file">worker/src/isolation/run-sandbox.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="5-12,14">      'run',
+      '--rm',
+      '--name',
+      `hewn-${settings.runId}-${run.command.replace(/[^a-zA-Z0-9_.-]/g, '')}`,
+      '--cap-drop',
+      'ALL',
+      '--security-opt',
+      'no-new-privileges',
+      '--user',
+      '1000:1000',
+      '--network',
+      settings.network,
+      '-v',
+      `${settings.workspace}:/workspace`,
+      '-w',
+      run.cwd ? `/workspace/${run.cwd}` : '/workspace',</pre>
+</section>
+
+<section id="contain" data-part="5" data-cue="Here is the whole run as a sequence">
+  <figure class="diagram"><img src="../../detailed-designs/agent-runtime/agent-isolation/diagrams/sequence-contain-a-run.png" alt="Sequence diagram: the work loop starts the run's proxy and hands the agent a tool gate; a denied tool and a blocked host are logged; commands run sandboxed; commits go through the API"></figure>
+</section>
+
+<section id="clip-isolation" data-part="5" data-cue="Here a worker plays an agent misled" data-clip="clips/isolation-log.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Stage Idea: Bash denied, exfiltrate.example blocked</aside>
+</section>
+
+<section id="adr" data-part="5" data-cue="A d r twenty five records these choices">
+  <figure><img src="screens/isolation-log.png" alt="The Idea stage's log: error, Security event: tool Bash denied; warn, Egress blocked: exfiltrate.example is not an allowed host"></figure>
+</section>
+
+<section id="test-backend" data-part="6" data-cue="On the backend, a new test follows the hub">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Workers/WorkersLiveTests.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="2,8,12">        var worker = await _factory.RegisterWorkerAsync();
+        Assert.True(await ArrivesAsync(changes, 1), "told of the registration");
+
+        await owner.PostAsync("/api/projects", new { name = "Ledgerline", idea = "A web app for small accounting teams.", budgetUsd = 300m });
+        var before = changes.Count;
+        var run = await worker.LeaseAsync();
+        Assert.NotNull(run);
+        Assert.True(await ArrivesAsync(changes, before + 1), "told of the lease");
+
+        before = changes.Count;
+        (await worker.SucceedAsync(run)).EnsureSuccessStatusCode();
+        Assert.True(await ArrivesAsync(changes, before + 1), "told the run finished");</pre>
+  <div class="result red">✘ HubException: Failed to invoke 'JoinWorkers' · Method does not exist</div>
+  <div class="result green">✔ backend 282 of 282</div>
+</section>
+
+<section id="test-worker" data-part="6" data-cue="The worker's isolation tests run the proxy for real">
+  <div class="code-file">worker/test/isolation.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="8-10,12">  it('forwards requests to allowed hosts and blocks and logs the rest', async () =&gt; {
+    const { url } = await upstream();
+    const blocked: string[] = [];
+    const proxy = new EgressProxy(['127.0.0.1'], (host) =&gt; blocked.push(host));
+    const proxyUrl = await proxy.start();
+    closers.push(() =&gt; proxy.stop());
+
+    expect(await viaProxy(proxyUrl, url)).toBe(200);
+    expect(await viaProxy(proxyUrl, 'http://exfiltrate.example/steal')).toBe(403);
+    expect(await connectVia(proxyUrl, 'evil.example:443')).toBe('HTTP/1.1 403 Forbidden');
+
+    expect(blocked).toEqual(['exfiltrate.example', 'evil.example']);
+  });</pre>
+  <div class="result red">✘ Cannot find module '../src/isolation/egress-proxy.ts'</div>
+  <div class="result green">✔ worker 152 of 152</div>
+</section>
+
+<section id="test-e2e" data-part="6" data-cue="End to end, three new tests start real workers">
+  <div class="code-file">e2e/tests/pipeline/run-workers-locally-or-in-cloud.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2,8-9,11-14">    await signIn(page, 'quinntynebrown');
+    stops.push(startWorkers(1, 150, { namePrefix: `isolated-${suffix()}`, probeStage: 1 }));
+
+    await newDirection.open();
+    await newDirection.fill({ name: uniqueName('Isolated'), idea: 'A rota planner for volunteer lifeguards.' });
+    await newDirection.submit();
+    await project.heading.waitFor();
+    await expect(project.stageStatus('Idea')).toContainText('Succeeded', { timeout: 30_000 });
+    await project.selectStage('Idea');
+
+    await expect(project.logLines.filter({ hasText: 'Security event: tool Bash denied' })).toHaveCount(1, {
+      timeout: 30_000,
+    });
+    await expect(project.logLines.filter({ hasText: 'Egress blocked: exfiltrate.example' })).toHaveCount(1);</pre>
+</section>
+
+<section id="screens" data-part="7" data-cue="Workers reads the same in dark mode">
+  <div class="cols">
+    <figure><img src="screens/workers-dark.png" alt="Workers in dark mode"></figure>
+    <figure class="phone"><img src="screens/workers-phone.png" alt="Workers on a phone"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="8" data-cue="Journey twenty three is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>One image; configuration says Local or Cloud</li>
+    <li>New workers show at once; idle ones are pushed work</li>
+    <li>Each run: its own proxy, gate and sandbox, refusals logged</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>
