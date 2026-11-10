@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 18 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="18" data-video-title="Review agent decisions" data-parts="Introduction|Goal|Keeping the commit|The API|The tab|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 18</div>
+  <h1>Review agent decisions</h1>
+  <p class="lead">What the agents decided, by stage, with the commit that recorded it.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video walks through how it was built">
+  <figure><img src="screens/decisions-default.png" alt="Kiln Booking's Decisions tab: decisions newest first, each with time, stage, question, answer, rationale and commit"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="A user opens a project's Decisions">
+  <div class="cols cols--wide">
+    <figure><img src="screens/decisions-filtered.png" alt="Decisions filtered to the Stack stage"></figure>
+    <ul class="bullets small">
+      <li>Newest first, with stage and time</li>
+      <li>Question, answer, rationale</li>
+      <li>The commit that recorded it, and any ADR</li>
+      <li>Filter by stage</li>
+    </ul>
+  </div>
+</section>
+
+<section id="record" data-part="1" data-cue="Here is how a decision is recorded.">
+  <figure class="diagram"><img src="../../detailed-designs/pipeline/record-decisions/diagrams/sequence-answer-and-record.png" alt="Sequence diagram: the agent appends to docs/decisions.md, the worker commits through the broker, then reports the decisions; the API stores each with the run's latest commit of the log"></figure>
+</section>
+
+<section id="list" data-part="1" data-cue="Listing is then a database read.">
+  <figure class="diagram"><img src="../../detailed-designs/pipeline/record-decisions/diagrams/sequence-list.png" alt="Sequence diagram: the Decisions tab gets the project's decisions for a stage from ProjectsController and GetDecisionsHandler, newest first, and reads again on DecisionRecorded"></figure>
+</section>
+
+<section id="classes" data-part="1" data-cue="The classes are few.">
+  <figure class="diagram"><img src="../../detailed-designs/pipeline/record-decisions/diagrams/class-structure.png" alt="Class diagram: RunDecision gains CommitSha and Adr; RecordDecisionsHandler stores it, GetDecisionsHandler lists it, DecisionsComponent shows it"></figure>
+</section>
+
+<section id="commit" data-part="2" data-cue="When decisions arrive, the handler finds the run's commits">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/MonitorCommands.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,7">        // L2-054 AC3: the worker reports decisions after committing them, so the run's latest commit of the log recorded them.
+        var commits = await db.GitHubMutations.AsNoTracking()
+            .Where(m =&gt; m.RunId == run.Id &amp;&amp; m.Kind == "commit")
+            .OrderByDescending(m =&gt; m.Id)
+            .Select(m =&gt; m.Result)
+            .ToListAsync(cancellationToken);
+        var commitSha = commits.Select(CommitRecord.Read).FirstOrDefault(c =&gt; c.Paths.Contains(CommitPolicy.DecisionLog))?.Sha;
+        foreach (var reported in command.Decisions)</pre>
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/MonitorCommands.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="7-8">            var decision = new RunDecision(
+                run,
+                SecretRedactor.Redact(reported.Question),
+                SecretRedactor.Redact(reported.Answer),
+                SecretRedactor.Redact(reported.Rationale ?? string.Empty),
+                now,
+                commitSha,
+                reported.Adr);</pre>
+</section>
+
+<section id="adr" data-part="2" data-cue="The worker reads each entry's A D R link">
+  <div class="code-file">worker/src/agents/decision-log.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="9-11">export function parseDecisions(text: string): { question: string; answer: string; rationale: string; adr?: string }[] {
+  return text
+    .split(/^## /m)
+    .slice(1)
+    .flatMap((entry) =&gt; {
+      const question = /\*\*Question:\*\*\s*(.+)/.exec(entry)?.[1]?.trim();
+      const answer = /\*\*Answer:\*\*\s*(.+)/.exec(entry)?.[1]?.trim();
+      const rationale = /\*\*Rationale:\*\*\s*(.+)/.exec(entry)?.[1]?.trim() ?? '';
+      // L2-054 AC2: the ADR an architecture decision links, as docs/adr/NNNN-slug.md.
+      const adr = /\*\*ADR:\*\*.*\]\(adr\/(\d{4}-[a-z0-9-]+\.md)\)/.exec(entry)?.[1];
+      return question &amp;&amp; answer ? [{ question, answer, rationale, ...(adr ? { adr: `docs/adr/${adr}` } : {}) }] : [];
+    });
+}</pre>
+</section>
+
+<section id="increments" data-part="2" data-cue="Stage ten committed decisions too">
+  <div class="code-file">worker/src/executors/increment-executor.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2,5,7">    // L2-054 AC3: decisions already on the default branch were reported by the run that recorded them.
+    const reported = new Set(parseDecisions(readDecisions(directory)).map((d) =&gt; d.question));
+    /** Reports the decisions the last commit wrote, once each, so the Decisions tab links them to it. */
+    const reportDecisions = async () =&gt; {
+      const recorded = parseDecisions(readDecisions(directory)).filter((d) =&gt; !reported.has(d.question));
+      if (recorded.length === 0) return;
+      await context.recordDecisions(recorded);
+      for (const d of recorded) reported.add(d.question);
+    };</pre>
+  <div class="code-file">worker/src/executors/increment-executor.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="5,7">    const commitChanges = async (step: StepKey, message: string) =&gt; {
+      const now = snapshot(directory);
+      const paths = [...now.keys()].filter((p) =&gt; now.get(p) !== committed.get(p));
+      if (paths.length === 0) return;
+      await context.commit(step, message, read(directory, paths), branch);
+      committed = now;
+      if (paths.includes(DECISIONS)) await reportDecisions();
+    };</pre>
+</section>
+
+<section id="api" data-part="3" data-cue="The API lists the project's decisions newest first">
+  <div class="code-file">backend/src/Hewn.Application/Projects/GetDecisions.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1-2,12-14">                .OrderByDescending(d =&gt; d.RecordedAt)
+                .ThenByDescending(d =&gt; d.Id)
+                .Select(d =&gt; new ProjectDecisionDto(
+                    d.Id,
+                    d.Stage,
+                    d.Stage &lt; Stages.Count ? Stages.Names[d.Stage] : $"Stage {d.Stage}",
+                    d.Question,
+                    d.Answer,
+                    d.Rationale,
+                    d.RecordedAt,
+                    d.CommitSha,
+                    repo is null || d.CommitSha is null ? null : $"https://github.com/{repo}/commit/{d.CommitSha}",
+                    d.Adr is null ? null : new DecisionAdrDto(
+                        d.Adr,
+                        $"ADR {Path.GetFileName(d.Adr)[..4]}",
+                        repo is null ? null : $"https://github.com/{repo}/blob/{d.CommitSha ?? "HEAD"}/{d.Adr}")))]);</pre>
+</section>
+
+<section id="answer" data-part="3" data-cue="Each gets its stage name, a link to its commit">
+  <div class="code-file">GET /api/projects/{id}/decisions (Kiln Booking's stack decision)</div>
+  <pre class="code tight" data-lang="json" data-mark="3-4,9-10">{
+  "id": 16,
+  "stage": 4,
+  "stageName": "Stack",
+  "question": "Which stack should the product use?",
+  "answer": ".NET 10 (LTS) backend with an Angular 21 frontend",
+  "rationale": "No stack was named, so the default applies (L2-013).",
+  "recordedAt": "2026-11-10T10:35:16.813948+00:00",
+  "commit": "3a08f663caef23397271f476b7ac29776444df34",
+  "commitUrl": "https://github.com/hewn-builds/kiln-booking/commit/3a08f663caef23397271f476b7ac29776444df34",
+  "adr": null
+}</pre>
+</section>
+
+<section id="entry" data-part="4" data-cue="Here is an entry in the decisions file">
+  <div class="code-file">docs/decisions.md in hewn-builds/kiln-booking at 3a08f66</div>
+  <pre class="code tight" data-lang="markdown" data-mark="1,3,5,7">## 2026-11-10 · Stage 4 Stack
+
+**Question:** Which stack should the product use?
+
+**Answer:** .NET 10 (LTS) backend with an Angular 21 frontend
+
+**Rationale:** No stack was named, so the default applies (L2-013).</pre>
+  <div class="code-file">The same decision on the Decisions tab</div>
+  <figure><img src="screens/stack-entry.png" alt="The same decision on the Decisions tab: date and Stack, then question, answer, rationale and the commit 3a08f66"></figure>
+</section>
+
+<section id="filter" data-part="4" data-cue="Choosing a stage puts it in the address">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/project/decisions.component.html</div>
+  <pre class="code tight" data-lang="html" data-mark="3,6">      &lt;label class="inline-label"
+        &gt;Stage
+        &lt;select class="select select--auto input--sm" (change)="choose($event)"&gt;
+          &lt;option value="" [selected]="filter() === undefined"&gt;All stages&lt;/option&gt;
+          @for (s of stages; track s.number) {
+            &lt;option [value]="s.number" [selected]="filter() === s.number"&gt;{{ s.name }}&lt;/option&gt;
+          }
+        &lt;/select&gt;&lt;/label
+      &gt;</pre>
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/project/decisions.component.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3-4">  protected choose(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    void this.router.navigate(['/projects', this.projectId(), 'decisions'], {
+      queryParams: value ? { stage: value } : {},
+    });
+  }</pre>
+</section>
+
+<section id="red" data-part="5" data-cue="The backend tests came first">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Projects/DecisionsTests.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,3-6">        // The commit is the run's last one that wrote docs/decisions.md, not merely its last one.
+        var pwa = decisions.GetProperty("decisions")[1];
+        Assert.Equal("Stack", pwa.GetProperty("stageName").GetString());
+        Assert.Equal(stackSha, pwa.GetProperty("commit").GetString());
+        Assert.Equal("docs/adr/0002-keep-the-default-stack.md", pwa.GetProperty("adr").GetProperty("path").GetString());
+        Assert.Equal("ADR 0002", pwa.GetProperty("adr").GetProperty("title").GetString());
+        Assert.Equal($"https://github.com/hewn-builds/ledgerline/blob/{stackSha}/docs/adr/0002-keep-the-default-stack.md", pwa.GetProperty("adr").GetProperty("url").GetString());
+        Assert.True(pwa.GetProperty("recordedAt").GetDateTimeOffset() &gt; oldest.GetProperty("recordedAt").GetDateTimeOffset());
+    }</pre>
+  <div class="result red">✘ 5 failed · 404 Not Found: no route</div>
+</section>
+
+<section id="e2e" data-part="5" data-cue="End to end, a live test runs a real worker">
+  <div class="code-file">e2e/tests/pipeline/review-agent-decisions-live.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3,7,12-14">    const stack = decisions.decision('Which stack should the product use?');
+    await expect(stack.answer).toHaveText('.NET 10 (LTS) backend with an Angular 21 frontend');
+    await expect(stack.commit).toHaveText(/^\s*[0-9a-f]{7}$/);
+    const href = (await stack.commit.getAttribute('href'))!;
+    const [, repository, sha] = /^https:\/\/github\.com\/([^/]+\/[^/]+)\/commit\/([0-9a-f]{40})$/.exec(href)!;
+
+    // The linked commit is the one that wrote the decision into docs/decisions.md.
+    const commits = (await (await page.request.get(`/api/fakes/github/${repository}/commits`)).json()) as {
+      sha: string;
+      paths: string[];
+    }[];
+    expect(commits.find((c) =&gt; c.sha === sha)?.paths).toContain('docs/decisions.md');
+    const log = await page.request.get(`/api/fakes/github/${repository}/contents/docs/decisions.md?ref=${sha}`);
+    expect(await log.text()).toMatch(/· Stage 4 Stack\n\n\*\*Question:\*\* Which stack should the product use\?/);</pre>
+</section>
+
+<section id="tests" data-part="5" data-cue="All green, the backend has">
+  <div class="cols cols--3">
+    <div class="card"><h3>244 backend</h3><p class="small">6 new, through the real API and worker endpoints</p></div>
+    <div class="card"><h3>145 worker · 3 view tests</h3><p class="small">ADRs reported; stage 10 reports its decisions</p></div>
+    <div class="card"><h3>17 new e2e</h3><p class="small">5 behaviour, 1 live, 6 visual, 5 a11y</p></div>
+  </div>
+</section>
+
+<section id="clip-decisions" data-part="6" data-cue="Here is Kiln Booking, built end to end by a real worker." data-clip="clips/decisions.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Kiln Booking's decisions, then Stack, Increments and Scaffold</aside>
+</section>
+
+<section id="clip-commit" data-part="6" data-cue="Opening the stack decision's commit" data-clip="clips/commit.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">The commit behind a decision, from the e2e fake GitHub</aside>
+</section>
+
+<section id="themes" data-part="6" data-cue="As a Viewer the list reads the same in dark mode">
+  <div class="cols">
+    <figure><img src="screens/decisions-dark.png" alt="The Decisions tab in dark mode, as a Viewer"></figure>
+    <figure class="phone"><img src="screens/decisions-phone.png" alt="The Decisions tab on a phone"></figure>
+  </div>
+</section>
+
+<section id="states" data-part="6" data-cue="A project with no decisions yet says so">
+  <div class="cols">
+    <figure><img src="screens/empty-desktop.png" alt="No decisions yet"></figure>
+    <figure><img src="screens/error-desktop.png" alt="Decisions couldn't load, with Try again"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="7" data-cue="Journey eighteen is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Every recorded decision, newest first</li>
+    <li>Linked to its commit and its ADR</li>
+    <li>Filtered by stage, in the address</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

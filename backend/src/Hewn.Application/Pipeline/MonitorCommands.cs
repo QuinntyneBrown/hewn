@@ -36,7 +36,8 @@ public sealed class StartStepHandler(IAppDbContext db, LeaseService leases, Even
     }
 }
 
-public sealed record ReportedDecision(string Question, string Answer, string? Rationale);
+/// <param name="Adr">The ADR the decision also wrote, as <c>docs/adr/NNNN-slug.md</c> (L2-054 AC2).</param>
+public sealed record ReportedDecision(string Question, string Answer, string? Rationale, string? Adr = null);
 
 public sealed record RecordDecisionsCommand(Guid RunId, string WorkerId, long Epoch, IReadOnlyList<ReportedDecision> Decisions) : IRequest;
 
@@ -49,6 +50,11 @@ public sealed class RecordDecisionsValidator : AbstractValidator<RecordDecisions
         {
             d.RuleFor(x => x.Question).NotEmpty().MaximumLength(RunDecision.MaxQuestionLength);
             d.RuleFor(x => x.Answer).NotEmpty().MaximumLength(RunDecision.MaxAnswerLength);
+            d.RuleFor(x => x.Adr!)
+                .MaximumLength(RunDecision.MaxAdrLength)
+                .Matches(@"^docs/adr/\d{4}-[a-z0-9-]+\.md$")
+                .WithMessage("An ADR is docs/adr/NNNN-slug.md.")
+                .When(x => x.Adr is not null);
         });
     }
 }
@@ -66,6 +72,13 @@ public sealed class RecordDecisionsHandler(IAppDbContext db, LeaseService leases
         var now = clock.GetUtcNow();
         // A resumed step reports its decisions again; the run keeps the first copy of each question.
         var known = (await db.RunDecisions.Where(d => d.RunId == run.Id).Select(d => d.Question).ToListAsync(cancellationToken)).ToHashSet();
+        // L2-054 AC3: the worker reports decisions after committing them, so the run's latest commit of the log recorded them.
+        var commits = await db.GitHubMutations.AsNoTracking()
+            .Where(m => m.RunId == run.Id && m.Kind == "commit")
+            .OrderByDescending(m => m.Id)
+            .Select(m => m.Result)
+            .ToListAsync(cancellationToken);
+        var commitSha = commits.Select(CommitRecord.Read).FirstOrDefault(c => c.Paths.Contains(CommitPolicy.DecisionLog))?.Sha;
         foreach (var reported in command.Decisions)
         {
             if (!known.Add(SecretRedactor.Redact(reported.Question)))
@@ -78,7 +91,9 @@ public sealed class RecordDecisionsHandler(IAppDbContext db, LeaseService leases
                 SecretRedactor.Redact(reported.Question),
                 SecretRedactor.Redact(reported.Answer),
                 SecretRedactor.Redact(reported.Rationale ?? string.Empty),
-                now);
+                now,
+                commitSha,
+                reported.Adr);
             db.RunDecisions.Add(decision);
             await events.AppendAsync(
                 run.ProjectId,

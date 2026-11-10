@@ -137,6 +137,11 @@
           >Design system</a
         ><a
           class="tab"
+          [routerLink]="['/projects', p.id, 'decisions']"
+          [attr.aria-current]="section() === 'decisions' ? 'page' : null"
+          >Decisions</a
+        ><a
+          class="tab"
           [routerLink]="['/projects', p.id, 'artifacts']"
           [attr.aria-current]="section() === 'artifacts' ? 'page' : null"
           >Artifacts</a
@@ -155,6 +160,13 @@
     <hw-designs [projectId]="p.id" [projectName]="p.name" />
   } @else if (section() === 'design-system') {
     <hw-design-system [projectId]="p.id" />
+  } @else if (section() === 'decisions') {
+    <hw-decisions
+      [projectId]="p.id"
+      [repository]="p.repository"
+      [stage]="stage()"
+      [changes]="decisionChanges()"
+    />
   } @else if (section() === 'artifacts') {
     <hw-artifacts [projectId]="p.id" [repository]="p.repository" [changes]="artifactChanges()" />
   } @else if (section() === 'traceability') {

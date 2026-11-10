@@ -22,7 +22,7 @@ box "Backend — Worker stage execution" #ECFDF3
   participant "DecisionRecorder" as rec
 end box
 box "Backend — Hewn API application" #D1FADF
-  participant "RunsController" as ctrl
+  participant "WorkerRunsController" as ctrl
 end box
 box "Backend — Hewn Infrastructure" #FFF4E5
   database "Hewn database" as db
@@ -38,8 +38,9 @@ rec -> rec : Append date, stage, question, answer, rationale to docs/decisions.m
 opt architectural
   rec -> rec : Write docs/adr/NNNN-title.md
 end
-rec -> gh : Commit and push
-rec -> ctrl : DecisionRecorded(commit SHA)
-ctrl -> db : Insert into DecisionIndex
+rec -> gh : Commit docs/decisions.md (and the ADR) through the write broker
+rec -> ctrl : POST /api/worker/runs/{id}/decisions\n(question, answer, rationale, adr?)
+ctrl -> db : Find the run's latest commit of docs/decisions.md
+ctrl -> db : Insert into run_decisions with that commit SHA;\nappend DecisionRecorded
 icpt --> agent : Answer; no wait (L2-054 AC1)
 @enduml

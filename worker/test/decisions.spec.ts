@@ -7,7 +7,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { CommitFile, LeasedRun } from '../src/api.ts';
+import type { CommitFile, LeasedRun, ReportedDecision } from '../src/api.ts';
 import { appendDecision, AUTONOMY, validateDecisions } from '../src/agents/decision-log.ts';
 import type { StageAgent, StageAgentTask } from '../src/agents/stage-agent.ts';
 import { ScriptedStageAgent } from '../src/agents/scripted-agent.ts';
@@ -71,6 +71,7 @@ describe('the decision log', () => {
 
 function context() {
   const commits: Map<string, string>[] = [];
+  const reported: ReportedDecision[] = [];
   const ctx: RunContext = {
     ...noPullRequests,
     workspace: mkdtempSync(join(root, 'workspace-')),
@@ -81,8 +82,9 @@ function context() {
       commits.push(new Map(files.map((f) => [f.path, f.content.toString('utf8')]))),
       'c0ffee'
     ),
+    recordDecisions: async (decisions) => void reported.push(...decisions),
   };
-  return { ctx, commits };
+  return { ctx, commits, reported };
 }
 
 const run = (stage: number, stageName: string): LeasedRun => ({
@@ -122,8 +124,8 @@ describe('agent stages', () => {
     expect(tasks[0]!.allowedTools).not.toContain('AskUserQuestion');
   });
 
-  it('commit the ADR an architecture decision writes, with the decision log', async () => {
-    const { ctx, commits } = context();
+  it('commit the ADR an architecture decision writes, with the decision log, and report it', async () => {
+    const { ctx, commits, reported } = context();
     const agent: StageAgent = {
       run: async (task) => {
         write(
@@ -146,6 +148,14 @@ describe('agent stages', () => {
       'docs/adr/0002-rest-over-json.md',
       'docs/brief.md',
       'docs/decisions.md',
+    ]);
+    expect(reported).toEqual([
+      {
+        question: decision.question,
+        answer: decision.answer,
+        rationale: decision.rationale,
+        adr: 'docs/adr/0002-rest-over-json.md',
+      },
     ]);
   });
 

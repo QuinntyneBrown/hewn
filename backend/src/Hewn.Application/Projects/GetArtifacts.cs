@@ -42,7 +42,7 @@ public sealed class GetArtifactsHandler(IAppDbContext db) : IRequestHandler<GetA
             .ToListAsync(cancellationToken);
 
         var stages = commits
-            .Select(m => (Stage: stageOf[m.RunId], m.CreatedAt, Commit: Read(m.Result)))
+            .Select(m => (Stage: stageOf[m.RunId], m.CreatedAt, Commit: CommitRecord.Read(m.Result)))
             .Where(c => c.Commit.Branch is null)
             .SelectMany(c => c.Commit.Paths
                 .Where(path => path != CommitPolicy.DecisionLog)
@@ -83,12 +83,4 @@ public sealed class GetArtifactsHandler(IAppDbContext db) : IRequestHandler<GetA
 
     private static string? Url(string? repository, string sha, string path, bool folder) =>
         repository is null ? null : $"https://github.com/{repository}/{(folder ? "tree" : "blob")}/{sha}/{path}";
-
-    private static (string Sha, IReadOnlyList<string> Paths, string? Branch) Read(string result)
-    {
-        var root = JsonDocument.Parse(result).RootElement;
-        var paths = root.TryGetProperty("paths", out var p) ? p.EnumerateArray().Select(e => e.GetString()!).ToList() : [];
-        var branch = root.TryGetProperty("branch", out var b) && b.ValueKind == JsonValueKind.String ? b.GetString() : null;
-        return (root.GetProperty("sha").GetString()!, paths, branch);
-    }
 }

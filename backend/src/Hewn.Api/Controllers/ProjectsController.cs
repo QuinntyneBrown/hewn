@@ -57,6 +57,11 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
     public Task<TraceabilityDto> Traceability(Guid projectId, CancellationToken cancellationToken) =>
         mediator.Send(new GetTraceabilityQuery(projectId), cancellationToken);
 
+    /// <summary>L2-054 AC3: the project's decisions, newest first, optionally of one stage, with the commit that recorded each.</summary>
+    [HttpGet("{projectId:guid}/decisions")]
+    public Task<DecisionsDto> Decisions(Guid projectId, [FromQuery] int? stage, CancellationToken cancellationToken) =>
+        mediator.Send(new GetDecisionsQuery(projectId, stage), cancellationToken);
+
     /// <summary>L2-034 AC2: each stage's artifacts with path, version (commit SHA), time and a GitHub link at that SHA.</summary>
     [HttpGet("{projectId:guid}/artifacts")]
     public Task<ArtifactsDto> Artifacts(Guid projectId, CancellationToken cancellationToken) =>

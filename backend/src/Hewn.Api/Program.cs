@@ -53,6 +53,22 @@ if (app.Configuration.GetValue<bool>("Hewn:Fakes:Enabled"))
             ? Results.Ok(repository.PullRequests.Select(p => new { p.Number, p.Title, p.Head, p.Open, p.Merged, Labels = p.Labels.ToList() }).ToList())
             : Results.NotFound());
 
+    // Each commit on a fake repository with the paths it wrote, so a test can see what a linked commit recorded.
+    app.MapGet("/api/fakes/github/{owner}/{name}/commits", (string owner, string name, Hewn.Infrastructure.Fakes.InMemoryGitHub gitHub) =>
+        gitHub.Repository(owner, name) is { } repository
+            ? Results.Ok(repository.Commits.Select(c => new { c.Sha, c.Message, c.Paths }).ToList())
+            : Results.NotFound());
+
+    // A file's text at a commit (or the head), so a test or a video can show what a commit recorded.
+    app.MapGet("/api/fakes/github/{owner}/{name}/contents/{**path}", (string owner, string name, string path, string? @ref, Hewn.Infrastructure.Fakes.InMemoryGitHub gitHub) =>
+    {
+        var repository = gitHub.Repository(owner, name);
+        var files = repository is null ? null : @ref is null ? repository.Files : repository.Snapshots.GetValueOrDefault(@ref);
+        return files is not null && files.TryGetValue(path, out var bytes)
+            ? Results.Text(System.Text.Encoding.UTF8.GetString(bytes), "text/plain; charset=utf-8")
+            : Results.NotFound();
+    });
+
     // Commits files to a fake repository, making it when it doesn't exist, as stage 2 or someone outside Hewn would.
     app.MapPut("/api/fakes/github/{owner}/{name}/files", (string owner, string name, Dictionary<string, string> files, Hewn.Infrastructure.Fakes.InMemoryGitHub gitHub) =>
     {

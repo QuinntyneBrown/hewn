@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Review agent decisions (journey 18, L2-054): a project's Decisions tab (`/projects/{id}/decisions?stage=`) lists
+  the questions agents answered for themselves, newest first, with stage, time, answer, rationale and links to the
+  commit that recorded each and any ADR, and filters them by stage. `GET /api/projects/{id}/decisions?stage=` lists
+  them from Hewn's record, which now keeps each decision's commit and ADR (ADR 0020). Workers report a decision's
+  ADR, and stage 10 now reports the decisions its increments record. A fakes-only
+  `GET /api/fakes/github/{owner}/{name}/commits` lists a fake repository's commits.
 - Trace a requirement (journey 17, L2-035): a project's Traceability tab (`/projects/{id}/traceability?l2=`) lists
   its L2s with search and, for the chosen one, its L1, the designs and journeys that name it, the test files whose
   `Traces to:` header names it and the pull requests whose titles name it, marked "No acceptance test" unless it is

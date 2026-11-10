@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { HewnApiError, type CheckRun, type CommitFile, type Increment, type LeasedRun } from '../api.ts';
-import { AUTONOMY, validateDecisions } from '../agents/decision-log.ts';
+import { AUTONOMY, DECISIONS, parseDecisions, readDecisions, validateDecisions } from '../agents/decision-log.ts';
 import type { IncrementTask, StageAgent } from '../agents/stage-agent.ts';
 import type { Backlog } from '../estimates/backlog-planner.ts';
 import { markComplete } from '../increments/progress.ts';
@@ -111,12 +111,23 @@ export class IncrementStageExecutor implements StageExecutor {
     const state = { iterations: increment.iterations, rebases: 0 };
     const maxIterations = leased.maxIterations;
 
+    // L2-054 AC3: decisions already on the default branch were reported by the run that recorded them.
+    const reported = new Set(parseDecisions(readDecisions(directory)).map((d) => d.question));
+    /** Reports the decisions the last commit wrote, once each, so the Decisions tab links them to it. */
+    const reportDecisions = async () => {
+      const recorded = parseDecisions(readDecisions(directory)).filter((d) => !reported.has(d.question));
+      if (recorded.length === 0) return;
+      await context.recordDecisions(recorded);
+      for (const d of recorded) reported.add(d.question);
+    };
+
     const commitChanges = async (step: StepKey, message: string) => {
       const now = snapshot(directory);
       const paths = [...now.keys()].filter((p) => now.get(p) !== committed.get(p));
       if (paths.length === 0) return;
       await context.commit(step, message, read(directory, paths), branch);
       committed = now;
+      if (paths.includes(DECISIONS)) await reportDecisions();
     };
 
     try {
@@ -243,6 +254,7 @@ export class IncrementStageExecutor implements StageExecutor {
             { rebase: true },
           );
           committed = snapshot(directory);
+          await reportDecisions();
           await context.log(
             'info',
             `Increment ${n}: rebased onto the default branch (${state.rebases} of ${MAX_REBASES})`,

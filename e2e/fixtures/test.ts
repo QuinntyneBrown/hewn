@@ -7,6 +7,7 @@ import { DesignsPage } from '../pages/designs.page';
 import { DesignSystemPage } from '../pages/design-system.page';
 import { ArtifactsPage } from '../pages/artifacts.page';
 import { TraceabilityPage } from '../pages/traceability.page';
+import { DecisionsPage } from '../pages/decisions.page';
 import { ProjectsPage } from '../pages/projects.page';
 import { SettingsPage } from '../pages/settings.page';
 
@@ -34,6 +35,7 @@ interface Pages {
   designSystem: DesignSystemPage;
   artifacts: ArtifactsPage;
   traceability: TraceabilityPage;
+  decisions: DecisionsPage;
   settings: SettingsPage;
 }
 
@@ -47,6 +49,7 @@ export const test = base.extend<Pages>({
   designSystem: async ({ page }, use) => use(new DesignSystemPage(page)),
   artifacts: async ({ page }, use) => use(new ArtifactsPage(page)),
   traceability: async ({ page }, use) => use(new TraceabilityPage(page)),
+  decisions: async ({ page }, use) => use(new DecisionsPage(page)),
   settings: async ({ page }, use) => use(new SettingsPage(page)),
 });
 

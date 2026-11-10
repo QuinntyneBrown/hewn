@@ -18,6 +18,6 @@ Rel(icpt, decide, "Delegates")
 Rel(decide, claude, "Calls", "HTTPS")
 Rel(icpt, rec, "Records answer")
 Rel(rec, github, "Commits", "Git/HTTPS")
-Rel(rec, api, "DecisionRecorded", "HTTPS")
+Rel(rec, api, "Reports decisions and ADRs after the commit", "HTTPS")
 Rel(icpt, agent, "Returns answer; stage continues")
 @enduml
