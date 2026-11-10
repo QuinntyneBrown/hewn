@@ -1,0 +1,42 @@
+@startuml
+title UML sequence behaviour — Set the descope threshold
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam sequenceMessageAlign left
+actor "Owner" as owner
+box "Frontend — Mission Control" #EFF8FF
+  participant "SettingsPage" as page
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "SettingsController" as settings
+  participant "UpdateDirectionDefaultsHandler" as update
+  participant "Submit…DirectionHandler" as submit
+  participant "LeaseRunHandler" as lease
+  database "direction_defaults / directions" as db
+end box
+box "Backend — Worker stage execution" #ECFDF3
+  participant "DocumentStageExecutor (stage 9)" as exec
+end box
+owner -> page : Descope threshold: 5 ideal days, Save defaults
+page -> settings : PUT /api/settings/direction-defaults {defaultBudgetUsd, descopeThresholdDays}
+alt Viewer
+  settings --> page : 403
+else not a whole number from 1 to 20
+  settings --> page : 400 errors.descopeThresholdDays
+  page -> page : Field error and error-summary link
+else valid
+  settings -> update : UpdateDirectionDefaultsCommand
+  update -> db : Save threshold beside the default budget
+  settings --> page : 200 {defaultBudgetUsd, descopeThresholdDays}
+  page -> page : "Defaults saved … a 5-day descope threshold"
+end
+== Later: a direction is submitted ==
+submit -> db : Record the threshold in force on the direction (L2-019 AC1)
+== Stage 9 is leased ==
+lease -> db : Direction's threshold (else the current setting)
+lease --> exec : LeasedRun.descopeThresholdDays
+exec -> exec : Agent splits designs above n days; Descoper defers what is still above
+@enduml
