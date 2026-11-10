@@ -58,13 +58,10 @@ test.describe('Update skills, visual', () => {
     await project.open(await ledgerline(page, skills));
     await expect(skills.link).toHaveText('Skills update available (4 commits)');
 
-    const app = await region(skills.link, { snap: true });
-    const mock = await mockRegion(page, 'pages/project-pipeline/default.html', '.phead__meta .btn--link', {
-      snap: true,
-    });
-    await test.info().attach('app link', { body: app, contentType: 'image/png' });
-    await test.info().attach('mock link', { body: mock, contentType: 'image/png' });
-    const diff = compare(app, mock);
+    const diff = compare(
+      await region(skills.link, { snap: true }),
+      await mockRegion(page, 'pages/project-pipeline/default.html', '.phead__meta .btn--link', { snap: true }),
+    );
     expect(diff.ratio, 'the link differs from the mock').toBeLessThan(tolerance);
   });
 
