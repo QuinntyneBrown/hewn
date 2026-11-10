@@ -42,6 +42,11 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> Increment(Guid projectId, int number, CancellationToken cancellationToken) =>
         Ok(await mediator.Send(new Hewn.Application.Increments.GetIncrementQuery(projectId, number), cancellationToken));
 
+    /// <summary>L2-011 AC1: each exported screen and state, with its Magic Patterns link and a signed preview URL.</summary>
+    [HttpGet("{projectId:guid}/designs")]
+    public Task<Hewn.Application.Designs.DesignsDto> Designs(Guid projectId, CancellationToken cancellationToken) =>
+        mediator.Send(new Hewn.Application.Designs.GetDesignsQuery(projectId), cancellationToken);
+
     [HttpGet("{projectId:guid}/backlog")]
     public Task<BacklogDto> Backlog(Guid projectId, CancellationToken cancellationToken) =>
         mediator.Send(new GetProjectBacklogQuery(projectId), cancellationToken);

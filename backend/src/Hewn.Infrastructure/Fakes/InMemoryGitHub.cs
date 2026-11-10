@@ -110,6 +110,18 @@ public class InMemoryGitHub(IConfiguration? configuration) : IGitHubRepositoryPr
         }
     }
 
+    public Task<RepositoryContent?> ReadFileAsync(string owner, string name, string path, string? sha, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            var repository = Existing(owner, name);
+            var at = sha ?? repository.Commits[^1].Sha;
+            return Task.FromResult(repository.Snapshots.TryGetValue(at, out var tree) && tree.TryGetValue(path, out var content)
+                ? new RepositoryContent(content, at)
+                : null);
+        }
+    }
+
     public Task<Stream> DownloadArchiveAsync(string owner, string name, CancellationToken cancellationToken)
     {
         lock (_lock)
@@ -318,6 +330,9 @@ public sealed class FakeRepository(string owner, string name, bool isPrivate, Li
 
     public List<FakeCommit> Commits { get; } = [];
 
+    /// <summary>The default branch's files as each commit left them, by SHA.</summary>
+    public Dictionary<string, Dictionary<string, byte[]>> Snapshots { get; } = new(StringComparer.Ordinal);
+
     /// <summary>Branches other than the default, each with its full file set.</summary>
     public Dictionary<string, Dictionary<string, byte[]>> Branches { get; } = new(StringComparer.Ordinal);
 
@@ -392,6 +407,7 @@ public sealed class FakeRepository(string owner, string name, bool isPrivate, Li
         var parent = Commits.Count == 0 ? string.Empty : Commits[^1].Sha;
         var sha = Convert.ToHexStringLower(SHA1.HashData(Encoding.UTF8.GetBytes($"{parent}\n{message}\n{string.Join('\n', files.Select(f => f.Path))}\n{Commits.Count}")));
         Commits.Add(new FakeCommit(sha, message, [.. files.Select(f => f.Path)]));
+        Snapshots[sha] = new Dictionary<string, byte[]>(Files, StringComparer.Ordinal);
         return sha;
     }
 }

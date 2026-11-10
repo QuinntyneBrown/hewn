@@ -77,6 +77,19 @@ public static class DependencyInjection
             }
         });
 
+        services.Configure<Hewn.Application.Designs.PreviewOptions>(o =>
+        {
+            if (configuration["Hewn:Preview:Origin"] is { Length: > 0 } origin)
+            {
+                o.Origin = origin;
+            }
+
+            if (int.TryParse(configuration["Hewn:Preview:TokenMinutes"], out var minutes) && minutes > 0)
+            {
+                o.TokenMinutes = minutes;
+            }
+        });
+
         if (configuration.GetValue<bool>("Hewn:Fakes:Enabled"))
         {
             services.AddSingleton<InMemoryGitHub>(sp => new InMemoryGitHub(configuration));

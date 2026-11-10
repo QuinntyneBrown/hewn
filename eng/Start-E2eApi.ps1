@@ -20,6 +20,8 @@ $env:HEWN_ALLOWED_GITHUB_USERS = 'quinntynebrown:Owner,ada:Viewer,grace:Owner'
 $env:HEWN_GITHUB_OWNER = 'hewn-builds'
 $env:HEWN_DEFAULT_BUDGET_USD = '300'
 $env:HEWN_WORKER_TOKEN = 'e2e-worker-token-not-a-secret'
+# Project HTML previews from another host than Mission Control's localhost (L2-011 AC2).
+$env:Hewn__Preview__Origin = "http://127.0.0.1:$Port"
 # Signs the webhooks e2e tests send as GitHub would (L2-037 AC2).
 $env:HEWN_GITHUB_WEBHOOK_SECRET = 'e2e-webhook-secret-not-a-secret'
 # Short waits before each automatic retry of a failed run (30 s, 2 min, 10 min in production; L2-006 AC1).
