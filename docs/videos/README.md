@@ -29,6 +29,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 13 | [Follow an increment to merge](13-follow-an-increment-to-merge/README.md) | ~5:53 | Journey 13 |
 | 14 | [Preview product designs](14-preview-product-designs/README.md) | ~5:43 | Journey 14 |
 | 15 | [Browse the design system](15-browse-the-design-system/README.md) | ~5:25 | Journey 15 |
+| 16 | [Inspect versioned artifacts](16-inspect-versioned-artifacts/README.md) | ~4:17 | Journey 16 |
 
 ## Voice
 

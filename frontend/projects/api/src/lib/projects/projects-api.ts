@@ -4,6 +4,7 @@ import { catchError, Observable, throwError } from 'rxjs';
 import { toFieldErrors } from '../problems/field-errors';
 import { toRateLimited } from '../problems/rate-limited';
 import {
+  Artifacts,
   Backlog,
   Designs,
   DesignSystem,
@@ -37,6 +38,8 @@ export interface ProjectsApi {
   getDesigns(projectId: string): Observable<Designs>;
   /** The design system's token and component pages with signed preview URLs; unreadable tokens are 502 `github_failed`. */
   getDesignSystem(projectId: string): Observable<DesignSystem>;
+  /** Each stage's artifacts with path, version (commit SHA), time and a GitHub link at that SHA (L2-034 AC2). */
+  getArtifacts(projectId: string): Observable<Artifacts>;
   /** Adds a feature direction (L2-005). Errors with FieldErrorsProblem when a field rule is broken. */
   submitFeatureDirection(
     projectId: string,
@@ -103,6 +106,10 @@ export class HttpProjectsApi implements ProjectsApi {
 
   getDesigns(projectId: string): Observable<Designs> {
     return this.http.get<Designs>(`/api/projects/${encodeURIComponent(projectId)}/designs`);
+  }
+
+  getArtifacts(projectId: string): Observable<Artifacts> {
+    return this.http.get<Artifacts>(`/api/projects/${encodeURIComponent(projectId)}/artifacts`);
   }
 
   getDesignSystem(projectId: string): Observable<DesignSystem> {

@@ -1,0 +1,196 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:06.67
+This is journey sixteen of Hewn, the software factory: inspect versioned artifacts.
+
+00:00:06.67 --> 00:00:11.65
+Every stage writes its output to the product's repository: the brief, the mocks,
+
+00:00:11.65 --> 00:00:14.70
+the design system, the requirements, the designs.
+
+00:00:14.70 --> 00:00:19.87
+Owners and Viewers want to open each of those at the exact commit a stage produced.
+
+00:00:19.87 --> 00:00:23.98
+This video walks through how it was built: the artifacts endpoint,
+
+00:00:23.98 --> 00:00:28.47
+the rules that decide what counts as an artifact, the new Artifacts tab,
+
+00:00:28.47 --> 00:00:29.34
+and the tests.
+
+00:00:30.49 --> 00:00:35.52
+A user opens a project's Artifacts and sees each stage's artifacts,
+
+00:00:35.52 --> 00:00:36.95
+newest stage first.
+
+00:00:36.95 --> 00:00:42.06
+Every row has the path, the version as a short commit SHA, the time,
+
+00:00:42.06 --> 00:00:46.64
+and a link that opens the file on GitHub at that very commit.
+
+00:00:47.79 --> 00:00:48.97
+Here is the flow.
+
+00:00:48.97 --> 00:00:52.58
+Workers already commit through Hewn's GitHub broker,
+
+00:00:52.58 --> 00:00:56.61
+which records each commit's SHA and paths against the run.
+
+00:00:56.61 --> 00:00:58.90
+So there is no separate recorder.
+
+00:00:58.90 --> 00:01:03.69
+Once a run succeeds, its commit is the version of the files it holds.
+
+00:01:03.69 --> 00:01:09.45
+When the tab asks, the API reads the commits of succeeded runs and shapes them into
+
+00:01:09.45 --> 00:01:09.93
+stages.
+
+00:01:11.08 --> 00:01:14.63
+The handler keeps only commits from runs that succeeded,
+
+00:01:14.63 --> 00:01:19.12
+so a failed attempt never becomes a version, and a retry's commit does.
+
+00:01:19.12 --> 00:01:22.72
+Commits to the scaffold or feature branches are left out,
+
+00:01:22.72 --> 00:01:26.39
+because the default branch is what the artifacts describe.
+
+00:01:26.39 --> 00:01:31.39
+The decision log every stage appends to has its own tab, so it is left out too.
+
+00:01:31.39 --> 00:01:34.87
+Each path's version is the latest commit that wrote it,
+
+00:01:34.87 --> 00:01:36.70
+and stages come newest first.
+
+00:01:37.05 --> 00:01:40.65
+Stages write whole folders, such as a page per mock.
+
+00:01:40.65 --> 00:01:46.12
+Files inside a subfolder of the stage's output folder fold into that subfolder,
+
+00:01:46.12 --> 00:01:49.17
+which links to GitHub as a tree, not a blob.
+
+00:01:49.17 --> 00:01:53.74
+So stage two lists one row per page folder, not hundreds of files.
+
+00:01:53.74 --> 00:01:59.35
+Commit records now also keep their branch, so the read model can tell them apart.
+
+00:02:00.50 --> 00:02:05.45
+In Mission Control, each stage is a section headed by its number and name.
+
+00:02:05.45 --> 00:02:11.13
+Each row shows the path, the short SHA, and the time, as minutes ago within the hour,
+
+00:02:11.13 --> 00:02:12.67
+then as a day and time.
+
+00:02:12.67 --> 00:02:17.88
+The link opens in a new tab, and its accessible name says which file and which
+
+00:02:17.88 --> 00:02:18.95
+commit it opens.
+
+00:02:18.95 --> 00:02:22.90
+The tab reads the artifacts again whenever a stage changes,
+
+00:02:22.90 --> 00:02:25.37
+so new files appear without a reload.
+
+00:02:26.52 --> 00:02:31.62
+The backend tests came first, and failed with not found: there was no route.
+
+00:02:31.62 --> 00:02:35.78
+Four tests now cover the stages newest first with their links,
+
+00:02:35.78 --> 00:02:39.41
+folders folding into trees, the decision log left out,
+
+00:02:39.41 --> 00:02:44.78
+a failed run's commit replaced by the retry's, branch commits left out, Viewers,
+
+00:02:44.78 --> 00:02:46.32
+and an unknown project.
+
+00:02:46.67 --> 00:02:51.05
+End to end, a live test opens the Artifacts tab on a new project,
+
+00:02:51.05 --> 00:02:56.71
+starts a real worker, and waits for the brief to appear with its seven character SHA
+
+00:02:56.71 --> 00:03:00.69
+and a link to GitHub at that full commit, without a reload.
+
+00:03:01.04 --> 00:03:04.99
+All green, the backend has two hundred and thirty two tests,
+
+00:03:04.99 --> 00:03:07.49
+and the frontend three new view tests.
+
+00:03:07.49 --> 00:03:12.96
+End to end, there are eleven new tests: three for behaviour, one live pipeline run,
+
+00:03:12.96 --> 00:03:17.63
+three visual comparisons with the mocks, and four accessibility checks.
+
+00:03:18.78 --> 00:03:20.20
+Here is Kiln Booking.
+
+00:03:20.20 --> 00:03:24.25
+The Artifacts tab is open and empty while the worker starts.
+
+00:03:24.25 --> 00:03:29.93
+Then the stages succeed, and their files arrive, each with the commit that holds it.
+
+00:03:29.93 --> 00:03:35.53
+The brief links to GitHub at its commit, and the skills folders from bootstrap fold
+
+00:03:35.53 --> 00:03:36.75
+into one row each.
+
+00:03:37.10 --> 00:03:42.22
+As a Viewer the tab reads the same, in light and in Mission Control's dark mode,
+
+00:03:42.22 --> 00:03:43.18
+and on a phone.
+
+00:03:43.53 --> 00:03:47.57
+A project no stage has written to yet says there are no artifacts,
+
+00:03:47.57 --> 00:03:50.08
+while a failure says why, with try again.
+
+00:03:51.23 --> 00:03:53.17
+Journey sixteen is complete.
+
+00:03:53.17 --> 00:03:57.47
+Every stage's output is versioned by the commit that holds it,
+
+00:03:57.47 --> 00:04:01.56
+taken from the broker's own records of runs that succeeded.
+
+00:04:01.56 --> 00:04:06.41
+The Artifacts tab lists them newest stage first, with path, short SHA,
+
+00:04:06.41 --> 00:04:09.26
+time and a link to GitHub at that commit.
+
+00:04:09.26 --> 00:04:11.89
+And it stays current as stages finish.
+
+00:04:11.89 --> 00:04:13.90
+Next comes journey seventeen.

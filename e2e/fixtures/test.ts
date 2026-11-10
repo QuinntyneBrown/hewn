@@ -5,6 +5,7 @@ import { BacklogPage } from '../pages/backlog.page';
 import { IncrementPage } from '../pages/increment.page';
 import { DesignsPage } from '../pages/designs.page';
 import { DesignSystemPage } from '../pages/design-system.page';
+import { ArtifactsPage } from '../pages/artifacts.page';
 import { ProjectsPage } from '../pages/projects.page';
 import { SettingsPage } from '../pages/settings.page';
 
@@ -30,6 +31,7 @@ interface Pages {
   increment: IncrementPage;
   designs: DesignsPage;
   designSystem: DesignSystemPage;
+  artifacts: ArtifactsPage;
   settings: SettingsPage;
 }
 
@@ -41,6 +43,7 @@ export const test = base.extend<Pages>({
   increment: async ({ page }, use) => use(new IncrementPage(page)),
   designs: async ({ page }, use) => use(new DesignsPage(page)),
   designSystem: async ({ page }, use) => use(new DesignSystemPage(page)),
+  artifacts: async ({ page }, use) => use(new ArtifactsPage(page)),
   settings: async ({ page }, use) => use(new SettingsPage(page)),
 });
 

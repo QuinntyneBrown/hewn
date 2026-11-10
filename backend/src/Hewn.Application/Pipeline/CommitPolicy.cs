@@ -24,6 +24,12 @@ public static class CommitPolicy
         [10] = (["docs/estimates/"], [Decisions]),
     };
 
+    /// <summary>The folders a stage writes under on the default branch, such as <c>docs/mocks/</c>; empty for a stage that writes only named files.</summary>
+    public static IReadOnlyList<string> OutputFolders(int stage) => ByStage.TryGetValue(stage, out var allowed) ? allowed.Prefixes : [];
+
+    /// <summary>The decision log every agent stage appends to (L2-054).</summary>
+    public const string DecisionLog = Decisions;
+
     /// <summary>The only branch a stage writes to other than the default; stage 6 merges it through a pull request.</summary>
     public const string ScaffoldBranch = "hewn/scaffold";
 

@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 16 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="16" data-video-title="Inspect versioned artifacts" data-parts="Introduction|Goal|Rules|The tab|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 16</div>
+  <h1>Inspect versioned artifacts</h1>
+  <p class="lead">Every stage's output, at the exact commit that holds it.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video walks through how it was built">
+  <figure><img src="screens/artifacts-desktop.png" alt="Kiln Booking's Artifacts tab: stages newest first, each file with its short SHA, time and a GitHub link"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="A user opens a project's Artifacts">
+  <div class="cols cols--wide">
+    <figure><img src="screens/artifacts-desktop.png" alt="The Artifacts tab"></figure>
+    <ul class="bullets small">
+      <li>Newest stage first</li>
+      <li>Path, short SHA, time</li>
+      <li>GitHub link at that commit</li>
+    </ul>
+  </div>
+</section>
+
+<section id="flow" data-part="1" data-cue="Here is the flow.">
+  <figure class="diagram"><img src="../../detailed-designs/mission-control/artifacts-and-traceability/diagrams/sequence-record-and-index.png" alt="Sequence diagram: the worker commits through the broker, which commits to GitHub and records the SHA, paths and branch; when the run succeeds, that commit is the artifacts' version"></figure>
+</section>
+
+<section id="view" data-part="1" data-cue="When the tab asks, the API reads the commits">
+  <figure class="diagram"><img src="../../detailed-designs/mission-control/artifacts-and-traceability/diagrams/sequence-view-artifacts.png" alt="Sequence diagram: the Artifacts tab gets the artifacts; the handler reads succeeded runs' commits, drops branch commits and the decision log, folds subfolders and takes the latest commit per path"></figure>
+</section>
+
+<section id="rules" data-part="2" data-cue="The handler keeps only commits from runs that succeeded">
+  <div class="code-file">backend/src/Hewn.Application/Projects/GetArtifacts.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="2,8,12,14">        var runs = await db.Runs.AsNoTracking()
+            .Where(r =&gt; r.ProjectId == query.ProjectId &amp;&amp; r.Status == RunStatus.Succeeded)
+            .Select(r =&gt; new { r.Id, r.Stage })
+            .ToListAsync(cancellationToken);
+        var stageOf = runs.ToDictionary(r =&gt; r.Id, r =&gt; r.Stage);
+        var runIds = stageOf.Keys.ToList();
+        var commits = await db.GitHubMutations.AsNoTracking()
+            .Where(m =&gt; runIds.Contains(m.RunId) &amp;&amp; m.Kind == "commit")
+            .ToListAsync(cancellationToken);
+
+        var stages = commits
+            .Select(m =&gt; (Stage: stageOf[m.RunId], m.CreatedAt, Commit: Read(m.Result)))
+            .Where(c =&gt; c.Commit.Branch is null)
+            .SelectMany(c =&gt; c.Commit.Paths
+                .Where(path =&gt; path != CommitPolicy.DecisionLog)
+                .Select(path =&gt; Fold(c.Stage, path))</pre>
+</section>
+
+<section id="fold" data-part="2" data-cue="Files inside a subfolder of the stage's output folder fold">
+  <div class="code-file">backend/src/Hewn.Application/Projects/GetArtifacts.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="4-6,8-11">    /// &lt;summary&gt;&lt;c&gt;docs/mocks/statements/default.html&lt;/c&gt; folds into &lt;c&gt;docs/mocks/statements/&lt;/c&gt;; &lt;c&gt;docs/mocks/manifest.json&lt;/c&gt; stays.&lt;/summary&gt;
+    private static (string Path, bool Folder) Fold(int stage, string path)
+    {
+        foreach (var root in CommitPolicy.OutputFolders(stage))
+        {
+            if (path.StartsWith(root, StringComparison.Ordinal))
+            {
+                var slash = path.IndexOf('/', root.Length);
+                if (slash &gt; root.Length)
+                {
+                    return (path[..(slash + 1)], true);
+                }
+            }
+        }</pre>
+</section>
+
+<section id="answer" data-part="2" data-cue="Commit records now also keep their branch">
+  <div class="code-file">GET /api/projects/{id}/artifacts (first artifact of stage 1)</div>
+  <pre class="code tight" data-lang="json" data-mark="9-12">{
+  "repository": "hewn-builds/kiln-booking",
+  "stages": [
+    {
+      "stage": 1,
+      "name": "Idea",
+      "artifacts": [
+        {
+          "path": "docs/brief.md",
+          "folder": false,
+          "sha": "2fe62b5239bf13a00329d937e0cacf36518d56aa",
+          "committedAt": "2026-11-10T08:32:34.893647+00:00",
+          "url": "https://github.com/hewn-builds/kiln-booking/blob/2fe62b5239bf13a00329d937e0cacf36518d56aa/docs/brief.md"
+        }
+      ]
+    }
+  ]
+}</pre>
+</section>
+
+<section id="tab" data-part="3" data-cue="In Mission Control, each stage is a section">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/project/artifacts.component.html</div>
+  <pre class="code tight" data-lang="html" data-mark="4-6,8-13">            @for (a of stage.artifacts; track a.path) {
+              &lt;li class="file"&gt;
+                &lt;span class="file__path"
+                  &gt;&lt;span class="truncate"&gt;{{ a.path }}&lt;/span&gt;&lt;/span
+                &gt;&lt;span class="file__sha"&gt;{{ shortSha(a.sha) }}&lt;/span
+                &gt;&lt;span class="file__when"&gt;{{ when(a.committedAt) }}&lt;/span&gt;
+                @if (a.url) {
+                  &lt;a
+                    class="file__open"
+                    [href]="a.url"
+                    target="_blank"
+                    rel="noopener"
+                    [attr.aria-label]="openLabel(a.path, a.sha)"
+                    &gt;&lt;svg hw-icon name="externalLink" class="icon--sm"&gt;&lt;/svg
+                  &gt;&lt;/a&gt;
+                }</pre>
+</section>
+
+<section id="when" data-part="3" data-cue="as minutes ago within the hour">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/project/artifacts-view.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="4-5,7-8,12">/** "Just now", "14 min ago" within the hour, then "8 Nov, 16:44", as the Artifacts mock shows commit times. */
+export function committedText(at: string, now: Date = new Date()): string {
+  const when = new Date(at);
+  const minutes = Math.floor((now.getTime() - when.getTime()) / 60_000);
+  if (minutes &lt; 1) return 'Just now';
+  if (minutes &lt; 60) return `${minutes} min ago`;
+  const time = `${String(when.getHours()).padStart(2, '0')}:${String(when.getMinutes()).padStart(2, '0')}`;
+  return `${when.getDate()} ${MONTHS[when.getMonth()]}, ${time}`;
+}
+
+export function openLabel(path: string, sha: string): string {
+  return `Open ${path} on GitHub at ${shortSha(sha)}`;
+}</pre>
+</section>
+
+<section id="red" data-part="4" data-cue="The backend tests came first">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Pipeline/VersionedArtifactsTests.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="6,8,11-15">    [Fact]
+    public async Task Only_a_run_that_succeeded_versions_its_files_and_a_retry_s_commit_is_the_version()
+    {
+        var (owner, projectId) = await SubmitAsync();
+        var worker = await _factory.RegisterWorkerAsync();
+        var first = await LeaseStageAsync(worker, 1);
+        await CommitAsync(worker, first, "2", ["docs/brief.md"]);
+
+        Assert.DoesNotContain((await ArtifactsAsync(owner, projectId)).GetProperty("stages").EnumerateArray(), s =&gt; s.GetProperty("stage").GetInt32() == 1);
+
+        (await worker.FailAsync(first, "The brief left out the audience")).EnsureSuccessStatusCode();
+        _factory.Clock.Advance(TimeSpan.FromMinutes(10));
+        var retry = (await worker.LeaseAsync())!;
+        Assert.Equal(1, retry.Stage);
+        var second = await CommitAsync(worker, retry, "2", ["docs/brief.md"]);
+        (await worker.SucceedAsync(retry)).EnsureSuccessStatusCode();</pre>
+  <div class="result red">✘ 4 failed · 404 Not Found: no route</div>
+</section>
+
+<section id="e2e" data-part="4" data-cue="End to end, a live test opens the Artifacts tab">
+  <div class="code-file">e2e/tests/pipeline/inspect-versioned-artifacts-live.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1,4-8,12">    await expect(artifacts.empty).toBeVisible();
+    await page.evaluate(() =&gt; ((window as unknown as { loadMark: number }).loadMark = 1));
+
+    stopWorkers = startWorkers(1, 150);
+
+    // Stage 1 commits the brief; its version is the commit, and the link opens the file at that commit.
+    const brief = artifacts.row('Idea', 'docs/brief.md');
+    await expect(brief.sha).toHaveText(/^[0-9a-f]{7}$/, { timeout: 120_000 });
+    const sha = (await brief.sha.innerText()).trim();
+    const repo = `hewn-builds/${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    await expect(brief.open).toHaveAttribute(
+      'href',
+      new RegExp(`^https://github\\.com/${repo}/blob/${sha}[0-9a-f]{33}/docs/brief\\.md$`),
+    );</pre>
+</section>
+
+<section id="tests" data-part="4" data-cue="All green, the backend has">
+  <div class="cols cols--3">
+    <div class="card"><h3>232 backend</h3><p class="small">4 new, through the real API and worker endpoints</p></div>
+    <div class="card"><h3>3 view tests</h3><p class="small">short SHA, commit time, link name</p></div>
+    <div class="card"><h3>11 new e2e</h3><p class="small">3 behaviour, 1 live, 3 visual, 4 a11y</p></div>
+  </div>
+</section>
+
+<section id="clip-live" data-part="5" data-cue="Here is Kiln Booking." data-clip="clips/live.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">The Artifacts tab while a real worker runs the first stages</aside>
+</section>
+
+<section id="themes" data-part="5" data-cue="As a Viewer the tab reads the same">
+  <div class="cols">
+    <figure><img src="screens/artifacts-desktop-dark.png" alt="The Artifacts tab in dark mode, as a Viewer"></figure>
+    <figure class="phone"><img src="screens/artifacts-phone.png" alt="The Artifacts tab on a phone"></figure>
+  </div>
+</section>
+
+<section id="states" data-part="5" data-cue="A project no stage has written to yet">
+  <div class="cols">
+    <figure><img src="screens/empty-desktop.png" alt="No artifacts yet"></figure>
+    <figure><img src="screens/error-desktop.png" alt="Artifacts couldn't load: GitHub returned 502 while listing commits, with Try again"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="6" data-cue="Journey sixteen is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Versions are the commits of runs that succeeded</li>
+    <li>Newest stage first, with path, SHA, time and link</li>
+    <li>Current as stages finish</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

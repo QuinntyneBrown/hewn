@@ -1,0 +1,78 @@
+<div class="pad section">
+  <h2 class="section__title">Artifacts</h2>
+  <p class="section__desc">
+    @if (repo(); as r) {
+      Each version is the commit that holds it in <code>{{ r }}</code
+      >.
+    } @else {
+      Each version is the commit that holds it in the project’s repository.
+    }
+  </p>
+  @switch (loaded().state) {
+    @case ('loading') {
+      <div aria-busy="true" aria-live="polite">
+        <p class="visually-hidden">Loading artifacts</p>
+        @for (n of [1, 2, 3]; track n) {
+          <div class="stack stack--sm mt-6" aria-hidden="true">
+            <span class="skeleton skeleton--w25" aria-hidden="true"></span>
+            <span class="skeleton skeleton--line" aria-hidden="true"></span>
+            <span class="skeleton skeleton--line" aria-hidden="true"></span>
+          </div>
+        }
+      </div>
+    }
+    @case ('error') {
+      <div class="empty empty--error" role="alert">
+        <svg hw-icon name="warning"></svg>
+        <div>
+          <h2 class="empty__title">Artifacts couldn’t load</h2>
+          <p class="empty__text">{{ $any(loaded()).message }}</p>
+        </div>
+        <div class="cluster">
+          <button class="btn" type="button" (click)="retry()">Try again</button>
+        </div>
+      </div>
+    }
+    @default {
+      @for (stage of artifacts()!.stages; track stage.stage) {
+        <section class="mt-8" [attr.aria-labelledby]="'st-' + stage.stage">
+          <h3 class="group-title" [id]="'st-' + stage.stage">
+            <span class="n">{{ stage.stage }}</span
+            ><strong>{{ stage.name }}</strong>
+          </h3>
+          <ul class="files mt-2">
+            @for (a of stage.artifacts; track a.path) {
+              <li class="file">
+                <span class="file__path"
+                  ><span class="truncate">{{ a.path }}</span></span
+                ><span class="file__sha">{{ shortSha(a.sha) }}</span
+                ><span class="file__when">{{ when(a.committedAt) }}</span>
+                @if (a.url) {
+                  <a
+                    class="file__open"
+                    [href]="a.url"
+                    target="_blank"
+                    rel="noopener"
+                    [attr.aria-label]="openLabel(a.path, a.sha)"
+                    ><svg hw-icon name="externalLink" class="icon--sm"></svg
+                  ></a>
+                }
+              </li>
+            }
+          </ul>
+        </section>
+      } @empty {
+        <div class="empty">
+          <svg hw-icon name="folder"></svg>
+          <div>
+            <h2 class="empty__title">No artifacts yet</h2>
+            <p class="empty__text">
+              Every stage writes its output to the repository and it appears here with the commit
+              that holds it. Stage 0 starts as soon as a worker leases the direction.
+            </p>
+          </div>
+        </div>
+      }
+    }
+  }
+</div>

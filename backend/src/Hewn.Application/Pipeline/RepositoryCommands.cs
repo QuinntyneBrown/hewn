@@ -91,7 +91,7 @@ public sealed class CommitFilesHandler(IAppDbContext db, LeaseService leases, IG
             ? await gitHub.CommitAsync(project.RepositoryOwner!, project.RepositoryName!, command.Message, files, cancellationToken)
             : await gitHub.CommitToBranchAsync(project.RepositoryOwner!, project.RepositoryName!, command.Branch, command.Message, files, command.Rebase, cancellationToken);
 
-        db.GitHubMutations.Add(new GitHubMutation(run.Id, command.IdempotencyKey, Kind, JsonSerializer.Serialize(new { sha, paths = files.Select(f => f.Path) }), clock.GetUtcNow()));
+        db.GitHubMutations.Add(new GitHubMutation(run.Id, command.IdempotencyKey, Kind, JsonSerializer.Serialize(new { sha, paths = files.Select(f => f.Path), branch = command.Branch }), clock.GetUtcNow()));
         await FencedSave.SaveAsync(db, cancellationToken);
         return sha;
     }

@@ -1,0 +1,18 @@
+{
+  "repository": "hewn-builds/kiln-booking",
+  "stages": [
+    {
+      "stage": 1,
+      "name": "Idea",
+      "artifacts": [
+        {
+          "path": "docs/brief.md",
+          "folder": false,
+          "sha": "2fe62b5239bf13a00329d937e0cacf36518d56aa",
+          "committedAt": "2026-11-10T08:32:34.893647+00:00",
+          "url": "https://github.com/hewn-builds/kiln-booking/blob/2fe62b5239bf13a00329d937e0cacf36518d56aa/docs/brief.md"
+        }
+      ]
+    }
+  ]
+}

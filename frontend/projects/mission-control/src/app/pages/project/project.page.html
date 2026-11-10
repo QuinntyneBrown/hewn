@@ -135,6 +135,11 @@
           [routerLink]="['/projects', p.id, 'design-system']"
           [attr.aria-current]="section() === 'design-system' ? 'page' : null"
           >Design system</a
+        ><a
+          class="tab"
+          [routerLink]="['/projects', p.id, 'artifacts']"
+          [attr.aria-current]="section() === 'artifacts' ? 'page' : null"
+          >Artifacts</a
         >
       </div>
     </nav>
@@ -145,6 +150,8 @@
     <hw-designs [projectId]="p.id" [projectName]="p.name" />
   } @else if (section() === 'design-system') {
     <hw-design-system [projectId]="p.id" />
+  } @else if (section() === 'artifacts') {
+    <hw-artifacts [projectId]="p.id" [repository]="p.repository" [changes]="artifactChanges()" />
   } @else {
     <div class="pad section">
       <div class="split split--pipeline">

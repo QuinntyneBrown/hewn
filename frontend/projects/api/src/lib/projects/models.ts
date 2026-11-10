@@ -340,3 +340,27 @@ export interface DesignSystem {
   foundations: DesignSystemPage[];
   components: DesignSystemPage[];
 }
+
+/** One artifact of a stage: a file, or a folder of the stage's output standing for the files under it (L2-034). */
+export interface VersionedArtifact {
+  /** Such as `docs/brief.md`, or `docs/mocks/statements/` for a folder. */
+  path: string;
+  folder: boolean;
+  /** The version: the commit that holds it (L2-034 AC1). */
+  sha: string;
+  committedAt: string;
+  /** The file (blob) or folder (tree) on GitHub at that commit; null without a repository. */
+  url: string | null;
+}
+
+export interface StageArtifacts {
+  stage: number;
+  name: string;
+  artifacts: VersionedArtifact[];
+}
+
+/** GET /api/projects/{id}/artifacts: each stage's artifacts, newest stage first (L2-034 AC2). */
+export interface Artifacts {
+  repository: string | null;
+  stages: StageArtifacts[];
+}

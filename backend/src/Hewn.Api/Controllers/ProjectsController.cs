@@ -52,6 +52,11 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
     public Task<Hewn.Application.Designs.DesignSystemDto> DesignSystem(Guid projectId, CancellationToken cancellationToken) =>
         mediator.Send(new Hewn.Application.Designs.GetDesignSystemQuery(projectId), cancellationToken);
 
+    /// <summary>L2-034 AC2: each stage's artifacts with path, version (commit SHA), time and a GitHub link at that SHA.</summary>
+    [HttpGet("{projectId:guid}/artifacts")]
+    public Task<ArtifactsDto> Artifacts(Guid projectId, CancellationToken cancellationToken) =>
+        mediator.Send(new GetArtifactsQuery(projectId), cancellationToken);
+
     [HttpGet("{projectId:guid}/backlog")]
     public Task<BacklogDto> Backlog(Guid projectId, CancellationToken cancellationToken) =>
         mediator.Send(new GetProjectBacklogQuery(projectId), cancellationToken);

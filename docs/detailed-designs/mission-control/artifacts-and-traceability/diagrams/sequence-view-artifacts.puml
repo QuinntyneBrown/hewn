@@ -1,0 +1,36 @@
+@startuml
+title UML sequence behaviour — View artifacts
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+actor "Owner or Viewer" as user
+box "Frontend — Mission Control" #EFF8FF
+  participant "ArtifactsComponent" as page
+end box
+box "Backend — Hewn Application" #ECFDF3
+  participant "ProjectsController" as ctrl
+  participant "GetArtifactsHandler" as handler
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+user -> page : Open Artifacts
+page -> ctrl : GET /api/projects/{id}/artifacts
+ctrl -> handler : GetArtifactsQuery (caller-scoped; 404 otherwise)
+handler -> db : Succeeded runs and their commit mutations
+handler -> handler : Drop branch commits and docs/decisions.md;\nfold subfolders of the stage's output folder;\nlatest commit per path; newest stage first
+handler --> page : stages[] of (path, folder, sha, committedAt, url)
+page --> user : Path, short SHA, time, link to GitHub at the SHA (L2-034 AC2)
+note over page : Reads again on each StageChanged event
+@enduml
