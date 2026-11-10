@@ -548,9 +548,17 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Adr")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Answer")
                         .IsRequired()
                         .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CommitSha")
+                        .HasMaxLength(40)
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("DirectionId")
@@ -581,6 +589,8 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DirectionId", "Stage");
+
+                    b.HasIndex("ProjectId", "RecordedAt");
 
                     b.ToTable("run_decisions", (string)null);
                 });

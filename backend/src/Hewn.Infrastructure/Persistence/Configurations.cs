@@ -134,7 +134,10 @@ internal sealed class RunDecisionConfiguration : IEntityTypeConfiguration<RunDec
         b.Property(d => d.Question).HasMaxLength(RunDecision.MaxQuestionLength);
         b.Property(d => d.Answer).HasMaxLength(RunDecision.MaxAnswerLength);
         b.Property(d => d.Rationale).HasMaxLength(RunDecision.MaxRationaleLength);
+        b.Property(d => d.CommitSha).HasMaxLength(40);
+        b.Property(d => d.Adr).HasMaxLength(RunDecision.MaxAdrLength);
         b.HasIndex(d => new { d.DirectionId, d.Stage });
+        b.HasIndex(d => new { d.ProjectId, d.RecordedAt });
     }
 }
 

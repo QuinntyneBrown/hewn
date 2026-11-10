@@ -16,7 +16,9 @@ public sealed class RunDecision
         Question = Answer = Rationale = string.Empty;
     }
 
-    public RunDecision(Run run, string question, string answer, string rationale, DateTimeOffset now)
+    public const int MaxAdrLength = 200;
+
+    public RunDecision(Run run, string question, string answer, string rationale, DateTimeOffset now, string? commitSha = null, string? adr = null)
     {
         RunId = run.Id;
         ProjectId = run.ProjectId;
@@ -26,6 +28,8 @@ public sealed class RunDecision
         Answer = Cap(answer, MaxAnswerLength);
         Rationale = Cap(rationale, MaxRationaleLength);
         RecordedAt = now;
+        CommitSha = commitSha;
+        Adr = adr;
     }
 
     public long Id { get; private set; }
@@ -45,6 +49,12 @@ public sealed class RunDecision
     public string Rationale { get; private set; }
 
     public DateTimeOffset RecordedAt { get; private set; }
+
+    /// <summary>The run's commit that wrote <c>docs/decisions.md</c> before the decision was reported (L2-054 AC3).</summary>
+    public string? CommitSha { get; private set; }
+
+    /// <summary>The ADR the decision also wrote, such as <c>docs/adr/0002-keep-the-default-stack.md</c> (L2-054 AC2).</summary>
+    public string? Adr { get; private set; }
 
     private static string Cap(string text, int max) => text.Length > max ? text[..max] : text;
 }
