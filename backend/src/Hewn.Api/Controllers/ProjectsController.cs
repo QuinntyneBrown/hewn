@@ -81,6 +81,24 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
     public Task<Hewn.Application.Skills.UpdateSkillsResult> UpdateSkills(Guid projectId, CancellationToken cancellationToken) =>
         mediator.Send(new Hewn.Application.Skills.UpdateSkillsCommand(projectId), cancellationToken);
 
+    /// <summary>L2-003 AC1, AC2: moves a project with no active direction under the Archived filter.</summary>
+    [HttpPost("{projectId:guid}/archive")]
+    [Authorize(Policy = AuthSetup.OwnerPolicy)]
+    public async Task<IActionResult> Archive(Guid projectId, CancellationToken cancellationToken)
+    {
+        await mediator.Send(new ArchiveProjectCommand(projectId), cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>L2-003 AC1: returns an archived project to the default list.</summary>
+    [HttpPost("{projectId:guid}/restore")]
+    [Authorize(Policy = AuthSetup.OwnerPolicy)]
+    public async Task<IActionResult> Restore(Guid projectId, CancellationToken cancellationToken)
+    {
+        await mediator.Send(new RestoreProjectCommand(projectId), cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>L2-035: every L2 with its L1, designs, journeys, tests and pull requests, read at the head.</summary>
     [HttpGet("{projectId:guid}/traceability")]
     public Task<TraceabilityDto> Traceability(Guid projectId, CancellationToken cancellationToken) =>

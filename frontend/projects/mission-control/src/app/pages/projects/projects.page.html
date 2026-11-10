@@ -82,6 +82,13 @@
             }
           </a>
         }
+        <a
+          class="tab"
+          routerLink="/projects"
+          [queryParams]="{ status: 'archived' }"
+          [attr.aria-current]="filter() === 'Archived' ? 'page' : null"
+          >Archived</a
+        >
       </div>
     </nav>
   </div>
@@ -115,17 +122,32 @@
         <svg hw-icon name="folderOpen"></svg>
         <div>
           <h2 class="empty__title">No {{ filter()!.toLowerCase() }} projects</h2>
-          <p class="empty__text">
-            No project is {{ filter() }} right now. The count beside each status shows how many are.
-          </p>
+          @if (filter() === 'Archived') {
+            <p class="empty__text">
+              No project is archived. Archiving moves a project with no active direction here, where
+              it can be restored.
+            </p>
+          } @else {
+            <p class="empty__text">
+              No project is {{ filter() }} right now. The count beside each status shows how many
+              are.
+            </p>
+          }
         </div>
         <a class="btn" routerLink="/projects">Show all projects</a>
       </div>
     } @else {
-      <div class="rows rows--projects-viewer">
+      <div
+        class="rows"
+        [class.rows--projects]="session.isOwner()"
+        [class.rows--projects-viewer]="!session.isOwner()"
+      >
         <div class="rows__head" aria-hidden="true">
           <span>Project</span><span>Stage</span><span>Status</span><span>Complete</span
           ><span class="row__end">Spend</span><span class="row__end">Activity</span>
+          @if (session.isOwner()) {
+            <span class="visually-hidden">Actions</span>
+          }
         </div>
         <ul aria-label="Projects">
           @for (p of rows(); track p.id) {
@@ -134,14 +156,18 @@
                 ><a class="row__title" [routerLink]="['/projects', p.id]">{{ p.name }}</a
                 ><span class="row__sub">{{ p.idea }}</span></span
               >
-              <span class="row__end lg-hide"><hw-status [status]="p.status" /></span>
+              <span class="row__end lg-hide"
+                ><hw-status [status]="p.archived ? 'Archived' : p.status"
+              /></span>
               <span class="row__span truncate"
                 ><span>{{ p.stage.number }} · {{ p.stage.name }}</span>
                 @if (p.note) {
                   <span class="row__note">{{ p.note }}</span>
                 }
               </span>
-              <span class="lg-only"><hw-status [status]="p.status" /></span>
+              <span class="lg-only"
+                ><hw-status [status]="p.archived ? 'Archived' : p.status"
+              /></span>
               <span class="pct"
                 ><span
                   class="meter meter--muted meter--inline"
@@ -155,6 +181,44 @@
               >
               <span class="row__end tabular">{{ p.spend }}</span>
               <span class="row__end text-subtle lg-only">{{ p.activity }}</span>
+              @if (session.isOwner()) {
+                <span class="row__actions">
+                  @if (p.archived) {
+                    <button
+                      class="btn btn--sm"
+                      type="button"
+                      [attr.aria-label]="'Restore ' + p.name"
+                      [disabled]="pending().has(p.id)"
+                      (click)="restore(p)"
+                    >
+                      <svg hw-icon name="rotateCcw" class="icon--sm"></svg>Restore
+                    </button>
+                  } @else if (p.canArchive) {
+                    <button
+                      class="icon-action"
+                      type="button"
+                      [attr.aria-label]="'Archive ' + p.name"
+                      title="Archive"
+                      [attr.aria-disabled]="pending().has(p.id) ? 'true' : null"
+                      (click)="archive(p)"
+                    >
+                      <svg hw-icon name="archive"></svg>
+                    </button>
+                  } @else {
+                    <span
+                      class="icon-action"
+                      role="button"
+                      aria-disabled="true"
+                      tabindex="0"
+                      [attr.aria-label]="
+                        'Archive ' + p.name + ': cancel the running direction first'
+                      "
+                      title="Cancel the running direction first"
+                      ><svg hw-icon name="archive"></svg
+                    ></span>
+                  }
+                </span>
+              }
             </li>
           }
         </ul>

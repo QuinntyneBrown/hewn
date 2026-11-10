@@ -17,6 +17,7 @@ public sealed record ListProjectsQuery : IRequest<IReadOnlyList<ProjectSummaryDt
 /// <param name="SpendUsd">Spend to date across every direction.</param>
 /// <param name="LastActivityAt">When the project's latest event was stored.</param>
 /// <param name="FirstDirectionComplete">A feature for a project whose first direction isn't Complete queues behind it.</param>
+/// <param name="Archived">Archived projects leave the default list and show under the Archived filter (L2-003 AC1).</param>
 public sealed record ProjectSummaryDto(
     Guid Id,
     string Name,
@@ -28,7 +29,8 @@ public sealed record ProjectSummaryDto(
     int PercentComplete,
     decimal SpendUsd,
     DateTimeOffset LastActivityAt,
-    bool FirstDirectionComplete);
+    bool FirstDirectionComplete,
+    bool Archived = false);
 
 public sealed record StageRefDto(int Number, string Name);
 
@@ -117,7 +119,8 @@ public sealed class ProjectSummaryReader(IAppDbContext db, IOptions<PipelineOpti
             percent,
             project.Directions.Sum(d => d.SpendUsd),
             lastActivity.TryGetValue(project.Id, out var at) ? at : project.CreatedAt,
-            project.FirstDirectionComplete);
+            project.FirstDirectionComplete,
+            project.IsArchived);
     }
 
     private string? Note(Direction direction, StageState stage, string? step, int merged, int total)

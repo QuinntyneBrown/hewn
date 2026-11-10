@@ -52,9 +52,53 @@ public sealed class Project
 
     public DateTimeOffset CreatedAt { get; private set; }
 
+    /// <summary>When an Owner archived the project (L2-003 AC1); null while it is in the default list.</summary>
+    public DateTimeOffset? ArchivedAt { get; private set; }
+
+    public string? ArchivedBy { get; private set; }
+
+    public bool IsArchived => ArchivedAt is not null;
+
+    /// <summary>True while a direction is queued, running, paused or blocked; archiving is refused then (L2-003 AC2).</summary>
+    public bool HasActiveDirection => _directions.Any(d => d.IsActive);
+
     public IReadOnlyList<Direction> Directions => _directions;
 
     public string? Repository => RepositoryOwner is null ? null : $"{RepositoryOwner}/{RepositoryName}";
+
+    /// <summary>
+    /// Moves the project under the Archived filter (L2-003 AC1). Returns false when it already is. The caller refuses
+    /// a project with an active direction first.
+    /// </summary>
+    public bool Archive(string login, DateTimeOffset now)
+    {
+        if (HasActiveDirection)
+        {
+            throw new InvalidOperationException($"Project {Id} has an active direction.");
+        }
+
+        if (IsArchived)
+        {
+            return false;
+        }
+
+        ArchivedAt = now;
+        ArchivedBy = login;
+        return true;
+    }
+
+    /// <summary>Returns the project to the default list. Returns false when it wasn't archived.</summary>
+    public bool Restore()
+    {
+        if (!IsArchived)
+        {
+            return false;
+        }
+
+        ArchivedAt = null;
+        ArchivedBy = null;
+        return true;
+    }
 
     /// <summary>Running while a direction is active; Idle once none is; Blocked when a stage fails.</summary>
     public void ChangeStatus(ProjectStatus status) => Status = status;

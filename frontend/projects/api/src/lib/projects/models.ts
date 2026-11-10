@@ -129,6 +129,8 @@ export interface ProjectSummary {
   lastActivityAt: string;
   /** A feature for a project whose first direction isn't Complete queues behind it. */
   firstDirectionComplete: boolean;
+  /** Archived projects leave the default list and show under the Archived filter (L2-003 AC1). */
+  archived: boolean;
 }
 
 export interface SubmitFeatureDirectionRequest {

@@ -11,6 +11,12 @@ export interface ProjectRow {
   percent: Locator;
   spend: Locator;
   activity: Locator;
+  /** Archive, for an Owner, on a project with no active direction (L2-003 AC1). */
+  archive: Locator;
+  /** The disabled Archive on a project with an active direction (L2-003 AC2). */
+  archiveRefused: Locator;
+  /** Restore, for an Owner, on an archived project (L2-003 AC1). */
+  restore: Locator;
 }
 
 /** The Projects page (/projects): the filter tabs, the rows and the empty, loading and error states. Owns every selector for it. */
@@ -28,6 +34,8 @@ export class ProjectsPage {
   readonly showAll: Locator;
   readonly failure: Locator;
   readonly tryAgain: Locator;
+  /** Live toasts, such as "Saltmarsh Survey archived". */
+  readonly toasts: Locator;
 
   private readonly page: Page;
 
@@ -46,6 +54,28 @@ export class ProjectsPage {
     this.showAll = this.empty.getByRole('link', { name: 'Show all projects' });
     this.failure = page.getByRole('alert').filter({ hasText: 'Projects couldn’t load' });
     this.tryAgain = this.failure.getByRole('button', { name: 'Try again' });
+    this.toasts = page.locator('.toast-region .toast');
+  }
+
+  /** The toast with this title. */
+  toast(title: string): Locator {
+    return this.toasts.filter({ has: this.page.locator('.toast__title', { hasText: title }) });
+  }
+
+  /** Waits until the toast with this title is in and its entrance animation has finished. */
+  async toastSettled(title: string): Promise<void> {
+    const toast = this.toast(title);
+    await toast.waitFor();
+    await toast.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+  }
+
+  /** Answers the next archive request with this problem, as the API does when a direction started meanwhile. */
+  async refuseArchive(status: number, title: string, code: string): Promise<void> {
+    await this.page.route(
+      (url) => /^\/api\/projects\/[^/]+\/archive$/.test(url.pathname),
+      (route) => route.fulfill({ status, json: { status, title, code }, contentType: 'application/problem+json' }),
+      { times: 1 },
+    );
   }
 
   async open(query = ''): Promise<void> {
@@ -89,6 +119,9 @@ export class ProjectsPage {
       percent: root.locator('.pct'),
       spend: root.locator('.row__end.tabular'),
       activity: root.locator('.row__end.text-subtle'),
+      archive: root.locator('.row__actions').getByRole('button', { name: /^Archive [^:]*$/ }),
+      archiveRefused: root.locator('.row__actions [aria-disabled="true"]'),
+      restore: root.locator('.row__actions').getByRole('button', { name: /^Restore / }),
     };
   }
 }
