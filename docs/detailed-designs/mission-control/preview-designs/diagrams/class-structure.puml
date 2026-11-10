@@ -11,32 +11,64 @@ skinparam class {
 }
 title Class structure — Preview designs and the design system
 
-class SandboxedPreview <<Angular>> {
-  +widths = [375, 576, 768, 992, 1200]
-  +width: Signal<int>
+class DesignsComponent <<Angular>> {
+  +projectId: input<string>
+  +width: Signal<375 | 576 | 768 | 992 | 1200>
   +theme: Signal<'light' | 'dark'>
-  +src: Signal<SafeResourceUrl>
+  -chosen: Signal<string | null>
 }
-class PreviewTokenService {
-  +SignAsync(p: ProjectId, sha: string, path: string): Task<Uri>
-  +TimeSpan Lifetime
+class SandboxedPreviewComponent <<Angular>> {
+  +url: input<string>
+  +width: input<number>
+  +theme: input<'light' | 'dark'>
+  #src: SafeResourceUrl (url?theme=)
+  #scale: frame width / width
 }
-class MockPreviewHost {
-  +ServeAsync(token: string): Task<HttpResponse>
+class DesignsDto {
+  +Sha: string?
+  +StateCount: int
+  +Screens: DesignScreenDto[]
+}
+class DesignScreenDto {
+  +Screen: string
+  +Title: string
+  +MagicPatternsUrl: string?
+  +States: DesignStateDto[]
+}
+class DesignStateDto {
+  +State: string
+  +Label: string
+  +Path: string
+  +PreviewUrl: string
+}
+class GetDesignsHandler <<MediatR>> {
+  +Handle(GetDesignsQuery): DesignsDto
+}
+class PreviewTokens {
+  -key: byte[32] made at start-up
+  +Sign(projectId, sha): string
+  +Read(token): PreviewGrant?
+  +Url(token, path): string
+}
+class ServePreviewHandler <<MediatR>> {
+  +Handle(ServePreviewQuery): PreviewFile
   -allowedRoots = [docs/mocks/, docs/design-system/]
 }
-class ScreenStateVm {
-  +string Screen
-  +string State
-  +Uri Thumbnail
-  +Uri? MagicPatternsUrl
-  +string Path
+class PreviewOptions {
+  +Origin: string
+  +TokenMinutes = 60
 }
-class DesignsPage <<Angular>>
-class DesignSystemPage <<Angular>>
-DesignsPage *-- SandboxedPreview
-DesignSystemPage *-- SandboxedPreview
-DesignsPage o-- ScreenStateVm
-SandboxedPreview ..> PreviewTokenService : gets URL
-PreviewTokenService ..> MockPreviewHost : signs for
+interface IGitHubRepositories {
+  +ReadFileAsync(owner, name, path, sha?): RepositoryContent?
+}
+DesignsComponent *-- SandboxedPreviewComponent
+DesignsComponent ..> DesignsDto : GET /api/projects/{id}/designs
+DesignsDto *-- DesignScreenDto
+DesignScreenDto *-- DesignStateDto
+GetDesignsHandler ..> PreviewTokens : signs
+GetDesignsHandler ..> IGitHubRepositories
+ServePreviewHandler ..> PreviewTokens : verifies
+ServePreviewHandler ..> IGitHubRepositories
+PreviewTokens ..> PreviewOptions
+SandboxedPreviewComponent ..> ServePreviewHandler : iframe on the preview origin
 @enduml
