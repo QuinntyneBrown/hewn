@@ -7,12 +7,12 @@ Person(owner, "Owner", "Gives direction, watches the work and uses the safety co
 System_Boundary(hewn, "Hewn") {
   Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
   Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
-  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+  ContainerDb(db, "Hewn database", "SQLite", "Projects, directions, runs, workers, worker token hashes")
   Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
 }
 
 Rel(owner, spa, "Creates or revokes a token", "HTTPS")
 Rel(spa, api, "Token commands", "JSON/HTTPS")
 Rel(api, db, "Stores token hash", "SQL")
-Rel(worker, api, "Connects with bearer token", "SignalR (outbound)")
+Rel(worker, api, "Bearer token on every request", "HTTPS (outbound)")
 @enduml
