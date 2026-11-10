@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 30 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="30" data-video-title="Archive and restore a project" data-parts="Introduction|Goal|Archiving|Refusal|How it works|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 30</div>
+  <h1>Archive and restore a project</h1>
+  <p class="lead">Hide what's finished; bring it back when it matters again.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video shows an Owner archiving one to hide it">
+  <figure><img src="screens/projects-owner.png" alt="Projects as an Owner sees them: each row ends with Archive, disabled on the running project"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="An Owner archives a project with no active direction.">
+  <ul class="bullets">
+    <li>Archive a project with no active direction (L2-003 AC1)</li>
+    <li>It moves under Archived, and Restore brings it back</li>
+    <li>An active direction: "Cancel the running direction first" (AC2)</li>
+  </ul>
+</section>
+
+<section id="clip-archive" data-part="2" data-cue="Here an Owner opens Projects." data-clip="clips/archive-and-restore.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Archive, Show archived, Restore</aside>
+</section>
+
+<section id="row-active" data-part="3" data-cue="Tidewater's direction is still running.">
+  <figure><img src="screens/row-active.png" alt="Saltmarsh Survey, Cancelled, with Archive; Tidewater, Running, with Archive disabled"></figure>
+  <aside class="clip-notes">aria-label: "Archive Tidewater: cancel the running direction first"</aside>
+</section>
+
+<section id="clip-refused" data-part="3" data-cue="Once the direction is cancelled" data-clip="clips/refused.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Disabled while running; the API's refusal as a toast</aside>
+</section>
+
+<section id="handler" data-part="4" data-cue="Archiving is a flag beside the project's status">
+  <div class="code-file">backend/src/Hewn.Application/Projects/ArchiveProject.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="4,6,9,14">        var project = await db.Projects.Include(p =&gt; p.Directions)
+            .SingleOrDefaultAsync(p =&gt; p.Id == command.ProjectId, cancellationToken)
+            ?? throw new NotFoundException();
+        if (project.HasActiveDirection)
+        {
+            throw new ConflictException("active_direction", "Cancel the running direction first");
+        }
+
+        if (!project.Archive(user.Login, clock.GetUtcNow()))
+        {
+            return;
+        }
+
+        await events.AppendAsync(project.Id, "ProjectArchived", new { by = user.Login }, cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
+        await events.PublishAsync(cancellationToken);</pre>
+</section>
+
+<section id="domain" data-part="4" data-cue="A queued direction counts as active">
+  <div class="code-file">backend/src/Hewn.Domain/Project.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="2">    /// &lt;summary&gt;True while a direction is queued, running, paused or blocked; archiving is refused then (L2-003 AC2).&lt;/summary&gt;
+    public bool HasActiveDirection =&gt; _directions.Any(d =&gt; d.IsActive);</pre>
+  <div class="code-file">backend/src/Hewn.Application/Projects/SubmitFeatureDirection.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="1,3">        if (project.IsArchived)
+        {
+            throw new ConflictException("project_archived", "Restore the project first");
+        }</pre>
+</section>
+
+<section id="list" data-part="4" data-cue="Archive and restore each append an event">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/projects/projects-list.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="5-6,11">export function withStatus(
+  rows: readonly ProjectSummary[],
+  filter: ListFilter | null,
+): ProjectSummary[] {
+  if (filter === 'Archived') return rows.filter((r) =&gt; r.archived);
+  return rows.filter((r) =&gt; !r.archived &amp;&amp; (filter === null || r.status === filter));
+}
+
+/** A project with a running, paused or blocked direction can't be archived (L2-003 AC2). */
+export function canArchive(row: ProjectSummary): boolean {
+  return !row.archived &amp;&amp; !['Running', 'Paused', 'Blocked'].includes(row.status);
+}</pre>
+</section>
+
+<section id="sequence" data-part="4" data-cue="This sequence shows the whole path">
+  <figure class="diagram"><img src="../../detailed-designs/projects/archive-and-delete-project/diagrams/sequence-archive-restore.png" alt="Archive and restore: disabled while a direction is active; 409 when one started meanwhile; ProjectArchived and the live row; Restore"></figure>
+</section>
+
+<section id="test-api" data-part="5" data-cue="The backend tests go through the real API.">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Projects/ArchiveProjectTests.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="5,7,9-10">    public async Task A_project_with_an_active_direction_is_not_archived()
+    {
+        var (owner, projectId, _) = await ProjectAsync();
+
+        var response = await owner.PostAsync($"/api/projects/{projectId}/archive", new { });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var problem = await HewnClient.ReadJsonAsync(response);
+        Assert.Equal("active_direction", problem.GetProperty("code").GetString());
+        Assert.Equal("Cancel the running direction first", problem.GetProperty("title").GetString());
+        Assert.False((await RowAsync(owner, projectId)).GetProperty("archived").GetBoolean());
+        Assert.DoesNotContain("ProjectArchived", await EventTypesAsync(owner, projectId));
+    }</pre>
+  <div class="result red">✘ 4 failed: 404 Not Found · KeyNotFoundException: archived</div>
+  <div class="result green">✔ backend 322</div>
+</section>
+
+<section id="test-unit" data-part="5" data-cue="In Mission Control, unit tests cover the Archived filter">
+  <div class="result red">✘ expected '28 days ago' to be '12 Oct'</div>
+  <div class="result green">✔ mission-control 150</div>
+</section>
+
+<section id="test-e2e" data-part="5" data-cue="End to end, a behaviour test archives an idle project">
+  <div class="code-file">e2e/tests/behavior/archive-and-restore-a-project.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="9-12">  test('a project with an active direction is not archived', async ({ page, projects }) =&gt; {
+    await signIn(page, 'quinntynebrown');
+    const name = uniqueName('Tidewater');
+    const projectId = await aProjectNamed(page, name, { idle: false });
+    try {
+      await projects.open();
+      const row = projects.row(name);
+
+      await expect(row.archive).toHaveCount(0);
+      await expect(row.archiveRefused).toHaveAttribute('title', 'Cancel the running direction first');
+      await expect(row.archiveRefused).toHaveAccessibleName(`Archive ${name}: cancel the running direction first`);
+      await row.archiveRefused.click({ force: true });
+      await expect(projects.toasts).toHaveCount(0);</pre>
+  <div class="result red">✘ locator.click: waiting for … getByRole('button', { name: /^Archive [^:]*$/ })</div>
+  <div class="result green">✔ behaviour 3 · visual 2 · a11y 1</div>
+</section>
+
+<section id="viewer" data-part="6" data-cue="A Viewer sees the Archived filter, with no Restore.">
+  <figure><img src="screens/projects-archived-viewer.png" alt="The Archived filter as a Viewer sees it: the archived project, no Restore"></figure>
+</section>
+
+<section id="screens" data-part="6" data-cue="The archived list reads the same in dark mode">
+  <div class="cols">
+    <figure><img src="screens/projects-archived-dark.png" alt="The Archived filter in dark mode"></figure>
+    <figure class="phone"><img src="screens/projects-archived-phone.png" alt="The Archived filter on a phone"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="7" data-cue="Journey thirty is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Archive moves an inactive project under Archived</li>
+    <li>Restore brings it back with the status it had</li>
+    <li>An active direction is refused: "Cancel the running direction first"</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>
