@@ -94,4 +94,15 @@ public sealed class MissionControlPagesTests : IAsyncLifetime
         Assert.Equal("nosniff", me.Headers.GetValues("X-Content-Type-Options").Single());
         Assert.Equal(HttpStatusCode.NotFound, (await viewer.GetAsync("/api/no-such-thing")).StatusCode);
     }
+
+    [Fact]
+    public async Task Without_a_built_app_pages_are_not_found_rather_than_a_sign_in_loop()
+    {
+        await using var factory = new HewnApiFactory();
+        var browser = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, BaseAddress = new Uri("https://localhost") });
+
+        Assert.Equal(HttpStatusCode.NotFound, (await browser.GetAsync("/sign-in")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await browser.GetAsync("/projects")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await browser.GetAsync("/api/projects")).StatusCode);
+    }
 }

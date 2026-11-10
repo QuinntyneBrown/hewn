@@ -75,6 +75,12 @@ public static class MissionControlPages
     {
         if (Root(app) is not { } root)
         {
+            // No built app here (ng serve serves it): any other path is simply not found, never a sign-in redirect.
+            app.MapFallback(context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+                return Task.CompletedTask;
+            }).AllowAnonymous();
             return;
         }
 
