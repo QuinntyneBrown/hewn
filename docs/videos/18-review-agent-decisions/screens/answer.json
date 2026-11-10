@@ -1,0 +1,12 @@
+{
+  "id": 16,
+  "stage": 4,
+  "stageName": "Stack",
+  "question": "Which stack should the product use?",
+  "answer": ".NET 10 (LTS) backend with an Angular 21 frontend",
+  "rationale": "No stack was named, so the default applies (L2-013).",
+  "recordedAt": "2026-11-10T10:35:16.813948+00:00",
+  "commit": "3a08f663caef23397271f476b7ac29776444df34",
+  "commitUrl": "https://github.com/hewn-builds/kiln-booking/commit/3a08f663caef23397271f476b7ac29776444df34",
+  "adr": null
+}
