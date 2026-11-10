@@ -1,0 +1,113 @@
+@switch (loaded().state) {
+  @case ('loading') {
+    <div class="pad section">
+      <div class="split split--nav">
+        <div aria-busy="true" aria-live="polite">
+          <p class="visually-hidden">Loading the design system</p>
+          <div class="stack">
+            @for (n of [1, 2, 3, 4, 5, 6, 7, 8]; track n) {
+              <span class="skeleton skeleton--line" aria-hidden="true"></span>
+            }
+          </div>
+        </div>
+        <div class="stack">
+          <span class="skeleton skeleton--w50" aria-hidden="true"></span>
+          <span class="skeleton skeleton--block" style="height: 24rem" aria-hidden="true"></span>
+        </div>
+      </div>
+    </div>
+  }
+  @case ('error') {
+    <div class="pad">
+      <div class="empty empty--error" role="alert">
+        <svg hw-icon name="warning"></svg>
+        <div>
+          <h2 class="empty__title">The design system couldn’t load</h2>
+          <p class="empty__text">{{ $any(loaded()).message }}</p>
+        </div>
+        <div class="cluster">
+          <button class="btn" type="button" (click)="retry()">Try again</button>
+          <a class="btn btn--ghost" [routerLink]="['/projects', projectId()]">Open the pipeline</a>
+        </div>
+      </div>
+    </div>
+  }
+  @default {
+    @if (selected(); as page) {
+      <div class="pad section">
+        <div class="split split--nav">
+          <nav aria-label="Design system pages" class="truncate" style="white-space: normal">
+            <p class="text-caption">{{ caption() }}</p>
+            <ul class="stack mt-3">
+              @for (group of groups(); track group.name) {
+                <li>
+                  <div class="text-sm" style="font-weight: var(--font-weight-medium)">
+                    {{ group.name }}
+                  </div>
+                  <ul class="state-list">
+                    @for (p of group.pages; track p.path) {
+                      <li>
+                        <a
+                          class="state-link"
+                          href="#preview"
+                          [attr.aria-current]="p.path === page.path ? 'true' : null"
+                          (click)="choose(p.path, $event)"
+                          >{{ p.title }}</a
+                        >
+                      </li>
+                    }
+                  </ul>
+                </li>
+              }
+            </ul>
+          </nav>
+          <section
+            aria-label="Preview"
+            class="truncate"
+            style="white-space: normal; overflow: visible"
+            id="preview"
+          >
+            <div class="cluster">
+              <h2 class="section__title" style="margin-right: auto">
+                {{ page.title }}
+                @if (detail()) {
+                  <span class="text-muted" style="font-weight: var(--font-weight-regular)"
+                    >· {{ detail() }}</span
+                  >
+                }
+              </h2>
+              <hw-preview-controls [(width)]="width" [(theme)]="theme" />
+            </div>
+            <div class="preview">
+              <hw-sandboxed-preview
+                [url]="page.previewUrl"
+                [width]="width()"
+                [theme]="theme()"
+                [label]="label()"
+              />
+            </div>
+            <p class="text-caption cluster mt-3">
+              <svg hw-icon name="shieldCheck" class="icon--xs"></svg> Served from {{ host() }} in
+              the same sandboxed frame as Designs · {{ width() }} px ·
+              <span class="mono">{{ page.path }}</span>
+            </p>
+          </section>
+        </div>
+      </div>
+    } @else {
+      <div class="pad section">
+        <div class="empty">
+          <svg hw-icon name="dashboard"></svg>
+          <div>
+            <h2 class="empty__title">No design system yet</h2>
+            <p class="empty__text">
+              Stage 3 extracts tokens and one page per component from the exported mocks into
+              docs/design-system/. It appears here once that stage succeeds.
+            </p>
+          </div>
+          <a class="btn" [routerLink]="['/projects', projectId()]">Open the pipeline</a>
+        </div>
+      </div>
+    }
+  }
+}

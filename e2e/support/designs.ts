@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import { xsrfToken } from './queue';
 import { cancelDirections } from './rate-limit';
 
-export { designedFiles, mockPage, probeMock } from './designed-files';
+export { designedFiles, extractedFiles, mockPage, probeMock, systemPage } from './designed-files';
 
 /**
  * A real project on a repository holding these files in the fake GitHub, as a direction that passed stage 2 leaves
@@ -35,6 +35,23 @@ export async function designedProject(page: Page, name: string, files: Record<st
 export async function serveDesigns(page: Page, body: unknown, status = 200): Promise<void> {
   await page.route(
     (url) => /^\/api\/projects\/[^/]+\/designs$/.test(url.pathname),
+    (route) => route.fulfill({ status, json: body, contentType: 'application/json' }),
+  );
+  await page.route(
+    (url) => url.pathname.startsWith('/preview/stub/'),
+    (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'text/html',
+        body: '<!doctype html><html style="background: transparent"><body></body></html>',
+      }),
+  );
+}
+
+/** Answers GET /api/projects/{id}/design-system with this body (or this problem), and stubs preview URLs as above. */
+export async function serveDesignSystem(page: Page, body: unknown, status = 200): Promise<void> {
+  await page.route(
+    (url) => /^\/api\/projects\/[^/]+\/design-system$/.test(url.pathname),
     (route) => route.fulfill({ status, json: body, contentType: 'application/json' }),
   );
   await page.route(
