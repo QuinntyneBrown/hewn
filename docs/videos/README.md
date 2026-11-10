@@ -39,6 +39,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 23 | [Run workers locally or in the cloud](23-run-workers-locally-or-in-cloud/README.md) | ~5:06 | Journey 23 |
 | 24 | [Manage worker tokens](24-manage-worker-tokens/README.md) | ~5:29 | Journey 24 |
 | 25 | [Inspect worker activity](25-inspect-worker-activity/README.md) | ~4:39 | Journey 25 |
+| 26 | [Continue after a worker or server crash](26-continue-after-a-worker-or-server-crash/README.md) | ~5:01 | Journey 26 |
 
 ## Voice
 
