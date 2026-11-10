@@ -359,7 +359,7 @@ SPECS["row-list"] = {
     "responsive": ul([
         "Base (below lg, 62rem): each row is a two-column grid, <code>minmax(0, 1fr) auto</code>: title and sub left, status right; <code>.row__span</code> and <code>.row__actions</code> take the full width; <code>.lg-only</code> cells are hidden and <code>.lg-hide</code> duplicates (the status) show.",
         "Backlog rows below lg: a 32px number column, the title, and the status; journey, requirements and PR stack under the title in column 2 (<code>.col2</code>).",
-        "From lg: <code>.rows__head</code> appears and each variant applies its column template (projects: <code>2.2fr 1.3fr 8rem 7rem 7rem 6rem 4.5rem</code>; workers: <code>1.6fr 6rem 5rem 7.5rem 1fr 6rem 6rem 5rem</code>; users: <code>1fr 8rem 10rem 6rem</code>), so cells line up as columns.",
+        "From lg: <code>.rows__head</code> appears and each variant applies its column template (projects: <code>2.2fr 1.3fr 8rem 7rem 7rem 6rem 6rem</code>, the last wide enough for Restore; workers: <code>1.6fr 6rem 5rem 7.5rem 1fr 6rem 6rem 5rem</code>; users: <code>1fr 8rem 10rem 6rem</code>), so cells line up as columns.",
         "Row actions are 44px (<code>--target-comfortable</code>) below lg and 32px (<code>--control-height-sm</code>) from lg.",
         "Text truncates with an ellipsis inside its cell; the row never scrolls horizontally."]),
     "theming": """<p>Rows read <code>--color-border-default</code> for the rule, <code>--color-bg-subtle</code> for hover and <code>--color-accent-subtle</code> for the current row; text inks are the semantic fg tokens. Column templates are layout geometry in rem and live with each variant; a new row list adds a <code>.rows--name</code> template, it does not restyle <code>.row</code>.</p>

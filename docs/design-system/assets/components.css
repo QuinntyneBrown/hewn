@@ -611,7 +611,7 @@ a.row__title:hover { color: var(--color-fg-accent); text-decoration: underline; 
   .rows__head { display: grid; }
   .row { align-items: center; padding-block: var(--space-3); }
   .row__span, .row__actions { grid-column: auto; }
-  .rows--projects .rows__head, .rows--projects .row { grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.3fr) 8rem 7rem 7rem 6rem 4.5rem; }
+  .rows--projects .rows__head, .rows--projects .row { grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.3fr) 8rem 7rem 7rem 6rem 6rem; }
   .rows--projects-viewer .rows__head, .rows--projects-viewer .row { grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.3fr) 8rem 7rem 7rem 6rem; }
   .rows--backlog .rows__head, .rows--backlog .row { grid-template-columns: 2.5rem minmax(0, 1fr) 6rem 10rem 5rem 8.5rem 5rem; }
   .rows--backlog .row > .col2 { grid-column: auto; }
