@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 17 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="17" data-video-title="Trace a requirement" data-parts="Introduction|Goal|Reading the head|Naming|The tab|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 17</div>
+  <h1>Trace a requirement</h1>
+  <p class="lead">Every L2, through designs, journeys, tests and pull requests.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video walks through how it was built">
+  <figure><img src="screens/trace-trace.png" alt="Ledgerline's Traceability tab: the L2 list, and L2-018's L1, designs, journeys, acceptance tests and pull requests"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="A user opens an L2 in Traceability">
+  <div class="cols cols--wide">
+    <figure><img src="screens/trace-no-test.png" alt="L2-020 marked No acceptance test"></figure>
+    <ul class="bullets small">
+      <li>L1, designs, journeys</li>
+      <li>Tests by their Traces to: header</li>
+      <li>PRs by their titles</li>
+      <li>No acceptance test, unless Deferred</li>
+    </ul>
+  </div>
+</section>
+
+<section id="flow" data-part="1" data-cue="Here is the flow.">
+  <figure class="diagram"><img src="../../detailed-designs/mission-control/artifacts-and-traceability/diagrams/sequence-view-trace.png" alt="Sequence diagram: the tab gets the traceability; the handler downloads the archive at the head, parses L2.md, lists pull requests and matches each L2 ID whole"></figure>
+</section>
+
+<section id="components" data-part="1" data-cue="The components are simpler too.">
+  <figure class="diagram"><img src="../../detailed-designs/mission-control/artifacts-and-traceability/diagrams/c4-component.png" alt="Component diagram: ProjectsController sends GetArtifactsQuery and GetTraceabilityQuery; the traceability handler downloads the archive and lists pull requests from GitHub"></figure>
+</section>
+
+<section id="archive" data-part="2" data-cue="One archive gives every file at once">
+  <div class="code-file">backend/src/Hewn.Application/Projects/GetTraceability.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="5-7">        Snapshot snapshot;
+        IReadOnlyList&lt;PullRequestInfo&gt; pulls;
+        try
+        {
+            await using var archive = await gitHub.DownloadArchiveAsync(owner, name, cancellationToken);
+            snapshot = await ReadAsync(archive, cancellationToken);
+            pulls = snapshot.Files.ContainsKey(L2Path) ? await gitHub.ListPullRequestsAsync(owner, name, cancellationToken) : [];
+        }
+        catch (Exception e) when (e is GitHubException or InvalidDataException or FormatException)</pre>
+  <div class="code-file">GET /api/projects/{id}/traceability (Kiln Booking, first L2)</div>
+  <pre class="code tight" data-lang="json" data-mark="2">{
+  "commit": "f25478d",
+  "requirements": [
+    {
+      "id": "L2-001",
+      "title": "Sign in",
+  …</pre>
+</section>
+
+<section id="parse" data-part="2" data-cue="L2 headings must read L2, a number, a colon and a title.">
+  <div class="code-file">backend/src/Hewn.Application/Projects/GetTraceability.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="6-11">            if (!line.StartsWith("## L2-", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var heading = L2Heading().Match(line);
+            if (!heading.Success || entries.Any(e =&gt; e.Id == heading.Groups["id"].Value))
+            {
+                var why = heading.Success ? $"{heading.Groups["id"].Value} appears twice" : "unexpected heading";
+                throw new GitHubException($"{L2Path} couldn’t be parsed at {commit ?? "the head"} ({why} on line {i + 1})");
+            }
+
+            string? l1 = null, deferred = null;</pre>
+</section>
+
+<section id="match" data-part="3" data-cue="Each L2 gets its L1, then everything that names its ID.">
+  <div class="code-file">backend/src/Hewn.Application/Projects/GetTraceability.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="3-4,10-14">        var requirements = l2s.Select(l2 =&gt;
+        {
+            var named = NamesId(l2.Id);
+            var tested = tests.Where(t =&gt; t.Ids.Contains(l2.Id)).Select(t =&gt; t.Path).ToList();
+            return new RequirementTraceDto(
+                l2.Id,
+                l2.Title,
+                l2.L1 is { } l1 ? new ParentRequirementDto(l1, l1s.GetValueOrDefault(l1, string.Empty)) : null,
+                l2.Deferred,
+                tested.Count == 0 &amp;&amp; l2.Deferred is null,
+                [.. designs.Where(d =&gt; named.IsMatch(d.Value)).Select(d =&gt; new TracedDesignDto(d.Title, d.Path))],
+                [.. journeys.Where(j =&gt; named.IsMatch(j.Text)).Select(j =&gt; new TracedJourneyDto(j.Number, j.Title))],
+                tested,
+                [.. pulls.Where(p =&gt; named.IsMatch(p.Title)).OrderBy(p =&gt; p.Number).Select(p =&gt; new TracedPullRequestDto(p.Number, p.Title, p.Url, p.Merged))]);
+        }).ToList();</pre>
+</section>
+
+<section id="header" data-part="3" data-cue="A test names a requirement only in its header">
+  <div class="code-file">backend/src/Hewn.Application/Projects/GetTraceability.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="4,6,8,16">    private static HashSet&lt;string&gt; TracedIds(string text)
+    {
+        var ids = new HashSet&lt;string&gt;(StringComparer.Ordinal);
+        foreach (var line in text.Split('\n').Take(HeaderLines))
+        {
+            if (TestHeader().Match(line) is { Success: true } header)
+            {
+                ids.UnionWith(L2Id().Matches(header.Groups["ids"].Value).Select(m =&gt; m.Value));
+            }
+        }
+
+        return ids;
+    }
+
+    /// &lt;summary&gt;An ID matched whole, so L2-001 is not found in L2-0010.&lt;/summary&gt;
+    private static Regex NamesId(string id) =&gt; new($@"(?&lt;![\w-]){Regex.Escape(id)}(?!\d)", RegexOptions.CultureInvariant);</pre>
+</section>
+
+<section id="tab" data-part="4" data-cue="In Mission Control, the list on the left">
+  <figure><img src="screens/trace-deferred.png" alt="L2-031 Deferred, with its reason and Not needed while deferred"></figure>
+</section>
+
+<section id="pill" data-part="4" data-cue="Deferred shows its reason">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/project/traceability.component.html</div>
+  <pre class="code tight" data-lang="html" data-mark="1-3,5-7">            @if (r.deferred !== null) {
+              &lt;p class="text-sm text-muted mt-4"&gt;
+                &lt;strong style="color: var(--color-fg-default)"&gt;Deferred.&lt;/strong&gt; {{ r.deferred }}.
+              &lt;/p&gt;
+            } @else if (r.noAcceptanceTest) {
+              &lt;p class="pill pill--warn mt-4"&gt;
+                &lt;svg hw-icon name="errorCircle" class="icon--sm"&gt;&lt;/svg&gt; No acceptance test
+              &lt;/p&gt;
+            }</pre>
+</section>
+
+<section id="red" data-part="5" data-cue="The backend tests came first">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Projects/TraceabilityTests.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="6-10,12-15">    public async Task An_L2_with_no_test_is_marked_No_acceptance_test_unless_it_is_Deferred()
+    {
+        var (owner, projectId) = await ProjectAsync();
+
+        var trace = await TraceabilityAsync(owner, projectId);
+
+        // Named after line 20 of a test, or in a document, is not a Traces to: header.
+        var close = Requirement(trace, "L2-003");
+        Assert.Empty(close.GetProperty("tests").EnumerateArray());
+        Assert.True(close.GetProperty("noAcceptanceTest").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, close.GetProperty("deferred").ValueKind);
+
+        var currency = Requirement(trace, "L2-004");
+        Assert.Equal("Estimated 7 days; could not be split below 3", currency.GetProperty("deferred").GetString());
+        Assert.Empty(currency.GetProperty("tests").EnumerateArray());
+        Assert.False(currency.GetProperty("noAcceptanceTest").GetBoolean());</pre>
+  <div class="result red">✘ 6 failed · 404 Not Found: no route</div>
+</section>
+
+<section id="e2e" data-part="5" data-cue="End to end, a live test runs a real worker">
+  <div class="code-file">e2e/tests/pipeline/trace-a-requirement-live.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3-7">    await traceability.open(projectId, 'L2-001');
+    await expect(traceability.id).toHaveText('L2-001');
+    await expect(traceability.l1).toHaveText(/^Traces to L1-001 \S/);
+    await expect(traceability.column('Designs').count).toHaveText('1');
+    await expect(traceability.column('Journeys').items).toHaveText([/^Journey 1 · /]);
+    await expect(traceability.column('Acceptance tests').items.first()).toHaveText(/\S+\.spec\.ts$/);
+    await expect(traceability.column('Pull requests').items).toHaveText([/^#\d+\s+.+\(journey 1, L2-001\)$/]);
+    await expect(traceability.noAcceptanceTest).toHaveCount(0);</pre>
+</section>
+
+<section id="tests" data-part="5" data-cue="All green, the backend has">
+  <div class="cols cols--3">
+    <div class="card"><h3>238 backend</h3><p class="small">6 new, through the real API and fake GitHub</p></div>
+    <div class="card"><h3>4 view tests</h3><p class="small">search, no match, L1 line, empty columns</p></div>
+    <div class="card"><h3>18 new e2e</h3><p class="small">5 behaviour, 1 live, 6 visual, 6 a11y</p></div>
+  </div>
+</section>
+
+<section id="clip-kiln" data-part="6" data-cue="Here is Kiln Booking, built end to end by a real worker." data-clip="clips/kiln.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Kiln Booking's requirements, after a real worker built it</aside>
+</section>
+
+<section id="clip-ledgerline" data-part="6" data-cue="Ledgerline shows the gaps." data-clip="clips/ledgerline.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">No acceptance test, Deferred, and Find an L2</aside>
+</section>
+
+<section id="themes" data-part="6" data-cue="As a Viewer the trace reads the same in dark mode">
+  <div class="cols">
+    <figure><img src="screens/trace-dark.png" alt="The Traceability tab in dark mode, as a Viewer"></figure>
+    <figure class="phone"><img src="screens/trace-phone.png" alt="The Traceability tab on a phone"></figure>
+  </div>
+</section>
+
+<section id="states" data-part="6" data-cue="Before stage five there are no requirements yet">
+  <div class="cols">
+    <figure><img src="screens/empty-desktop.png" alt="No requirements yet, with Open the pipeline"></figure>
+    <figure><img src="screens/error-desktop.png" alt="Traceability couldn't load: docs/specs/L2.md couldn't be parsed at its commit, naming the line, with Try again"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="7" data-cue="Journey seventeen is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Every L2 traced, read from the head</li>
+    <li>No acceptance test stands out, unless Deferred</li>
+    <li>Current as stages and increments finish</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

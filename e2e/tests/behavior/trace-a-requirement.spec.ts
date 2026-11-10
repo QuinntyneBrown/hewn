@@ -4,7 +4,8 @@
 
 import type { Page } from '@playwright/test';
 import { expect, signIn, test, uniqueName } from '../../fixtures/test';
-import { tracedFiles, tracedProject } from '../../support/traced-files';
+import { tracedProject } from '../../support/traceability';
+import { tracedFiles } from '../../support/traced-files';
 
 let shared: string | undefined;
 /** One project per file, on a repository with requirements, designs, journeys, tests and pull requests. */
