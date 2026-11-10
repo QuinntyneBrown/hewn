@@ -28,7 +28,17 @@ public sealed class RegisterWorkerHandler(IAppDbContext db, IWorkersNotifier wor
 {
     public async Task<string> Handle(RegisterWorkerCommand command, CancellationToken cancellationToken)
     {
-        var worker = new Worker(command.Name, Enum.Parse<WorkerLocation>(command.Location, ignoreCase: true), command.Host, command.Version, clock.GetUtcNow(), command.TokenId);
+        // An issued token names its worker and says where it runs (L2-041); the configured token leaves both to the worker.
+        var token = command.TokenId is null
+            ? null
+            : await db.WorkerTokens.AsNoTracking().Where(t => t.Id == command.TokenId).Select(t => new { t.Name, t.Location }).SingleAsync(cancellationToken);
+        var worker = new Worker(
+            token?.Name ?? command.Name,
+            token?.Location ?? Enum.Parse<WorkerLocation>(command.Location, ignoreCase: true),
+            command.Host,
+            command.Version,
+            clock.GetUtcNow(),
+            command.TokenId);
         db.Workers.Add(worker);
         await db.SaveChangesAsync(cancellationToken);
         await workers.WorkersChangedAsync(cancellationToken);

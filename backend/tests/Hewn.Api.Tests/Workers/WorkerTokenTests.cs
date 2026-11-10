@@ -59,13 +59,16 @@ public sealed class WorkerTokenTests : IAsyncLifetime
         Assert.Equal(Sha256Hex(token), stored.Hash);
         Assert.DoesNotContain(token, JsonSerializer.Serialize(stored));
 
-        // The token works: a worker registers with it.
-        var worker = await WorkerClient.RegisterAsync(_factory.CreateAnonymousClient(), token, "hewn-cloud-eus-03", "Cloud");
+        // The token works: a worker registers with it and is named and placed by the token, whatever it calls itself.
+        var worker = await WorkerClient.RegisterAsync(_factory.CreateAnonymousClient(), token, "ip-10-0-3-17", "Local");
         Assert.NotNull(worker.WorkerId);
 
         // No API returns it again.
         var workers = await (await owner.GetAsync("/api/workers")).Content.ReadAsStringAsync();
-        Assert.Contains("hewn-cloud-eus-03", workers);
+        var row = (await HewnClient.ReadJsonAsync(await owner.GetAsync("/api/workers"))).GetProperty("workers")[0];
+        Assert.Equal("hewn-cloud-eus-03", row.GetProperty("name").GetString());
+        Assert.Equal("Cloud", row.GetProperty("location").GetString());
+        Assert.Equal("test-host", row.GetProperty("host").GetString());
         Assert.DoesNotContain(token, workers);
         Assert.DoesNotContain(token[4..], workers);
     }
