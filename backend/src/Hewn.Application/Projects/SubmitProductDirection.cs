@@ -116,15 +116,17 @@ public sealed class SubmitProductDirectionHandler(
             await EnsureWritableAsync(parsed, cancellationToken);
         }
 
+        var startsWith = await defaults.ReadAsync(cancellationToken);
         var project = Project.CreateWithProductDirection(
             command.Name!,
             command.Idea!,
             string.IsNullOrWhiteSpace(command.StackPreference) ? null : command.StackPreference.Trim(),
             repository,
-            command.BudgetUsd ?? (await defaults.ReadAsync(cancellationToken)).DefaultBudgetUsd,
+            command.BudgetUsd ?? startsWith.DefaultBudgetUsd,
             user.Login,
             clock.GetUtcNow());
         var direction = project.Directions[0];
+        direction.StartWithDescopeThreshold(startsWith.DescopeThresholdDays);
 
         db.Projects.Add(project);
         await events.AppendAsync(

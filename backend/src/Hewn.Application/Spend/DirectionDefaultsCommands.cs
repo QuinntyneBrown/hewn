@@ -51,7 +51,7 @@ public sealed class UpdateDirectionDefaultsValidator : AbstractValidator<UpdateD
 
 /// <summary>
 /// L2-053 AC1 and L2-019 AC1: an Owner sets the default budget and the descope threshold. Directions already submitted
-/// keep their budget; stage 9 reads the threshold when it is leased.
+/// keep both; stage 9 splits and defers against the threshold its direction was submitted with.
 /// </summary>
 public sealed class UpdateDirectionDefaultsHandler(IAppDbContext db, ICurrentUser user, TimeProvider clock, DirectionDefaultsReader reader)
     : IRequestHandler<UpdateDirectionDefaultsCommand, DirectionDefaultsDto>

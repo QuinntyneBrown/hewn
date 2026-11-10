@@ -124,8 +124,8 @@ public sealed class LeaseRunHandler(
             new LeasedRunProject(project.Id, project.Name, project.Idea, project.StackPreference, project.Repository),
             new LeasedRunDirection(direction.Kind.ToString(), direction.Idea, direction.HasUiChange),
             options.Value.SkillsSource,
-            // The Owner's threshold from Settings, read at each lease (L2-019 AC1).
-            (await defaults.ReadAsync(cancellationToken)).DescopeThresholdDays,
+            // The threshold the direction was submitted with; older directions use the current default (L2-019 AC1).
+            direction.DescopeThresholdDays ?? (await defaults.ReadAsync(cancellationToken)).DescopeThresholdDays,
             options.Value.MaxIterations,
             run.Attempt);
     }

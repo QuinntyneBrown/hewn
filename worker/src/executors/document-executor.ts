@@ -64,7 +64,8 @@ interface StageDefinition {
   skill: string | null;
   /** Exact paths, or folders ending in `/`, the stage may change; the decision log is always allowed. */
   outputs: string[];
-  task: string;
+  /** What the agent does; a function when it depends on the lease. */
+  task: string | ((leased: LeasedRun) => string);
   commitMessage: string;
   /** `required` fails the run before the agent starts when Magic Patterns is unreachable (L2-010 AC5). */
   magicPatterns?: 'required' | 'optional';
@@ -163,7 +164,9 @@ export const DOCUMENT_STAGES: ReadonlyMap<number, StageDefinition> = new Map([
     {
       skill: 'estimating-designs',
       outputs: ['docs/estimates/', 'docs/detailed-designs/', 'docs/specs/L2.md'],
-      task: 'Estimate every design under docs/detailed-designs/ in ideal days for one intermediate developer, in docs/estimates/{subsystem}.md as a table with the columns Design (a link to the design README), Estimate (days) and Complete (percent). First split any design above the descope threshold into designs at or below it: write the new designs, and mark the original README with "**Status:** Split into {subsystem}/{feature}, …". Hewn then descopes, plans the backlog and writes docs/estimates/README.md.',
+      // The Owner's threshold from Settings, carried by the lease (L2-019 AC1).
+      task: (leased) =>
+        `Estimate every design under docs/detailed-designs/ in ideal days for one intermediate developer, in docs/estimates/{subsystem}.md as a table with the columns Design (a link to the design README), Estimate (days) and Complete (percent). First split any design above the descope threshold of ${leased.descopeThresholdDays} ideal days into designs at or below it: write the new designs, and mark the original README with "**Status:** Split into {subsystem}/{feature}, …". Hewn then descopes, plans the backlog and writes docs/estimates/README.md.`,
       commitMessage: 'Estimate the work and plan the backlog',
       afterAgent: async ({ directory, leased }) => void planIfEstimated(directory, leased),
       validate: (d) => validateEstimates(d),
@@ -384,7 +387,7 @@ function instructionsFor(leased: LeasedRun, definition: StageDefinition): string
     `Direction: ${leased.project.idea}`,
     ...feature,
     leased.project.stackPreference ? `Named stack: ${leased.project.stackPreference}` : 'No stack was named.',
-    definition.task,
+    typeof definition.task === 'string' ? definition.task : definition.task(leased),
     AUTONOMY,
     'Change no other files.',
   ].join('\n\n');

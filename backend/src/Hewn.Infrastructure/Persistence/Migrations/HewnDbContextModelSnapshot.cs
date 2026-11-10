@@ -68,6 +68,9 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.Property<long?>("CompletedAt")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("DescopeThresholdDays")
+                        .HasColumnType("INTEGER");
+
                     b.Property<long?>("FailedAt")
                         .HasColumnType("INTEGER");
 

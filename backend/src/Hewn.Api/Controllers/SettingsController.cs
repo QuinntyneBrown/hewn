@@ -19,7 +19,7 @@ public sealed class SettingsController(IMediator mediator) : ControllerBase
 
     /// <summary>
     /// L2-053 AC1: the default budget per direction; new directions start with it, running ones keep theirs. L2-019 AC1: the
-    /// descope threshold stage 9 is leased with; leaving it out keeps the saved one.
+    /// descope threshold new directions start with; leaving it out keeps the saved one.
     /// </summary>
     [HttpPut("direction-defaults")]
     [Authorize(Policy = AuthSetup.OwnerPolicy)]

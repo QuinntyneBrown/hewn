@@ -37,6 +37,14 @@ public sealed class Direction
 
     public decimal BudgetUsd { get; private set; }
 
+    /// <summary>
+    /// The descope threshold in ideal days stage 9 splits and defers against, fixed when the direction is submitted
+    /// (L2-019 AC1). Null for directions submitted before it was recorded; they use the current default.
+    /// </summary>
+    public int? DescopeThresholdDays { get; private set; }
+
+    public void StartWithDescopeThreshold(decimal days) => DescopeThresholdDays = (int)days;
+
     /// <summary>The cost of every model call the direction's runs made (L2-052).</summary>
     public decimal SpendUsd { get; private set; }
 

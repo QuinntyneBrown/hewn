@@ -1,6 +1,6 @@
 // Acceptance Test
 // Traces to: L2-019
-// Description: An Owner sets the descope threshold in ideal days in Settings (3 until saved); stage 9 is leased with it; it is a whole number from 1 to 20; Viewers can read it but not change it (AC1)
+// Description: An Owner sets the descope threshold in ideal days in Settings (3 until saved); directions submitted after are leased with it, running ones keep theirs; it is a whole number from 1 to 20; Viewers can read it but not change it (AC1)
 
 using System.Net;
 using Hewn.Api.Tests.Support;
@@ -42,6 +42,26 @@ public sealed class DescopeThresholdTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, submitted.StatusCode);
         var run = (await (await _factory.RegisterWorkerAsync()).LeaseAsync())!;
         Assert.Equal(5m, run.Body.GetProperty("descopeThresholdDays").GetDecimal());
+    }
+
+    [Fact]
+    public async Task A_direction_submitted_before_the_change_keeps_the_threshold_it_started_with()
+    {
+        var owner = await _factory.SignInAsync("quinntynebrown", Role.Owner);
+        var submitted = await owner.PostAsync("/api/projects", new
+        {
+            name = "Seed Swap",
+            idea = "A seed swap register for a community garden.",
+            stackPreference = (string?)null,
+            repositoryUrl = (string?)null,
+            budgetUsd = (decimal?)null,
+        });
+        Assert.Equal(HttpStatusCode.Created, submitted.StatusCode);
+
+        (await owner.PutAsync("/api/settings/direction-defaults", new { defaultBudgetUsd = 300m, descopeThresholdDays = 1m })).EnsureSuccessStatusCode();
+
+        var run = (await (await _factory.RegisterWorkerAsync()).LeaseAsync())!;
+        Assert.Equal(3m, run.Body.GetProperty("descopeThresholdDays").GetDecimal());
     }
 
     [Fact]
