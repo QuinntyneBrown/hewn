@@ -8,20 +8,12 @@ import {
 import { connect, type Socket } from 'node:net';
 
 /**
- * The hosts a run may reach (L2-042 AC2): GitHub, the model API, the Magic Patterns MCP server and the package
- * registries of the stacks Hewn scaffolds (npm for Angular, NuGet for .NET).
+ * The hosts a run may reach (L2-042 AC2): the model API, the Magic Patterns MCP server and the package registries of
+ * the stacks Hewn scaffolds (npm for Angular, NuGet for .NET). GitHub is not on it: a run reads and writes its
+ * repository only through the Hewn API, which holds the GitHub credentials (agent-isolation design, ADR 0025).
  */
 export function egressAllowList(options: { magicPatternsUrl?: string } = {}): string[] {
-  const hosts = [
-    'github.com',
-    'api.github.com',
-    'codeload.github.com',
-    'objects.githubusercontent.com',
-    'api.anthropic.com',
-    'registry.npmjs.org',
-    'api.nuget.org',
-    'www.nuget.org',
-  ];
+  const hosts = ['api.anthropic.com', 'registry.npmjs.org', 'api.nuget.org', 'www.nuget.org'];
   if (options.magicPatternsUrl) hosts.push(new URL(options.magicPatternsUrl).hostname);
   return hosts;
 }
@@ -59,7 +51,8 @@ export class EgressProxy {
     });
     await new Promise<void>((done) => server.listen(0, this.bind, done));
     this.server = server;
-    return `http://${this.bind}:${(server.address() as { port: number }).port}`;
+    const host = this.bind === '0.0.0.0' ? '127.0.0.1' : this.bind;
+    return `http://${host}:${(server.address() as { port: number }).port}`;
   }
 
   async stop(): Promise<void> {

@@ -11,6 +11,9 @@ export interface IsolationSettings {
   sandbox: 'process' | 'docker';
   /** The image commands run in under `docker`. */
   image: string;
+  /** Under `docker`: the internal network run containers join, and the worker's name on it. */
+  network?: string;
+  proxyHost?: string;
 }
 
 /**
@@ -22,14 +25,23 @@ export async function startRunIsolation(
   runId: string,
   log: (level: LogLevel, text: string) => void,
 ): Promise<{ isolation: RunIsolation; stop(): Promise<void> }> {
-  const proxy = new EgressProxy(settings.allowedHosts, (host) =>
-    log('warn', `Egress blocked: ${host} is not an allowed host (L2-042)`),
+  // Under docker, run containers reach the proxy over their internal network, so it listens beyond loopback.
+  const proxy = new EgressProxy(
+    settings.allowedHosts,
+    (host) => log('warn', `Egress blocked: ${host} is not an allowed host (L2-042)`),
+    settings.sandbox === 'docker' ? '0.0.0.0' : '127.0.0.1',
   );
   const egressProxyUrl = await proxy.start();
   const port = Number(new URL(egressProxyUrl).port);
   const sandbox: CommandSandbox =
     settings.sandbox === 'docker'
-      ? new ContainerSandbox({ image: settings.image, runId, proxyPort: port })
+      ? new ContainerSandbox({
+          image: settings.image,
+          runId,
+          proxyPort: port,
+          network: settings.network ?? 'hewn-runs',
+          proxyHost: settings.proxyHost ?? 'hewn-worker',
+        })
       : new ProcessSandbox(egressProxyUrl);
 
   return {

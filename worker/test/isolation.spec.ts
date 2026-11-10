@@ -1,6 +1,6 @@
 // Acceptance Test
 // Traces to: L2-042
-// Description: A run's commands get their own workspace and none of the worker's credentials (AC1); their network requests go through the run's egress proxy, which allows only GitHub, the model API, Magic Patterns and the stack's registries and blocks and logs the rest (AC2); a tool not on the stage's allow list is denied and logged as a security event (AC3)
+// Description: A run's commands get their own workspace and none of the worker's credentials (AC1); their network requests go through the run's egress proxy, which allows only the model API, Magic Patterns and the stack's registries (GitHub only through the Hewn API) and blocks and logs the rest (AC2); a tool not on the stage's allow list is denied and logged as a security event (AC3)
 
 import { request as httpRequest, createServer, type Server } from 'node:http';
 import { connect } from 'node:net';
@@ -56,20 +56,14 @@ async function upstream(): Promise<{ url: string }> {
 }
 
 describe('Egress', () => {
-  it('allows only GitHub, the model API, Magic Patterns and the stack registries', () => {
+  it('allows only the model API, Magic Patterns and the stack registries; GitHub only through the Hewn API', () => {
     const hosts = egressAllowList({ magicPatternsUrl: 'https://mcp.magicpatterns.com/mcp' });
 
     expect(hosts).toEqual(
-      expect.arrayContaining([
-        'github.com',
-        'api.github.com',
-        'api.anthropic.com',
-        'mcp.magicpatterns.com',
-        'registry.npmjs.org',
-        'api.nuget.org',
-      ]),
+      expect.arrayContaining(['api.anthropic.com', 'mcp.magicpatterns.com', 'registry.npmjs.org', 'api.nuget.org']),
     );
     expect(hosts).not.toContain('example.com');
+    expect(hosts.filter((host) => host.includes('github'))).toEqual([]);
   });
 
   it('forwards requests to allowed hosts and blocks and logs the rest', async () => {
@@ -120,9 +114,16 @@ describe('Run commands', () => {
     });
   });
 
-  it('run in their own container with only the workspace mounted, when the worker is set to', () => {
+  it('run in their own container with only the workspace mounted and only the proxy reachable, when set to', () => {
     const { command, args } = containerCommand(
-      { image: 'node:24-bookworm-slim', runId: 'run-1', workspace: '/tmp/hewn-run-1', proxyPort: 41234 },
+      {
+        image: 'node:24-bookworm-slim',
+        runId: 'run-1',
+        workspace: '/tmp/hewn-run-1',
+        proxyPort: 41234,
+        network: 'hewn-runs',
+        proxyHost: 'hewn-worker',
+      },
       { command: 'npm', args: ['test'], cwd: 'frontend' },
     );
 
@@ -138,8 +139,8 @@ describe('Run commands', () => {
       'no-new-privileges',
       '--user',
       '1000:1000',
-      '--add-host',
-      'host.docker.internal:host-gateway',
+      '--network',
+      'hewn-runs',
       '-v',
       '/tmp/hewn-run-1:/workspace',
       '-w',
@@ -149,9 +150,9 @@ describe('Run commands', () => {
       '-e',
       'CI=1',
       '-e',
-      'HTTPS_PROXY=http://host.docker.internal:41234',
+      'HTTPS_PROXY=http://hewn-worker:41234',
       '-e',
-      'HTTP_PROXY=http://host.docker.internal:41234',
+      'HTTP_PROXY=http://hewn-worker:41234',
       'node:24-bookworm-slim',
       'npm',
       'test',

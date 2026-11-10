@@ -112,7 +112,8 @@ const executor: StageExecutor =
       );
 
 // L2-042: every run gets its own egress proxy and tool gates. HEWN_SANDBOX=docker also runs each of its commands in
-// a container of HEWN_SANDBOX_IMAGE; HEWN_EGRESS_ALLOW adds hosts, such as a private registry, to the allow list.
+// a container of HEWN_SANDBOX_IMAGE on HEWN_SANDBOX_NETWORK, an internal network whose only other member is this
+// worker (HEWN_SANDBOX_PROXY_HOST on it). HEWN_EGRESS_ALLOW adds hosts, such as a private registry, to the allow list.
 const sandbox = process.env.HEWN_SANDBOX ?? 'process';
 if (sandbox !== 'process' && sandbox !== 'docker') {
   console.error('HEWN_SANDBOX must be "process" or "docker".');
@@ -128,6 +129,8 @@ const isolation: IsolationSettings = {
   ],
   sandbox,
   image: process.env.HEWN_SANDBOX_IMAGE ?? 'node:24-bookworm-slim',
+  network: process.env.HEWN_SANDBOX_NETWORK ?? 'hewn-runs',
+  proxyHost: process.env.HEWN_SANDBOX_PROXY_HOST ?? hostname(),
 };
 
 const stop = new AbortController();

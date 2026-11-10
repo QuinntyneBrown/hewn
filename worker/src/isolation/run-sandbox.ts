@@ -38,20 +38,27 @@ export interface ContainerSettings {
   runId: string;
   /** The run's workspace on the host; the only host path the container sees. */
   workspace: string;
-  /** The run's egress proxy port on the worker host. */
+  /** The run's egress proxy port on the worker. */
   proxyPort: number;
+  /**
+   * An internal Docker network (`docker network create --internal`) the worker also joins: the container's only
+   * peer is the worker's proxy, so nothing it runs can reach the network directly, proxy variables or not.
+   */
+  network: string;
+  /** The worker's name on that network. */
+  proxyHost: string;
 }
 
 /**
  * With `HEWN_SANDBOX=docker`, each command runs in its own container (L2-042 AC1): only the run's workspace is
- * mounted, every Linux capability is dropped, it can't gain privileges, it runs as an unprivileged user, and it sees
- * no worker variable, only its proxy settings.
+ * mounted, every Linux capability is dropped, it can't gain privileges, it runs as an unprivileged user, it sees no
+ * worker variable, only its proxy settings, and its internal network reaches nothing but the proxy (AC2).
  */
 export function containerCommand(
   settings: ContainerSettings,
   run: { command: string; args: readonly string[]; cwd?: string },
 ): { command: string; args: string[] } {
-  const proxy = `http://host.docker.internal:${settings.proxyPort}`;
+  const proxy = `http://${settings.proxyHost}:${settings.proxyPort}`;
   return {
     command: 'docker',
     args: [
@@ -65,8 +72,8 @@ export function containerCommand(
       'no-new-privileges',
       '--user',
       '1000:1000',
-      '--add-host',
-      'host.docker.internal:host-gateway',
+      '--network',
+      settings.network,
       '-v',
       `${settings.workspace}:/workspace`,
       '-w',
