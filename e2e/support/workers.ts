@@ -41,7 +41,10 @@ export interface WorkerOptions {
   onExit?: (code: number | null) => void;
 }
 
-export function startWorkers(count: number, stepMs: number, options: WorkerOptions = {}): () => Promise<void> {
+/** Stops the workers: SIGTERM lets them finish cleanly; SIGKILL is a crash, with no goodbye to the API. */
+export type StopWorkers = (signal?: 'SIGTERM' | 'SIGKILL') => Promise<void>;
+
+export function startWorkers(count: number, stepMs: number, options: WorkerOptions = {}): StopWorkers {
   const src = join(import.meta.dirname, '..', '..', 'worker', 'src');
   const output = process.env['HEWN_E2E_WORKER_LOGS'] ? 'inherit' : 'ignore';
   const magicPatterns = spawn(process.execPath, [join(src, 'magic-patterns', 'fake-server-main.ts')], {
@@ -86,14 +89,14 @@ export function startWorkers(count: number, stepMs: number, options: WorkerOptio
   );
   if (options.onExit) for (const worker of workers) worker.once('exit', (code) => options.onExit?.(code));
 
-  return async () => {
+  return async (signal = 'SIGTERM') => {
     await Promise.all(
       [...workers, magicPatterns].map(
         (worker) =>
           new Promise<void>((resolve) => {
-            if (worker.exitCode !== null) return resolve();
+            if (worker.exitCode !== null || worker.signalCode !== null) return resolve();
             worker.once('exit', () => resolve());
-            worker.kill('SIGTERM');
+            worker.kill(worker === magicPatterns ? 'SIGTERM' : signal);
           }),
       ),
     );

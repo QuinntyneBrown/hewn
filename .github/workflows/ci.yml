@@ -123,6 +123,9 @@ jobs:
         working-directory: e2e
       - run: npm run test:pipeline
         working-directory: e2e
+        # The workers' own log lines (which worker leased which run, cancels heard) explain a pipeline failure.
+        env:
+          HEWN_E2E_WORKER_LOGS: '1'
       # L2-045: Lighthouse on the production build of Projects, and the read-API load test.
       - run: npm run test:perf
         working-directory: e2e

@@ -4,6 +4,7 @@
 
 import { expect, signIn, test, uniqueName } from '../../fixtures/test';
 import { WorkersPage } from '../../pages/workers.page';
+import { drainQueue } from '../../support/queue';
 import { startWorkers } from '../../support/workers';
 
 /** A host-style name suffix, unique on the shared e2e stack. */
@@ -21,6 +22,8 @@ test.describe('Run workers locally or in the cloud', () => {
   test('a Local and a Cloud worker from the same build appear in Workers within 2 seconds', async ({ page }) => {
     const workers = new WorkersPage(page);
     await signIn(page, 'quinntynebrown');
+    // Earlier specs may leave work queued; this spec's worker must lease only its own.
+    await drainQueue(page);
     await workers.open();
     const local = `laptop-${suffix()}`;
     const cloud = `cloud-${suffix()}`;
@@ -45,6 +48,8 @@ test.describe('Run workers locally or in the cloud', () => {
   }) => {
     const workers = new WorkersPage(page);
     await signIn(page, 'quinntynebrown');
+    // Earlier specs may leave work queued; this spec's worker must lease only its own.
+    await drainQueue(page);
     const name = `idle-${suffix()}`;
     stops.push(startWorkers(1, 4_000, { executor: 'scripted', namePrefix: name }));
     await workers.open();
@@ -74,6 +79,8 @@ test.describe('Run workers locally or in the cloud', () => {
     project,
   }) => {
     await signIn(page, 'quinntynebrown');
+    // Earlier specs may leave work queued; this spec's worker must lease only its own.
+    await drainQueue(page);
     stops.push(startWorkers(1, 150, { namePrefix: `isolated-${suffix()}`, probeStage: 1 }));
 
     await newDirection.open();

@@ -1,5 +1,5 @@
 @startuml
-title UML sequence behaviour — Expire a lease, reconcile and resume from the checkpoint
+title UML sequence behaviour — Expire a lease and resume from the checkpoint
 skinparam backgroundColor #FFFFFF
 skinparam shadowing false
 skinparam roundcorner 12
@@ -15,43 +15,45 @@ skinparam package {
   BackgroundColor #F9FAFB
 }
 skinparam sequenceMessageAlign left
-box "Backend — Hewn Application and Domain" #ECFDF3
+box "Backend — Hewn API application" #ECFDF3
   participant "LeaseReaper" as reaper
   participant "LeaseService" as lease
+  participant "RunWriteLock" as lock
+  participant "Mutation handlers" as broker
 end box
 box "Backend — Hewn Infrastructure" #FFF4E5
   database "Hewn database" as db
 end box
 box "Backend — Worker application" #D1FADF
-  participant "WorkerHost (another worker)" as w2
-  participant "CheckpointReconciler" as rec
+  participant "WorkLoop (another worker)" as w2
 end box
 box "External systems" #F2F4F7
   participant "GitHub" as gh
 end box
-reaper -> lease : ExpireStaleAsync(now) every 10 s and at start-up (L2-050 AC2)
-lease -> db : Leases with no heartbeat for 60 s
-lease -> db : Delete lease; run back to queue with recorded Checkpoint (L2-026 AC3)
-w2 -> lease : TryLease
-lease -> db : Acquire RunWriteLock(run): waits for any in-flight broker write to finish
-lease -> db : One conditional UPDATE: unleased -> leased by w2; project slot empty -> run; LeaseEpoch 3 -> 4; release lock
+reaper -> lease : ExpireStaleAsync() every 10 s and at start-up (L2-050 AC2)
+lease -> db : Runs Leased with LeaseExpiresAt < now (60 s without a heartbeat)
+loop each stale run
+  lease -> lock : HoldAsync(run): waits for a GitHub write in flight under this lease
+  lease -> db : Still expired? Run.ExpireLease(): Queued, worker cleared, checkpoint kept (L2-026 AC3)
+  lease -> db : Log "Lease expired: no heartbeat from laptop-1 for 60 seconds; queued again after step 1"
+  lease -> lock : Release
+end
+w2 -> lease : TryLeaseAsync
+lease -> lock : HoldAsync(run)
+lease -> db : One conditional UPDATE: Queued -> Leased by w2 if the project has no lease; LeaseEpoch 1 -> 2
+lease -> lock : Release
 alt zero rows changed (another worker won)
-  lease --> w2 : Nothing
+  lease --> w2 : 204, nothing
 else
-  lease --> w2 : Lease(run, epoch 4, checkpoint {tests, a1b2c3})
-  w2 -> rec : ReconcileAsync(run, feature/x)
-  rec -> gh : Fetch branch head
-  alt head == a1b2c3
-    rec --> w2 : Resume at the step after "tests"
-  else head ahead; latest Hewn-Checkpoint trailer names "implement"
-    rec -> lease : ReportCheckpoint(epoch 4, implement, head) - lost report adopted
-    rec --> w2 : Resume at the step after "implement"
-  else head ahead; no checkpoint trailer
-    rec -> gh : Reset branch to a1b2c3 with --force-with-lease
-    rec --> w2 : Resume at the step after "tests"
-  else head behind or unrelated
-    rec --> w2 : Fail run "Branch diverged from checkpoint" (L2-006)
+  lease -> db : Log "Resumed by cloud-1 after step 1"
+  lease --> w2 : Run, epoch 2, checkpointStep 1
+  w2 -> w2 : Start at step 2; steps 1..checkpoint are not run again (L2-050 AC3)
+  w2 -> broker : Commit, idempotency key {run}/{step}/commit, epoch 2
+  alt key already recorded (the step had committed before its report was lost)
+    broker --> w2 : The first commit's SHA; nothing sent to GitHub
+  else
+    broker -> gh : Commit
+    broker --> w2 : SHA
   end
-  w2 -> w2 : Start at the chosen step; no completed step runs twice (L2-050 AC3)
 end
 @enduml

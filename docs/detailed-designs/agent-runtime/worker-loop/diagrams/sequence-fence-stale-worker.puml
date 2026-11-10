@@ -16,12 +16,12 @@ skinparam package {
 }
 skinparam sequenceMessageAlign left
 box "Backend — Worker application" #D1FADF
-  participant "WorkerHost (stale worker)" as w1
+  participant "WorkLoop (stale worker)" as w1
 end box
-box "Backend — Hewn API application" #D1FADF
-  participant "WorkerHub" as hub
-  participant "GitHubWriteBroker" as broker
-  participant "LeaseFence" as fence
+box "Backend — Hewn API application" #ECFDF3
+  participant "Mutation handlers" as broker
+  participant "LeaseService" as lease
+  participant "RunWriteLock" as lock
 end box
 box "Backend — Hewn Infrastructure" #FFF4E5
   database "Hewn database" as db
@@ -29,22 +29,21 @@ end box
 box "External systems" #F2F4F7
   participant "GitHub" as gh
 end box
-w1 -> w1 : Partition: heartbeats fail for 60 s; lease expires; run re-leased with epoch 4
-w1 -> w1 : Partition heals; agent still running step "implement"
-w1 -> hub : Heartbeat(run, epoch 3)
-hub -> fence : Check epoch and lease holder
-fence -> db : Run.LeaseEpoch = 4, lease held by another worker
-fence --> w1 : 409 LeaseLost
-w1 -> w1 : Kill run container within 10 s; report nothing further
-opt push already in flight through the sidecar
-  w1 -> broker : git-receive-pack, X-Hewn-Epoch: 3
-  broker -> fence : Check inside RunWriteLock
-  fence --> w1 : 409 LeaseLost; nothing forwarded to GitHub
-end
-opt pull request mutation already in flight
-  w1 -> broker : MutateAsync(OpenPullRequest, epoch 3)
-  broker -> fence : Check inside RunWriteLock
-  fence --> w1 : 409 LeaseLost; nothing forwarded to GitHub
-end
-note over gh : GitHub receives nothing from the stale worker; no token to revoke
+w1 -> broker : Commit(run, epoch 1)
+broker -> lease : FenceForWriteAsync(run, worker, epoch 1)
+lease -> lock : HoldAsync(run)
+lease -> db : Leased by this worker at epoch 1: yes
+broker -> gh : Commit, still holding the lock
+w1 -> w1 : Goes quiet; 60 s pass without a heartbeat
+lease -> lock : ExpireStaleAsync: HoldAsync(run) waits
+gh --> broker : SHA
+broker -> db : Record the mutation by its key
+broker -> lock : Release
+broker --> w1 : SHA
+lock --> lease : Held: the run expires and is leased again with epoch 2
+w1 -> broker : Commit(run, epoch 1), or a heartbeat, result or log line
+broker -> lease : FenceForWriteAsync(run, worker, epoch 1)
+lease -> db : Run.LeaseEpoch = 2, leased by another worker
+lease --> w1 : 409 lease_lost; nothing reaches GitHub
+w1 -> w1 : Stops the run and reports nothing further
 @enduml

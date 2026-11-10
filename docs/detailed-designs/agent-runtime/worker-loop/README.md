@@ -8,7 +8,7 @@ One container image serves both locations; configuration alone sets Local or Clo
 
 Work survives failure. A run checkpoints at the end of each completed step by committing to its branch and reporting the commit to the API; a checkpoint counts only once the API has recorded it. If a worker stops heartbeating for 60 seconds its lease expires and another worker resumes the run from the last recorded checkpoint, so no completed step runs twice. The API persists every direction, run and event before acknowledging it, and after a server restart each lease is either kept by its worker's next heartbeat or expires as above.
 
-A worker whose lease has expired may still be alive, cut off by a network partition or a long pause, and may still try to write. Such a worker is *fenced*. Workers hold no GitHub credential: every write to GitHub, whether a git push or a pull request operation, goes through the Hewn API's *write broker* ([Connect to GitHub](../../source-control/connect-to-github/README.md)), which checks the lease epoch and takes a per-run write lock before it touches GitHub. Lease reassignment takes the same lock, so a mutation either completes under the old epoch before the new lease is issued or is rejected after it; nothing interleaves. The stale worker can therefore neither report work nor change the repository. When a run resumes, the new worker first *reconciles* the branch with the recorded checkpoint, so a step that finished but whose report was lost is adopted rather than repeated, and partial work is discarded.
+A worker whose lease has expired may still be alive, cut off by a network partition or a long pause, and may still try to write. Such a worker is *fenced*. Workers hold no GitHub credential: every write to GitHub, whether a git push or a pull request operation, goes through the Hewn API's *write broker* ([Connect to GitHub](../../source-control/connect-to-github/README.md)), which checks the lease epoch and takes a per-run write lock before it touches GitHub. Lease reassignment takes the same lock, so a mutation either completes under the old epoch before the new lease is issued or is rejected after it; nothing interleaves. The stale worker can therefore neither report work nor change the repository. When a run resumes, the new worker starts after the recorded checkpoint, and every GitHub write is idempotent by a key naming its run and step, so a step that wrote but whose checkpoint report was lost gets its first result back instead of writing twice.
 
 Terms used in this design:
 
@@ -36,7 +36,7 @@ The slice spans the worker host, the lease service in the API and the Workers pa
 - **`WorkerPresence`** and **`WorkerPresenceWatcher`** — a worker is Offline once 60 seconds pass without hearing from it, which no request marks. The watcher sweeps every second; the sweep compares the online workers with the last sweep and sends `WorkersChanged` when they differ, so the change shows within a second.
 - **`LeaseService`** — grants a lease with one conditional update that moves the run from unleased to leased by this worker and the project's single lease slot from empty to this run, in the same statement; when another worker got there first the statement changes zero rows and the caller gets nothing. Each grant sets `Run.LeaseEpoch = LeaseEpoch + 1` and returns the epoch with the recorded checkpoint. It renews on heartbeat and expires leases with no heartbeat for 60 seconds, returning the run to the queue.
 - **`LeaseFence`** — API action filter on every worker endpoint and hub method that names a run: heartbeat, log lines, checkpoint reports, results, control acknowledgements, git proxy requests and GitHub mutation requests. It compares the request's epoch and worker with `Run.LeaseEpoch` and the current lease; a mismatch returns 409 `LeaseLost` and changes nothing. For git and mutation requests the check happens inside the run write lock, so it cannot be overtaken by a reassignment.
-- **`RunWriteLock`** — per-run mutual exclusion in the API, implemented as a row lock on the run (`SELECT … FOR UPDATE`) with a 30-second ceiling. `GitHubWriteBroker` holds it for the duration of one mutation or one push; `LeaseService.TryLeaseAsync` and `ExpireStaleAsync` hold it while they change the lease and bump the epoch. A reassignment therefore waits for an in-flight write to finish, and every write that arrives afterwards carries an epoch the fence rejects.
+- **`RunWriteLock`** — per-run mutual exclusion in the API, held in memory (Hewn runs one API process on SQLite; [ADR 0027](../../../adr/0027-github-writes-and-lease-changes-share-a-run-lock.md)) with a 30-second ceiling. `GitHubWriteBroker` holds it for the duration of one mutation or one push; `LeaseService.TryLeaseAsync` and `ExpireStaleAsync` hold it while they change the lease and bump the epoch. A reassignment therefore waits for an in-flight write to finish, and every write that arrives afterwards carries an epoch the fence rejects.
 - **`LeaseReaper`** — background service that runs the expiry sweep every 10 seconds and once at API start-up.
 - **`WorkersPage (Angular)`** — lists host, ID, location, version, status, current project, last heartbeat and connected time, leased workers first, then idle, then offline, the longest connected first. Owners also see New worker token and Revoke. It shows a placeholder while it first loads, "No workers yet" before any worker connects (with New worker token for an Owner), and "Workers couldn’t load" with Try again when the list can't be read; a later failed read keeps the rows shown.
 
@@ -95,15 +95,15 @@ A checkpoint is a pushed commit plus the API's record of it (L2-050 AC3). The pu
 
 ![Sequence diagram: commit and record a checkpoint](diagrams/sequence-checkpoint.png)
 
-### Behaviour — expire a lease, reconcile and resume
+### Behaviour — expire a lease and resume
 
-After 60 seconds without heartbeats the lease expires and another worker leases the run atomically with a new epoch (L2-026 AC3). Before its first step the new worker reconciles the branch with the recorded checkpoint, so a completed-but-unreported step is adopted and partial work is discarded; no completed step runs twice (L2-050 AC3). The same sweep runs at API start-up (L2-050 AC2).
+After 60 seconds without heartbeats the lease expires, under the run's write lock, and the run log says so; another worker leases the run atomically with a new epoch, and the log names it and the step it resumes after (L2-026 AC3). It starts after the recorded checkpoint, and a write it repeats from an unreported step returns the first result by its idempotency key, so no completed step runs twice (L2-050 AC3). The same sweep runs at API start-up, so after a restart each lease is kept by its worker's next heartbeat or expires (L2-050 AC2).
 
-![Sequence diagram: expire a lease, reconcile and resume](diagrams/sequence-expire-and-resume.png)
+![Sequence diagram: expire a lease and resume](diagrams/sequence-expire-and-resume.png)
 
 ### Behaviour — fence a stale worker
 
-A worker cut off by a partition keeps running until it learns its lease is gone. It holds no GitHub credential, so every write it attempts reaches the broker carrying epoch 3; the API now holds epoch 4, so the broker rejects each one inside the run write lock and forwards nothing to GitHub. On the first `LeaseLost` the worker stops the run container.
+A write that passed the fence holds the run's write lock until it is recorded, so the expiry waits for it. Every request the stale worker makes afterwards carries epoch 1 while the run holds epoch 2: the fence answers 409 `lease_lost`, nothing reaches GitHub, and the worker stops the run.
 
 ![Sequence diagram: fence a stale worker](diagrams/sequence-fence-stale-worker.png)
 
@@ -133,7 +133,7 @@ Journey 1, part 2 built the loop, leases and fencing that L2-004 needs.
 - **Failure text is redacted** before it is stored (`SecretRedactor`).
 - **The Workers page (journey 8)** lists each worker's host, location, version, status, what it works on and its
   last heartbeat, from `GET /api/workers`.
-- **Not built yet:** issued tokens, Revoke, the git sidecar, `CheckpointReconciler` and the `RunWriteLock`.
+- **Not built yet:** issued tokens and Revoke (built in journey 24), and the `RunWriteLock` (journey 26). The git sidecar and `CheckpointReconciler` are not built: see journey 26 below.
 
 ## Decisions made while running workers locally or in the cloud
 
@@ -153,3 +153,22 @@ Journey 23 built L2-026 AC1, AC2 and AC5 and L2-027 AC1.
   worker shows within 2 seconds. The 5-second refresh stays for heartbeats.
 - **Isolation per run** (L2-042) is started by the work loop: see
   [Agent isolation](../agent-isolation/README.md) and [ADR 0025](../../../adr/0025-runs-are-isolated-in-the-worker-by-a-proxy-and-tool-gates.md).
+
+## Decisions made while continuing after a crash
+
+Journey 26 built L2-050 and L2-026 AC3 end to end ([ADR 0027](../../../adr/0027-github-writes-and-lease-changes-share-a-run-lock.md)).
+
+- **`RunWriteLock` is in memory.** `LeaseService.FenceForWriteAsync` takes it before the fence check, and the
+  commit, pull request, merge and branch-protection handlers keep it until the write is recorded.
+  `TryLeaseAsync` and `ExpireStaleAsync` take it for each run they change, so an expiry waits for a write in
+  flight and every later write from the old worker is fenced out.
+- **The run log shows recovery.** The expiry logs "Lease expired: no heartbeat from {worker} for 60 seconds;
+  queued again after step N", and a lease of a run leased before logs "Resumed by {worker} after step N". The
+  Owner follows a crash on the project page without a new screen.
+- **No branch reconciler.** Workers write to GitHub only through the API's mutation calls, one commit each, so a
+  branch never holds part of a step. A step repeated after a lost checkpoint report sends the same idempotency
+  key, `{run}/{step}/…`, and gets the first SHA back. The git sidecar, `--force-with-lease` and
+  `CheckpointReconciler` described above are needed only if workers push with git, so they are left out.
+- **Persist before acknowledging** was already true: every handler saves before it answers, and events are
+  published after `SaveChangesAsync`. Tests restart the API on the same database file to prove it (L2-050 AC1,
+  AC2).

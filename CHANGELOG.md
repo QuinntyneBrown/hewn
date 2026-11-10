@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Continue after a worker or server crash (journey 26, L2-050, L2-026): a GitHub write holds its run's write lock
+  from the fence check to its record, and leases are granted and expired under the same lock, so a stale worker
+  can't write after its lease moves. The run log says when a lease expires and which worker resumes after which
+  step. Tests kill a worker mid-run and restart the API on the same database.
 - Inspect worker activity (journey 25, L2-026, L2-031): Workers is told within a second when a worker goes Offline
   after 60 seconds without a heartbeat, or comes back. `WorkerPresenceWatcher` sweeps every second
   (`Hewn:Workers:PresenceWatcherEnabled`). The page shows its loading, empty and error states as the mocks do, offers

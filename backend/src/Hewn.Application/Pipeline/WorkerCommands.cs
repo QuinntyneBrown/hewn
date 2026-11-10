@@ -100,6 +100,13 @@ public sealed class LeaseRunHandler(
         }
 
         await pipeline.OnLeasedAsync(run, direction, cancellationToken);
+        if (run.LeaseEpoch > 1)
+        {
+            // Leased before: the Owner sees which worker carries on, and from where (L2-050 AC3).
+            await events.LockAsync(run.ProjectId, cancellationToken);
+            await RunLog.InfoAsync(db, events, run, $"Resumed by {worker.Name} {LeaseService.After(run.CheckpointStep)}", clock.GetUtcNow(), cancellationToken);
+        }
+
         worker.Seen(clock.GetUtcNow(), WorkerStatus.Busy);
         await db.SaveChangesAsync(cancellationToken);
         await events.PublishAsync(cancellationToken);

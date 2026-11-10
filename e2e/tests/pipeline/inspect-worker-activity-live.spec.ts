@@ -6,6 +6,7 @@ import { expect, signIn, test, uniqueName } from '../../fixtures/test';
 import { NewDirectionPage } from '../../pages/new-direction.page';
 import { ProjectPage } from '../../pages/project.page';
 import { WorkersPage } from '../../pages/workers.page';
+import { drainQueue } from '../../support/queue';
 import { cancelDirections } from '../../support/rate-limit';
 import { startWorkers } from '../../support/workers';
 
@@ -17,6 +18,8 @@ test.describe('Inspect worker activity, live', () => {
   test('a worker connects, leases, and goes offline, all without a reload', async ({ page }) => {
     const workers = new WorkersPage(page);
     await signIn(page, 'quinntynebrown');
+    // Earlier specs may leave work queued; this spec's worker must lease only its own.
+    await drainQueue(page);
     await workers.open();
     // A marker that a reload would clear.
     await page.evaluate(() => ((window as unknown as { followed: boolean }).followed = true));

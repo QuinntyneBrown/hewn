@@ -1,0 +1,250 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:07.22
+This is journey twenty six of Hewn, the software factory: continue after a worker or
+
+00:00:07.22 --> 00:00:08.11
+server crash.
+
+00:00:08.11 --> 00:00:11.17
+A worker can die mid-run, and so can the API.
+
+00:00:11.17 --> 00:00:14.65
+This video shows that nothing acknowledged is lost,
+
+00:00:14.65 --> 00:00:19.08
+that a run carries on from its last checkpoint on another worker,
+
+00:00:19.08 --> 00:00:23.37
+and that a worker whose lease has moved on can no longer write.
+
+00:00:24.52 --> 00:00:29.24
+The API stores every direction, run and event before it acknowledges it.
+
+00:00:29.24 --> 00:00:33.77
+A worker that stops heartbeating loses its lease after sixty seconds,
+
+00:00:33.77 --> 00:00:38.03
+and another worker resumes the run after its last completed step.
+
+00:00:38.03 --> 00:00:43.54
+After a server restart, every lease is either kept by its worker's next heartbeat or
+
+00:00:43.54 --> 00:00:44.07
+expires.
+
+00:00:44.07 --> 00:00:45.97
+No completed step runs twice.
+
+00:00:45.97 --> 00:00:49.97
+This is for Owners, who watch their projects survive a crash,
+
+00:00:49.97 --> 00:00:52.46
+and for anyone running Hewn's workers.
+
+00:00:53.61 --> 00:00:56.12
+Much of this came with the worker loop.
+
+00:00:56.12 --> 00:01:00.93
+Every grant raises the run's lease epoch, and every worker call carries it,
+
+00:01:00.93 --> 00:01:02.67
+so a stale call is refused.
+
+00:01:02.67 --> 00:01:07.61
+A sweep returns silent leases to the queue every ten seconds and at start-up,
+
+00:01:07.61 --> 00:01:09.09
+keeping the checkpoint.
+
+00:01:09.09 --> 00:01:13.84
+And every GitHub write carries an idempotency key naming its run and step,
+
+00:01:13.84 --> 00:01:18.53
+so a repeated step gets its first commit back instead of making a second.
+
+00:01:19.68 --> 00:01:20.79
+One gap remained.
+
+00:01:20.79 --> 00:01:24.49
+A GitHub write checked its lease, and then called GitHub.
+
+00:01:24.49 --> 00:01:28.33
+If the lease expired in between and went to another worker,
+
+00:01:28.33 --> 00:01:30.67
+the old worker's write still landed.
+
+00:01:31.02 --> 00:01:32.69
+The fix is a lock per run.
+
+00:01:32.69 --> 00:01:37.95
+A write takes it before its fence check, and keeps it until the write is recorded.
+
+00:01:38.30 --> 00:01:41.74
+Granting a lease and expiring one take the same lock.
+
+00:01:41.74 --> 00:01:47.00
+So an expiry waits for a write in flight, and every write after it carries an old
+
+00:01:47.00 --> 00:01:48.88
+epoch that the fence refuses.
+
+00:01:49.23 --> 00:01:50.69
+The sequence shows it.
+
+00:01:50.69 --> 00:01:54.80
+The stale worker's commit holds the lock while GitHub answers.
+
+00:01:54.80 --> 00:01:58.25
+The expiry waits, then moves the lease to epoch two.
+
+00:01:58.25 --> 00:02:03.48
+The worker's next call, a commit or a heartbeat, gets four oh nine, lease lost,
+
+00:02:03.48 --> 00:02:05.27
+and nothing reaches GitHub.
+
+00:02:06.42 --> 00:02:07.48
+Now, the crash.
+
+00:02:07.48 --> 00:02:12.91
+A Local worker leases a new direction, and a Cloud worker waits as a standby.
+
+00:02:12.91 --> 00:02:17.07
+After the laptop's first checkpoint, it is killed outright,
+
+00:02:17.07 --> 00:02:18.97
+with no goodbye to the API.
+
+00:02:19.32 --> 00:02:24.59
+Sixty seconds after its last heartbeat, the sweep expires the lease and says so in
+
+00:02:24.59 --> 00:02:28.45
+the run log, with the worker's name and the step it reached.
+
+00:02:28.45 --> 00:02:33.40
+The standby leases the run with a new epoch, and the log says who resumed it,
+
+00:02:33.40 --> 00:02:34.75
+and after which step.
+
+00:02:34.75 --> 00:02:38.03
+It starts at step two; step one does not run again.
+
+00:02:38.38 --> 00:02:42.73
+The expiry now loads each run under its lock, logs, and saves.
+
+00:02:42.73 --> 00:02:47.85
+The lease handler logs the resume whenever a run is leased a second time.
+
+00:02:48.20 --> 00:02:52.13
+On Workers, the laptop shows Offline with its lease released,
+
+00:02:52.13 --> 00:02:54.64
+and the Cloud worker holds the project.
+
+00:02:54.64 --> 00:02:59.60
+Here it took sixty seven seconds from the kill to the resume: sixty without a
+
+00:02:59.60 --> 00:03:02.30
+heartbeat, plus the next ten second sweep.
+
+00:03:03.45 --> 00:03:04.63
+Next, the server.
+
+00:03:04.63 --> 00:03:07.33
+A run is under way on the Cloud worker.
+
+00:03:07.33 --> 00:03:11.90
+The API process is killed, and started again on the same database.
+
+00:03:11.90 --> 00:03:14.25
+It was down for under two seconds.
+
+00:03:14.25 --> 00:03:19.24
+The worker's next heartbeat reaches the new process and keeps its lease,
+
+00:03:19.24 --> 00:03:21.73
+and the log carries on where it was.
+
+00:03:22.08 --> 00:03:26.43
+The end to end API can now restart without resetting its database,
+
+00:03:26.43 --> 00:03:27.95
+so this can be watched.
+
+00:03:29.10 --> 00:03:31.69
+On the backend, three new test classes.
+
+00:03:31.69 --> 00:03:35.29
+The first holds a commit in flight in the fake GitHub,
+
+00:03:35.29 --> 00:03:37.88
+and moves the clock past sixty seconds.
+
+00:03:37.88 --> 00:03:40.21
+The expiry must wait for the write.
+
+00:03:40.21 --> 00:03:44.93
+It failed first: the lease expired while the write was still in flight.
+
+00:03:44.93 --> 00:03:47.99
+Then the stale worker's next write is refused,
+
+00:03:47.99 --> 00:03:50.52
+and the repository gets no new commit.
+
+00:03:50.87 --> 00:03:54.36
+The second restarts the API on the same database file.
+
+00:03:54.36 --> 00:03:59.53
+The direction is still running, and the worker's next heartbeat keeps its lease.
+
+00:03:59.53 --> 00:04:04.38
+A lease whose worker never returns expires and resumes from its checkpoint.
+
+00:04:04.38 --> 00:04:09.49
+These passed at once, as the behaviour came with the worker loop; disabling the
+
+00:04:09.49 --> 00:04:12.46
+expiry made the second fail, so they guard it.
+
+00:04:12.81 --> 00:04:15.15
+The third checks the two log lines.
+
+00:04:15.15 --> 00:04:17.56
+It failed first, with no such lines.
+
+00:04:17.56 --> 00:04:21.64
+The backend has two hundred and ninety nine tests, all green.
+
+00:04:21.99 --> 00:04:27.19
+End to end, a pipeline test kills a worker with a kill signal after its first
+
+00:04:27.19 --> 00:04:31.79
+checkpoint, and waits for the log to show the expiry and the resume.
+
+00:04:31.79 --> 00:04:34.15
+It passes in about seventy seconds.
+
+00:04:35.30 --> 00:04:38.86
+The run log reads the same in dark mode and on a phone.
+
+00:04:40.01 --> 00:04:42.16
+Journey twenty six is complete.
+
+00:04:42.16 --> 00:04:45.20
+A write and a lease change never interleave.
+
+00:04:45.20 --> 00:04:50.32
+A killed worker's run resumes on another worker after its last checkpoint,
+
+00:04:50.32 --> 00:04:51.70
+and the log says so.
+
+00:04:51.70 --> 00:04:55.57
+And the API can restart mid-run without losing anything.
+
+00:04:55.57 --> 00:04:57.78
+Next comes journey twenty seven.

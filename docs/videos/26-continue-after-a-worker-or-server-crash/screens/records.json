@@ -1,0 +1,9 @@
+{
+  "killedAt": 1794327557366,
+  "resumedAfterKillMs": 67718,
+  "apiKilledAt": 1794327634584,
+  "apiDownMs": 1815,
+  "afterRestart": [
+    "0:Running"
+  ]
+}
