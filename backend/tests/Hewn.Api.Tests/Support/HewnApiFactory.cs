@@ -79,6 +79,7 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("HEWN_SKILLS_SOURCE", SkillsSource);
         builder.UseSetting("Hewn:Leases:ReaperEnabled", "false");
         builder.UseSetting("Hewn:Checks:PollerEnabled", "false");
+        builder.UseSetting("Hewn:Workers:PresenceWatcherEnabled", "false");
         builder.UseSetting("ConnectionStrings:Hewn", "DataSource=:memory:");
         foreach (var (key, value) in _settings)
         {
@@ -151,6 +152,14 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
     {
         await SeedAsync(_ => { });
         return await WorkerClient.RegisterAsync(CreateAnonymousClient(), WorkerToken, name);
+    }
+
+    /// <summary>Runs the presence sweep the WorkerPresenceWatcher runs every second.</summary>
+    public async Task SweepWorkerPresenceAsync()
+    {
+        using var scope = Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<Hewn.Application.Workers.WorkerPresence>().SweepAsync(
+            scope.ServiceProvider.GetRequiredService<Hewn.Application.Abstractions.IAppDbContext>(), CancellationToken.None);
     }
 
     /// <summary>Runs the expiry sweep the LeaseReaper runs every 10 seconds.</summary>

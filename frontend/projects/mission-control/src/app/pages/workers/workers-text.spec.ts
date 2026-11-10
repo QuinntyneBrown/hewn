@@ -2,8 +2,10 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { describe, expect, it } from 'vitest';
 import {
   busyLabel,
+  byActivity,
   connectedFor,
   notCreated,
+  notLoaded,
   notRevoked,
   seenAgo,
   startCommand,
@@ -147,5 +149,42 @@ describe('notRevoked', () => {
     expect(notRevoked('dev-box', new HttpErrorResponse({ status: 409 }))).toBe(
       'dev-box uses the development token set in the API’s configuration; remove HEWN_WORKER_TOKEN there to stop it.',
     );
+  });
+});
+
+describe('notLoaded', () => {
+  it('gives the status the API answered, and says connected workers carry on', () => {
+    expect(notLoaded(new HttpErrorResponse({ status: 503 }))).toBe(
+      'The API returned 503. Connected workers keep their leases and heartbeats.',
+    );
+  });
+
+  it('says the API could not be reached when there was no answer', () => {
+    expect(notLoaded(new HttpErrorResponse({ status: 0 }))).toBe(
+      'Hewn couldn’t reach the API. Connected workers keep their leases and heartbeats.',
+    );
+  });
+});
+
+describe('byActivity', () => {
+  const w = (name: string, status: string, registeredAt: string) => ({
+    name,
+    status,
+    registeredAt,
+  });
+
+  it('lists leased workers, then idle, then offline, longest connected first', () => {
+    const sorted = [
+      w('build-box-02', 'Offline', '2026-11-10T06:00:00Z'),
+      w('hewn-cloud-eus-02', 'Idle', '2026-11-10T04:00:00Z'),
+      w('hewn-cloud-eus-01', 'Busy', '2026-11-10T08:30:00Z'),
+      w('quinn-mbp.local', 'Busy', '2026-11-10T07:00:00Z'),
+    ].sort(byActivity);
+    expect(sorted.map((x) => x.name)).toEqual([
+      'quinn-mbp.local',
+      'hewn-cloud-eus-01',
+      'hewn-cloud-eus-02',
+      'build-box-02',
+    ]);
   });
 });

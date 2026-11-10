@@ -1,0 +1,211 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:07.13
+This is journey twenty five of Hewn, the software factory: inspect worker activity.
+
+00:00:07.13 --> 00:00:11.26
+Workers is the page that shows every worker Hewn knows about.
+
+00:00:11.26 --> 00:00:16.35
+This video shows it starting empty, following workers live as they connect,
+
+00:00:16.35 --> 00:00:21.30
+lease work and go idle, and catching a worker the moment it goes offline.
+
+00:00:22.45 --> 00:00:28.24
+Anyone signed in, Owner or Viewer, opens Workers and sees each worker's location,
+
+00:00:28.24 --> 00:00:33.03
+version, status, current project and last heartbeat, updating live.
+
+00:00:33.03 --> 00:00:36.61
+A worker appears within two seconds of connecting.
+
+00:00:36.61 --> 00:00:42.33
+And every worker status change reaches the page as a live event within a second.
+
+00:00:43.48 --> 00:00:47.19
+On a fresh stack, Workers says there are no workers yet,
+
+00:00:47.19 --> 00:00:49.17
+and explains what a worker is.
+
+00:00:49.17 --> 00:00:54.53
+An Owner is offered New worker token right there, the first step to starting one.
+
+00:00:54.53 --> 00:00:59.96
+A Viewer can't create tokens, so the page tells them a worker appears here once an
+
+00:00:59.96 --> 00:01:01.08
+Owner starts one.
+
+00:01:02.23 --> 00:01:04.41
+Here Workers is open and empty.
+
+00:01:04.41 --> 00:01:08.14
+A worker starts on this machine, configured as Local,
+
+00:01:08.14 --> 00:01:10.74
+and its row appears without a reload.
+
+00:01:10.74 --> 00:01:14.18
+The first showed up in under a third of a second.
+
+00:01:14.18 --> 00:01:17.42
+A second worker, configured as Cloud, follows.
+
+00:01:17.77 --> 00:01:22.40
+Each row shows the host and a short id, Local or Cloud, the version,
+
+00:01:22.40 --> 00:01:26.35
+the status with its icon and label, what it is working on,
+
+00:01:26.35 --> 00:01:31.25
+how long ago it was last heard from, and how long it has been connected.
+
+00:01:32.40 --> 00:01:35.29
+Now a direction is submitted from another tab.
+
+00:01:35.29 --> 00:01:40.63
+One worker leases it at once: its status turns to Leased, with the project beside it,
+
+00:01:40.63 --> 00:01:44.15
+and the heartbeat keeps refreshing while the stage runs.
+
+00:01:44.15 --> 00:01:49.24
+When the direction is cancelled, the run stops, and the worker goes back to Idle,
+
+00:01:49.24 --> 00:01:50.31
+waiting for work.
+
+00:01:50.31 --> 00:01:55.40
+Workers is told when a stage starts or ends, so none of this waits for a refresh.
+
+00:01:55.75 --> 00:01:60.00
+Leased workers are listed first, then idle ones, then offline ones,
+
+00:01:60.00 --> 00:02:04.69
+and within each group the longest connected first, as the mocks show them.
+
+00:02:05.84 --> 00:02:10.68
+A worker is offline once sixty seconds pass without hearing from it.
+
+00:02:10.68 --> 00:02:13.95
+No request marks that moment: it just happens.
+
+00:02:13.95 --> 00:02:18.57
+So until now, the page only noticed at its next five second read.
+
+00:02:18.92 --> 00:02:20.67
+Worker presence fixes that.
+
+00:02:20.67 --> 00:02:25.64
+Each sweep reads which workers are online, compares them with the last sweep,
+
+00:02:25.64 --> 00:02:27.91
+and tells Workers when they differ.
+
+00:02:27.91 --> 00:02:29.97
+The first sweep only takes note.
+
+00:02:30.32 --> 00:02:33.49
+A background service runs the sweep every second.
+
+00:02:33.49 --> 00:02:36.92
+It reads one small table, so it costs almost nothing.
+
+00:02:37.27 --> 00:02:39.55
+Here the Cloud worker has stopped.
+
+00:02:39.55 --> 00:02:43.97
+Sixty seconds after it was last heard from, its row turns Offline,
+
+00:02:43.97 --> 00:02:48.19
+with its lease released, six tenths of a second after the mark.
+
+00:02:48.54 --> 00:02:52.16
+On the page, the shell already follows the workers group,
+
+00:02:52.16 --> 00:02:55.02
+and reads the list again whenever it is told.
+
+00:02:55.02 --> 00:02:58.39
+Heartbeat times still come from the five second read,
+
+00:02:58.39 --> 00:03:01.13
+and the page counts the seconds in between.
+
+00:03:02.28 --> 00:03:05.80
+While Workers first loads, it shows placeholder rows.
+
+00:03:05.80 --> 00:03:11.39
+If the list can't be read, it says so, with the reason and a reminder that connected
+
+00:03:11.39 --> 00:03:16.11
+workers keep their leases and heartbeats, and Try again reads it again.
+
+00:03:16.11 --> 00:03:19.36
+A later failure keeps the rows already on screen.
+
+00:03:19.71 --> 00:03:23.97
+The store keeps the last failure, and clears it on the next success.
+
+00:03:23.97 --> 00:03:27.97
+The page shows the error only while it has nothing else to show.
+
+00:03:29.12 --> 00:03:32.74
+On the backend, a new test follows the hub as a Viewer.
+
+00:03:32.74 --> 00:03:35.24
+Nothing is sent while nothing changes.
+
+00:03:35.24 --> 00:03:40.64
+Sixty seconds on, the worker is offline and Workers is told; when it asks for work
+
+00:03:40.64 --> 00:03:42.88
+again, Workers is told it is back.
+
+00:03:42.88 --> 00:03:46.50
+It failed first, as there was no presence sweep at all.
+
+00:03:46.50 --> 00:03:50.52
+The backend has two hundred and ninety five tests, all green.
+
+00:03:50.87 --> 00:03:55.38
+In the front end, new unit tests cover the order and the error message,
+
+00:03:55.38 --> 00:03:57.48
+a hundred and thirty five in all.
+
+00:03:57.48 --> 00:04:02.57
+End to end, a live test stops a worker and checks the row turns Offline within a
+
+00:04:02.57 --> 00:04:05.62
+second and a half of the mark, without a reload.
+
+00:04:05.62 --> 00:04:08.74
+Others cover the empty, loading and error states,
+
+00:04:08.74 --> 00:04:12.49
+for an Owner and a Viewer; the page matches its five mocks,
+
+00:04:12.49 --> 00:04:14.78
+and has no accessibility violations.
+
+00:04:15.93 --> 00:04:19.17
+Workers reads the same in dark mode, and on a phone.
+
+00:04:20.32 --> 00:04:22.51
+Journey twenty five is complete.
+
+00:04:22.51 --> 00:04:27.96
+Workers starts with a helpful empty state, follows workers live as they connect,
+
+00:04:27.96 --> 00:04:33.49
+lease and go idle, and shows a worker offline within a second of the sixty second
+
+00:04:33.49 --> 00:04:33.83
+mark.
+
+00:04:33.83 --> 00:04:35.88
+Next comes journey twenty six.

@@ -13,6 +13,7 @@ Container_Boundary(api_b, "Hewn API") {
   Component(lock, "RunWriteLock", "Domain service", "Per-run lock shared by writes and reassignment")
   Component(broker, "GitHubWriteBroker", "Application service", "Only holder of GitHub write credentials; fenced git proxy and mutations")
   Component(reaper, "LeaseReaper", "Background service", "Expiry sweep every 10 s and at start-up")
+  Component(presence, "WorkerPresenceWatcher", "Background service", "Online/Offline sweep every second")
   Component(hub, "WorkerHub", "SignalR hub", "Worker connection: pushes, heartbeats, reports")
 }
 System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
@@ -29,5 +30,6 @@ Rel(fence, lease, "Epoch current: pass through")
 Rel(reaper, lease, "Expire stale")
 Rel(lease, db, "Leases, epochs, checkpoints", "SQL")
 Rel(reg, db, "Workers", "SQL")
-Rel(reg, spa, "WorkerChanged", "SignalR")
+Rel(reg, spa, "WorkersChanged", "SignalR")
+Rel(presence, spa, "WorkersChanged when a worker goes Offline or comes back", "SignalR")
 @enduml

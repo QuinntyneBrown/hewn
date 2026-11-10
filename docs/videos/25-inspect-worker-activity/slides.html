@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 25 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="25" data-video-title="Inspect worker activity" data-parts="Introduction|Goal|Before any worker|Workers connect|Leasing and idle|Going offline|Loading and errors|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 25</div>
+  <h1>Inspect worker activity</h1>
+  <p class="lead">Every worker, live: connected, leased, idle, offline.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video shows it starting empty">
+  <figure><img src="screens/workers-leased.png" alt="Workers with a Cloud worker Leased on a project and a Local worker Idle, each with location, version, status, heartbeat and connected time"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="Anyone signed in, Owner or Viewer">
+  <ul class="bullets">
+    <li>Location, version, status, project and heartbeat, live (L2-026 AC1)</li>
+    <li>A worker appears within 2 s of connecting</li>
+    <li>Every worker status change is an event within 1 s (L2-031 AC1)</li>
+  </ul>
+</section>
+
+<section id="empty" data-part="2" data-cue="On a fresh stack, Workers says there are no workers yet">
+  <div class="cols">
+    <figure><img src="screens/empty-owner.png" alt="No workers yet, for an Owner, with New worker token"></figure>
+    <figure><img src="screens/empty-viewer.png" alt="No workers yet, for a Viewer: a worker appears here once an Owner starts one"></figure>
+  </div>
+</section>
+
+<section id="empty-code" data-part="2" data-cue="A Viewer can't create tokens">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/workers/workers.page.html</div>
+  <pre class="code tight" data-lang="html" data-mark="6-7,12-14">  } @else if (store.view(); as view) {
+    @if (rows().length === 0) {
+      &lt;div class="empty"&gt;
+        &lt;svg hw-icon name="workers"&gt;&lt;/svg&gt;
+        &lt;div&gt;
+          &lt;h2 class="empty__title"&gt;No workers yet&lt;/h2&gt;
+          @if (session.isOwner()) {
+            &lt;p class="empty__text"&gt;
+              A worker runs the agents. Create a token, then start the container on your machine or
+              in the cloud; it needs no inbound ports.
+            &lt;/p&gt;
+          } @else {
+            &lt;p class="empty__text"&gt;
+              A worker runs the agents. When an Owner starts one, it appears here with its location,
+              version and heartbeat.
+            &lt;/p&gt;</pre>
+</section>
+
+<section id="clip-connect" data-part="3" data-cue="Here Workers is open and empty." data-clip="clips/connect.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Two workers start; both rows appear without a reload</aside>
+</section>
+
+<section id="columns" data-part="3" data-cue="Each row shows the host and a short id">
+  <figure><img src="screens/workers-leased.png" alt="Each row: host and id, Local or Cloud, version, status with icon and label, working on, heartbeat, connected"></figure>
+</section>
+
+<section id="clip-lease" data-part="4" data-cue="Now a direction is submitted from another tab." data-clip="clips/lease-and-idle.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Leased with its project, then Idle when the direction is cancelled</aside>
+</section>
+
+<section id="stage-events" data-part="4" data-cue="Workers is told when a stage starts or ends">
+  <div class="code-file">backend/src/Hewn.Api/Hubs/SignalRProjectEventPublisher.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="2,4">        // A stage starting, finishing or stopping changes what a worker is doing: the Workers view reads the list again.
+        if (events.Any(e =&gt; e.Type == Hewn.Application.Pipeline.PipelineOrchestrator.StageChanged))
+        {
+            await hub.Clients.Group(MissionControlHub.WorkersGroup).SendAsync("WorkersChanged", cancellationToken);
+        }</pre>
+</section>
+
+<section id="order" data-part="4" data-cue="Leased workers are listed first">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/workers/workers-text.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1,9-10">const activityRank: Record&lt;string, number&gt; = { Busy: 0, Idle: 1, Offline: 2 };
+
+/** Workers order: leased first, then idle, then offline; within each, the longest connected first. */
+export function byActivity(
+  a: { status: string; registeredAt: string },
+  b: { status: string; registeredAt: string },
+): number {
+  return (
+    (activityRank[a.status] ?? 3) - (activityRank[b.status] ?? 3) ||
+    a.registeredAt.localeCompare(b.registeredAt)
+  );
+}</pre>
+</section>
+
+<section id="offline-why" data-part="5" data-cue="A worker is offline once sixty seconds pass">
+  <figure class="diagram"><img src="../../detailed-designs/agent-runtime/worker-loop/diagrams/c4-component.png" alt="Worker loop components: WorkerPresenceWatcher sweeps every second and sends WorkersChanged to Mission Control when a worker goes Offline or comes back"></figure>
+</section>
+
+<section id="presence" data-part="5" data-cue="Worker presence fixes that.">
+  <div class="code-file">backend/src/Hewn.Application/Workers/WorkerPresence.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1-5,6,10">            var since = clock.GetUtcNow() - Run.LeaseDuration;
+            var online = (await db.Workers.AsNoTracking()
+                .Where(w =&gt; w.RevokedAt == null &amp;&amp; w.LastSeenAt &gt;= since)
+                .Select(w =&gt; w.Id)
+                .ToListAsync(cancellationToken)).ToHashSet();
+            var changed = _online is not null &amp;&amp; !online.SetEquals(_online);
+            _online = online;
+            if (changed)
+            {
+                await workers.WorkersChangedAsync(cancellationToken);
+            }
+
+            return changed;</pre>
+</section>
+
+<section id="watcher" data-part="5" data-cue="A background service runs the sweep every second.">
+  <div class="code-file">backend/src/Hewn.Api/Pipeline/WorkerPresenceWatcher.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,5,11">    private static readonly TimeSpan Interval = TimeSpan.FromSeconds(1);
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        using var timer = new PeriodicTimer(Interval, clock);
+        do
+        {
+            try
+            {
+                using var scope = scopes.CreateScope();
+                await presence.SweepAsync(scope.ServiceProvider.GetRequiredService&lt;IAppDbContext&gt;(), stoppingToken);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                logger.LogError(e, "Worker presence sweep failed");
+            }</pre>
+</section>
+
+<section id="clip-offline" data-part="5" data-cue="Here the Cloud worker has stopped." data-clip="clips/offline.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Offline 0.6 s after the 60-second mark</aside>
+</section>
+
+<section id="shell" data-part="5" data-cue="On the page, the shell already follows the workers group">
+  <div class="code-file">frontend/projects/mission-control/src/app/layout/shell.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1,4-7">    const timer = setInterval(() =&gt; void this.workers.refresh(), 5_000);
+    inject(DestroyRef).onDestroy(() =&gt; clearInterval(timer));
+    // A worker registering, leasing or finishing shows at once (L2-026 AC1); the timer covers heartbeats.
+    inject(PROJECT_EVENTS)
+      .followWorkers()
+      .pipe(takeUntilDestroyed())
+      .subscribe({ next: () =&gt; void this.workers.refresh(), error: () =&gt; undefined });</pre>
+</section>
+
+<section id="states" data-part="6" data-cue="While Workers first loads">
+  <div class="cols">
+    <figure><img src="screens/loading.png" alt="Workers loading: placeholder rows"></figure>
+    <figure><img src="screens/error.png" alt="Workers couldn't load: The API returned 503. Connected workers keep their leases and heartbeats. Try again"></figure>
+  </div>
+</section>
+
+<section id="store" data-part="6" data-cue="The store keeps the last failure">
+  <div class="code-file">frontend/projects/mission-control/src/app/core/workers-store.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="4,7">  async refresh(): Promise&lt;void&gt; {
+    try {
+      this.view.set(await firstValueFrom(this.api.list()));
+      this.failure.set(null);
+    } catch (error) {
+      // Keep what we had; the next refresh tries again.
+      this.failure.set(error);
+    }</pre>
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/workers/workers.page.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2-4">  /** Shown only while there is nothing to show: a later failed refresh keeps the rows already read. */
+  protected readonly failure = computed(() =&gt;
+    this.store.view() === null &amp;&amp; this.store.failure() !== null
+      ? notLoaded(this.store.failure())
+      : null,
+  );</pre>
+</section>
+
+<section id="test-backend" data-part="7" data-cue="On the backend, a new test follows the hub">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Workers/WorkersLiveTests.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="2,4,6,9,11">        // 60 seconds since its last heartbeat: it is Offline, and Workers is told.
+        _factory.Clock.Advance(TimeSpan.FromSeconds(31));
+        await _factory.SweepWorkerPresenceAsync();
+        Assert.True(await ArrivesAsync(changes, 1), "told it went offline");
+        var listed = (await HewnClient.ReadJsonAsync(await viewer.GetAsync("/api/workers"))).GetProperty("workers")[0];
+        Assert.Equal("Offline", listed.GetProperty("status").GetString());
+
+        // It asks for work again: it is back, and Workers is told.
+        await worker.LeaseAsync();
+        await _factory.SweepWorkerPresenceAsync();
+        Assert.True(await ArrivesAsync(changes, 2), "told it came back");</pre>
+  <div class="result red">✘ 'WorkerPresence' does not exist in the namespace 'Hewn.Application.Workers'</div>
+  <div class="result green">✔ backend 295 of 295</div>
+</section>
+
+<section id="test-e2e" data-part="7" data-cue="In the front end, new unit tests">
+  <div class="code-file">e2e/tests/pipeline/inspect-worker-activity-live.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3-6">    // It stopped heartbeating; 60 seconds after it was last heard from it is Offline.
+    const last = (await workers.workers()).workers.find((w) =&gt; w.name === name) as unknown as { lastSeenAt: string };
+    const due = Date.parse(last.lastSeenAt) + 60_000;
+    await expect(workers.details(name).status).toHaveText('Offline', { timeout: due - Date.now() + 5_000 });
+    expect(Date.now() - due, 'shown Offline within a second or so of the 60-second mark').toBeLessThan(1_500);
+    expect(await page.evaluate(() =&gt; (window as unknown as { followed?: boolean }).followed)).toBe(true);</pre>
+  <div class="result green">✔ frontend 135 · e2e live 1 · states 3 · visual 3 against 5 mocks · a11y 3</div>
+</section>
+
+<section id="screens" data-part="8" data-cue="Workers reads the same in dark mode">
+  <div class="cols">
+    <figure><img src="screens/workers-dark.png" alt="Workers in dark mode"></figure>
+    <figure class="phone"><img src="screens/workers-phone.png" alt="Workers on a phone"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="9" data-cue="Journey twenty five is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>A helpful empty state, for Owners and Viewers</li>
+    <li>Connect, lease and idle, live without a reload</li>
+    <li>Offline within a second of the 60-second mark</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

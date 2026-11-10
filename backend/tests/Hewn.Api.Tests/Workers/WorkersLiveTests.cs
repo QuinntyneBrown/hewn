@@ -1,6 +1,6 @@
 // Acceptance Test
-// Traces to: L2-026
-// Description: A worker that registers appears in Mission Control's Workers view within 2 seconds: clients on Workers are told the moment a worker registers, leases a run or finishes one (AC1, AC2)
+// Traces to: L2-026, L2-031
+// Description: A worker that registers appears in Mission Control's Workers view within 2 seconds: clients on Workers are told the moment a worker registers, leases a run or finishes one (L2-026 AC1, AC2), and when one goes offline after 60 seconds without a heartbeat or comes back (L2-031 AC1)
 
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -74,5 +74,32 @@ public sealed class WorkersLiveTests : IAsyncLifetime
         before = changes.Count;
         (await worker.SucceedAsync(run)).EnsureSuccessStatusCode();
         Assert.True(await ArrivesAsync(changes, before + 1), "told the run finished");
+    }
+
+    [Fact]
+    public async Task Clients_on_Workers_are_told_when_a_worker_goes_offline_and_when_it_comes_back()
+    {
+        var viewer = await _factory.SignInAsync("ada", Role.Viewer);
+        var worker = await _factory.RegisterWorkerAsync();
+        var (hub, changes) = await FollowWorkersAsync(viewer);
+        await using var _ = hub;
+        await _factory.SweepWorkerPresenceAsync();
+
+        // Nothing changed: nobody is told.
+        _factory.Clock.Advance(TimeSpan.FromSeconds(30));
+        await _factory.SweepWorkerPresenceAsync();
+        Assert.False(await ArrivesAsync(changes, 1), "told although nothing changed");
+
+        // 60 seconds since its last heartbeat: it is Offline, and Workers is told.
+        _factory.Clock.Advance(TimeSpan.FromSeconds(31));
+        await _factory.SweepWorkerPresenceAsync();
+        Assert.True(await ArrivesAsync(changes, 1), "told it went offline");
+        var listed = (await HewnClient.ReadJsonAsync(await viewer.GetAsync("/api/workers"))).GetProperty("workers")[0];
+        Assert.Equal("Offline", listed.GetProperty("status").GetString());
+
+        // It asks for work again: it is back, and Workers is told.
+        await worker.LeaseAsync();
+        await _factory.SweepWorkerPresenceAsync();
+        Assert.True(await ArrivesAsync(changes, 2), "told it came back");
     }
 }

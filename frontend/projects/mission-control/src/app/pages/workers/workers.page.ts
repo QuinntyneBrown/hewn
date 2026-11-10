@@ -13,7 +13,14 @@ import { IconComponent } from '@hewn/components';
 import { SessionStore } from '../../core/session-store';
 import { Toasts } from '../../core/toasts';
 import { WorkersStore } from '../../core/workers-store';
-import { connectedFor, seenAgo, workerActivity, workerStatus } from './workers-text';
+import {
+  byActivity,
+  connectedFor,
+  notLoaded,
+  seenAgo,
+  workerActivity,
+  workerStatus,
+} from './workers-text';
 
 /** Every registered worker: where it runs, its status, what it is working on and its last heartbeat. */
 @Component({
@@ -31,20 +38,28 @@ export class WorkersPage implements OnDestroy {
   private readonly tick = setInterval(() => this.now.set(Date.now()), 1_000);
 
   protected readonly rows = computed(() =>
-    [...(this.store.view()?.workers ?? [])]
-      // Online workers first, then by host name.
-      .sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name))
-      .map((w: Worker) => ({
-        ...w,
-        shortId: `wk-${w.id.slice(-4)}`,
-        state: workerStatus(w.status),
-        activity: workerActivity(w),
-        seen: seenAgo(w.lastSeenAt, this.now()),
-        connected: w.online ? connectedFor(w.registeredAt, this.now()) : '—',
-      })),
+    [...(this.store.view()?.workers ?? [])].sort(byActivity).map((w: Worker) => ({
+      ...w,
+      shortId: `wk-${w.id.slice(-4)}`,
+      state: workerStatus(w.status),
+      activity: workerActivity(w),
+      seen: seenAgo(w.lastSeenAt, this.now()),
+      connected: w.online ? connectedFor(w.registeredAt, this.now()) : '—',
+    })),
+  );
+
+  /** Shown only while there is nothing to show: a later failed refresh keeps the rows already read. */
+  protected readonly failure = computed(() =>
+    this.store.view() === null && this.store.failure() !== null
+      ? notLoaded(this.store.failure())
+      : null,
   );
 
   constructor() {
+    void this.store.refresh();
+  }
+
+  protected retry(): void {
     void this.store.refresh();
   }
 

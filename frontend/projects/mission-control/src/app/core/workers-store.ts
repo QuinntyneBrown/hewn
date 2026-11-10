@@ -11,14 +11,18 @@ export class WorkersStore {
   private readonly api = inject(WORKERS_API);
 
   readonly view = signal<Workers | null>(null);
+  /** Why the last read failed; null once one succeeds. */
+  readonly failure = signal<unknown>(null);
   readonly leasing = computed(() => this.view()?.leasing ?? null);
   readonly stopped = computed(() => this.leasing()?.stopped ?? false);
 
   async refresh(): Promise<void> {
     try {
       this.view.set(await firstValueFrom(this.api.list()));
-    } catch {
+      this.failure.set(null);
+    } catch (error) {
       // Keep what we had; the next refresh tries again.
+      this.failure.set(error);
     }
   }
 }

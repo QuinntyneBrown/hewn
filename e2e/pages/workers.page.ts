@@ -29,6 +29,12 @@ export class WorkersPage {
   readonly stopCancel: Locator;
   readonly stopFailure: Locator;
   readonly newTokenButton: Locator;
+  readonly content: Locator;
+  readonly loading: Locator;
+  readonly empty: Locator;
+  readonly emptyNewToken: Locator;
+  readonly loadFailure: Locator;
+  readonly tryAgain: Locator;
   readonly tokenDialog: Locator;
   readonly tokenPanel: Locator;
   readonly tokenName: Locator;
@@ -67,7 +73,13 @@ export class WorkersPage {
     this.stopTryAgain = this.stopDialog.getByRole('button', { name: 'Try again' });
     this.stopCancel = this.stopDialog.getByRole('button', { name: 'Cancel' });
     this.stopFailure = this.stopDialog.getByRole('alert');
-    this.newTokenButton = page.getByRole('button', { name: 'New worker token' });
+    this.newTokenButton = page.locator('.page-header').getByRole('button', { name: 'New worker token' });
+    this.content = page.locator('main .pad').first();
+    this.loading = page.locator('main [aria-busy="true"]', { hasText: 'Loading workers' });
+    this.empty = page.locator('main .empty:not(.empty--error)');
+    this.emptyNewToken = this.empty.getByRole('button', { name: 'New worker token' });
+    this.loadFailure = page.getByRole('alert').filter({ hasText: 'Workers couldn’t load' });
+    this.tryAgain = this.loadFailure.getByRole('button', { name: 'Try again' });
     this.tokenDialog = page.getByRole('dialog', { name: 'New worker token' });
     this.tokenPanel = this.tokenDialog.locator('.dialog__panel');
     this.tokenName = this.tokenDialog.getByLabel('Worker name');
@@ -171,6 +183,15 @@ export class WorkersPage {
         ? route.fulfill({ json: { leasing: { stopped: false, changedBy: null, changedAt: null }, workers } })
         : route.fallback(),
     );
+  }
+
+  /** Answers the workers list like this: held (loading) or a status (failed). Unroute it to answer normally. */
+  async answerWorkers(answer: 'hold' | number): Promise<void> {
+    await this.page.route('**/api/workers', (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      if (answer === 'hold') return;
+      return route.fulfill({ status: answer, json: { title: 'Unavailable', status: answer } });
+    });
   }
 
   /** Answers the next token requests like this: held (busy), a status, or a created token. */
