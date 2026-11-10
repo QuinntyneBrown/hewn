@@ -1,0 +1,7 @@
+{
+  "invalid": "Descope threshold must be a whole number of days from 1 to 20.",
+  "saved": "Defaults saved\n\nNew directions start with a $300.00 budget and a 1-day descope threshold. Directions already running keep theirs.",
+  "plannedAfterMs": 2784,
+  "deferredCount": 3,
+  "reason": "Estimated at 2 days, above the 1-day threshold, and could not be split"
+}

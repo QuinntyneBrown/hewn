@@ -41,6 +41,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 25 | [Inspect worker activity](25-inspect-worker-activity/README.md) | ~4:39 | Journey 25 |
 | 26 | [Continue after a worker or server crash](26-continue-after-a-worker-or-server-crash/README.md) | ~5:01 | Journey 26 |
 | 27 | [Reconnect Mission Control](27-reconnect-mission-control/README.md) | ~4:13 | Journey 27 |
+| 28 | [Configure automatic descoping](28-configure-automatic-descoping/README.md) | ~4:21 | Journey 28 |
 
 ## Voice
 
