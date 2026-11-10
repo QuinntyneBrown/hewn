@@ -3,7 +3,11 @@
 LAYOUT_WITH_LEGEND()
 title Components — Record the increment video
 
-Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+Container(spa, "Mission Control", "Angular", "Increment page with IncrementVideoComponent")
+Container_Boundary(api_b, "Hewn API") {
+  Component(api, "Worker endpoints", "ASP.NET Core", "Increment progress and mutations")
+  Component(serve, "GetIncrementVideoHandler", "MediatR", "MP4 and captions at the recording commit")
+}
 Container_Boundary(worker_b, "Worker") {
   Component(step, "VideoStep", "Step", "Script, record, validate; one retry")
   Component(rec, "BrowserRecorder", "Worker service", "1080p capture with captions")
@@ -17,4 +21,6 @@ Rel(rec, browser, "Drives", "CDP")
 Rel(step, val, "Validates")
 Rel(step, github, "Commits MP4 and script", "Git/HTTPS")
 Rel(step, api, "VideoRecorded / VideoFailed", "HTTPS")
+Rel(spa, serve, "GET .../video, .../video/captions", "HTTPS, ranges")
+Rel(serve, github, "Reads the file at the commit", "HTTPS")
 @enduml
