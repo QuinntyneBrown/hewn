@@ -12,7 +12,7 @@ namespace Hewn.Application.Events;
 /// unit of work ends), so two writers in this API never pick the same number: a worker's log batch and its model
 /// call routinely arrive together. The unique (project, sequence) index still rejects any other concurrent writer.
 /// </summary>
-public sealed class EventAppender(IAppDbContext db, IProjectEventPublisher publisher, TimeProvider clock) : IDisposable
+public sealed class EventAppender(IAppDbContext db, IProjectEventPublisher publisher, Pipeline.WorkSignal work, TimeProvider clock) : IDisposable
 {
     private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> Locks = new();
 
@@ -73,6 +73,10 @@ public sealed class EventAppender(IAppDbContext db, IProjectEventPublisher publi
         finally
         {
             Release();
+
+            // Work may be leasable now: wake idle workers' held lease requests, which each look once (L2-026 AC5).
+            // Every path that queues a run publishes an event, whatever its type, so any publish wakes them.
+            work.Pulse();
         }
     }
 

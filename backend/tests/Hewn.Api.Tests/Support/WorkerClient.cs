@@ -31,9 +31,11 @@ public sealed class WorkerClient
     }
 
     /// <summary>Returns the leased run, or null when there is no work.</summary>
-    public async Task<LeasedRun?> LeaseAsync()
+    /// <summary>Asks for a run; with <paramref name="waitSeconds"/>, the API holds the request until work is queued or the wait ends.</summary>
+    public async Task<LeasedRun?> LeaseAsync(int waitSeconds = 0)
     {
-        var response = await _http.PostAsJsonAsync("/api/worker/lease", new { workerId = WorkerId });
+        var path = waitSeconds > 0 ? $"/api/worker/lease?waitSeconds={waitSeconds}" : "/api/worker/lease";
+        var response = await _http.PostAsJsonAsync(path, new { workerId = WorkerId });
         if (response.StatusCode == HttpStatusCode.NoContent)
         {
             return null;

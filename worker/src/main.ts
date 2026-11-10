@@ -1,3 +1,5 @@
+import { egressAllowList } from './isolation/egress-proxy.ts';
+import type { IsolationSettings } from './isolation/run-isolation.ts';
 import { hostname } from 'node:os';
 import type { WorkerLocation } from './api.ts';
 import { ScriptedStageAgent } from './agents/scripted-agent.ts';
@@ -61,8 +63,19 @@ const magicPatterns =
     ? () => new McpMagicPatterns(magicPatternsUrl, magicPatternsToken, { pollMs })
     : undefined;
 
-// Only the scripted agent exists so far; the Claude Agent SDK agent arrives with run isolation.
-const documents = new DocumentStageExecutor(new ScriptedStageAgent(), magicPatterns);
+// HEWN_SCRIPTED_PROBE_STAGE, _TOOL and _URL: in that stage the scripted agent tries a tool and a host it may not use,
+// as a misled agent might, so the denial and the block show in the run's log (L2-042; e2e, videos).
+const probeStage = process.env.HEWN_SCRIPTED_PROBE_STAGE;
+const probe =
+  probeStage === undefined
+    ? undefined
+    : {
+        stage: Number(probeStage),
+        tool: process.env.HEWN_SCRIPTED_PROBE_TOOL ?? 'Bash',
+        url: process.env.HEWN_SCRIPTED_PROBE_URL ?? 'https://exfiltrate.example/',
+      };
+// Only the scripted agent exists so far; the Claude Agent SDK agent will run behind the same gates.
+const documents = new DocumentStageExecutor(new ScriptedStageAgent(undefined, probe ? { probe } : {}), magicPatterns);
 // Templates for stacks other than the default are still to be supplied (scaffold-solution design).
 const scaffold = new ScaffoldStageExecutor([dotnetAngularTemplate], {
   pollMs: Number(process.env.HEWN_CHECK_POLL_MS ?? 30_000),
@@ -98,6 +111,28 @@ const executor: StageExecutor =
         scripted,
       );
 
+// L2-042: every run gets its own egress proxy and tool gates. HEWN_SANDBOX=docker also runs each of its commands in
+// a container of HEWN_SANDBOX_IMAGE on HEWN_SANDBOX_NETWORK, an internal network whose only other member is this
+// worker (HEWN_SANDBOX_PROXY_HOST on it). HEWN_EGRESS_ALLOW adds hosts, such as a private registry, to the allow list.
+const sandbox = process.env.HEWN_SANDBOX ?? 'process';
+if (sandbox !== 'process' && sandbox !== 'docker') {
+  console.error('HEWN_SANDBOX must be "process" or "docker".');
+  process.exit(1);
+}
+const isolation: IsolationSettings = {
+  allowedHosts: [
+    ...egressAllowList(magicPatternsUrl ? { magicPatternsUrl } : {}),
+    ...(process.env.HEWN_EGRESS_ALLOW ?? '')
+      .split(',')
+      .map((host) => host.trim())
+      .filter(Boolean),
+  ],
+  sandbox,
+  image: process.env.HEWN_SANDBOX_IMAGE ?? 'node:24-bookworm-slim',
+  network: process.env.HEWN_SANDBOX_NETWORK ?? 'hewn-runs',
+  proxyHost: process.env.HEWN_SANDBOX_PROXY_HOST ?? hostname(),
+};
+
 const stop = new AbortController();
 for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => stop.abort());
 
@@ -109,4 +144,5 @@ await new WorkLoop({
   executor,
   registration: { name: process.env.HEWN_WORKER_NAME ?? hostname(), location, host: hostname(), version: VERSION },
   log,
+  isolation,
 }).run(stop.signal);

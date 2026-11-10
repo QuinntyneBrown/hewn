@@ -21,6 +21,11 @@ export interface ProjectEvents {
    * changed while the connection was down; the list then loads again.
    */
   followProjects(): Observable<ProjectsUpdate>;
+  /**
+   * Emits whenever a worker registers, leases or finishes a run, and after a reconnect, so the Workers view reads the
+   * list again and a new worker shows within 2 seconds (L2-026 AC1).
+   */
+  followWorkers(): Observable<void>;
 }
 
 export type ProjectsUpdate = { kind: 'row'; row: ProjectSummary } | { kind: 'resync' };
@@ -126,6 +131,34 @@ export class SignalRProjectEvents implements ProjectEvents, OnDestroy {
         this.connection.off('ProjectSummary', onRow);
         if (this.connection.state === HubConnectionState.Connected) {
           void this.connection.invoke('LeaveProjects').catch(() => undefined);
+        }
+      };
+    });
+  }
+
+  followWorkers(): Observable<void> {
+    return new Observable<void>((subscriber) => {
+      let closed = false;
+      const onChanged = () => subscriber.next();
+      const join = () => this.connection.invoke('JoinWorkers');
+      const onReconnected = () => {
+        if (closed) return;
+        join()
+          .then(() => subscriber.next())
+          .catch((error: unknown) => subscriber.error(error));
+      };
+
+      this.connection.on('WorkersChanged', onChanged);
+      this.connection.onreconnected(onReconnected);
+      this.ensureStarted()
+        .then(() => (closed ? undefined : join()))
+        .catch((error: unknown) => subscriber.error(error));
+
+      return () => {
+        closed = true;
+        this.connection.off('WorkersChanged', onChanged);
+        if (this.connection.state === HubConnectionState.Connected) {
+          void this.connection.invoke('LeaveWorkers').catch(() => undefined);
         }
       };
     });

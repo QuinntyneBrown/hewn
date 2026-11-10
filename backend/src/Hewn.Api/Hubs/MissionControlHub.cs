@@ -26,6 +26,13 @@ public sealed class MissionControlHub(IAppDbContext db) : Hub
         await Groups.AddToGroupAsync(Context.ConnectionId, ProjectGroup(projectId), Context.ConnectionAborted);
     }
 
+    /// <summary>Clients on the Workers view; they're told when a worker registers, leases or finishes a run (L2-026 AC1).</summary>
+    public const string WorkersGroup = "workers";
+
+    public Task JoinWorkers() => Groups.AddToGroupAsync(Context.ConnectionId, WorkersGroup, Context.ConnectionAborted);
+
+    public Task LeaveWorkers() => Groups.RemoveFromGroupAsync(Context.ConnectionId, WorkersGroup, Context.ConnectionAborted);
+
     public Task JoinProjects() => Groups.AddToGroupAsync(Context.ConnectionId, ProjectsGroup, Context.ConnectionAborted);
 
     public Task LeaveProjects() => Groups.RemoveFromGroupAsync(Context.ConnectionId, ProjectsGroup, Context.ConnectionAborted);

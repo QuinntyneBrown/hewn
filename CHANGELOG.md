@@ -14,6 +14,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Run workers locally or in the cloud (journey 23, L2-026, L2-027, L2-042):
+  - `worker/Dockerfile` builds the one worker image. It runs on a developer machine with Docker or in the cloud,
+    and `HEWN_LOCATION` and the other settings are the only differences.
+  - An idle worker's lease request is held open for up to 30 seconds, so newly queued work is leased at once.
+  - Mission Control's Workers view is told over SignalR (`WorkersChanged`) when a worker registers or a stage
+    starts or ends.
+  - Each run gets its own egress proxy, which allows only the model API, Magic Patterns and the stack registries,
+    and blocks and logs anything else.
+  - Each stage's agent tool calls pass a tool gate that denies tools outside the stage's allow list and logs a
+    security event.
+  - Gate commands see no worker credential. With `HEWN_SANDBOX=docker` they run in their own containers on an
+    internal network (ADR 0025).
 - Connect a GitHub repository (journey 22, L2-036, L2-001 AC4). The installation token that creates a project's
   repository now asks only to administer repositories, rather than for every permission on every repository; the
   new repository is tagged with a token limited to it, like every other call (ADR 0024). The e2e stack's fake GitHub

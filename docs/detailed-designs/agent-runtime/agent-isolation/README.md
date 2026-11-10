@@ -61,6 +61,28 @@ Every tool call passes `ToolGate`, every packet passes `EgressProxy`, and every 
 
 ### Behaviour — contain a run
 
-The run gets its own container and workspace (L2-042 AC1); git goes through the sidecar and the broker, while direct GitHub and other egress is blocked and logged (AC2); disallowed tools are denied and logged (AC3); no tool exists that could change Hewn configuration or push beyond the run's branch (AC4).
+As built in journey 23: the run gets its own workspace, and with `HEWN_SANDBOX=docker` its commands get their own containers (L2-042 AC1). Its proxy tunnels only to allowed hosts and logs every block (AC2). Its tool gate denies and logs tools outside the stage's allow list (AC3). It commits through the API, so no git remote or credential is ever in reach, and no tool exists that could change Hewn configuration (AC4).
 
 ![Sequence diagram: contain a run](diagrams/sequence-contain-a-run.png)
+
+## Decisions made while building the slice
+
+Journey 23 built L2-042 AC1 to AC3 in the worker
+([ADR 0025](../../../adr/0025-runs-are-isolated-in-the-worker-by-a-proxy-and-tool-gates.md)).
+
+- **`EgressProxy`** is an HTTP proxy that the work loop starts for each run and stops when the run ends. It
+  allows the model API, the Magic Patterns MCP host, `registry.npmjs.org` and the NuGet hosts, plus
+  `HEWN_EGRESS_ALLOW`. For any other host it answers 403 and logs `Egress blocked: {host}` to the run.
+- **`ToolGate`** is built per stage from `allowedTools` and handed to the agent with the task. A denied call
+  throws `ToolDeniedError` and logs `Security event: tool {tool} denied` at error level.
+- **`RunSandbox`** has two forms:
+  - `ProcessSandbox` (the default) gives commands a scrubbed environment: the workspace as `HOME`, the proxy and
+    no credential.
+  - `ContainerSandbox` (`HEWN_SANDBOX=docker`) runs each command in its own container. It mounts only the
+    workspace, drops every capability, sets `no-new-privileges`, runs as UID 1000, and puts the container on the
+    internal network `HEWN_SANDBOX_NETWORK`, where the worker's proxy is the only peer.
+- **The git sidecar isn't needed yet.** Runs download and commit through the API
+  ([ADR 0006](../../../adr/0006-commit-mutation-before-git-proxy.md)), so no git remote or GitHub credential ever
+  reaches a run.
+- **Security events are run log lines** for now. `WorkspaceCredentialScrubber` and the `ToolCatalog` are still to
+  come with the Claude Agent SDK agent.

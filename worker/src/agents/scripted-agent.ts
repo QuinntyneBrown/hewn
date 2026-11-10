@@ -1,3 +1,5 @@
+import { ToolDeniedError } from '../isolation/tool-gate.ts';
+import { requestThroughProxy } from '../isolation/egress-proxy.ts';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { StageAgent, StageAgentTask } from './stage-agent.ts';
@@ -20,6 +22,11 @@ export interface ScriptedAgentOptions {
   blockIncrement?: string;
   /** Waits this long in each stage 10 session, so a run can be watched increment by increment (e2e, videos). */
   incrementDelayMs?: number;
+  /**
+   * In this stage, tries a tool no stage allows and a request to a host outside the egress allow list, as an agent
+   * misled by a repository's content might, so the denial and the block show in the run's log (L2-042, e2e, videos).
+   */
+  probe?: { stage: number; tool: string; url: string };
 }
 
 export class ScriptedStageAgent implements StageAgent {
@@ -31,14 +38,30 @@ export class ScriptedStageAgent implements StageAgent {
     this.options = options;
   }
 
+  /** Like a real agent, a denied tool or a blocked request is an error result it carries on from. */
+  private async probe(task: StageAgentTask, signal?: AbortSignal): Promise<void> {
+    const probe = this.options.probe;
+    if (!probe || task.run.stage !== probe.stage) return;
+    try {
+      task.gate?.require(probe.tool);
+    } catch (error) {
+      if (!(error instanceof ToolDeniedError)) throw error;
+    }
+    if (task.egressProxyUrl) await requestThroughProxy(task.egressProxyUrl, probe.url, signal).catch(() => 0);
+  }
+
   async run(task: StageAgentTask, signal?: AbortSignal): Promise<void> {
     const { run, directory } = task;
+    // Every file the agent touches is a tool call, checked against the stage's allow list (L2-042 AC3).
     const write = (path: string, content: string) => {
+      task.gate?.require('Write');
       mkdirSync(dirname(join(directory, path)), { recursive: true });
       writeFileSync(join(directory, path), content);
     };
-    const read = (path: string) =>
-      existsSync(join(directory, path)) ? readFileSync(join(directory, path), 'utf8') : '';
+    const read = (path: string) => {
+      task.gate?.require('Read');
+      return existsSync(join(directory, path)) ? readFileSync(join(directory, path), 'utf8') : '';
+    };
     const decide = (
       question: string,
       answer: string,
@@ -55,6 +78,7 @@ export class ScriptedStageAgent implements StageAgent {
         ...(architecture ? { architecture } : {}),
       });
 
+    await this.probe(task, signal);
     const feature = run.direction?.kind === 'Feature' ? run.direction.idea : null;
 
     switch (run.stage) {

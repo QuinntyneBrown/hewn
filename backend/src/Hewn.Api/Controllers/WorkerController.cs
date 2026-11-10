@@ -71,11 +71,14 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> Register(RegisterRequest request, CancellationToken cancellationToken) =>
         Ok(new { workerId = await mediator.Send(new RegisterWorkerCommand(request.Name, request.Location, request.Host, request.Version), cancellationToken) });
 
-    /// <summary>200 with the leased run, or 204 when there is no work.</summary>
+    /// <summary>
+    /// 200 with the leased run, or 204 when there is no work. With <paramref name="waitSeconds"/> (at most 30), an idle
+    /// worker's request is held until work is queued or the wait ends: the server's push (L2-026 AC5).
+    /// </summary>
     [HttpPost("lease")]
-    public async Task<IActionResult> Lease(WorkerRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Lease(WorkerRequest request, [FromQuery] int waitSeconds, [FromServices] HeldLease held, CancellationToken cancellationToken)
     {
-        var run = await mediator.Send(new LeaseRunCommand(request.WorkerId), cancellationToken);
+        var run = await held.LeaseAsync(request.WorkerId, waitSeconds, cancellationToken);
         return run is null ? NoContent() : Ok(run);
     }
 

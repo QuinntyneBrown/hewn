@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { Leasing, WORKERS_API } from '@hewn/api';
+import { Leasing, PROJECT_EVENTS, WORKERS_API } from '@hewn/api';
 import { IconComponent, IconName } from '@hewn/components';
 import { SessionStore } from '../core/session-store';
 import { Toasts } from '../core/toasts';
@@ -61,6 +61,11 @@ export class ShellComponent {
       .subscribe(() => void this.workers.refresh());
     const timer = setInterval(() => void this.workers.refresh(), 5_000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
+    // A worker registering, leasing or finishing shows at once (L2-026 AC1); the timer covers heartbeats.
+    inject(PROJECT_EVENTS)
+      .followWorkers()
+      .pipe(takeUntilDestroyed())
+      .subscribe({ next: () => void this.workers.refresh(), error: () => undefined });
   }
 
   protected banner(leasing: Leasing): string {

@@ -1,6 +1,6 @@
 // Acceptance Test
 // Traces to: L2-004, L2-026, L2-050
-// Description: The worker registers, leases runs, heartbeats every 10 seconds, checkpoints each step and stops on a lost lease
+// Description: The worker registers, leases runs, heartbeats every 10 seconds, checkpoints each step and stops on a lost lease; idle, it waits for the server's push and never asks for work more often than every 15 seconds
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StageExecutor, StageStep } from '../src/executors/stage-executor.ts';
@@ -98,7 +98,31 @@ describe('WorkLoop', () => {
     expect(api.calls.filter((c) => c.method === 'checkpoint').map((c) => c.step)).toEqual([3]);
   });
 
-  it('polls for work no more often than every 15 seconds when idle', async () => {
+  it('when idle, waits for the server to answer and asks again no more often than every 15 seconds', async () => {
+    void start(timedExecutor(1, 100));
+
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    const leases = api.calls.filter((c) => c.method === 'lease');
+    expect(leases.length).toBe(3); // each held 20 s: at 0, 20 and 40 seconds
+    for (let i = 1; i < leases.length; i++) {
+      expect(leases[i]!.at - leases[i - 1]!.at).toBeGreaterThanOrEqual(15_000);
+    }
+  });
+
+  it('picks up work the moment the server pushes it', async () => {
+    const executed: string[] = [];
+    void start(timedExecutor(1, 100, executed));
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    api.enqueueStage(0, 0, 0);
+    await vi.advanceTimersByTimeAsync(200);
+
+    expect(executed).toEqual(['s0.1']);
+  });
+
+  it('falls back to polling every 15 seconds when the server answers at once', async () => {
+    api.holdsLeases = false;
     void start(timedExecutor(1, 100));
 
     await vi.advanceTimersByTimeAsync(60_000);
@@ -108,17 +132,6 @@ describe('WorkLoop', () => {
     for (let i = 1; i < leases.length; i++) {
       expect(leases[i]!.at - leases[i - 1]!.at).toBeGreaterThanOrEqual(15_000);
     }
-  });
-
-  it('picks up work queued while idle at the next poll', async () => {
-    const executed: string[] = [];
-    void start(timedExecutor(1, 100, executed));
-    await vi.advanceTimersByTimeAsync(1_000);
-
-    api.enqueueStage(0, 0, 0);
-    await vi.advanceTimersByTimeAsync(15_000);
-
-    expect(executed).toEqual(['s0.1']);
   });
 
   it('stops the run and reports nothing further when the lease is lost', async () => {

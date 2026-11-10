@@ -15,40 +15,37 @@ skinparam package {
   BackgroundColor #F9FAFB
 }
 skinparam sequenceMessageAlign left
-box "Backend — Worker stage execution" #ECFDF3
+box "Backend — Worker application" #D1FADF
+  participant "WorkLoop" as loop
+  participant "EgressProxy" as proxy
   participant "RunSandbox" as sandbox
+end box
+box "Backend — Worker stage execution" #ECFDF3
   participant "StageAgent" as agent
   participant "ToolGate" as gate
-  participant "EgressProxy" as proxy
-end box
-box "Backend — Worker application" #D1FADF
-  participant "WorkerGitSidecar" as side
 end box
 box "Backend — Hewn API application" #D1FADF
-  participant "RunsController" as ctrl
-  participant "GitPushProxy" as gpp
+  participant "WorkerController" as ctrl
 end box
 box "External systems" #F2F4F7
-  participant "GitHub" as gh
+  participant "Allowed hosts" as ok
 end box
-sandbox -> sandbox : Create container; mount only this run's workspace (L2-042 AC1)
-sandbox -> agent : Start stage agent
-agent -> gate : Call tool "write_file docs/brief.md"
+loop -> loop : Lease a run; make its workspace (L2-042 AC1)
+loop -> proxy : Start this run's proxy: model API, Magic Patterns, npm, NuGet
+loop -> agent : Run the stage with ToolGate(stage allowedTools) and the proxy URL
+agent -> gate : require("Write")
 gate --> agent : Allowed
-agent -> gate : Call tool not on stage allow list
-gate -> ctrl : SecurityEvent(ToolDenied) (L2-042 AC3)
-gate --> agent : Denied
-agent -> proxy : git push http://sidecar/git/{run} feature/x
-proxy -> side : Allowed host
-side -> gpp : Forward + worker token + epoch
-gpp -> gh : Fenced; refs/heads/feature/x only; installation token stays in the API
-agent -> proxy : git push http://sidecar/git/{run} main
-proxy -> side : Allowed host
-side -> gpp : Forward
-gpp --> agent : Rejected: ref not owned by this run (L2-042 AC4)
-agent -> proxy : GET https://github.com/... (direct)
-proxy -> ctrl : SecurityEvent(EgressBlocked) (L2-042 AC2)
-proxy --> agent : Blocked
-note over agent, gate : Instructions in read content find no tool for config, budgets, secrets, other projects or other branches (L2-042 AC4)
-sandbox -> sandbox : On run end: scrub agent-written credentials; destroy container
+agent -> gate : require("Bash"), not on the stage's allow list
+gate -> loop : "Security event: tool Bash denied" (L2-042 AC3)
+gate --> agent : ToolDeniedError
+agent -> proxy : CONNECT registry.npmjs.org:443
+proxy -> ok : Tunnel
+agent -> proxy : CONNECT exfiltrate.example:443
+proxy -> loop : "Egress blocked: exfiltrate.example" (L2-042 AC2)
+proxy --> agent : 403
+loop -> sandbox : Run the gate's commands
+sandbox -> sandbox : No worker variable or credential; HTTPS_PROXY only;\nHEWN_SANDBOX=docker: own container, workspace mount, no capabilities,\ninternal network whose only peer is the proxy
+loop -> ctrl : Log lines with the run's epoch; commits through the commit mutation, never git to GitHub
+note over agent, gate : No tool exposes Hewn configuration, budgets, secrets or another project (L2-042 AC4)
+loop -> loop : Run ends: stop the proxy; remove the workspace
 @enduml

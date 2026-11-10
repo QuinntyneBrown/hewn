@@ -83,7 +83,7 @@ A `Lease` ties one `Run` to one `Worker` until `ExpiresAt` and carries the `Epoc
 
 ### Behaviour — register, lease and heartbeat
 
-The worker registers and shows on the Workers page within 2 seconds (L2-026 AC1), leases one run and heartbeats every 10 seconds (AC2), with at most one lease per project (AC4). Idle, it waits for a push or polls at most every 15 seconds (AC5).
+The worker registers and shows on the Workers page within 2 seconds (L2-026 AC1), leases one run and heartbeats every 10 seconds (AC2), with at most one lease per project (AC4). Idle, it leases with a request the API holds open, so queued work is pushed to it at once, and it asks at most every 15 seconds (AC5).
 
 ![Sequence diagram: register, lease and heartbeat](diagrams/sequence-register-and-lease.png)
 
@@ -131,5 +131,23 @@ Journey 1, part 2 built the loop, leases and fencing that L2-004 needs.
 - **Failure text is redacted** before it is stored (`SecretRedactor`).
 - **The Workers page (journey 8)** lists each worker's host, location, version, status, what it works on and its
   last heartbeat, from `GET /api/workers`.
-- **Not built yet:** issued tokens, Revoke, `WorkerChanged`, the git sidecar, the container
-  image, `CheckpointReconciler` and the `RunWriteLock`.
+- **Not built yet:** issued tokens, Revoke, the git sidecar, `CheckpointReconciler` and the `RunWriteLock`.
+
+## Decisions made while running workers locally or in the cloud
+
+Journey 23 built L2-026 AC1, AC2 and AC5 and L2-027 AC1.
+
+- **One image.** `worker/Dockerfile` builds the worker on `node:24-bookworm-slim` with git and ffmpeg. It runs as
+  the unprivileged `node` user, opens no port and starts `node dist/main.js`. `HEWN_LOCATION` (`Local` by
+  default), `HEWN_API_URL`, `HEWN_WORKER_TOKEN` and `HEWN_WORKER_NAME` are the only differences between a
+  developer machine (`docker run`) and the cloud.
+- **The push is a held lease request**, not a `/hubs/workers` hub. An idle worker calls
+  `POST /api/worker/lease?waitSeconds=20`, and the API holds it open for up to 30 seconds. `EventAppender` pulses
+  `WorkSignal` after every stored event, so a newly queued run is leased at once. The worker asks again no sooner
+  than its 15-second poll interval after the previous request started, so an idle worker makes at most 4 requests
+  a minute and uses no CPU between them.
+- **`WorkersChanged` instead of `WorkerChanged`.** The hub's `workers` group (`JoinWorkers`) is told when a worker
+  registers and whenever a stage starts or ends. Mission Control then reads `GET /api/workers` again, so a new
+  worker shows within 2 seconds. The 5-second refresh stays for heartbeats.
+- **Isolation per run** (L2-042) is started by the work loop: see
+  [Agent isolation](../agent-isolation/README.md) and [ADR 0025](../../../adr/0025-runs-are-isolated-in-the-worker-by-a-proxy-and-tool-gates.md).

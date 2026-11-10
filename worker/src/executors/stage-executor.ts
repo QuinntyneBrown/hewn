@@ -1,3 +1,5 @@
+import type { ToolGate } from '../isolation/tool-gate.ts';
+import type { CommandSandbox } from '../isolation/run-sandbox.ts';
 import type {
   BacklogReport,
   ScopeReport,
@@ -31,6 +33,8 @@ export interface StageStep {
 export interface RunContext {
   /** A directory private to this run; removed when the run ends. */
   workspace: string;
+  /** The run's isolation (L2-042): its tool gate, how its commands start, and its egress proxy. */
+  isolation?: RunIsolation;
   log(level: LogLevel, text: string): Promise<void>;
   listSkillFolders(): Promise<Record<string, string[]>>;
   /** The product repository's default branch as a gzipped tarball with one top-level folder. */
@@ -83,4 +87,14 @@ export class StageRouter implements StageExecutor {
   plan(run: LeasedRun, context: RunContext): StageStep[] {
     return (this.stages.get(run.stage) ?? this.fallback).plan(run, context);
   }
+}
+
+/** What keeps a run to itself (L2-042). */
+export interface RunIsolation {
+  /** A gate for a stage's tool allow list; a denied call is logged as a security event (AC3). */
+  toolGate(allowed: readonly string[]): ToolGate;
+  /** How the run's commands start (AC1). */
+  sandbox: CommandSandbox;
+  /** The run's egress proxy, its only route out (AC2). */
+  egressProxyUrl: string;
 }
