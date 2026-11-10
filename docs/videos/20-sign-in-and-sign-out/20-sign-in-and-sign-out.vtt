@@ -1,0 +1,205 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:06.41
+This is journey twenty of Hewn, the software factory: sign in and sign out.
+
+00:00:06.41 --> 00:00:08.17
+Mission Control is private.
+
+00:00:08.17 --> 00:00:11.64
+Only GitHub accounts on Hewn's allow list may see it,
+
+00:00:11.64 --> 00:00:16.62
+a session lasts at most eight hours, and signing out has to end it for good.
+
+00:00:16.62 --> 00:00:21.39
+This video walks through how it was built: sign-in with GitHub, sign-out,
+
+00:00:21.39 --> 00:00:25.78
+the pages the API now serves with their protections, and the tests.
+
+00:00:26.93 --> 00:00:32.07
+Signed out, any page goes to sign-in, and after GitHub, back to that page.
+
+00:00:32.07 --> 00:00:37.90
+An account not on the allow list is refused with "This account doesn't have access".
+
+00:00:37.90 --> 00:00:43.46
+A session ends after eight hours or on sign-out, even if its cookie is replayed.
+
+00:00:43.46 --> 00:00:48.94
+And every page carries a content security policy that allows no inline scripts.
+
+00:00:50.09 --> 00:00:51.77
+Here is the sign-in flow.
+
+00:00:51.77 --> 00:00:55.65
+The API sends the browser to GitHub with a one-time state,
+
+00:00:55.65 --> 00:00:58.53
+kept in a protected cookie for ten minutes.
+
+00:00:58.53 --> 00:01:02.82
+When GitHub sends the user back, the callback checks that state,
+
+00:01:02.82 --> 00:01:07.38
+exchanges the code for the GitHub login, with a thirty second limit,
+
+00:01:07.38 --> 00:01:10.13
+and looks the login up in the allow list.
+
+00:01:10.48 --> 00:01:13.70
+The callback answers every outcome with a page.
+
+00:01:13.70 --> 00:01:19.13
+A forged state or a GitHub failure goes to sign-in saying GitHub didn't answer.
+
+00:01:19.13 --> 00:01:24.07
+A login not on the list goes to sign-in with that login, and no session.
+
+00:01:24.07 --> 00:01:29.70
+Otherwise the user gets an eight hour cookie, HTTP only, secure and same-site lax,
+
+00:01:29.70 --> 00:01:34.09
+and returns where they started, but only to a page on this site.
+
+00:01:34.44 --> 00:01:39.29
+The sign-in page reads its state from the address: denied, GitHub failed,
+
+00:01:39.29 --> 00:01:41.62
+the session expired, or signed out.
+
+00:01:41.62 --> 00:01:43.68
+Each is a state from the mocks.
+
+00:01:44.83 --> 00:01:49.89
+The mocks had no way to sign out, so the control was designed first in Magic
+
+00:01:49.89 --> 00:01:53.82
+Patterns: a Sign out icon button beside the signed-in user,
+
+00:01:53.82 --> 00:01:55.61
+at the foot of the sidebar.
+
+00:01:55.61 --> 00:01:59.14
+The mocks and the design system were rebuilt from it.
+
+00:01:59.49 --> 00:02:05.43
+Signing out records the session's id as revoked, and every request checks that id,
+
+00:02:05.43 --> 00:02:09.34
+held in memory so the check costs nothing per request.
+
+00:02:09.34 --> 00:02:11.88
+A replayed cookie gets four oh one.
+
+00:02:11.88 --> 00:02:14.55
+That is recorded as A D R twenty two.
+
+00:02:14.90 --> 00:02:18.42
+When any request gets four oh one while the app is open,
+
+00:02:18.42 --> 00:02:22.76
+because the eight hours passed or the user signed out in another tab,
+
+00:02:22.76 --> 00:02:26.09
+the app reloads at sign-in, saying the session ended,
+
+00:02:26.09 --> 00:02:28.47
+and comes back to the same page after.
+
+00:02:29.62 --> 00:02:33.88
+Until now only the development server served Mission Control.
+
+00:02:33.88 --> 00:02:36.18
+Now the API serves the built app.
+
+00:02:36.18 --> 00:02:40.64
+Signed out, a page redirects to sign-in with where it was going.
+
+00:02:40.64 --> 00:02:46.43
+Every response is marked no sniff, and every page gets the content security policy.
+
+00:02:46.78 --> 00:02:51.31
+Angular's build loads its stylesheet with one small inline handler,
+
+00:02:51.31 --> 00:02:56.86
+so the policy allows exactly that handler by its hash, and no other inline script.
+
+00:02:56.86 --> 00:03:00.10
+Frames are allowed only from the preview origin,
+
+00:03:00.10 --> 00:03:03.15
+and only this site may frame Mission Control.
+
+00:03:03.50 --> 00:03:06.10
+Here is what the API answers, signed out.
+
+00:03:07.25 --> 00:03:10.88
+The backend tests came first, and failed: six of them,
+
+00:03:10.88 --> 00:03:14.11
+with four oh one and a replayed cookie accepted.
+
+00:03:14.11 --> 00:03:19.55
+Now thirteen cover sign-in, refusal, a forged state, cancelling, the eight hours,
+
+00:03:19.55 --> 00:03:23.65
+sign-out with a replayed cookie, the pages and their headers.
+
+00:03:24.00 --> 00:03:29.61
+End to end, a test signs in through a fake GitHub authorize page and lands back on
+
+00:03:29.61 --> 00:03:31.32
+the page it started from.
+
+00:03:31.67 --> 00:03:37.39
+All green, the backend has two hundred and sixty one tests and the frontend four new
+
+00:03:37.39 --> 00:03:38.14
+view tests.
+
+00:03:38.14 --> 00:03:42.23
+End to end, there are eighteen new tests: six for behaviour,
+
+00:03:42.23 --> 00:03:46.86
+six visual comparisons with the mocks, and six accessibility checks.
+
+00:03:48.01 --> 00:03:51.14
+Here is Mission Control served by the API.
+
+00:03:51.14 --> 00:03:53.82
+Signed out, Workers goes to sign-in.
+
+00:03:53.82 --> 00:04:00.08
+Continue with GitHub opens GitHub's authorize page, here the fake one, and after it,
+
+00:04:00.08 --> 00:04:01.13
+Workers again.
+
+00:04:01.13 --> 00:04:04.03
+Sign out returns to sign-in, saying so.
+
+00:04:04.38 --> 00:04:08.41
+A login not on the allow list is refused, and told who to ask.
+
+00:04:08.76 --> 00:04:12.60
+GitHub failing, and a session that ended, each say what happened.
+
+00:04:12.95 --> 00:04:16.22
+The page reads the same in dark mode, and on a phone.
+
+00:04:17.37 --> 00:04:19.28
+Journey twenty is complete.
+
+00:04:19.28 --> 00:04:24.22
+Mission Control signs in with GitHub, and only the allow list gets in.
+
+00:04:24.22 --> 00:04:29.24
+Sessions end at eight hours or on sign-out, even for a replayed cookie.
+
+00:04:29.24 --> 00:04:34.04
+And the API serves every page with a strict content security policy.
+
+00:04:34.04 --> 00:04:36.16
+Next comes journey twenty one.

@@ -33,6 +33,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 17 | [Trace a requirement](17-trace-a-requirement/README.md) | ~4:58 | Journey 17 |
 | 18 | [Review agent decisions](18-review-agent-decisions/README.md) | ~4:51 | Journey 18 |
 | 19 | [Watch an increment demonstration](19-watch-an-increment-demonstration/README.md) | ~4:54 | Journey 19 |
+| 20 | [Sign in and sign out](20-sign-in-and-sign-out/README.md) | ~4:40 | Journey 20 |
 
 ## Voice
 
