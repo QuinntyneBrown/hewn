@@ -225,6 +225,8 @@ Secrets are never written to configuration files in the repository.
 | `HEWN_GITHUB_APP_PRIVATE_KEY`   | API     | GitHub App private key (secret)                                          |
 | `HEWN_GITHUB_WEBHOOK_SECRET`    | API     | Verifies GitHub webhook signatures at `POST /api/github/webhook` (secret); without it every delivery is refused |
 | `Hewn__Checks__PollerEnabled`   | API     | Reads pull request checks after 60 s without a webhook; defaults to `true` |
+| `Hewn__Preview__Origin`         | API     | The origin that serves design previews, on another host than Mission Control (e.g. `https://mocks.hewn.dev`); defaults to `http://127.0.0.1:5200` |
+| `Hewn__Preview__TokenMinutes`   | API     | How long a signed preview link works; defaults to `60` |
 | `HEWN_GITHUB_OWNER`             | API     | Account or organization where new product repositories are created      |
 | `ANTHROPIC_API_KEY`             | Worker  | Model access for agents (secret)                                         |
 | `HEWN_MAGIC_PATTERNS_TOKEN`     | Worker  | Magic Patterns MCP credential (secret)                                   |

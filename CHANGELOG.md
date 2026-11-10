@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Preview product designs (journey 14, L2-011): a project's Designs tab (`/projects/{id}/designs`) lists every
+  screen and state stage 2 exported, each with a live thumbnail and an Open in Magic Patterns link. It previews the
+  chosen state in an iframe on a separate origin with `sandbox="allow-scripts"`, where the page can't read Mission
+  Control's cookies, storage or page, at XS (375) to XL (1200) px and in Light or Dark. New
+  `GET /api/projects/{id}/designs`. The preview host is `GET /preview/{token}/{path}`, on `Hewn:Preview:Origin`
+  only: signed for one commit, limited to `docs/mocks/` and `docs/design-system/`, and sent with CSP `sandbox
+  allow-scripts` (ADR 0018). The fake GitHub takes files from e2e tests (`PUT /api/fakes/github/{owner}/{name}/files`).
+
 - Follow an increment to merge (journey 13, L2-021 AC3, L2-022 AC2, L2-024 AC3, L2-025, L2-037): an increment's
   page (`/projects/{id}/increments/{n}`, from a Backlog title) shows the test commit and red recorded, or tests
   that passed before implementation flagged; the iteration under way against the cap; Blocked with its failing
