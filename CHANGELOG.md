@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Inspect worker activity (journey 25, L2-026, L2-031): Workers is told within a second when a worker goes Offline
+  after 60 seconds without a heartbeat, or comes back. `WorkerPresenceWatcher` sweeps every second
+  (`Hewn:Workers:PresenceWatcherEnabled`). The page shows its loading, empty and error states as the mocks do, offers
+  an Owner a worker token when no worker has connected, and lists leased workers first, then idle, then offline.
 - Manage worker tokens (journey 24, L2-041): an Owner creates a worker token on Workers with a name, Local or Cloud,
   and an expiry of 30 days, 90 days or a year. The token (`hwt_…`) is shown once, with Copy and the command that
   starts a worker; only its SHA-256 is stored. A worker on it is named and placed by it. Each worker row has Revoke:
