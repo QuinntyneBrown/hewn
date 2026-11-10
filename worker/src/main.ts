@@ -139,10 +139,13 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => st
 const log = (message: string, fields?: Record<string, unknown>) =>
   console.log(JSON.stringify({ at: new Date().toISOString(), message, ...fields }));
 
-await new WorkLoop({
+const loop = new WorkLoop({
   api: new HttpHewnApi(apiUrl, token),
   executor,
   registration: { name: process.env.HEWN_WORKER_NAME ?? hostname(), location, host: hostname(), version: VERSION },
   log,
   isolation,
-}).run(stop.signal);
+});
+await loop.run(stop.signal);
+// A revoked or expired token ends the worker; a supervisor shouldn't restart it with the same token.
+if (loop.tokenRefused) process.exitCode = 3;

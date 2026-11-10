@@ -59,6 +59,9 @@ export class LeaseLostError extends Error {}
 /** The direction reached its budget and is Paused; the run ends after the call that reached it (L2-053 AC3). */
 export class BudgetReachedError extends Error {}
 
+/** 401: the worker's token was revoked or has expired (L2-041); the worker stops. */
+export class TokenRefusedError extends Error {}
+
 /** A model call a run made (L2-052 AC1). The call id makes a retried report count once. */
 export interface ModelCallReport {
   callId: string;

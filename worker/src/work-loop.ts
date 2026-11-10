@@ -2,7 +2,14 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { BudgetReachedError, LeaseLostError, type HewnApi, type LeasedRun, type WorkerRegistration } from './api.ts';
+import {
+  BudgetReachedError,
+  LeaseLostError,
+  TokenRefusedError,
+  type HewnApi,
+  type LeasedRun,
+  type WorkerRegistration,
+} from './api.ts';
 import type { RunContext, StageExecutor } from './executors/stage-executor.ts';
 import { LogBatcher } from './log-batcher.ts';
 import { startRunIsolation, type IsolationSettings } from './isolation/run-isolation.ts';
@@ -53,6 +60,9 @@ export class WorkLoop {
     this.isolation = options.isolation;
   }
 
+  /** Set once the API refuses this worker's token (L2-041): the run in hand stops and the loop ends. */
+  private refused = false;
+
   async run(signal: AbortSignal): Promise<void> {
     const workerId = await this.api.register(this.registration);
     this.log('Registered', { workerId, location: this.registration.location });
@@ -66,8 +76,11 @@ export class WorkLoop {
         run = await this.api.lease(workerId, this.leaseWaitSeconds, signal);
       } catch (error) {
         if (signal.aborted) break;
-        this.log('Lease request failed', { error: messageOf(error) });
+        if (error instanceof TokenRefusedError) this.refused = true;
+        else this.log('Lease request failed', { error: messageOf(error) });
       }
+
+      if (this.refused) break;
 
       if (run === null) {
         await sleep(Math.max(0, this.pollIntervalMs - (Date.now() - asked)), signal);
@@ -75,7 +88,16 @@ export class WorkLoop {
       }
 
       await this.execute(workerId, run, signal);
+      if (this.refused) break;
     }
+
+    // Revoked or expired: nothing this worker sends will be accepted, so it disconnects (L2-041 AC2, AC3).
+    if (this.refused) this.log('The API refused this worker’s token (revoked or expired); stopping');
+  }
+
+  /** True when the loop ended because the API refused the token, so the process can exit non-zero. */
+  get tokenRefused(): boolean {
+    return this.refused;
   }
 
   private async execute(workerId: string, run: LeasedRun, stop: AbortSignal): Promise<void> {
@@ -95,7 +117,10 @@ export class WorkLoop {
         await this.api.heartbeat(workerId, run);
         missed = 0;
       } catch (error) {
-        if (error instanceof LeaseLostError) {
+        if (error instanceof TokenRefusedError) {
+          this.refused = true;
+          lease.abort(error);
+        } else if (error instanceof LeaseLostError) {
           this.log('Lease lost', { runId: run.runId });
           lease.abort(error);
         } else if (++missed >= 2) {
@@ -177,7 +202,8 @@ export class WorkLoop {
       await this.api.result(workerId, run, { outcome: 'Succeeded' });
       this.log('Run succeeded', { runId: run.runId, stage: run.stage });
     } catch (error) {
-      if (lease.signal.aborted || error instanceof LeaseLostError) return;
+      if (error instanceof TokenRefusedError) this.refused = true;
+      if (lease.signal.aborted || error instanceof LeaseLostError || error instanceof TokenRefusedError) return;
       this.log('Run failed', { runId: run.runId, stage: run.stage });
       await logs.close();
       await this.api
@@ -214,8 +240,14 @@ export class WorkLoop {
           return;
         }
       } catch (error) {
-        // A lost lease is the heartbeat's to handle; otherwise wait a little and poll again.
-        if (lease.signal.aborted || error instanceof LeaseLostError) return;
+        if (lease.signal.aborted) return;
+        // The API took the run back (a revoked token, L2-041 AC2): stop now rather than at the next heartbeat.
+        if (error instanceof LeaseLostError || error instanceof TokenRefusedError) {
+          if (error instanceof TokenRefusedError) this.refused = true;
+          else this.log('Lease lost', { runId: run.runId });
+          lease.abort(error);
+          return;
+        }
         await sleep(1_000, lease.signal);
       }
     }
