@@ -75,4 +75,7 @@ Tokens and component pages are produced (L2-012 AC1). Unmatched mock colours fai
   design system, `MagicPatternsTokenComparer` reads its `index.css` custom properties (light values) and logs
   each colour no extracted token matches. Without Magic Patterns the stage logs that the comparison was skipped
   and continues; the run does not fail on mismatches (L2-012 AC3 asks only that they are listed).
-- **Deferred.** L2-012 AC4 (browse the design system in Mission Control) with journey 15.
+- **Token pages.** The stage's task asks for one token page per group under `foundations/` (colour, typography,
+  spacing, radius, elevation and motion) beside the component pages, all following `<html data-theme>` as the mocks
+  do. Mission Control's Design system tab lists them ([Preview designs and the design system](../../mission-control/preview-designs/README.md),
+  L2-012 AC4). The validator still requires only `tokens.json` and a component page.

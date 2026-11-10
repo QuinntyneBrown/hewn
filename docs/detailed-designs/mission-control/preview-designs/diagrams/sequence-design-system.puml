@@ -1,0 +1,50 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam sequenceParticipantBorderColor #344054
+skinparam sequenceParticipantBackgroundColor #F9FAFB
+title UML sequence behaviour — Browse the design system
+
+actor "Owner or Viewer" as user
+box "Frontend — Mission Control (app origin)" #E8F1FF
+  participant DesignSystemComponent as dsc
+  participant SandboxedPreviewComponent as prev
+end box
+box "Backend — Hewn API" #E6F7EA
+  participant ProjectsController as ctrl
+  participant GetDesignSystemHandler as h
+  participant PreviewTokens as tok
+end box
+box "Backend — preview host (Hewn API on the preview origin)" #FFF4E5
+  participant ServePreviewHandler as host
+end box
+box "External systems" #F2F4F7
+  participant GitHub as gh
+end box
+
+user -> dsc : Open Design system
+dsc -> ctrl : GET /api/projects/{id}/design-system (session cookie)
+ctrl -> h : GetDesignSystemQuery
+h -> gh : Read docs/design-system/tokens.json at the head
+alt no tokens.json (before stage 3)
+  h --> dsc : {sha: null, foundations: [], components: []}
+  dsc --> user : No design system yet · Open the pipeline
+else tokens.json can't be parsed
+  h --> dsc : 502 github_failed "docs/design-system/ couldn’t be read at {sha7}"
+  dsc --> user : The design system couldn’t load · Try again
+else
+  h -> gh : List foundations/ and components/ at that SHA
+  h -> tok : Sign(project, sha)
+  h --> dsc : Token pages (in the token groups' order, with counts) and component pages, each with a preview URL
+  dsc -> prev : first token page, 992 px, light
+  prev -> host : GET /preview/{token}/docs/design-system/foundations/colour.html?theme=light
+  host -> gh : File at the signed SHA (cached)
+  host --> prev : HTML, CSP sandbox allow-scripts, <html data-theme>
+  user -> dsc : Choose Dark, then Button
+  dsc -> prev : components/button.html, dark
+  prev -> host : GET /preview/{token}/docs/design-system/components/button.html?theme=dark
+  host --> prev : HTML in the same sandbox (L2-012 AC4)
+end
+@enduml

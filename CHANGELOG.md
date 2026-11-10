@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Browse the design system (journey 15, L2-012 AC4): a project's Design system tab (`/projects/{id}/design-system`)
+  lists the token pages under `docs/design-system/foundations/`, each with its group's token count, and the component
+  pages under `components/`. The chosen page opens in the same sandboxed, separate-origin preview as Designs, at XS to
+  XL and in Light or Dark. New `GET /api/projects/{id}/design-system` and `IGitHubRepositories.ListFilesAsync`.
+  Stage 3's task now asks for a token page per group, and the scripted agent writes them.
+
 - Preview product designs (journey 14, L2-011): a project's Designs tab (`/projects/{id}/designs`) lists every
   screen and state stage 2 exported, each with a live thumbnail and an Open in Magic Patterns link. It previews the
   chosen state in an iframe on a separate origin with `sandbox="allow-scripts"`, where the page can't read Mission

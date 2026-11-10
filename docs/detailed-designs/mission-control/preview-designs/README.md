@@ -14,20 +14,27 @@ Terms used in this design:
 ## Description
 
 The slice spans the project page's Designs tab, a shared preview component, the designs endpoint and the preview
-host. Journey 14 built the Designs tab (L2-011). The Design system tab (L2-012 AC4) will reuse the preview, and the
-host already serves `docs/design-system/`.
+host. Journey 14 built the Designs tab (L2-011); journey 15 built the Design system tab (L2-012 AC4) on the same
+preview and host.
 
 - **`DesignsComponent`**: the Designs tab of `ProjectPage`, route `/projects/:projectId/designs`. It reads
   `GET /api/projects/{id}/designs` and lists screens and states, each with a thumbnail and an Open in Magic Patterns
   link to the screen's `magicPatternsUrl`. It holds the chosen state, width and theme.
-- **`DesignSystemPage`**: route `/projects/:id/design-system`. It lists foundation and component pages from
-  `docs/design-system/` in the same preview. Not built yet; see L2-012 AC4.
+- **`DesignSystemComponent`**: the Design system tab of `ProjectPage`, route `/projects/:projectId/design-system`.
+  It reads `GET /api/projects/{id}/design-system` and lists the token pages under Foundations and the component
+  pages under Components, with a caption such as "6 foundations · 7 components · docs/design-system/ at 8e2290a".
+  The chosen page opens in the same preview, titled with its token count ("Colour · 38 tokens, light and dark").
+- **`PreviewControlsComponent`**: the Width and Theme radio groups, shared by both tabs.
 - **`SandboxedPreviewComponent`**: the iframe on the preview origin, `sandbox="allow-scripts"` with no
   `allow-same-origin`. It is laid out at exactly the chosen width and scaled to fit the frame. The theme is passed
   as `?theme=light|dark`.
 - **`GetDesignsHandler`**: reads `docs/mocks/manifest.json` at the default branch's head (stage 2's
   `{screens: [{screen, feature, magicPatternsUrl, states}]}`). It returns each state's label, path and a preview
   URL signed by `PreviewTokens` for that commit.
+- **`GetDesignSystemHandler`**: reads `docs/design-system/tokens.json` at the default branch's head, then lists the
+  `.html` files directly under `foundations/` and `components/` at that commit (`IGitHubRepositories.ListFilesAsync`).
+  Token pages come in the order of L2-012 AC1's groups (colour, typography, spacing, radius, elevation, motion), each
+  with its group's token count; components come by name. Every page gets a URL signed for that commit.
 - **`PreviewTokens`**: signs `{project}.{sha}.{expiry}` with HMAC-SHA256 under a key made at start-up, and checks
   it. Links last 60 minutes.
 - **`PreviewEndpoint` and `ServePreviewHandler`**: the preview host. `GET /preview/{token}/{path}` exists only on
@@ -80,6 +87,12 @@ The gallery lists screens and states with thumbnails and Magic Patterns links (L
 
 ![Sequence diagram: preview a screen state](diagrams/sequence-preview.png)
 
+### Behaviour — browse the design system
+
+The tab reads the token and component pages at the head and opens them in the same sandboxed preview, in light or dark (L2-012 AC4).
+
+![Sequence diagram: browse the design system](diagrams/sequence-design-system.png)
+
 ## Decisions made while building the slice
 
 - **The preview host is the API on another host name** (ADR 0018). The route is mapped with `RequireHost` for
@@ -102,4 +115,14 @@ The gallery lists screens and states with thumbnails and Magic Patterns links (L
   group. The selection lives in the page, not the URL.
 - **Read on open.** The tab reads the designs when it opens and on Try again. It doesn't follow events, because
   every read signs new links and would reload the frames.
-
+- **The design system has no manifest; its folders are the list.** Stage 3 always writes `tokens.json` (its
+  validator requires it), so a project has a design system when that file exists at the head. Token pages are the
+  files under `foundations/` and component pages the files under `components/`, read at the commit `tokens.json` was
+  read at, so one signed token covers them and their relative links. Other folders, such as `patterns/`, are not
+  listed.
+- **Token counts come from `tokens.json`.** A token page whose name is a DTCG group (or a common alias, such as
+  `colour` or `shape`) shows how many tokens the group holds; a group with `light` and `dark` counts one theme and
+  says "light and dark".
+- **Design system states.** "No design system yet", with Open the pipeline, before stage 3; an unparseable
+  `tokens.json`, or GitHub failing to list the folders, is `502 github_failed` titled "docs/design-system/ couldn’t
+  be read at {sha7}", shown with Try again and Open the pipeline.
