@@ -1,3 +1,5 @@
+import type { CommandSandbox } from '../isolation/run-sandbox.ts';
+import { isolationFor } from './document-executor.ts';
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -23,7 +25,7 @@ const TOOLS = ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash'] as const;
 
 export interface IncrementOptions {
   /** The local gate for a stack; the stack's own commands by default. */
-  gate?: (template: StackTemplate) => TestGate;
+  gate?: (template: StackTemplate, sandbox?: CommandSandbox) => TestGate;
   probe?: Probe;
   pollMs?: number;
   timeoutMs?: number;
@@ -48,7 +50,7 @@ class Blocked extends Error {
 export class IncrementStageExecutor implements StageExecutor {
   private readonly agent: StageAgent;
   private readonly templates: readonly StackTemplate[];
-  private readonly gateFor: (template: StackTemplate) => TestGate;
+  private readonly gateFor: (template: StackTemplate, sandbox?: CommandSandbox) => TestGate;
   private readonly probe: Probe | undefined;
   private readonly pollMs: number;
   private readonly timeoutMs: number;
@@ -56,7 +58,7 @@ export class IncrementStageExecutor implements StageExecutor {
   constructor(agent: StageAgent, templates: readonly StackTemplate[], options: IncrementOptions = {}) {
     this.agent = agent;
     this.templates = templates;
-    this.gateFor = options.gate ?? ((template) => new CommandTestGate(template.gate));
+    this.gateFor = options.gate ?? ((template, sandbox) => new CommandTestGate(template.gate, sandbox));
     this.probe = options.probe;
     this.pollMs = options.pollMs ?? 30_000;
     this.timeoutMs = options.timeoutMs ?? 60 * 60_000;
@@ -95,7 +97,7 @@ export class IncrementStageExecutor implements StageExecutor {
     let directory = join(context.workspace, `increment-${n}`);
     await checkOut(context, directory);
     const template = this.template(directory);
-    const gate = this.gateFor(template);
+    const gate = this.gateFor(template, context.isolation?.sandbox);
     const designs = designsOf(directory, n);
     const task = (phase: IncrementTask['phase'], extra: Partial<IncrementTask> = {}): IncrementTask => ({
       number: n,
@@ -133,7 +135,10 @@ export class IncrementStageExecutor implements StageExecutor {
 
     try {
       // Test first (L2-021 AC2, AC3).
-      await this.agent.run(this.agentTask(leased, directory, 'implementing-incrementally', task('tests')), signal);
+      await this.agent.run(
+        this.agentTask(leased, directory, 'implementing-incrementally', task('tests'), context),
+        signal,
+      );
       const testFiles = changedSince(base, directory);
       const problems = checkTestCommit(directory, testFiles, increment.l2Ids);
       if (problems.length) throw new Blocked(problems.map((p) => `Test commit: ${p}`));
@@ -159,7 +164,7 @@ export class IncrementStageExecutor implements StageExecutor {
           // Each iteration is reported as it starts, so Mission Control shows "iteration n of 10" live.
           await context.updateIncrement(n, { status: 'InProgress', iterations: state.iterations });
           await this.agent.run(
-            this.agentTask(leased, directory, 'implementing-incrementally', task('implement', { failing })),
+            this.agentTask(leased, directory, 'implementing-incrementally', task('implement', { failing }), context),
             signal,
           );
           await commitChanges(
@@ -191,7 +196,7 @@ export class IncrementStageExecutor implements StageExecutor {
       let green = await implement([]);
 
       // Video (L2-023 AC1, AC3): tried at most twice, never blocking the increment.
-      const video = await this.video(leased, directory, slug, task('video'), signal);
+      const video = await this.video(leased, directory, slug, task('video'), signal, context);
       if ('path' in video) {
         // L2-023 AC2: a relative link in a PR body resolves under /pull/N, so link the file at the commit that holds it.
         const sha = await commitChanges(key('video'), `Record the video for ${increment.title}`);
@@ -297,8 +302,22 @@ export class IncrementStageExecutor implements StageExecutor {
     return template;
   }
 
-  private agentTask(leased: LeasedRun, directory: string, skill: string | null, increment: IncrementTask) {
-    return { run: leased, directory, skill, instructions: instructionsFor(increment), allowedTools: TOOLS, increment };
+  private agentTask(
+    leased: LeasedRun,
+    directory: string,
+    skill: string | null,
+    increment: IncrementTask,
+    context?: RunContext,
+  ) {
+    return {
+      run: leased,
+      directory,
+      skill,
+      instructions: instructionsFor(increment),
+      allowedTools: TOOLS,
+      increment,
+      ...(context ? isolationFor(context, TOOLS) : {}),
+    };
   }
 
   private async video(
@@ -307,11 +326,12 @@ export class IncrementStageExecutor implements StageExecutor {
     slug: string,
     task: IncrementTask,
     signal: AbortSignal,
+    context?: RunContext,
   ): Promise<{ path: string; url?: string } | { failed: string }> {
     let reason = 'unknown';
     for (let attempt = 1; attempt <= VIDEO_ATTEMPTS; attempt++) {
       try {
-        await this.agent.run(this.agentTask(leased, directory, 'creating-videos', task), signal);
+        await this.agent.run(this.agentTask(leased, directory, 'creating-videos', task, context), signal);
         const problems = await validateVideo(directory, slug, this.probe);
         if (problems.length === 0) return { path: `docs/videos/${slug}/${slug}.mp4` };
         reason = problems.join('; ');
@@ -347,7 +367,7 @@ export class IncrementStageExecutor implements StageExecutor {
     }
     if (conflicts.length) {
       await context.log('info', `Resolving conflicts in ${conflicts.join(', ')}`);
-      await this.agent.run(this.agentTask(leased, target, null, task('resolve', { conflicts })), signal);
+      await this.agent.run(this.agentTask(leased, target, null, task('resolve', { conflicts }), context), signal);
     }
     return { directory: target, base: latest };
   }

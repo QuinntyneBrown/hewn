@@ -1,3 +1,4 @@
+import type { ToolGate } from '../isolation/tool-gate.ts';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
@@ -256,6 +257,10 @@ export class DocumentStageExecutor implements StageExecutor {
         instructions: instructionsFor(leased, definition),
         allowedTools: definition.magicPatterns === 'required' ? [...FILE_TOOLS, ...MAGIC_PATTERNS_TOOLS] : FILE_TOOLS,
         ...(magicPatterns ? { magicPatterns } : {}),
+        ...isolationFor(
+          context,
+          definition.magicPatterns === 'required' ? [...FILE_TOOLS, ...MAGIC_PATTERNS_TOOLS] : FILE_TOOLS,
+        ),
       },
       signal,
     );
@@ -399,4 +404,13 @@ async function snapshot(directory: string): Promise<Map<string, string>> {
     );
   }
   return new Map([...result].sort(([a], [b]) => a.localeCompare(b)));
+}
+
+/** The agent's tool gate and egress proxy for this run, when the worker isolates runs (L2-042). */
+export function isolationFor(
+  context: RunContext,
+  allowedTools: readonly string[],
+): { gate?: ToolGate; egressProxyUrl?: string } {
+  if (!context.isolation) return {};
+  return { gate: context.isolation.toolGate(allowedTools), egressProxyUrl: context.isolation.egressProxyUrl };
 }

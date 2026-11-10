@@ -33,6 +33,8 @@ export interface WorkerOptions {
   location?: 'Local' | 'Cloud';
   /** Worker names are `{namePrefix}-1`, `-2`…; `e2e-worker` by default. */
   namePrefix?: string;
+  /** A stage in which the agent tries a tool and a host it may not use, so both show refused in the log (L2-042). */
+  probeStage?: number;
 }
 
 export function startWorkers(count: number, stepMs: number, options: WorkerOptions = {}): () => Promise<void> {
@@ -68,6 +70,7 @@ export function startWorkers(count: number, stepMs: number, options: WorkerOptio
             }),
         ...(options.incrementMs === undefined ? {} : { HEWN_SCRIPTED_INCREMENT_MS: String(options.incrementMs) }),
         ...(options.blockIncrement === undefined ? {} : { HEWN_SCRIPTED_BLOCK_INCREMENT: options.blockIncrement }),
+        ...(options.probeStage === undefined ? {} : { HEWN_SCRIPTED_PROBE_STAGE: String(options.probeStage) }),
         HEWN_MAGIC_PATTERNS_URL: `http://127.0.0.1:${MAGIC_PATTERNS_PORT}/mcp`,
         HEWN_MAGIC_PATTERNS_TOKEN: MAGIC_PATTERNS_TOKEN,
         HEWN_MAGIC_PATTERNS_POLL_MS: '200',

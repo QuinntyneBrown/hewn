@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { join } from 'node:path';
+import { ProcessSandbox, type CommandSandbox } from '../isolation/run-sandbox.ts';
 
 /** One suite of a stack's gate; the acceptance suite also runs alone on the new test files for the red run. */
 export interface GateCommand {
@@ -49,9 +49,12 @@ const OUTPUT_LIMIT = 200_000;
 
 export class CommandTestGate implements TestGate {
   private readonly commands: readonly GateCommand[];
+  /** Starts each command; by default as a process that sees no credential (L2-042 AC1). */
+  private readonly sandbox: CommandSandbox;
 
-  constructor(commands: readonly GateCommand[]) {
+  constructor(commands: readonly GateCommand[], sandbox: CommandSandbox = new ProcessSandbox('')) {
     this.commands = commands;
+    this.sandbox = sandbox;
   }
 
   async acceptance(directory: string, testFiles: string[], signal?: AbortSignal): Promise<SuiteResult> {
@@ -60,12 +63,12 @@ export class CommandTestGate implements TestGate {
     const files = testFiles
       .filter((f) => !command.stripPrefix || f.startsWith(command.stripPrefix))
       .map((f) => (command.stripPrefix ? f.slice(command.stripPrefix.length) : f));
-    return run(directory, command, files, signal);
+    return run(this.sandbox, directory, command, files, signal);
   }
 
   async full(directory: string, _testFiles: string[], signal?: AbortSignal): Promise<GateResult> {
     const suites: SuiteResult[] = [];
-    for (const command of this.commands) suites.push(await run(directory, command, [], signal));
+    for (const command of this.commands) suites.push(await run(this.sandbox, directory, command, [], signal));
     return {
       passed: suites.every((s) => s.passed),
       suites,
@@ -104,19 +107,27 @@ function failingTests(result: SuiteResult): string[] {
 }
 
 async function run(
+  sandbox: CommandSandbox,
   directory: string,
   command: GateCommand,
   extra: string[],
   signal?: AbortSignal,
 ): Promise<SuiteResult> {
   for (const setup of command.before ?? []) {
-    const prepared = await spawnOnce(directory, { ...command, command: setup.command, args: setup.args }, [], signal);
+    const prepared = await spawnOnce(
+      sandbox,
+      directory,
+      { ...command, command: setup.command, args: setup.args },
+      [],
+      signal,
+    );
     if (!prepared.passed) return { ...prepared, suite: command.suite };
   }
-  return spawnOnce(directory, command, extra, signal);
+  return spawnOnce(sandbox, directory, command, extra, signal);
 }
 
 function spawnOnce(
+  sandbox: CommandSandbox,
   directory: string,
   command: GateCommand,
   extra: string[],
@@ -126,11 +137,13 @@ function spawnOnce(
   const commandLine = [command.command, ...command.args].join(' ');
   return new Promise((resolve) => {
     let output = '';
-    const child = spawn(command.command, args, {
-      cwd: join(directory, command.cwd ?? '.'),
-      env: { ...process.env, CI: '1' },
-      signal,
+    // L2-042 AC1: the command sees no credential, and runs in its own container when the worker is set to.
+    const prepared = sandbox.prepare(directory, {
+      command: command.command,
+      args,
+      ...(command.cwd ? { cwd: command.cwd } : {}),
     });
+    const child = spawn(prepared.command, prepared.args, { cwd: prepared.cwd, env: prepared.env, signal });
     const collect = (chunk: Buffer) => {
       if (output.length < OUTPUT_LIMIT) output += chunk.toString('utf8');
     };

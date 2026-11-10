@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { BudgetReachedError, LeaseLostError, type HewnApi, type LeasedRun, type WorkerRegistration } from './api.ts';
 import type { RunContext, StageExecutor } from './executors/stage-executor.ts';
 import { LogBatcher } from './log-batcher.ts';
+import { startRunIsolation, type IsolationSettings } from './isolation/run-isolation.ts';
 import { sleep } from './sleep.ts';
 
 export type Log = (message: string, fields?: Record<string, unknown>) => void;
@@ -21,6 +22,8 @@ export interface WorkLoopOptions {
   heartbeatIntervalMs?: number;
   /** How long each control poll is held open by the API. */
   controlWaitSeconds?: number;
+  /** Each run's egress proxy, command sandbox and tool gates (L2-042); none when absent. */
+  isolation?: IsolationSettings;
 }
 
 /**
@@ -35,6 +38,7 @@ export class WorkLoop {
   private readonly pollIntervalMs: number;
   private readonly heartbeatIntervalMs: number;
   private readonly leaseWaitSeconds: number;
+  private readonly isolation: IsolationSettings | undefined;
   private readonly controlWaitSeconds: number;
 
   constructor(options: WorkLoopOptions) {
@@ -46,6 +50,7 @@ export class WorkLoop {
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 10_000;
     this.controlWaitSeconds = options.controlWaitSeconds ?? 20;
     this.leaseWaitSeconds = options.leaseWaitSeconds ?? 20;
+    this.isolation = options.isolation;
   }
 
   async run(signal: AbortSignal): Promise<void> {
@@ -109,6 +114,7 @@ export class WorkLoop {
 
     // Synchronous on purpose: one small directory per run, and no I/O race with the heartbeat timer.
     const workspace = mkdtempSync(join(tmpdir(), `hewn-run-${run.runId}-`));
+    let isolated: Awaited<ReturnType<typeof startRunIsolation>> | null = null;
     const context: RunContext = {
       workspace,
       log: async (level, text) => logs.add({ level, text }),
@@ -146,6 +152,10 @@ export class WorkLoop {
     };
 
     try {
+      if (this.isolation) {
+        isolated = await startRunIsolation(this.isolation, run.runId, (level, text) => logs.add({ level, text }));
+        context.isolation = isolated.isolation;
+      }
       const steps = this.executor.plan(run, context);
       for (let index = run.checkpointStep; index < steps.length; index++) {
         await this.api.startStep(workerId, run, index + 1, steps[index]!.name);
@@ -180,6 +190,7 @@ export class WorkLoop {
       void logs.close();
       stop.removeEventListener('abort', onStop);
       rmSync(workspace, { recursive: true, force: true });
+      void isolated?.stop();
     }
   }
 

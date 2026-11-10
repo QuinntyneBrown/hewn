@@ -1,6 +1,6 @@
 // Acceptance Test
-// Traces to: L2-026, L2-027
-// Description: The same worker, configured as Local or as Cloud, registers with its location, host and version and appears in Workers within 2 seconds (L2-026 AC1, L2-027 AC1); an idle worker is pushed a newly queued direction at once rather than at its next 15-second poll, leases it and heartbeats while it runs (L2-026 AC2, AC5)
+// Traces to: L2-026, L2-027, L2-042
+// Description: The same worker, configured as Local or as Cloud, registers with its location, host and version and appears in Workers within 2 seconds (L2-026 AC1, L2-027 AC1); an idle worker is pushed a newly queued direction at once rather than at its next 15-second poll, leases it and heartbeats while it runs (L2-026 AC2, AC5); an agent's tool call outside its stage's allow list is denied and logged as a security event, and its request to a host outside the egress allow list is blocked and logged (L2-042 AC2, AC3)
 
 import { expect, signIn, test, uniqueName } from '../../fixtures/test';
 import { WorkersPage } from '../../pages/workers.page';
@@ -66,5 +66,26 @@ test.describe('Run workers locally or in the cloud', () => {
     await expect(workers.details(`${name}-1`).workingOn).toHaveText(direction);
     const first = await workers.details(`${name}-1`).seen.innerText();
     await expect(workers.details(`${name}-1`).seen).not.toHaveText(first, { timeout: 15_000 });
+  });
+
+  test("an agent's denied tool call and blocked request show in the run's log", async ({
+    page,
+    newDirection,
+    project,
+  }) => {
+    await signIn(page, 'quinntynebrown');
+    stops.push(startWorkers(1, 150, { namePrefix: `isolated-${suffix()}`, probeStage: 1 }));
+
+    await newDirection.open();
+    await newDirection.fill({ name: uniqueName('Isolated'), idea: 'A rota planner for volunteer lifeguards.' });
+    await newDirection.submit();
+    await project.heading.waitFor();
+    await expect(project.stageStatus('Idea')).toContainText('Succeeded', { timeout: 30_000 });
+    await project.selectStage('Idea');
+
+    await expect(project.logLines.filter({ hasText: 'Security event: tool Bash denied' })).toHaveCount(1, {
+      timeout: 30_000,
+    });
+    await expect(project.logLines.filter({ hasText: 'Egress blocked: exfiltrate.example' })).toHaveCount(1);
   });
 });
