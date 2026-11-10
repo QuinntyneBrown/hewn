@@ -17,11 +17,13 @@ skinparam package {
 skinparam sequenceMessageAlign left
 actor "User" as user
 box "Frontend — Mission Control application" #E0F2FE
-  participant "Mission Control" as spa
+  participant "SignInPage" as spa
 end box
 box "Backend — Hewn API application" #D1FADF
-  participant "GitHubOAuthHandler" as oauth
-  participant "AllowListSignInValidator" as allow
+  participant "MissionControlPages" as pages
+  participant "AuthController" as auth
+  participant "SignInWithGitHubCommand" as cmd
+  participant "IGitHubIdentity" as ident
 end box
 box "Backend — Hewn Infrastructure" #FFF4E5
   database "Hewn database" as db
@@ -29,18 +31,27 @@ end box
 box "External systems" #F2F4F7
   participant "GitHub" as gh
 end box
-user -> spa : Open /projects
-spa -> oauth : GET /projects (no session)
-oauth --> spa : 302 /sign-in (APIs and hubs: 401) (L2-038 AC1)
-user -> spa : Sign in with GitHub
-spa -> gh : Authorize
-gh -> oauth : Callback with code
-oauth -> gh : Exchange code; read login
-oauth -> allow : OnTicketReceived(login)
-allow -> db : Find allow-list entry
-alt not on list
-  allow --> spa : "This account doesn't have access" (L2-038 AC2)
-else Owner or Viewer
-  oauth --> spa : Set-Cookie HttpOnly; Secure; SameSite=Lax; 8 h absolute (L2-038 AC3, AC4)
+user -> pages : GET /projects (no session)
+pages --> user : 302 /sign-in?returnUrl=%2Fprojects (APIs and hubs: 401) (L2-038 AC1)
+user -> spa : Continue with GitHub
+spa -> auth : GET /api/auth/github?returnUrl=/projects
+auth --> user : 302 GitHub authorize, state; Set-Cookie hewn.oauth (protected, 10 min)
+user -> gh : Authorize Hewn
+gh --> user : 302 /api/auth/github/callback?code&state
+user -> auth : Callback with code, state and hewn.oauth
+alt state missing or forged, or GitHub fails (30 s)
+  auth --> user : 302 /sign-in?error=github
+else cancelled on GitHub
+  auth --> user : 302 /sign-in
+else
+  auth -> cmd : Send(code, redirectUri)
+  cmd -> ident : LoginForCodeAsync
+  ident -> gh : Exchange code; read login
+  cmd -> db : Find allow-list entry
+  alt not on list
+    auth --> user : 302 /sign-in?error=denied&login (L2-038 AC2)
+  else Owner or Viewer
+    auth --> user : 302 returnUrl; Set-Cookie hewn.session HttpOnly; Secure; SameSite=Lax; 8 h absolute; hewn:sid (L2-038 AC3, AC4)
+  end
 end
 @enduml

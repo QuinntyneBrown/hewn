@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Sign in and sign out (journey 20, L2-038, L2-043): Mission Control signs in with GitHub through
+  `GET /api/auth/github` and its callback; logins not on the allow list are refused with "This account doesn't have
+  access", and the sign-in page shows the denied, GitHub failed, expired and signed-out states. The sidebar gains
+  Sign out, which revokes the session so a replayed cookie gets 401; a session ending while the app is open returns
+  to sign-in. The API serves Mission Control's pages: without a session they redirect to `/sign-in?returnUrl=`, and
+  every page carries a Content-Security-Policy, `frame-ancestors 'self'` and `nosniff` (ADR 0022). New settings:
+  `HEWN_GITHUB_CLIENT_ID`, `HEWN_GITHUB_CLIENT_SECRET`, `Hewn:MissionControl:Root`, `Hewn:Auth:PublicOrigin`.
+  Migration `RevokeSignedOutSessions` adds `revoked_sessions`.
 - Watch an increment demonstration (journey 19, L2-023): the increment page plays the increment's captioned
   walkthrough, with play and pause, its captions over the picture, a captions toggle, a keyboard seek slider and full
   screen, or says "Video failed: {reason}". `GET /api/projects/{id}/increments/{n}/video` (byte ranges) and

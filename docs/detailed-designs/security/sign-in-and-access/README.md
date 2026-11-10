@@ -63,8 +63,37 @@ Unauthenticated requests redirect or return 401 (L2-038 AC1). Logins not on the 
 
 ![Sequence diagram: sign in](diagrams/sequence-sign-in.png)
 
+### Behaviour — sign out
+
+Sign out revokes the session's id, so a replayed cookie gets 401; a 401 while the app is open, from sign-out
+elsewhere or the 8 hours passing, reloads at sign-in saying the session ended (L2-038 AC3).
+
+![Sequence diagram: sign out](diagrams/sequence-sign-out.png)
+
 ### Behaviour — authorize a request
 
 A Viewer's state change returns 403 (L2-039 AC1); an inaccessible project returns 404 or a refused group (AC2). Owners edit the allow list; Viewers read it (L2-038 AC5).
 
 ![Sequence diagram: authorize a request](diagrams/sequence-authorize.png)
+
+## Decisions made while building sign-in and sign-out
+
+Journey 20 built L2-038 AC1 to AC4 ([ADR 0022](../../../adr/0022-the-api-serves-mission-control-and-ends-sessions-by-id.md)).
+
+- **`AuthController` runs the OAuth flow**, not the `GitHubOAuthHandler` named above: `GET /api/auth/github?returnUrl`
+  and `GET /api/auth/github/callback`, with the state in a protected `hewn.oauth` cookie. `IGitHubIdentity`
+  (`GitHubOAuthIdentity`, 30 s timeout, `HEWN_GITHUB_CLIENT_ID` and `HEWN_GITHUB_CLIENT_SECRET`) exchanges the
+  code; `SignInWithGitHubCommand` checks the allow list. `AllowListSignInValidator` is not a separate class.
+- **The callback answers with a sign-in state**: `/sign-in?error=denied&login=` (not on the list),
+  `/sign-in?error=github` (forged or missing state, or GitHub failed), `/sign-in` (cancelled), else the local
+  `returnUrl` or `/`. `Hewn:Auth:PublicOrigin` sets the callback's origin behind a proxy.
+- **Sign-out revokes by id**: the `hewn:sid` claim goes to `revoked_sessions`, cached in `RevokedSessions`, and
+  `OnValidatePrincipal` refuses it. `POST /api/auth/sign-out` (no longer `/auth/sign-out`) needs the anti-forgery
+  header.
+- **The API serves Mission Control** (`MissionControlPages`): `/sign-in` and the app's files are anonymous, other
+  pages redirect to `/sign-in?returnUrl=`.
+- **Mission Control**: `SignInPage` shows the mocks' default, loading, denied, error, expired and signed-out
+  states from its query. The sidebar's Sign out icon button, added to the Magic Patterns shell and the mocks for
+  this journey, reloads at `/sign-in?reason=signed-out`. `sessionExpiryInterceptor` turns a 401 once signed in into
+  `/sign-in?reason=expired&returnUrl=`.
+- **Not built in this journey:** the allow list in Settings (AC5) and pruning expired revocations.
