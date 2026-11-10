@@ -89,6 +89,7 @@ export class FakeHewnApi implements HewnApi {
     };
     this.lastStage = lastStage;
     this.queue.push(run);
+    this.wake?.();
     return run;
   }
 
@@ -104,8 +105,25 @@ export class FakeHewnApi implements HewnApi {
     return 'wkr_fake';
   }
 
-  async lease(): Promise<LeasedRun | null> {
+  /** Whether the fake holds an idle lease request until work is queued, as the API does; false answers at once. */
+  holdsLeases = true;
+
+  private wake: (() => void) | null = null;
+
+  async lease(_workerId: string, waitSeconds = 0, signal?: AbortSignal): Promise<LeasedRun | null> {
     this.record({ method: 'lease' });
+    if (this.queue.length === 0 && this.holdsLeases && waitSeconds > 0) {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(done, waitSeconds * 1000);
+        signal?.addEventListener('abort', done);
+        this.wake = done;
+        function done(): void {
+          clearTimeout(timer);
+          resolve();
+        }
+      });
+      this.wake = null;
+    }
     return this.queue.shift() ?? null;
   }
 

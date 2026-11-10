@@ -153,7 +153,11 @@ export type RunControl = 'Cancel' | 'Halt';
 
 export interface HewnApi {
   register(registration: WorkerRegistration): Promise<string>;
-  lease(workerId: string): Promise<LeasedRun | null>;
+  /**
+   * Asks for a run. With `waitSeconds`, the API holds the request until work is queued or the wait ends, which is how
+   * the server pushes work to an idle worker (L2-026 AC5).
+   */
+  lease(workerId: string, waitSeconds?: number, signal?: AbortSignal): Promise<LeasedRun | null>;
   heartbeat(workerId: string, run: LeasedRun): Promise<void>;
   /** Names the step (1-based) the worker is starting, shown live on the running stage. */
   startStep(workerId: string, run: LeasedRun, step: number, name: string): Promise<void>;

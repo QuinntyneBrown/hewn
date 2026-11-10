@@ -36,8 +36,9 @@ export class HttpHewnApi implements HewnApi {
     return body.workerId;
   }
 
-  async lease(workerId: string): Promise<LeasedRun | null> {
-    return (await this.post('/api/worker/lease', { workerId })) as LeasedRun | null;
+  async lease(workerId: string, waitSeconds = 0, signal?: AbortSignal): Promise<LeasedRun | null> {
+    const path = waitSeconds > 0 ? `/api/worker/lease?waitSeconds=${waitSeconds}` : '/api/worker/lease';
+    return (await this.send('POST', path, { workerId }, signal)) as LeasedRun | null;
   }
 
   async heartbeat(workerId: string, run: LeasedRun): Promise<void> {

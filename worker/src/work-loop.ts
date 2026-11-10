@@ -16,6 +16,8 @@ export interface WorkLoopOptions {
   log: Log;
   /** Idle polling interval; L2-026 allows no more often than every 15 seconds. */
   pollIntervalMs?: number;
+  /** How long the API holds an idle lease request, waiting to push work (at most 30). */
+  leaseWaitSeconds?: number;
   heartbeatIntervalMs?: number;
   /** How long each control poll is held open by the API. */
   controlWaitSeconds?: number;
@@ -32,6 +34,7 @@ export class WorkLoop {
   private readonly log: Log;
   private readonly pollIntervalMs: number;
   private readonly heartbeatIntervalMs: number;
+  private readonly leaseWaitSeconds: number;
   private readonly controlWaitSeconds: number;
 
   constructor(options: WorkLoopOptions) {
@@ -42,6 +45,7 @@ export class WorkLoop {
     this.pollIntervalMs = Math.max(options.pollIntervalMs ?? 15_000, 15_000);
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 10_000;
     this.controlWaitSeconds = options.controlWaitSeconds ?? 20;
+    this.leaseWaitSeconds = options.leaseWaitSeconds ?? 20;
   }
 
   async run(signal: AbortSignal): Promise<void> {
@@ -49,15 +53,19 @@ export class WorkLoop {
     this.log('Registered', { workerId, location: this.registration.location });
 
     while (!signal.aborted) {
+      // Idle: the API holds the request and answers when work is queued (its push). Whatever it answers, ask
+      // again no sooner than the polling interval after the last ask (L2-026 AC5).
       let run: LeasedRun | null = null;
+      const asked = Date.now();
       try {
-        run = await this.api.lease(workerId);
+        run = await this.api.lease(workerId, this.leaseWaitSeconds, signal);
       } catch (error) {
+        if (signal.aborted) break;
         this.log('Lease request failed', { error: messageOf(error) });
       }
 
       if (run === null) {
-        await sleep(this.pollIntervalMs, signal);
+        await sleep(Math.max(0, this.pollIntervalMs - (Date.now() - asked)), signal);
         continue;
       }
 
