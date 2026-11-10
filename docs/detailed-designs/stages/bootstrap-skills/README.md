@@ -17,10 +17,10 @@ The slice is a stage executor in the worker plus an update check and command in 
 
 - **`BootstrapStageExecutor (worker)`** — fetches Greenlit's default branch, copies every file under both skill folders to the same paths, skips existing skill folders and logs each as "kept existing", writes `.hewn/skills.lock`, and commits "Bootstrap skills from greenlit@{short-sha}". An unreachable Greenlit fails the run with "Greenlit unreachable".
 - **`SkillsLock`** — JSON document: `source`, `sha`, `skills[]`.
-- **`SkillsUpdateChecker`** — API service that compares the project's locked SHA with Greenlit's default branch through the GitHub compare API and caches `{ahead: n}` per project.
-- **`SkillsUpdateBanner (Angular)`** — the "Skills update available ({n} commits)" link in the project header, shown only to Owners; it opens `UpdateSkillsDialog` listing the new commits.
-- **`UpdateSkillsCommand / handler`** — `POST /api/projects/{id}/update-skills`, Owner policy. It queues an `UpdateSkills` run.
-- **`UpdateSkillsExecutor (worker)`** — creates branch `hewn/update-skills-{short-sha}`, refreshes the skill files and the lock, and opens a pull request that the merge path in [Open and merge the pull request](../../increments/open-and-merge-pull-request/README.md) merges when checks pass.
+- **`GitSkillsSource`** — API service that reads Greenlit with git from a bare clone, fetched at most once a minute, and lists the commits after the project's locked SHA.
+- **Skills update link (Angular)** — the "Skills update available ({n} commits)" link in the project header, shown only to Owners; it opens `UpdateSkillsDialog` listing the new commits.
+- **`UpdateSkillsCommand / handler`** — `POST /api/projects/{id}/skills-update`, Owner policy. It commits Greenlit's skill files and the new lock to `hewn/update-skills-{short-sha}` and opens the pull request.
+- **`SkillsUpdateMerger`** — merges the pull request once every check has passed, as [Open and merge the pull request](../../increments/open-and-merge-pull-request/README.md) does for increments.
 
 ## Requirements
 
@@ -85,5 +85,28 @@ Journey 1, part 3 built L2-007 AC1-AC3 and the failure of AC4 (retry comes with 
   passed on.
 - **Source.** `HEWN_SKILLS_SOURCE` on the API (default `https://github.com/QuinntyneBrown/greenlit.git`)
   travels with each lease. The e2e stack builds a fixture repository from `e2e/fixtures/greenlit`.
-- **Not built yet:** `SkillsUpdateChecker`, the update banner and dialog, and `UpdateSkillsExecutor`
-  (L2-008, a later journey).
+- **L2-008** was built by journey 29; see below.
+
+## Decisions made while updating project skills (journey 29)
+
+- **The API does the update, not a worker run** ([ADR 0030](../../../adr/0030-the-api-updates-a-projects-skills-itself.md)).
+  An update belongs to no direction or stage, so it isn't a run. `UpdateSkillsHandler` reads Greenlit, commits the
+  files to the branch, opens the pull request and answers with it. The dialog's busy and failed states are that one
+  request. The running increment carries on with the skills it has.
+- **Reading Greenlit.** `GitSkillsSource` keeps a bare clone of `HEWN_SKILLS_SOURCE` under the temp folder and fetches
+  it at most once every `Hewn:Skills:FetchSeconds` (60; e2e 0). It works the same for GitHub and for the e2e stack's
+  local Greenlit. Errors name only git's exit code, since git's output can echo the URL. On the project page an
+  unreachable Greenlit offers no update; Update skills answers 502 `greenlit_unreachable`.
+- **What the pull request changes.** Every file under Greenlit's `.claude/skills/` and `.agents/skills/` at its head,
+  except folders the project kept at bootstrap (on disk, not in the lock), and the lock with the new SHA and skill
+  names. Skills new in Greenlit are added. Files Greenlit deleted stay, because the commit mutation cannot delete.
+- **One at a time.** `skills_updates` records each pull request (from and to SHA, branch, number, status). While one is
+  Open, the link is hidden and Update skills returns it.
+- **Merging.** `SkillsUpdateMerger` sweeps open updates every 10 seconds (`Hewn:Skills:MergerEnabled`). It merges once
+  every check has completed with success, skipped or neutral. A repository that reports no checks merges after two
+  minutes. A branch behind the default branch is committed again with `rebase: true`, and the checks run again. A
+  failed check marks the update ChecksFailed and leaves the pull request open and unmerged; the link comes back.
+- **Events.** `SkillsUpdateOpened`, `SkillsUpdateMerged` and `SkillsUpdateChecksFailed` make the project page read the
+  update again.
+- **No new mocks.** `pages/project-pipeline/default.html` (the link), `viewer.html` (no link) and
+  `dialogs/update-skills/{default,busy,failed}.html` cover every state. The toast after opening reuses the info toast.

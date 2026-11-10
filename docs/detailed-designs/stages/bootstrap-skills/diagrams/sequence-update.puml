@@ -17,26 +17,45 @@ skinparam package {
 skinparam sequenceMessageAlign left
 actor "Owner" as owner
 box "Frontend — Mission Control application" #E0F2FE
-  participant "SkillsUpdateBanner" as banner
+  participant "ProjectPage" as page
+  participant "UpdateSkillsDialog" as dlg
 end box
 box "Backend — Hewn API application" #D1FADF
   participant "ProjectsController" as ctrl
-  participant "SkillsUpdateChecker" as chk
-end box
-box "Backend — Worker stage execution" #ECFDF3
-  participant "UpdateSkillsExecutor" as upd
+  participant "GetSkillsUpdate / UpdateSkills handlers" as h
+  participant "GitSkillsSource" as src
+  participant "SkillsUpdateMerger (every 10 s)" as merge
 end box
 box "External systems" #F2F4F7
-  participant "GitHub (via write broker)" as gh
+  participant "Greenlit (git)" as greenlit
+  participant "GitHub" as gh
 end box
-banner -> ctrl : GET /api/projects/{id}/skills-update
-ctrl -> chk : GetAsync(project)
-chk -> gh : Compare locked SHA...greenlit default branch
-gh --> chk : ahead_by = 4
-chk --> banner : "Skills update available (4 commits)" for Owners (L2-008 AC1)
-owner -> banner : Update skills; confirm
-banner -> ctrl : POST /api/projects/{id}/update-skills
-ctrl -> ctrl : Queue UpdateSkills run
-upd -> gh : Push branch with refreshed skills and lock; open PR
-note over upd, gh : Merges automatically when checks pass (L2-008 AC2, L2-025)
+page -> ctrl : GET /api/projects/{id}/skills-update (Owners only)
+ctrl -> h : GetSkillsUpdateQuery
+h -> gh : Read .hewn/skills.lock at the default branch
+h -> src : CommitsSinceAsync(locked SHA)
+src -> greenlit : fetch (at most once a minute); git log {sha}..HEAD
+h --> page : {available: 4, commits, pullRequest: null}
+page -> page : "Skills update available (4 commits)" (L2-008 AC1)
+owner -> dlg : Update skills
+dlg -> ctrl : POST /api/projects/{id}/skills-update
+alt Greenlit unreachable
+  ctrl --> dlg : 502 greenlit_unreachable
+  dlg -> dlg : "Skills weren't updated" and Try again
+else
+  h -> src : SkillFilesAsync(head)
+  h -> gh : Commit skills and lock to hewn/update-skills-{short-sha}; open PR
+  h -> h : Record skills_updates row; append SkillsUpdateOpened
+  ctrl --> dlg : {pullRequest}
+  dlg --> page : Toast; link hidden while the PR is open
+end
+loop every 10 s while open
+  merge -> gh : List checks
+  alt every check passed
+    merge -> gh : Merge (rebase first if the default branch moved)
+    merge -> merge : SkillsUpdateMerged (L2-008 AC2, L2-025)
+  else a check failed
+    merge -> merge : ChecksFailed; PR left open; update offered again
+  end
+end
 @enduml
