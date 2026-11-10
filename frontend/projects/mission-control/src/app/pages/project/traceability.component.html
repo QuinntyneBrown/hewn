@@ -1,0 +1,155 @@
+@switch (loaded().state) {
+  @case ('loading') {
+    <div class="pad section">
+      <div class="split split--trace">
+        <div aria-busy="true" aria-live="polite">
+          <p class="visually-hidden">Loading requirements</p>
+          <div class="stack">
+            @for (n of [1, 2, 3, 4, 5, 6]; track n) {
+              <span class="skeleton skeleton--line" aria-hidden="true"></span>
+            }
+          </div>
+        </div>
+        <div class="stack">
+          <span class="skeleton skeleton--w25" aria-hidden="true"></span>
+          <span class="skeleton skeleton--title" style="width: 24rem" aria-hidden="true"></span>
+          <span class="skeleton skeleton--block" style="height: 10rem" aria-hidden="true"></span>
+        </div>
+      </div>
+    </div>
+  }
+  @case ('error') {
+    <div class="pad">
+      <div class="empty empty--error" role="alert">
+        <svg hw-icon name="warning"></svg>
+        <div>
+          <h2 class="empty__title">Traceability couldn’t load</h2>
+          <p class="empty__text">{{ $any(loaded()).message }}</p>
+        </div>
+        <div class="cluster">
+          <button class="btn" type="button" (click)="retry()">Try again</button>
+        </div>
+      </div>
+    </div>
+  }
+  @default {
+    <div class="pad section">
+      @if (current(); as r) {
+        <div class="split split--trace">
+          <nav aria-label="Requirements" class="truncate" style="white-space: normal">
+            <label class="prefix prefix--search" style="display: block"
+              ><span class="visually-hidden">Find an L2</span
+              ><svg hw-icon name="search" class="icon--sm"></svg
+              ><input
+                class="input input--sm"
+                type="search"
+                placeholder="Find an L2"
+                [value]="query()"
+                (input)="search($event)"
+            /></label>
+            @if (found().length) {
+              <ul class="req-list">
+                @for (item of found(); track item.id) {
+                  <li>
+                    <a
+                      class="req-link"
+                      [routerLink]="[]"
+                      [queryParams]="{ l2: item.id }"
+                      [attr.aria-current]="item.id === r.id ? 'true' : null"
+                      ><span class="req-link__id">{{ item.id }}</span
+                      ><span class="req-link__title">{{ item.title }}</span>
+                      @if (item.deferred !== null) {
+                        <span class="req-link__flag">Deferred</span>
+                      }
+                    </a>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="text-sm text-muted mt-3" role="status">{{ noMatch() }}</p>
+            }
+          </nav>
+          <section
+            [attr.aria-label]="'Trace for ' + r.id"
+            class="truncate"
+            style="white-space: normal; overflow: visible"
+          >
+            <p class="text-mono-xs text-accent" style="font-size: var(--font-size-sm)">
+              {{ r.id }}
+            </p>
+            <h2 class="mt-1" style="font: var(--text-h1); font-size: var(--font-size-xl)">
+              {{ r.title }}
+            </h2>
+            <p class="text-sm text-muted mt-1">{{ l1Line(r) }}</p>
+            @if (r.deferred !== null) {
+              <p class="text-sm text-muted mt-4">
+                <strong style="color: var(--color-fg-default)">Deferred.</strong> {{ r.deferred }}.
+              </p>
+            } @else if (r.noAcceptanceTest) {
+              <p class="pill pill--warn mt-4">
+                <svg hw-icon name="errorCircle" class="icon--sm"></svg> No acceptance test
+              </p>
+            }
+            <ol class="trace">
+              @for (g of groups; track g.key) {
+                <li class="trace__col">
+                  <h3 class="trace__head">
+                    <svg hw-icon [name]="g.icon" class="icon--sm"></svg><span>{{ g.label }}</span
+                    ><span>{{ count(r, g.key) }}</span>
+                  </h3>
+                  @if (count(r, g.key) === 0) {
+                    <p class="trace__empty">{{ emptyText(g.key, r) }}</p>
+                  } @else {
+                    <ul class="trace__items">
+                      @switch (g.key) {
+                        @case ('designs') {
+                          @for (d of r.designs; track d.path) {
+                            <li [title]="d.path">{{ d.title }}</li>
+                          }
+                        }
+                        @case ('journeys') {
+                          @for (j of r.journeys; track j.number) {
+                            <li>Journey {{ j.number }} · {{ j.title }}</li>
+                          }
+                        }
+                        @case ('tests') {
+                          @for (t of r.tests; track t) {
+                            <li class="text-mono-xs">{{ t }}</li>
+                          }
+                        }
+                        @default {
+                          @for (p of r.pullRequests; track p.number) {
+                            <li>
+                              <span
+                                class="cluster"
+                                style="gap: var(--space-1-5); display: inline-flex"
+                                ><span class="text-mono-xs text-muted">#{{ p.number }}</span></span
+                              >
+                              {{ p.title }}
+                            </li>
+                          }
+                        }
+                      }
+                    </ul>
+                  }
+                </li>
+              }
+            </ol>
+          </section>
+        </div>
+      } @else {
+        <div class="empty">
+          <svg hw-icon name="route"></svg>
+          <div>
+            <h2 class="empty__title">No requirements yet</h2>
+            <p class="empty__text">
+              Traceability links each L2 to its designs, journeys, acceptance tests and pull
+              requests. It fills in once stage 5 writes docs/specs/.
+            </p>
+          </div>
+          <a class="btn" [routerLink]="['/projects', projectId()]">Open the pipeline</a>
+        </div>
+      }
+    </div>
+  }
+}

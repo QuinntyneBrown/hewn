@@ -60,6 +60,12 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/project/project.page').then((m) => m.ProjectPage),
       },
       {
+        path: 'projects/:projectId/traceability',
+        title: 'Traceability · Hewn',
+        data: { section: 'traceability' },
+        loadComponent: () => import('./pages/project/project.page').then((m) => m.ProjectPage),
+      },
+      {
         path: 'projects/:projectId/increments/:number',
         title: 'Increment · Hewn',
         loadComponent: () =>
