@@ -63,6 +63,17 @@ export class WorkersPage {
     return this.rows.filter({ hasText: name });
   }
 
+  /** Where a worker runs (Local or Cloud), its status, what it works on and when it was last heard from. */
+  details(name: string): { location: Locator; status: Locator; workingOn: Locator; seen: Locator } {
+    const row = this.row(name);
+    return {
+      location: row.locator('.cluster.text-muted'),
+      status: row.locator('.lg-only .status'),
+      workingOn: row.locator('.row__span'),
+      seen: row.locator('.lg-row-end'),
+    };
+  }
+
   async stopDialogSettled(): Promise<void> {
     await this.stopDialog
       .locator('.dialog__panel')

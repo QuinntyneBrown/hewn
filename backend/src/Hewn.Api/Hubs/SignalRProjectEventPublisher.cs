@@ -18,6 +18,12 @@ public sealed class SignalRProjectEventPublisher(IHubContext<MissionControlHub> 
                 .SendAsync("ProjectEvent", GetProjectEventsHandler.ToDto(stored), cancellationToken);
         }
 
+        // A stage starting, finishing or stopping changes what a worker is doing: the Workers view reads the list again.
+        if (events.Any(e => e.Type == Hewn.Application.Pipeline.PipelineOrchestrator.StageChanged))
+        {
+            await hub.Clients.Group(MissionControlHub.WorkersGroup).SendAsync("WorkersChanged", cancellationToken);
+        }
+
         // The Projects page gets each changed project's row, read after the events were stored (L2-002 AC4, ADR 0016).
         var changed = events.Where(e => !RowNeutral.Contains(e.Type)).Select(e => e.ProjectId).Distinct().ToList();
         if (changed.Count == 0)

@@ -21,6 +21,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApplicationExceptionHandler>();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IProjectEventPublisher, SignalRProjectEventPublisher>();
+builder.Services.AddSingleton<IWorkersNotifier, SignalRWorkersNotifier>();
 if (builder.Configuration.GetValue("Hewn:Leases:ReaperEnabled", true))
 {
     builder.Services.AddHostedService<LeaseReaper>();

@@ -23,13 +23,14 @@ public sealed class RegisterWorkerValidator : AbstractValidator<RegisterWorkerCo
     }
 }
 
-public sealed class RegisterWorkerHandler(IAppDbContext db, TimeProvider clock) : IRequestHandler<RegisterWorkerCommand, string>
+public sealed class RegisterWorkerHandler(IAppDbContext db, IWorkersNotifier workers, TimeProvider clock) : IRequestHandler<RegisterWorkerCommand, string>
 {
     public async Task<string> Handle(RegisterWorkerCommand command, CancellationToken cancellationToken)
     {
         var worker = new Worker(command.Name, Enum.Parse<WorkerLocation>(command.Location, ignoreCase: true), command.Host, command.Version, clock.GetUtcNow());
         db.Workers.Add(worker);
         await db.SaveChangesAsync(cancellationToken);
+        await workers.WorkersChangedAsync(cancellationToken);
         return worker.Id;
     }
 }

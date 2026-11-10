@@ -29,6 +29,10 @@ export interface WorkerOptions {
   blockIncrement?: string;
   /** How long the scripted agent takes over each stage 10 session, so increments can be watched. */
   incrementMs?: number;
+  /** Where the workers say they run; the same worker, configured differently (L2-027). Local by default. */
+  location?: 'Local' | 'Cloud';
+  /** Worker names are `{namePrefix}-1`, `-2`…; `e2e-worker` by default. */
+  namePrefix?: string;
 }
 
 export function startWorkers(count: number, stepMs: number, options: WorkerOptions = {}): () => Promise<void> {
@@ -45,8 +49,8 @@ export function startWorkers(count: number, stepMs: number, options: WorkerOptio
         ...process.env,
         HEWN_API_URL: 'http://localhost:5300',
         HEWN_WORKER_TOKEN: E2E_WORKER_TOKEN,
-        HEWN_LOCATION: 'Local',
-        HEWN_WORKER_NAME: `e2e-worker-${i + 1}`,
+        HEWN_LOCATION: options.location ?? 'Local',
+        HEWN_WORKER_NAME: `${options.namePrefix ?? 'e2e-worker'}-${i + 1}`,
         HEWN_EXECUTOR: options.executor ?? 'stages',
         HEWN_SCRIPTED_STEP_MS: String(stepMs),
         HEWN_SCRIPTED_LOG_LINES: String(options.logLines ?? 0),
