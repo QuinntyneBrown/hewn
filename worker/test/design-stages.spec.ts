@@ -173,6 +173,7 @@ describe('stage 3, Design system', () => {
     const files = [...commits[0]!.keys()];
     expect(files).toContain('docs/design-system/tokens.json');
     expect(files.some((f) => f.startsWith('docs/design-system/components/'))).toBe(true);
+    expect(files.filter((f) => f.startsWith('docs/design-system/foundations/'))).toHaveLength(6);
     expect(files.every((f) => f.startsWith('docs/design-system/') || f === 'docs/decisions.md')).toBe(true);
     expect(logs.filter((l) => l.startsWith('Magic Patterns '))).toEqual([]);
   }, 30_000);
