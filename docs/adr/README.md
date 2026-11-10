@@ -26,3 +26,4 @@ Read the ADRs that cover an area before changing it. New ADRs take the next numb
 | [0020](0020-decisions-are-listed-from-hewns-record.md) | Decisions are listed from Hewn's record, with the commit that wrote them | Accepted |
 | [0021](0021-increment-videos-are-served-through-the-api.md) | Increment videos are served through the Hewn API from the commit that recorded them | Accepted |
 | [0022](0022-the-api-serves-mission-control-and-ends-sessions-by-id.md) | The API serves Mission Control with its protections, and ends sessions by id | Accepted |
+| [0023](0023-allow-list-changes-apply-on-the-next-request.md) | Allow-list changes apply on the next request, and new logins are confirmed with GitHub | Accepted |
