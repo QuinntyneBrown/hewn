@@ -2,7 +2,7 @@
  * Increment 7 of docs/mocks/pages/increment/, "Reconcile a card statement", as GET /api/projects/{id}/increments/7
  * would return it in each of the mock's states. Times carry no zone, so they show as the mock's clock times.
  */
-export type IncrementMockState = 'default' | 'implementing' | 'merged' | 'blocked' | 'green-first';
+export type IncrementMockState = 'default' | 'implementing' | 'merged' | 'blocked' | 'green-first' | 'video-failed';
 
 const pullRequest = (state: 'open' | 'merged') => ({
   number: 28,
@@ -58,6 +58,9 @@ export function mockIncrement(state: IncrementMockState = 'default') {
     video: 'Recorded',
     videoNote: '2:14, captioned',
     videoAt: '2026-11-07T14:36:00',
+    // Served by serveVideo from e2e/fixtures/walkthrough.mp4 and .vtt.
+    videoUrl: '/api/projects/mock/increments/7/video' as string | null,
+    captionsUrl: '/api/projects/mock/increments/7/video/captions' as string | null,
     failingTests: [] as string[],
     movedOnTo: null as number | null,
     pullRequestOpenedAt: '2026-11-07T14:37:00',
@@ -82,6 +85,8 @@ export function mockIncrement(state: IncrementMockState = 'default') {
         video: null,
         videoNote: null,
         videoAt: null,
+        videoUrl: null,
+        captionsUrl: null,
         pullRequestOpenedAt: null,
         pullRequest: null,
         checks: [],
@@ -96,12 +101,22 @@ export function mockIncrement(state: IncrementMockState = 'default') {
         video: null,
         videoNote: null,
         videoAt: null,
+        videoUrl: null,
+        captionsUrl: null,
         failingTests: ['matches-across-midnight'],
         movedOnTo: 8,
         finishedAt: '2026-11-07T15:48:00',
         pullRequestOpenedAt: null,
         pullRequest: null,
         checks: [],
+      };
+    case 'video-failed':
+      return {
+        ...base,
+        video: 'Failed',
+        videoNote: 'browser crashed during capture',
+        videoUrl: null,
+        captionsUrl: null,
       };
     case 'merged':
       return {

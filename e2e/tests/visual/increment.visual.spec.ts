@@ -1,6 +1,6 @@
 // Acceptance Test
-// Traces to: L2-021, L2-022, L2-024, L2-025
-// Description: The increment page matches docs/mocks region by region: the timeline in each of the mock's states, and the pull request card while open and once squash-merged, fed the mock's own increment
+// Traces to: L2-021, L2-022, L2-023, L2-024, L2-025
+// Description: The increment page matches docs/mocks region by region: the timeline in each of the mock's states, the pull request card while open and once squash-merged, and the video area when the video failed or isn't recorded yet, fed the mock's own increment
 
 import type { Page } from '@playwright/test';
 import { expect, signIn, test, uniqueName } from '../../fixtures/test';
@@ -69,5 +69,20 @@ for (const state of ['default', 'merged'] as IncrementMockState[]) {
       await mockRegion(page, `pages/increment/${state}.html`, '.rail .card--link', { snap: true }),
     );
     expect(diff.ratio, `.card--link differs from ${state}.html`).toBeLessThan(tolerance);
+  });
+}
+
+for (const state of ['implementing', 'blocked', 'video-failed'] as IncrementMockState[]) {
+  test(`${state}: the video area matches the mock`, async ({ page, increment }) => {
+    const id = await aProject(page);
+    await serveIncrement(page, mockIncrement(state));
+    await increment.open(id, 7);
+    await expect(increment.videoPlaceholder).toBeVisible();
+
+    const diff = compare(
+      await region(increment.videoPlaceholder, { snap: true }),
+      await mockRegion(page, `pages/increment/${state}.html`, '.video--placeholder', { snap: true }),
+    );
+    expect(diff.ratio, `.video--placeholder differs from ${state}.html`).toBeLessThan(tolerance);
   });
 }

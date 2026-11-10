@@ -33,6 +33,17 @@ export class IncrementPage {
   readonly tryAgain: Locator;
   readonly backToBacklog: Locator;
   readonly loading: Locator;
+  readonly videoArea: Locator;
+  readonly player: Locator;
+  readonly video: Locator;
+  readonly caption: Locator;
+  readonly play: Locator;
+  readonly pause: Locator;
+  readonly position: Locator;
+  readonly seek: Locator;
+  readonly captions: Locator;
+  readonly videoFooter: Locator;
+  readonly videoPlaceholder: Locator;
 
   private readonly page: Page;
 
@@ -54,6 +65,22 @@ export class IncrementPage {
     this.tryAgain = this.failure.getByRole('button', { name: 'Try again' });
     this.backToBacklog = page.getByRole('link', { name: 'Back to backlog' });
     this.loading = page.getByText(/^Loading increment \d+$/);
+    this.videoArea = page.getByRole('region', { name: 'Increment video' });
+    this.player = this.videoArea.locator('.video').first();
+    this.video = this.videoArea.locator('video');
+    this.caption = this.videoArea.locator('.video__caption');
+    this.play = this.videoArea.getByRole('button', { name: 'Play' });
+    this.pause = this.videoArea.getByRole('button', { name: 'Pause' });
+    this.position = this.videoArea.locator('.video__controls .tabular');
+    this.seek = this.videoArea.getByRole('slider', { name: 'Seek' });
+    this.captions = this.videoArea.getByRole('button', { name: /^Captions (on|off)$/ });
+    this.videoFooter = this.videoArea.locator('.video + .cluster');
+    this.videoPlaceholder = this.videoArea.locator('.video--placeholder');
+  }
+
+  /** How far the video has played, in seconds. */
+  currentTime(): Promise<number> {
+    return this.video.evaluate((v: HTMLVideoElement) => v.currentTime);
   }
 
   async open(projectId: string, number: number): Promise<void> {

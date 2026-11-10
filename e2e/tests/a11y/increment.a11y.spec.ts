@@ -1,11 +1,11 @@
 // Acceptance Test
-// Traces to: L2-021, L2-022, L2-024, L2-047
-// Description: The increment page has no axe-core violations while implementing, with the pull request and its checks, merged, blocked, and when GitHub can't be read
+// Traces to: L2-021, L2-022, L2-023, L2-024, L2-047
+// Description: The increment page has no axe-core violations while implementing, with the pull request and its checks and the walkthrough playing, merged, blocked, when the video failed, and when GitHub can't be read
 
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { expect, signIn, test, uniqueName } from '../../fixtures/test';
-import { serveIncrement } from '../../support/increment';
+import { serveIncrement, serveVideo } from '../../support/increment';
 import { mockIncrement } from '../../support/mock-increment';
 import { xsrfToken } from '../../support/queue';
 import { cancelDirections } from '../../support/rate-limit';
@@ -49,15 +49,29 @@ test.describe('Increment, accessibility', () => {
     ['pull request with checks', mockIncrement('default'), 200],
     ['merged', mockIncrement('merged'), 200],
     ['blocked', mockIncrement('blocked'), 200],
+    ['video failed', mockIncrement('video-failed'), 200],
     ['error', { title: 'GitHub rate limit', status: 502, code: 'github_failed' }, 502],
   ] as const) {
     test(name, async ({ page, increment }) => {
       await signIn(page, 'quinntynebrown');
       const id = await aProject(page);
       await serveIncrement(page, body, status);
+      await serveVideo(page);
       await increment.open(id, 7);
       await expect(status === 502 ? increment.failure : increment.timeline).toBeVisible();
       expect(await violations(page)).toEqual([]);
     });
   }
+
+  test('the walkthrough playing, with a caption over it', async ({ page, increment }) => {
+    await signIn(page, 'quinntynebrown');
+    const id = await aProject(page);
+    await serveIncrement(page, mockIncrement('default'));
+    await serveVideo(page);
+    await increment.open(id, 7);
+    await increment.play.click();
+    await expect(increment.caption).toBeVisible();
+    await increment.pause.click();
+    expect(await violations(page)).toEqual([]);
+  });
 });
