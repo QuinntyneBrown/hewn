@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Review the audit log (journey 32, L2-044): sign-ins, direction submissions, pause, resume, cancel, stop all, start
+  workers, worker token creation and revocation, and merges each record who, what, when, the target and the IP.
+  Owners open Audit to see entries newest first and filter them by project and action; Viewers see the forbidden
+  state. `GET /api/audit` is the only audit endpoint, and the database refuses to update or delete an entry.
 - Delete a project (journey 31, L2-003 AC2, AC3): an Owner chooses Delete on a project's row, types its name exactly
   and confirms. Hewn removes its directions, runs, events, logs, decisions, spend history, increments and skills
   updates, and leaves the GitHub repository untouched, as the dialog says. Delete is disabled with "Cancel the

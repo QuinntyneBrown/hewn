@@ -20,20 +20,28 @@ box "Frontend — Mission Control application" #E0F2FE
   participant "AuditPage" as page
 end box
 box "Backend — Hewn API application" #D1FADF
-  participant "DirectionControlsController" as dc
+  participant "ProjectsController" as dc
   participant "AuditController" as ctrl
 end box
 box "Backend — Hewn Application and Domain" #ECFDF3
+  participant "PauseDirectionHandler" as pause
   participant "AuditWriter" as writer
 end box
 box "Backend — Hewn Infrastructure" #FFF4E5
   database "Hewn database" as db
 end box
-owner -> dc : POST /api/directions/{id}/pause
-dc -> writer : WriteAsync(Pause, quinn, ledgerline, "Paused direction 3")
-writer -> db : INSERT with time and IP in same transaction (L2-044 AC1)
-owner -> page : Open Audit; filter Ledgerline, Pause
-page -> ctrl : GET /api/audit?project=ledgerline&action=Pause
-ctrl -> db : SELECT ... ORDER BY at DESC
-ctrl --> page : Entries newest first (L2-044 AC2)
+owner -> dc : POST /api/projects/{id}/directions/{d}/pause
+dc -> pause : PauseDirectionCommand
+pause -> writer : Record(Pause, login, project)
+note right of writer : Adds the entry to the change:\nwhen, who, what, project and its name,\ntarget, IP after X-Forwarded-For from a loopback proxy
+pause -> db : SaveChanges: the pause and its entry together (L2-044 AC1)
+note right of db : Triggers refuse UPDATE and DELETE\non audit_entries; no API edits an entry
+owner -> page : Open Audit; choose Ledgerline and Pause
+page -> ctrl : GET /api/audit?project={id}&action=Pause
+ctrl -> db : SELECT ... ORDER BY Id DESC LIMIT 101
+ctrl --> page : Entries newest first, the projects the log names,\nnext (L2-044 AC2)
+alt Viewer
+  page --> page : Forbidden state, without asking:\n"You don't have access"
+  note right of ctrl : GET /api/audit answers a Viewer 403
+end
 @enduml
