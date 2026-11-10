@@ -55,3 +55,6 @@ light or dark (AC3). The design named a preview host and a short-lived signed UR
   until it is reloaded.
 - Production must give the preview origin its own host name, never a path on Mission Control's.
 - A thumbnail costs a request and a render per state. The frames load lazily, and files come from the cache.
+- A mock that themes only by `prefers-color-scheme` follows the viewer's system, not the Theme control. Chromium
+  doesn't carry an iframe's `color-scheme` into a cross-origin page, so `data-theme` is the contract. Hewn's mocks
+  and the fake Magic Patterns exports both honour it.
