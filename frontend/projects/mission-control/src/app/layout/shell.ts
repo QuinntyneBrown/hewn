@@ -46,6 +46,7 @@ export class ShellComponent {
   private readonly dialog = inject(Dialog);
   private readonly toasts = inject(Toasts);
   protected readonly starting = signal(false);
+  protected readonly signingOut = signal(false);
 
   constructor() {
     // The leasing switch is global: refresh it on every navigation and every few seconds.
@@ -65,6 +66,22 @@ export class ShellComponent {
   }
 
   /** L2-029 AC4: confirm, then every worker halts its active run within 10 seconds. */
+  /** Ends the session and reloads at sign-in, so nothing from it stays in memory (L2-038 AC3). */
+  protected signOut(): void {
+    this.signingOut.set(true);
+    this.session.signOut().then(
+      () => location.assign('/sign-in?reason=signed-out'),
+      () => {
+        this.signingOut.set(false);
+        this.toasts.show({
+          tone: 'warn',
+          title: 'You weren’t signed out',
+          text: 'Nothing changed; try again.',
+        });
+      },
+    );
+  }
+
   protected openStopWorkers(): void {
     // Loaded on demand, so the dialog stays out of the initial bundle.
     void Promise.all([this.workers.refresh(), import('../pages/workers/stop-workers.dialog')]).then(

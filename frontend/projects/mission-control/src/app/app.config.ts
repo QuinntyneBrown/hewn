@@ -1,4 +1,4 @@
-import { provideHttpClient, withXsrfConfiguration } from '@angular/common/http';
+import { provideHttpClient, withInterceptors, withXsrfConfiguration } from '@angular/common/http';
 import {
   ApplicationConfig,
   inject,
@@ -20,6 +20,7 @@ import {
 } from '@hewn/api';
 import { routes } from './app.routes';
 import { ProjectsPrefetch } from './core/projects-prefetch';
+import { sessionExpiryInterceptor } from './core/session-expiry';
 import { SessionStore } from './core/session-store';
 
 /** Composition root: every API contract is bound to its implementation here. */
@@ -29,6 +30,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(
       withXsrfConfiguration({ cookieName: 'XSRF-TOKEN', headerName: 'X-XSRF-TOKEN' }),
+      withInterceptors([sessionExpiryInterceptor]),
     ),
     { provide: PROJECTS_API, useClass: HttpProjectsApi },
     { provide: SESSION_API, useClass: HttpSessionApi },
