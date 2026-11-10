@@ -125,7 +125,8 @@
                                 style="gap: var(--space-1-5); display: inline-flex"
                                 ><span class="text-mono-xs text-muted">#{{ p.number }}</span></span
                               >
-                              {{ p.title }}
+                              <!-- One space, then the title, as the mock's text reads; no trailing space. -->
+                              <span>{{ ' ' + p.title }}</span>
                             </li>
                           }
                         }
