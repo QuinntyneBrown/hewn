@@ -26,21 +26,40 @@ class CopyReport {
 class BootstrapStageExecutor <<worker>> {
   +ExecuteAsync(ctx: StageContext): Task<StageResult>
 }
-class UpdateSkillsExecutor <<worker>> {
-  +ExecuteAsync(ctx: RunContext): Task<StageResult>
+class SkillsUpdate {
+  +Guid ProjectId
+  +string FromSha
+  +string ToSha
+  +string Branch
+  +int PullRequestNumber
+  +SkillsUpdateStatus Status
+  +Merged(now)
+  +ChecksFailed(checks, now)
 }
-class SkillsUpdateChecker {
-  +GetAsync(p: ProjectId): Task<SkillsUpdateStatus>
+enum SkillsUpdateStatus {
+  Open
+  Merged
+  ChecksFailed
 }
-class SkillsUpdateStatus {
-  +int CommitsAhead
-  +string[] Messages
+interface ISkillsSource {
+  +HeadAsync(): Task<string>
+  +CommitsSinceAsync(sha): Task<SkillsCommit[]>
+  +SkillFilesAsync(sha): Task<RepositoryFile[]>
+}
+class GitSkillsSource
+class UpdateSkillsHandler {
+  +Handle(UpdateSkillsCommand): Task<UpdateSkillsResult>
+}
+class SkillsUpdateMerger {
+  +SweepAsync(): Task<int>
 }
 BootstrapStageExecutor ..> SkillCopier
 BootstrapStageExecutor ..> SkillsLock : writes
-UpdateSkillsExecutor ..> SkillCopier
-UpdateSkillsExecutor ..> SkillsLock : rewrites
 SkillCopier ..> CopyReport
-SkillsUpdateChecker ..> SkillsLock : reads SHA
-SkillsUpdateChecker ..> SkillsUpdateStatus
+GitSkillsSource ..|> ISkillsSource
+UpdateSkillsHandler ..> ISkillsSource
+UpdateSkillsHandler ..> SkillsLock : reads, rewrites
+UpdateSkillsHandler ..> SkillsUpdate : records
+SkillsUpdateMerger ..> SkillsUpdate : merges
+SkillsUpdate ..> SkillsUpdateStatus
 @enduml
