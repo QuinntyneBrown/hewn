@@ -14,14 +14,13 @@ Terms used in this design:
 
 ## Description
 
-The slice is two read models fed by stage events and repository indexing.
+The slice is two read models, both built on request: artifacts from the broker's commit records, traces from the repository at its head.
 
 - **`CommitFilesHandler`** — the GitHub broker that commits a stage's files. It records each commit's SHA, paths and branch in `github_mutations` against the run. No separate artifacts table is kept: once the run succeeds, that commit is the version of the files it holds (L2-034 AC1).
 - **`GetArtifactsHandler`** — `GET /api/projects/{id}/artifacts` reads the commits that succeeded runs made to the default branch and returns each stage's artifacts, newest stage first. Each path's version is the latest such commit. A failed run's commits are ignored, so a retry's commit becomes the version. Commits to `hewn/scaffold` or `feature/*` branches are not listed. The decision log every stage appends to (`docs/decisions.md`) has its own tab, so it is left out. Files in a subfolder of the stage's output folder (`CommitPolicy`) fold into that subfolder, such as `docs/mocks/statements/`, and link as a tree.
 - **`ArtifactsComponent (Angular)`** — `hw-artifacts` on the Artifacts tab (`/projects/{id}/artifacts`). It groups artifacts by stage, newest stage first, and each row shows the path, short SHA and time, and links to `https://github.com/{repo}/blob/{sha}/{path}` (`tree` for a folder). It reads the artifacts again on each `StageChanged` event and has loading, empty and error states.
-- **`TraceIndexer`** — after stages 5, 7, 8 and each increment merge, parses `docs/specs/`, `docs/detailed-designs/*/README.md`, `docs/journeys.md`, test file headers and merged PR titles at the new SHA, and rebuilds the `trace_links` table for the project.
-- **`TraceabilityController`** — `GET /api/projects/{id}/trace?l2=` returns the L2 list and the trace for one ID, including `Deferred` and `NoAcceptanceTest` flags.
-- **`TraceabilityPage (Angular)`** — searchable L2 list with markers for no test and Deferred, and the trace panel with five groups.
+- **`GetTraceabilityHandler`** — `GET /api/projects/{id}/traceability` reads the repository at its head on request ([ADR 0019](../../../adr/0019-traces-are-read-from-the-head-on-request.md)): one archive and one list of pull requests. It returns every L2 in `docs/specs/L2.md` with its L1, the design READMEs and journeys that name it, the test files whose `Traces to:` header names it, and the pull requests whose titles name it, plus `deferred` (the reason on its `**Status:** Deferred (…)` line) and `noAcceptanceTest`. An L2 heading that can't be parsed is a 502 naming the commit and line.
+- **`TraceabilityComponent (Angular)`** — `hw-traceability` on the Traceability tab (`/projects/{id}/traceability?l2=`). A searchable L2 list, with Deferred ones flagged, and the chosen L2's trace in four columns with counts. "No acceptance test" marks an L2 no test names unless it is Deferred. It reads the trace again on `StageChanged` and `IncrementChanged`, and has loading, empty, no-results and error states.
 
 ## Requirements
 
@@ -42,27 +41,27 @@ Users read artifacts and traces in Hewn; Hewn reads the underlying files from Gi
 
 ### Containers
 
-Workers commit through the Hewn API's GitHub broker, which records each commit's SHA. The Hewn API derives artifacts from those records and will index traces at that SHA.
+Workers commit through the Hewn API's GitHub broker, which records each commit's SHA. The Hewn API derives artifacts from those records, and reads traces from the repository at its head.
 
 ![C4 container view for artifacts and traceability](diagrams/c4-container.png)
 
 ### Components
 
-Indexing runs after the stages that change traced files, so the trace always reflects a real commit.
+Both read models are built on request, so they always reflect real commits; nothing is indexed.
 
 ![C4 component view for artifacts and traceability](diagrams/c4-component.png)
 
 ### Class structure
 
-A `Requirement` has `TraceLink`s of five kinds. `NoAcceptanceTest` is true when there is no `Test` link and the requirement is not `Deferred`.
+The two answers: stages of versioned artifacts, and requirements with their traces. `NoAcceptanceTest` is true when no test names the requirement and it is not `Deferred`.
 
 ![Class diagram for artifacts and traceability](diagrams/class-structure.png)
 
-### Behaviour — record artifacts and index traces
+### Behaviour — record artifacts
 
-The artifact version is the commit SHA the broker recorded for a run that succeeded (L2-034 AC1). Traces will be rebuilt at that SHA (L2-035).
+The artifact version is the commit SHA the broker recorded for a run that succeeded (L2-034 AC1).
 
-![Sequence diagram: record artifacts and index traces](diagrams/sequence-record-and-index.png)
+![Sequence diagram: record artifacts](diagrams/sequence-record-and-index.png)
 
 ### Behaviour — view artifacts
 
@@ -70,8 +69,8 @@ The handler keeps only succeeded runs' commits to the default branch, folds subf
 
 ![Sequence diagram: view artifacts](diagrams/sequence-view-artifacts.png)
 
-### Behaviour — view artifacts and a trace
+### Behaviour — view a trace
 
-Artifacts list path, short SHA, time and GitHub link per stage (L2-034 AC2). An L2's trace shows L1, designs, journeys, tests and PRs (L2-035 AC1), marked "No acceptance test" unless Deferred (AC2).
+The handler reads one archive at the head and lists pull requests, then matches each L2 ID whole. An L2's trace shows L1, designs, journeys, tests and PRs (L2-035 AC1), marked "No acceptance test" unless Deferred (AC2).
 
-![Sequence diagram: view artifacts and a trace](diagrams/sequence-view-trace.png)
+![Sequence diagram: view a trace](diagrams/sequence-view-trace.png)

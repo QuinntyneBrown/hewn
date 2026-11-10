@@ -22,3 +22,4 @@ Read the ADRs that cover an area before changing it. New ADRs take the next numb
 | [0016](0016-project-rows-are-read-on-request.md) | Project rows are read on request and pushed to a projects group | Accepted |
 | [0017](0017-checks-arrive-by-signed-webhook-or-a-poll-after-silence.md) | Checks arrive by signed webhook, the worker's reads, or a poll after 60 s of silence | Accepted |
 | [0018](0018-previews-are-served-from-a-signed-sandboxed-origin.md) | Previews are served from a separate origin, signed and sandboxed | Accepted |
+| [0019](0019-traces-are-read-from-the-head-on-request.md) | Traces are read from the repository's head on request | Accepted |

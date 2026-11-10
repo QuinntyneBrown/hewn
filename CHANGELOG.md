@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Trace a requirement (journey 17, L2-035): a project's Traceability tab (`/projects/{id}/traceability?l2=`) lists
+  its L2s with search and, for the chosen one, its L1, the designs and journeys that name it, the test files whose
+  `Traces to:` header names it and the pull requests whose titles name it, marked "No acceptance test" unless it is
+  Deferred. `GET /api/projects/{id}/traceability` reads the repository's archive at its head and its pull requests
+  on request (ADR 0019). `IGitHubRepositories.ListPullRequestsAsync` and a fake `POST /api/fakes/github/{owner}/{name}/pulls` are new.
 - Inspect versioned artifacts (journey 16, L2-034): a project's Artifacts tab (`/projects/{id}/artifacts`) lists each
   stage's artifacts, newest stage first, with path, version (short commit SHA), time and a link that opens the file
   (or folder) on GitHub at that commit. `GET /api/projects/{id}/artifacts` derives them from the commits succeeded
