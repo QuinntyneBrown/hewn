@@ -7,15 +7,7 @@
   </div>
 </div>
 <div class="pad" style="padding-bottom: var(--space-12)">
-  @if (!session.isOwner()) {
-    <div class="callout callout--info" role="status">
-      <svg hw-icon name="lock" class="icon--lg"></svg>
-      <div>
-        <p class="callout__title">Read-only for Viewers</p>
-        <p class="callout__body">Direction defaults are managed by an Owner.</p>
-      </div>
-    </div>
-  }
+  <hw-allow-list />
   <form
     class="settings-section"
     aria-labelledby="s-defaults"
@@ -28,6 +20,15 @@
       <p>What every new direction starts with.</p>
     </div>
     <div class="settings-section__body stack" style="gap: var(--space-6)">
+      @if (!session.isOwner()) {
+        <div class="callout callout--info" role="status">
+          <svg hw-icon name="lock" class="icon--lg"></svg>
+          <div>
+            <p class="callout__title">Read-only for Viewers</p>
+            <p class="callout__body">Defaults and sign-in access are managed by an Owner.</p>
+          </div>
+        </div>
+      }
       <hw-error-summary [items]="summary()" purpose="before the defaults can be saved" />
       @if (saved(); as budget) {
         <div class="callout callout--ok" role="status">

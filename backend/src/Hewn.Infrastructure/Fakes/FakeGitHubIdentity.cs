@@ -17,6 +17,6 @@ public sealed class FakeGitHubIdentity : IGitHubIdentity
         : throw new GitHubException("GitHub refused the sign-in code (bad_verification_code)");
 
     public Task<string?> FindLoginAsync(string login, CancellationToken cancellationToken) =>
-        login == "rate-limited" ? throw new GitHubException("GitHub couldn't confirm the login exists (rate limited)")
+        login == "rate-limited" ? throw new GitHubException("GitHub couldn’t confirm the login exists (rate limited)")
         : Task.FromResult(login.StartsWith("missing-", StringComparison.Ordinal) ? null : login);
 }

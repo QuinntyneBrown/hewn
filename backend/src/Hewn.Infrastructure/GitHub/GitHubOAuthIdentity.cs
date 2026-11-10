@@ -87,18 +87,18 @@ public sealed class GitHubOAuthIdentity(HttpClient http, IOptions<GitHubOAuthOpt
             if (!answered.IsSuccessStatusCode)
             {
                 var why = (int)answered.StatusCode is 403 or 429 ? "rate limited" : $"HTTP {(int)answered.StatusCode}";
-                throw new GitHubException($"GitHub couldn't confirm the login exists ({why})");
+                throw new GitHubException($"GitHub couldn’t confirm the login exists ({why})");
             }
 
             return (await answered.Content.ReadFromJsonAsync<JsonElement>(timeout.Token)).GetProperty("login").GetString();
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new GitHubException("GitHub couldn't confirm the login exists (timed out)");
+            throw new GitHubException("GitHub couldn’t confirm the login exists (timed out)");
         }
         catch (Exception e) when (e is HttpRequestException or JsonException)
         {
-            throw new GitHubException("GitHub couldn't confirm the login exists");
+            throw new GitHubException("GitHub couldn’t confirm the login exists");
         }
     }
 }

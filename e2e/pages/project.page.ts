@@ -2,6 +2,7 @@ import type { Locator, Page } from '@playwright/test';
 
 /** Project page (/projects/{id}). */
 export class ProjectPage {
+  readonly notFound: Locator;
   readonly heading: Locator;
   readonly pipeline: Locator;
   readonly projectStatus: Locator;
@@ -66,6 +67,7 @@ export class ProjectPage {
 
   constructor(page: Page) {
     this.page = page;
+    this.notFound = page.getByRole('heading', { level: 1, name: 'Project not found' });
     this.heading = page.getByRole('heading', { level: 1 });
     this.pipeline = page.getByRole('list', { name: 'Pipeline' });
     this.projectStatus = page.locator('.phead .status');

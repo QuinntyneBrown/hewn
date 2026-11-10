@@ -7,6 +7,8 @@ import {
 } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import {
+  ALLOW_LIST_API,
+  HttpAllowListApi,
   HttpProjectsApi,
   HttpSessionApi,
   HttpSettingsApi,
@@ -32,6 +34,7 @@ export const appConfig: ApplicationConfig = {
       withXsrfConfiguration({ cookieName: 'XSRF-TOKEN', headerName: 'X-XSRF-TOKEN' }),
       withInterceptors([sessionExpiryInterceptor]),
     ),
+    { provide: ALLOW_LIST_API, useClass: HttpAllowListApi },
     { provide: PROJECTS_API, useClass: HttpProjectsApi },
     { provide: SESSION_API, useClass: HttpSessionApi },
     { provide: SETTINGS_API, useClass: HttpSettingsApi },
