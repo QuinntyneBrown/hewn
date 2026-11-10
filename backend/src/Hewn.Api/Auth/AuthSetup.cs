@@ -22,6 +22,7 @@ public static class AuthSetup
                 o.ExpireTimeSpan = TimeSpan.FromHours(8);
                 o.SlidingExpiration = false;
                 o.LoginPath = "/sign-in";
+                o.ReturnUrlParameter = "returnUrl";
                 o.Events.OnRedirectToLogin = ctx => Challenge(ctx, StatusCodes.Status401Unauthorized);
                 o.Events.OnRedirectToAccessDenied = ctx => Challenge(ctx, StatusCodes.Status403Forbidden);
                 o.Events.OnValidatePrincipal = RefuseSignedOutSessions;

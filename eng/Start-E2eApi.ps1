@@ -20,6 +20,10 @@ $env:HEWN_ALLOWED_GITHUB_USERS = 'quinntynebrown:Owner,ada:Viewer,grace:Owner'
 $env:HEWN_GITHUB_OWNER = 'hewn-builds'
 $env:HEWN_DEFAULT_BUDGET_USD = '300'
 $env:HEWN_WORKER_TOKEN = 'e2e-worker-token-not-a-secret'
+# GitHub sign-in through the fake GitHub's authorize page, coming back to Mission Control on 4300 (L2-038 AC2).
+$env:HEWN_GITHUB_CLIENT_ID = 'e2e-client-id'
+$env:Hewn__GitHub__OAuth__AuthorizeUrl = '/api/fakes/github/login/oauth/authorize'
+if (-not $env:Hewn__Auth__PublicOrigin) { $env:Hewn__Auth__PublicOrigin = 'http://localhost:4300' }
 # Project HTML previews from another host than Mission Control's localhost (L2-011 AC2).
 $env:Hewn__Preview__Origin = "http://127.0.0.1:$Port"
 # Signs the webhooks e2e tests send as GitHub would (L2-037 AC2).

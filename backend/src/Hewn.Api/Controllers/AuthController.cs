@@ -60,10 +60,15 @@ public sealed class AuthController(IMediator mediator, IConfiguration configurat
     /// </summary>
     [AllowAnonymous]
     [HttpGet("auth/github/callback")]
-    public async Task<IActionResult> GitHubCallback(string? code, string? state, CancellationToken cancellationToken)
+    public async Task<IActionResult> GitHubCallback(string? code, string? state, string? error, CancellationToken cancellationToken)
     {
         var started = ReadState();
         Response.Cookies.Delete(StateCookie, new CookieOptions { Path = StatePath, Secure = true, SameSite = SameSiteMode.Lax });
+        if (error == "access_denied")
+        {
+            // The user cancelled on GitHub: back to sign-in, nothing to explain.
+            return Redirect("/sign-in");
+        }
         if (started is null || state is null || string.IsNullOrEmpty(code)
             || !CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(started.Value.State), Encoding.UTF8.GetBytes(state)))
         {
@@ -89,7 +94,9 @@ public sealed class AuthController(IMediator mediator, IConfiguration configurat
         return Redirect(started.Value.ReturnUrl);
     }
 
-    private string CallbackUrl => $"{Request.Scheme}://{Request.Host}{StatePath}/callback";
+    /// <summary>Where GitHub sends the user back: Mission Control's origin (Hewn:Auth:PublicOrigin), else this request's.</summary>
+    private string CallbackUrl =>
+        $"{(configuration["Hewn:Auth:PublicOrigin"] is { Length: > 0 } origin ? origin.TrimEnd('/') : $"{Request.Scheme}://{Request.Host}")}{StatePath}/callback";
 
     private (string State, string ReturnUrl)? ReadState()
     {

@@ -120,6 +120,21 @@ public sealed class SignInWithGitHubTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Cancelling_on_GitHub_returns_to_sign_in_without_an_error()
+    {
+        var browser = Browser();
+        var (authorize, stateCookie) = await StartAsync(browser);
+        var state = HttpUtility.ParseQueryString(authorize.Query)["state"]!;
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/auth/github/callback?error=access_denied&state={Uri.EscapeDataString(state)}");
+        request.Headers.Add("Cookie", stateCookie);
+
+        var response = await browser.SendAsync(request);
+
+        Assert.Equal("/sign-in", response.Headers.Location!.OriginalString);
+        Assert.Equal("", Cookie(response, "hewn.session"));
+    }
+
+    [Fact]
     public async Task A_session_ends_after_8_hours()
     {
         var browser = Browser();

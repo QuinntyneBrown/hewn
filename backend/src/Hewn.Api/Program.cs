@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Hewn.Api.Auth;
 using Hewn.Api.Designs;
 using Hewn.Api.Errors;
+using Hewn.Api.MissionControl;
 using Hewn.Api.Hubs;
 using Hewn.Api.Pipeline;
 using Hewn.Application;
@@ -36,14 +37,17 @@ builder.Services
 
 var app = builder.Build();
 
+app.UseSecurityHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseMissionControlFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<MissionControlHub>(MissionControlHub.Path);
 app.MapPreview();
 app.MapGet("/health/live", () => Results.Ok(new { status = "Healthy" })).AllowAnonymous();
+app.MapMissionControl();
 
 if (app.Configuration.GetValue<bool>("Hewn:Fakes:Enabled"))
 {
@@ -87,6 +91,40 @@ if (app.Configuration.GetValue<bool>("Hewn:Fakes:Enabled"))
         Results.Ok(new { Number = gitHub.AddPullRequest(owner, name, request.Title, request.Merged, request.Head) }));
 
     // How long each check takes in the fake CI, so a test or a video can watch checks turn green (0: at once).
+    // GitHub's authorize page for sign-in (L2-038): choose a login, or cancel, and come back as GitHub would.
+    app.MapGet("/api/fakes/github/login/oauth/authorize", (string? redirect_uri, string? state) =>
+    {
+        static string Attr(string? value) => System.Net.WebUtility.HtmlEncode(value ?? "");
+        return Results.Content($$"""
+            <!doctype html><html lang="en"><head><meta charset="utf-8"><title>Sign in to GitHub · e2e fake</title>
+            <style>body{font:16px/1.5 system-ui,sans-serif;margin:0;display:grid;place-items:center;min-height:100vh;background:#f6f8fa;color:#1f2328}
+            main{background:#fff;border:1px solid #d1d9e0;border-radius:6px;padding:24px 32px;width:340px}h1{font-size:20px;margin:0 0 4px}
+            p{margin:0 0 16px;color:#59636e;font-size:14px}label{display:block;font-size:14px;font-weight:600;margin-bottom:6px}
+            input{box-sizing:border-box;width:100%;padding:6px 8px;font:inherit;border:1px solid #d1d9e0;border-radius:6px;margin-bottom:16px}
+            button,a{display:block;box-sizing:border-box;width:100%;padding:6px;border-radius:6px;font:inherit;font-weight:600;text-align:center;text-decoration:none}
+            button{background:#1f883d;color:#fff;border:0;margin-bottom:8px}a{border:1px solid #d1d9e0;color:#1f2328}</style></head>
+            <body><main><h1>Authorize Hewn</h1><p>e2e fake GitHub: sign in as any login.</p>
+            <form method="get" action="/api/fakes/github/login/oauth/approve">
+            <input type="hidden" name="redirect_uri" value="{{Attr(redirect_uri)}}"><input type="hidden" name="state" value="{{Attr(state)}}">
+            <label for="login">GitHub login</label><input id="login" name="login" autocomplete="off" required>
+            <button type="submit">Authorize</button></form>
+            <a href="/api/fakes/github/login/oauth/approve?cancel=true&amp;redirect_uri={{Uri.EscapeDataString(redirect_uri ?? "")}}&amp;state={{Uri.EscapeDataString(state ?? "")}}">Cancel</a>
+            </main></body></html>
+            """, "text/html");
+    }).AllowAnonymous();
+    app.MapGet("/api/fakes/github/login/oauth/approve", (string? login, string? redirect_uri, string? state, bool? cancel, IConfiguration configuration) =>
+    {
+        // Back to Mission Control's callback only, so the fake can't be used as an open redirect.
+        var callback = $"{configuration["Hewn:Auth:PublicOrigin"]?.TrimEnd('/')}/api/auth/github/callback";
+        if (redirect_uri != callback)
+        {
+            return Results.BadRequest();
+        }
+
+        var answer = cancel == true ? "error=access_denied" : $"code={Uri.EscapeDataString($"fake-{login?.Trim()}")}";
+        return Results.Redirect($"{redirect_uri}?{answer}&state={Uri.EscapeDataString(state ?? "")}");
+    }).AllowAnonymous();
+
     app.MapPut("/api/fakes/github/check-seconds", (CheckPace pace, Hewn.Infrastructure.Fakes.InMemoryGitHub gitHub) =>
     {
         gitHub.CheckSeconds = Math.Clamp(pace.Seconds, 0, 600);
