@@ -1,6 +1,6 @@
 // Acceptance Test
-// Traces to: L2-019, L2-022
-// Description: The scripted agent, the e2e stand-in for Claude, lists an idea's nice-to-haves in the brief so stage 9 defers them, and can leave one increment unbuilt so it blocks
+// Traces to: L2-019, L2-022, L2-023, L2-026
+// Description: The scripted agent, the e2e stand-in for Claude, lists an idea's nice-to-haves in the brief so stage 9 defers them, can leave one increment unbuilt so it blocks, and records an increment's video without blocking the worker, so heartbeats and Cancel or Halt still arrive while it encodes
 
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -89,5 +89,21 @@ describe('ScriptedStageAgent', () => {
     await agent.run(task(10, 'Studio time booking.', increment(1, 'Sign in')));
 
     expect(Date.now() - started).toBeGreaterThanOrEqual(290);
+  });
+
+  it("records the increment's video without blocking the worker", async () => {
+    const recording = new ScriptedStageAgent().run(
+      task(10, 'Studio time booking.', { ...increment(1, 'Sign in'), phase: 'video' }),
+    );
+
+    // A blocking encode finishes before anything else runs; this one lets the worker's timers run meanwhile.
+    const first = await Promise.race([
+      recording.then(() => 'video'),
+      new Promise((done) => setImmediate(() => done('worker'))),
+    ]);
+    await recording;
+
+    expect(first).toBe('worker');
+    expect(existsSync(join(directory, 'docs/videos/sign-in/sign-in.mp4'))).toBe(true);
   });
 });

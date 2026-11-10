@@ -5,7 +5,10 @@ import { appendDecision, UI_CHANGE_QUESTION } from './decision-log.ts';
 import { colorsIn } from '../validators/colors.ts';
 import { designFolders, readEstimateRows } from '../estimates/backlog-planner.ts';
 import { scriptedImplementation } from '../increments/scripted-gate.ts';
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
 
 /**
  * A deterministic stand-in for the model, used by tests and the e2e stack. It writes documents that pass each
@@ -28,7 +31,7 @@ export class ScriptedStageAgent implements StageAgent {
     this.options = options;
   }
 
-  async run(task: StageAgentTask): Promise<void> {
+  async run(task: StageAgentTask, signal?: AbortSignal): Promise<void> {
     const { run, directory } = task;
     const write = (path: string, content: string) => {
       mkdirSync(dirname(join(directory, path)), { recursive: true });
@@ -293,7 +296,7 @@ export class ScriptedStageAgent implements StageAgent {
             }
             return;
           case 'video':
-            recordStillVideo(directory, increment.slug, increment.title);
+            await recordStillVideo(directory, increment.slug, increment.title, signal);
             return;
           case 'resolve':
             // The branch's version already holds both sides' intent in the scripted repository.
@@ -369,14 +372,18 @@ function camel(slug: string): string {
   return slug.replace(/-([a-z0-9])/g, (_m, c: string) => c.toUpperCase()).replace(/^[0-9]/, (d) => `n${d}`);
 }
 
-/** A 3-second 1080p title card with captions, standing in for a walkthrough; ffmpeg must be installed. */
-function recordStillVideo(directory: string, slug: string, title: string): void {
+/**
+ * A 3-second 1080p title card with captions, standing in for a walkthrough; ffmpeg must be installed. It encodes in a
+ * child process the worker awaits, never blocking it, so heartbeats and Cancel or Halt still arrive (L2-026); one frame
+ * a second keeps it quick.
+ */
+async function recordStillVideo(directory: string, slug: string, title: string, signal?: AbortSignal): Promise<void> {
   const folder = join(directory, 'docs/videos', slug);
   mkdirSync(folder, { recursive: true });
   writeFileSync(join(folder, 'script.md'), `# ${title}\n\nThe journey, step by step, in the running app.\n`);
   writeFileSync(join(folder, `${slug}.vtt`), `WEBVTT\n\n00:00.000 --> 00:03.000\n${title}\n`);
   try {
-    execFileSync(
+    await execFileAsync(
       'ffmpeg',
       [
         '-y',
@@ -385,14 +392,15 @@ function recordStillVideo(directory: string, slug: string, title: string): void 
         '-f',
         'lavfi',
         '-i',
-        'color=c=0xf5f3ef:s=1920x1080:d=3',
+        'color=c=0xf5f3ef:s=1920x1080:d=3:r=1',
         '-pix_fmt',
         'yuv420p',
         join(folder, `${slug}.mp4`),
       ],
-      { stdio: 'ignore' },
+      signal ? { signal } : {},
     );
   } catch (error) {
+    if (signal?.aborted) throw signal.reason;
     throw new Error(
       (error as NodeJS.ErrnoException).code === 'ENOENT'
         ? 'ffmpeg is not installed'
