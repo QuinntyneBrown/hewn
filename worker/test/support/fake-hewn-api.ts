@@ -54,6 +54,18 @@ export class FakeHewnApi implements HewnApi {
     this.answerHeld('Halt');
   }
 
+  /**
+   * Halts the runs whose control poll is held now without waking the poll yet, and refuses the next checkpoint as
+   * the API does for a halted run: the race where the refusal reaches the worker before the poll's answer.
+   */
+  haltBeforeThePollAnswers(): void {
+    for (const runId of this.held.keys()) this.controls.set(runId, 'Halt');
+    this.checkpointFaults.push('lost');
+  }
+
+  /** Faults for the next checkpoints: 'lost' refuses one as a lost lease. */
+  readonly checkpointFaults: 'lost'[] = [];
+
   private revoked = false;
 
   /**
@@ -186,6 +198,7 @@ export class FakeHewnApi implements HewnApi {
 
   async checkpoint(_workerId: string, run: LeasedRun, step: number): Promise<CheckpointVerdict> {
     this.record({ method: 'checkpoint', runId: run.runId, step });
+    if (this.checkpointFaults.shift() === 'lost') throw new LeaseLostError();
     return this.checkpointVerdicts.shift() ?? 'Continue';
   }
 

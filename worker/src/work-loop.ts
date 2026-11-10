@@ -203,6 +203,13 @@ export class WorkLoop {
       this.log('Run succeeded', { runId: run.runId, stage: run.stage });
     } catch (error) {
       if (error instanceof TokenRefusedError) this.refused = true;
+      if (error instanceof LeaseLostError && !lease.signal.aborted) {
+        // A write was refused: often a cancel or halt whose answer to the held poll hasn't arrived yet. Stop now,
+        // then ask once more so the API hears that this worker stopped.
+        lease.abort(error);
+        await this.confirmStop(workerId, run);
+        return;
+      }
       if (lease.signal.aborted || error instanceof LeaseLostError || error instanceof TokenRefusedError) return;
       this.log('Run failed', { runId: run.runId, stage: run.stage });
       await logs.close();
@@ -217,6 +224,19 @@ export class WorkLoop {
       stop.removeEventListener('abort', onStop);
       rmSync(workspace, { recursive: true, force: true });
       void isolated?.stop();
+    }
+  }
+
+  /** One unheld control poll after a refused write; Cancel or Halt there is acknowledged by the API as it answers. */
+  private async confirmStop(workerId: string, run: LeasedRun): Promise<void> {
+    try {
+      const control = await this.api.control(workerId, run, 0, AbortSignal.timeout(5_000));
+      if (control === 'Cancel') this.log('Cancelled; the run stops now', { runId: run.runId });
+      else if (control === 'Halt')
+        this.log('Halted: all workers stopped; the run waits at its checkpoint', { runId: run.runId });
+      else this.log('Lease lost', { runId: run.runId });
+    } catch {
+      this.log('Lease lost', { runId: run.runId });
     }
   }
 
