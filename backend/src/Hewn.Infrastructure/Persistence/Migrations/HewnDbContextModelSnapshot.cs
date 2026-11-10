@@ -657,6 +657,64 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.ToTable("run_log_lines", (string)null);
                 });
 
+            modelBuilder.Entity("Hewn.Domain.SkillsUpdate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Branch")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("EndedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FailedChecks")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FromSha")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PullRequestNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PullRequestUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RequestedBy")
+                        .IsRequired()
+                        .HasMaxLength(39)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ToSha")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId", "Status");
+
+                    b.ToTable("skills_updates", (string)null);
+                });
+
             modelBuilder.Entity("Hewn.Domain.StoredEvent", b =>
                 {
                     b.Property<long>("Id")

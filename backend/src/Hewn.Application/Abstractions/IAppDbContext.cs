@@ -37,5 +37,7 @@ public interface IAppDbContext
 
     DbSet<LeasingSwitch> LeasingSwitches { get; }
 
+    DbSet<SkillsUpdate> SkillsUpdates { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

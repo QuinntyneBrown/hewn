@@ -250,3 +250,19 @@ internal sealed class IncrementCheckConfiguration : IEntityTypeConfiguration<Inc
         b.HasIndex(c => new { c.IncrementId, c.PullRequestNumber, c.Name }).IsUnique();
     }
 }
+
+internal sealed class SkillsUpdateConfiguration : IEntityTypeConfiguration<SkillsUpdate>
+{
+    public void Configure(EntityTypeBuilder<SkillsUpdate> b)
+    {
+        b.ToTable("skills_updates");
+        b.HasKey(u => u.Id);
+        b.HasIndex(u => new { u.ProjectId, u.Status });
+        b.Property(u => u.FromSha).HasMaxLength(40);
+        b.Property(u => u.ToSha).HasMaxLength(40);
+        b.Property(u => u.Branch).HasMaxLength(255);
+        b.Property(u => u.PullRequestUrl).HasMaxLength(500);
+        b.Property(u => u.RequestedBy).HasMaxLength(39);
+        b.Property(u => u.Status).HasConversion<string>().HasMaxLength(20);
+    }
+}
