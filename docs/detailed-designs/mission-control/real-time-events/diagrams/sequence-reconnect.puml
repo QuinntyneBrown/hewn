@@ -16,22 +16,30 @@ skinparam package {
 }
 skinparam sequenceMessageAlign left
 box "Frontend — Mission Control application" #E0F2FE
-  participant "LiveEventsService" as live
-  participant "ConnectionBanner" as banner
+  participant "Shell" as banner
+  participant "SignalRProjectEvents" as live
+  participant "Reconnector" as rec
 end box
 box "Backend — Hewn API application" #D1FADF
   participant "MissionControlHub" as hub
   participant "EventsController" as ctrl
 end box
-live -> live : Connection closed
-live -> banner : Show "Reconnecting…" (L2-032 AC1)
-loop retry after 0, 2, 10, 30 s, then every 30 s
-  live -> hub : Start connection
+hub -> live : onclose (network dropped)
+live -> rec : dropped()
+loop after 0, 2, 10, 30 s, then every 30 s; Retry now tries at once
+  rec -> banner : status reconnecting (offline after the fourth attempt), next attempt at t (L2-032 AC1)
+  banner -> banner : "Reconnecting… next attempt in n s. Missed events will catch up from #seq."
+  rec -> live : reconnect()
+  live -> hub : start()
 end
 hub --> live : Connected
-live -> hub : JoinProject(id)
-live -> ctrl : GET /api/projects/{id}/events?after=lastSeq
-ctrl --> live : Missed events in order
-live -> live : Apply each once; skip seq <= lastSeq (L2-032 AC2)
-live -> banner : Hide after catch-up (L2-032 AC3)
+loop each open subscription
+  live -> hub : JoinProject(id) / JoinProjects / JoinWorkers
+  live -> ctrl : GET /api/projects/{id}/events?after=lastSeq (pages until empty)
+  ctrl --> live : Missed events in order
+  live -> live : Apply each once; skip seq <= lastSeq; count them (L2-032 AC2)
+end
+live -> banner : caughtUp {count, from, to}
+rec -> banner : status live
+banner -> banner : "Reconnected. Caught up n missed events, #from to #to." for 5 s, then gone (L2-032 AC3)
 @enduml

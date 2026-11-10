@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Reconnect Mission Control (journey 27, L2-032, L2-031): when the live connection drops, a strip says
+  "Reconnecting… next attempt in n s" and Mission Control retries after 0, 2, 10 and 30 seconds, then every
+  30 seconds, with Retry now once the connection counts as lost. On reconnect it catches up every missed event once
+  and says how many for 5 seconds. The sidebar shows Live, Reconnecting… or Offline with N of M workers.
 - Continue after a worker or server crash (journey 26, L2-050, L2-026): a GitHub write holds its run's write lock
   from the fence check to its record, and leases are granted and expired under the same lock, so a stale worker
   can't write after its lease moves. The run log says when a lease expires and which worker resumes after which
