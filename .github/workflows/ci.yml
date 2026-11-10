@@ -110,6 +110,8 @@ jobs:
         working-directory: e2e
       - run: npx playwright install --with-deps chromium
         working-directory: e2e
+      # The scripted worker records each increment's walkthrough with ffmpeg (journey 19's live video test).
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: dotnet build backend/Hewn.sln
       - run: npm run test:behavior
         working-directory: e2e
