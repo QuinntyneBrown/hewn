@@ -17,9 +17,8 @@ The slice is the Video step and the increment page's player.
 - **`VideoStep (worker)`** — runs `StageAgent` with `creating-videos`, starts the app in the workspace, records with `BrowserRecorder`, and runs `VideoValidator`. It allows one retry.
 - **`BrowserRecorder`** — headless browser plus ffmpeg capture at 1920×1080, with captions burned from the script.
 - **`VideoValidator`** — checks resolution 1080p, captions present and duration of 3 minutes or less.
-- **`IncrementVideoPlayer (Angular)`** — plays `docs/videos/{slug}/*.mp4` from the repository at the merge or branch SHA, with captions and full screen; shows the failure message when the step failed.
-
-How the player serves an MP4 from a private repository (signed raw URL or proxied through the Hewn API) is <TO SUPPLY>.
+- **`GetIncrementVideoHandler (API)`** — finds the stage 10 commit that wrote `docs/videos/{slug}/{slug}.mp4` and reads the MP4 or its `.vtt` captions at that SHA; `GET /api/projects/{id}/increments/{n}/video` (byte ranges) and `.../video/captions` serve them (ADR 0021).
+- **`IncrementVideoComponent` (`hw-increment-video`, Angular)** — plays the MP4 in the design system's video player: the current caption drawn over the picture, play and pause, the time, a keyboard seek slider, a captions toggle and full screen. Without a video the increment page shows "Video failed: {reason}", that a Blocked increment records none, or that the walkthrough records once every test is green.
 
 ## Requirements
 
@@ -61,6 +60,12 @@ A valid video is saved with its script (L2-023 AC1) and linked from the PR (AC2)
 
 ![Sequence diagram: record or fail the video](diagrams/sequence-record.png)
 
+### Behaviour — play the video
+
+The increment page asks the API for the video and its captions; the API reads both from GitHub at the stage 10 commit that recorded them (AC2, ADR 0021). A failed video shows its reason instead (AC3).
+
+![Sequence diagram: play the video, or say why there is none](diagrams/sequence-play.png)
+
 ## Decisions made while building the slice
 
 - The agent runs `creating-videos`; the worker then checks `docs/videos/{slug}/` for `{slug}.mp4`, `{slug}.vtt`
@@ -68,4 +73,9 @@ A valid video is saved with its script (L2-023 AC1) and linked from the PR (AC2)
 - A failure is retried once (two attempts); after that the partial files are removed, the pull request's Notes
   say "Video failed: {reason}", and the increment continues (L2-023 AC3).
 - The scripted agent records a 3-second title card with ffmpeg, so the e2e stack exercises the real check.
-- **Deferred:** playing the video on the increment page (L2-023 AC2, journey 13).
+- The API serves the video and captions through Mission Control's session, read from GitHub at the recording commit
+  (ADR 0021); the increment detail links them only when the video was Recorded, and the endpoints answer 404
+  `no_video` otherwise.
+- The PR body links the MP4 on GitHub at the commit that recorded it; a relative link would resolve under `/pull/N`.
+- The player hides the browser's own caption rendering and draws the active cue in `.video__caption`, so the
+  captions toggle and the design system's look apply; the seek slider moves 5 s per arrow key, with Home and End.

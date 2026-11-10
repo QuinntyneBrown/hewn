@@ -1,0 +1,36 @@
+{
+  "number": 2,
+  "url": "https://github.com/hewn-builds/kiln-booking/pull/2",
+  "title": "Sign in (journey 1, L2-001)",
+  "state": "merged",
+  "additions": 77,
+  "deletions": 39,
+  "changedFiles": 6,
+  "sections": [
+    {
+      "heading": "What",
+      "text": "Sign in: L2-001 of journey 1, Sign in.\n\n[Video](https://github.com/hewn-builds/kiln-booking/blob/a81b7e1d38593709c2a4857e868bbe788d7234fd/docs/videos/sign-in/sign-in.mp4) of the journey in the running app."
+    },
+    {
+      "heading": "Design and decisions",
+      "text": "- [product/sign-in](docs/detailed-designs/product/sign-in/README.md)\n- Decisions the agent made are recorded in [docs/decisions.md](docs/decisions.md)."
+    },
+    {
+      "heading": "API",
+      "text": "No backend changes."
+    },
+    {
+      "heading": "Tests",
+      "text": "| Command | Passed | Failed |\n|---|---:|---:|\n| `dotnet test` | 1 | 0 |\n| `npm run lint` | 0 | 0 |\n| `npm test` | 1 | 0 |\n| `npx playwright test` | 1 | 0 |\n\n1 new acceptance tests trace to L2-001."
+    },
+    {
+      "heading": "Deferred",
+      "text": "Nothing in this increment is deferred."
+    },
+    {
+      "heading": "Notes",
+      "text": "- Red recorded: 1 new acceptance tests failed on the test commit.\n- Green after 1 of 10 implement-and-test iterations."
+    }
+  ],
+  "attribution": "Built by Hewn · direction a0d9ce4d · run-f5607a39"
+}

@@ -292,6 +292,10 @@ export interface IncrementDetail {
   finishedAt: string | null;
   pullRequest: IncrementPullRequest | null;
   checks: IncrementCheck[];
+  /** The recorded MP4, served by the API from the commit that recorded it (L2-023 AC2); null unless Recorded. */
+  videoUrl: string | null;
+  /** Its WebVTT captions. */
+  captionsUrl: string | null;
 }
 
 /** One exported state of a screen; `previewUrl` is a signed URL on the separate preview origin (L2-011 AC2). */

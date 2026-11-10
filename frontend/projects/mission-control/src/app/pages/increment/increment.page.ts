@@ -17,7 +17,14 @@ import {
   switchMap,
 } from 'rxjs';
 import { incrementLook } from '../project/backlog-view';
-import { checkLine, incrementTimeline, pullRequestMeta } from './increment-view';
+import {
+  checkLine,
+  incrementTimeline,
+  pullRequestMeta,
+  videoFolder,
+  videoPlaceholder,
+} from './increment-view';
+import { IncrementVideoComponent } from './increment-video.component';
 
 type Loaded =
   | { state: 'loading' }
@@ -41,7 +48,13 @@ const clock = new Intl.DateTimeFormat(undefined, {
  */
 @Component({
   selector: 'hw-increment-page',
-  imports: [IconComponent, RouterLink, StatusComponent, StatusIconComponent],
+  imports: [
+    IconComponent,
+    IncrementVideoComponent,
+    RouterLink,
+    StatusComponent,
+    StatusIconComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './increment.page.html',
 })
@@ -101,6 +114,17 @@ export class IncrementPage {
   protected readonly look = computed(() => {
     const increment = this.increment();
     return increment ? incrementLook(increment.status) : null;
+  });
+
+  /** What the video area says when there is nothing to play (L2-023 AC3). */
+  protected readonly placeholder = computed(() => {
+    const increment = this.increment();
+    return increment ? videoPlaceholder(increment) : null;
+  });
+
+  protected readonly folder = computed(() => {
+    const increment = this.increment();
+    return increment ? videoFolder(increment) : null;
   });
 
   protected readonly timeline = computed(() => {

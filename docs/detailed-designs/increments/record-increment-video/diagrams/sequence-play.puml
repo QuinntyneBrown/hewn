@@ -1,0 +1,43 @@
+@startuml
+title UML sequence behaviour — Play the increment video, or say why there is none
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Owner or Viewer" as user
+participant "Increment page\n(IncrementVideoComponent)" as page
+participant "ProjectsController" as api
+participant "GetIncrementVideoHandler" as handler
+database "github_mutations" as db
+participant "GitHub" as gh
+
+user -> page : opens increment n
+page -> api : GET /api/projects/{id}/increments/{n}
+api --> page : video Recorded, videoUrl, captionsUrl
+alt video Recorded
+  page -> api : GET .../video (Range: bytes=...)
+  api -> handler : GetIncrementVideoQuery
+  handler -> db : stage 10 commits, newest first
+  db --> handler : the commit whose paths hold {slug}.mp4
+  handler -> gh : read docs/videos/{slug}/{slug}.mp4 at that SHA
+  gh --> handler : bytes
+  handler --> api : video/mp4
+  api --> page : 206 Partial Content
+  page -> api : GET .../video/captions
+  api --> page : text/vtt
+  page --> user : plays, with the active caption over the picture
+else video Failed
+  page --> user : "Video failed: {reason}"; the pull request went ahead
+end
+@enduml

@@ -1,5 +1,14 @@
 import { IncrementCheck, IncrementDetail } from '@hewn/api';
-import { checkLine, duration, incrementTimeline, pullRequestMeta } from './increment-view';
+import {
+  checkLine,
+  duration,
+  incrementTimeline,
+  playerTime,
+  playerValueText,
+  pullRequestMeta,
+  videoFolder,
+  videoPlaceholder,
+} from './increment-view';
 
 const time = (iso: string | null) => (iso ? iso.slice(11, 16) : '');
 
@@ -32,6 +41,8 @@ function detail(fields: Partial<IncrementDetail> = {}): IncrementDetail {
     finishedAt: null,
     pullRequest: null,
     checks: [],
+    videoUrl: null,
+    captionsUrl: null,
     ...fields,
   };
 }
@@ -248,3 +259,42 @@ function merged(): IncrementDetail {
     },
   });
 }
+
+describe('the increment video (L2-023)', () => {
+  it('plays a recorded video, with nothing in its place', () => {
+    expect(
+      videoPlaceholder(detail({ video: 'Recorded', videoNote: 'docs/videos/reconcile/' })),
+    ).toBeNull();
+    expect(videoFolder(detail({ video: 'Recorded', videoNote: 'docs/videos/reconcile/' }))).toBe(
+      'docs/videos/reconcile/',
+    );
+    expect(videoFolder(detail({ video: 'Failed', videoNote: 'browser crashed' }))).toBeNull();
+  });
+
+  it('says why the video failed, and that the pull request went ahead', () => {
+    expect(
+      videoPlaceholder(detail({ video: 'Failed', videoNote: 'browser crashed during capture' })),
+    ).toEqual({
+      tone: 'failed',
+      title: 'Video failed: browser crashed during capture',
+      text: 'The capture failed, was retried once and failed again. The pull request went ahead with this noted under Notes.',
+    });
+  });
+
+  it('waits for green, and records nothing for a Blocked increment', () => {
+    expect(videoPlaceholder(detail())!.text).toBe(
+      'The walkthrough records once every test is green. Implementing, iteration 3 of 10.',
+    );
+    expect(videoPlaceholder(detail({ status: 'Blocked', iterations: 10 }))!.text).toBe(
+      'Blocked after 10 iterations; no video is recorded until every test is green.',
+    );
+  });
+
+  it('shows and speaks the position in minutes and seconds', () => {
+    expect(playerTime(82.6)).toBe('1:22');
+    expect(playerTime(3)).toBe('0:03');
+    expect(playerTime(Number.NaN)).toBe('0:00');
+    expect(playerValueText(82, 134)).toBe('1 minute 22 of 2 minutes 14');
+    expect(playerValueText(0, 3)).toBe('0 seconds of 3 seconds');
+  });
+});

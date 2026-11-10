@@ -16,6 +16,8 @@ public sealed record GetIncrementQuery(Guid ProjectId, int Number) : IRequest<In
 /// iterations, green, the video, the pull request read from GitHub and its required checks as last reported.
 /// </summary>
 /// <param name="Branch">The increment's branch, <c>feature/{slug}</c>, as stage 10 names it.</param>
+/// <param name="VideoUrl">The recorded video, served by the API from the commit that recorded it (L2-023 AC2); null unless Recorded.</param>
+/// <param name="CaptionsUrl">Its WebVTT captions.</param>
 /// <param name="MovedOnTo">For a Blocked increment, the next one that doesn't depend on it, directly or through another.</param>
 public sealed record IncrementDetailDto(
     Guid DirectionId,
@@ -44,7 +46,9 @@ public sealed record IncrementDetailDto(
     DateTimeOffset? PullRequestOpenedAt,
     DateTimeOffset? FinishedAt,
     PullRequestDetailDto? PullRequest,
-    IReadOnlyList<IncrementCheckDto> Checks);
+    IReadOnlyList<IncrementCheckDto> Checks,
+    string? VideoUrl,
+    string? CaptionsUrl);
 
 /// <param name="State">open or merged.</param>
 /// <param name="Sections">The body's "## " sections in order; the Hewn attribution line apart.</param>
@@ -125,7 +129,9 @@ public sealed partial class GetIncrementHandler(IAppDbContext db, IGitHubReposit
                 c.Conclusion,
                 c.StartedAt,
                 c.CompletedAt,
-                c.StartedAt is { } started && c.CompletedAt is { } completed ? (int)(completed - started).TotalSeconds : null))]);
+                c.StartedAt is { } started && c.CompletedAt is { } completed ? (int)(completed - started).TotalSeconds : null))],
+            increment.Video == IncrementVideo.Recorded ? $"/api/projects/{project.Id}/increments/{increment.Number}/video" : null,
+            increment.Video == IncrementVideo.Recorded ? $"/api/projects/{project.Id}/increments/{increment.Number}/video/captions" : null);
     }
 
     /// <summary>The first later increment that doesn't depend on the blocked one, directly or through another (L2-022 AC2).</summary>

@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Watch an increment demonstration (journey 19, L2-023): the increment page plays the increment's captioned
+  walkthrough, with play and pause, its captions over the picture, a captions toggle, a keyboard seek slider and full
+  screen, or says "Video failed: {reason}". `GET /api/projects/{id}/increments/{n}/video` (byte ranges) and
+  `.../video/captions` serve the MP4 and its WebVTT captions from the commit that recorded them (ADR 0021); the
+  increment detail links them as `videoUrl` and `captionsUrl`. The pull request body now links the video on GitHub
+  at that commit instead of by a relative path, which broke under `/pull/N`.
 - Review agent decisions (journey 18, L2-054): a project's Decisions tab (`/projects/{id}/decisions?stage=`) lists
   the questions agents answered for themselves, newest first, with stage, time, answer, rationale and links to the
   commit that recorded each and any ADR, and filters them by stage. `GET /api/projects/{id}/decisions?stage=` lists

@@ -1,0 +1,10 @@
+{
+  "number": 1,
+  "title": "Sign in",
+  "status": "Merged",
+  "video": "Recorded",
+  "videoNote": "docs/videos/sign-in/",
+  "videoAt": "2026-11-10T11:25:53.407239+00:00",
+  "videoUrl": "/api/projects/40656a57-7be1-4348-9391-db5a12afe245/increments/1/video",
+  "captionsUrl": "/api/projects/40656a57-7be1-4348-9391-db5a12afe245/increments/1/video/captions"
+}

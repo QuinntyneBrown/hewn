@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 19 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="19" data-video-title="Watch an increment demonstration" data-parts="Introduction|Goal|Serving the video|The player|The PR link|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 19</div>
+  <h1>Watch an increment demonstration</h1>
+  <p class="lead">Each increment's captioned walkthrough, played on its page.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video walks through how it was built">
+  <figure><img src="screens/increment-player.png" alt="Kiln Booking's Sign in increment, merged, with its captioned walkthrough player above the Test first timeline"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="A user opens an increment and plays its walkthrough">
+  <div class="cols cols--wide">
+    <figure><img src="screens/player-caption.png" alt="The player with the caption Sign in over the picture, and play, time, seek, captions and full screen controls"></figure>
+    <ul class="bullets small">
+      <li>Plays on the increment page</li>
+      <li>Captions, play and pause, seek, full screen</li>
+      <li>Or "Video failed: {reason}"</li>
+      <li>Owners and Viewers</li>
+    </ul>
+  </div>
+</section>
+
+<section id="flow" data-part="1" data-cue="Here is how the page plays it.">
+  <figure class="diagram"><img src="../../detailed-designs/increments/record-increment-video/diagrams/sequence-play.png" alt="Sequence diagram: the increment page gets the video links, then asks the API for byte ranges of the video and for its captions; GetIncrementVideoHandler finds the stage 10 commit that wrote the video and reads it from GitHub at that SHA"></figure>
+</section>
+
+<section id="components" data-part="1" data-cue="Product repositories are private">
+  <figure class="diagram"><img src="../../detailed-designs/increments/record-increment-video/diagrams/c4-component.png" alt="C4 components: the worker's VideoStep commits the MP4 to GitHub; Mission Control asks the API's GetIncrementVideoHandler, which reads the file at the commit"></figure>
+</section>
+
+<section id="handler" data-part="2" data-cue="The handler takes the video's folder">
+  <div class="code-file">backend/src/Hewn.Application/Increments/GetIncrementVideo.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="2-3,10,14">        // docs/videos/{slug}/ holds {slug}.mp4 and {slug}.vtt.
+        var slug = folder.TrimEnd('/').Split('/')[^1];
+        var path = $"{folder.TrimEnd('/')}/{slug}.{(query.Captions ? "vtt" : "mp4")}";
+
+        var runs = await db.Runs.AsNoTracking()
+            .Where(r =&gt; r.DirectionId == direction.Id &amp;&amp; r.Stage == Stages.Count - 1)
+            .Select(r =&gt; r.Id)
+            .ToListAsync(cancellationToken);
+        var commits = await db.GitHubMutations.AsNoTracking()
+            .Where(m =&gt; runs.Contains(m.RunId) &amp;&amp; m.Kind == "commit")
+            .OrderByDescending(m =&gt; m.Id)
+            .Select(m =&gt; m.Result)
+            .ToListAsync(cancellationToken);
+        var sha = commits.Select(CommitRecord.Read).FirstOrDefault(c =&gt; c.Paths.Contains(path))?.Sha
+            ?? throw new NotFoundException("no_video", "No commit recorded this increment's video.");</pre>
+</section>
+
+<section id="endpoint" data-part="2" data-cue="The endpoint returns the file with range processing on">
+  <div class="code-file">backend/src/Hewn.Api/Controllers/ProjectsController.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,7">    /// &lt;summary&gt;L2-023 AC2: the increment's recorded MP4, with byte ranges so the player can seek.&lt;/summary&gt;
+    [HttpGet("{projectId:guid}/increments/{number:int}/video")]
+    public async Task&lt;IActionResult&gt; IncrementVideo(Guid projectId, int number, CancellationToken cancellationToken)
+    {
+        var video = await mediator.Send(new Hewn.Application.Increments.GetIncrementVideoQuery(projectId, number, Captions: false), cancellationToken);
+        Response.Headers.CacheControl = "private, max-age=300";
+        return File(video.Content, video.ContentType, enableRangeProcessing: true);
+    }</pre>
+</section>
+
+<section id="answer" data-part="2" data-cue="Here is what the API answers">
+  <div class="code-file">GET /api/projects/{id}/increments/1 (Kiln Booking, the video fields)</div>
+  <pre class="code tight" data-lang="json" data-mark="5-6,8-9">{
+  "number": 1,
+  "title": "Sign in",
+  "status": "Merged",
+  "video": "Recorded",
+  "videoNote": "docs/videos/sign-in/",
+  "videoAt": "2026-11-10T11:25:53.407239+00:00",
+  "videoUrl": "/api/projects/40656a57…/increments/1/video",
+  "captionsUrl": "/api/projects/40656a57…/increments/1/video/captions"
+}</pre>
+</section>
+
+<section id="cues" data-part="3" data-cue="The player takes those links.">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/increment/increment-video.component.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="5-7">  protected loaded(): void {
+    const video = this.media().nativeElement;
+    this.total.set(Number.isFinite(video.duration) ? video.duration : 0);
+    // Captions are drawn over the picture by the player, so the browser's own rendering stays hidden.
+    const track = video.textTracks[0];
+    if (track) {
+      track.mode = 'hidden';
+      track.oncuechange = () =&gt; this.showCue();
+    }
+  }</pre>
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/increment/increment-video.component.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2,5">  private showCue(): void {
+    const cues = this.media().nativeElement.textTracks[0]?.activeCues;
+    const texts: string[] = [];
+    for (let i = 0; cues &amp;&amp; i &lt; cues.length; i++) texts.push((cues[i] as VTTCue).text);
+    this.cue.set(texts.join('\n'));
+  }</pre>
+</section>
+
+<section id="seek" data-part="3" data-cue="The seek bar is a slider">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/increment/increment-video.component.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="8-10">  protected seekKey(event: KeyboardEvent): void {
+    const steps: Record&lt;string, number&gt; = {
+      ArrowRight: 5,
+      ArrowUp: 5,
+      ArrowLeft: -5,
+      ArrowDown: -5,
+    };
+    if (event.key in steps) this.seekTo(this.current() + steps[event.key]!);
+    else if (event.key === 'Home') this.seekTo(0);
+    else if (event.key === 'End') this.seekTo(this.total());
+    else return;
+    event.preventDefault();
+  }</pre>
+</section>
+
+<section id="placeholder" data-part="3" data-cue="Without a video, the page says why.">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/increment/increment-view.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="5,12">  if (d.video === 'Recorded') return null;
+  if (d.video === 'Failed') {
+    return {
+      tone: 'failed',
+      title: `Video failed: ${d.videoNote ?? 'no reason given'}`,
+      text: 'The capture failed, was retried once and failed again. The pull request went ahead with this noted under Notes.',
+    };
+  }
+  if (d.status === 'Blocked') {
+    return {
+      tone: 'waiting',
+      text: `Blocked after ${d.iterations} iterations; no video is recorded until every test is green.`,
+    };
+  }</pre>
+</section>
+
+<section id="pr-link" data-part="4" data-cue="The pull request body linked the video by a relative path">
+  <div class="code-file">Before: the PR body</div>
+  <pre class="code tight" data-lang="markdown" data-mark="1">[Video](docs/videos/sign-in/sign-in.mp4) of the journey in the running app.</pre>
+  <div class="code-file">worker/src/executors/increment-executor.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="5-7">      // Video (L2-023 AC1, AC3): tried at most twice, never blocking the increment.
+      const video = await this.video(leased, directory, slug, task('video'), signal);
+      if ('path' in video) {
+        // L2-023 AC2: a relative link in a PR body resolves under /pull/N, so link the file at the commit that holds it.
+        const sha = await commitChanges(key('video'), `Record the video for ${increment.title}`);
+        const repository = leased.project.repository;
+        if (sha &amp;&amp; repository) video.url = `https://github.com/${repository}/blob/${sha}/${video.path}`;
+      } else {</pre>
+  <div class="code-file">After: Kiln Booking’s pull request #2</div>
+  <pre class="code tight" data-lang="markdown" data-mark="1">[Video](https://github.com/hewn-builds/kiln-booking/blob/a81b7e1/docs/videos/sign-in/sign-in.mp4) of the journey in the running app.</pre>
+</section>
+
+<section id="red" data-part="5" data-cue="The backend tests came first">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Increments/WatchIncrementVideoTests.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="5,9-11">    public async Task The_video_answers_a_byte_range_so_the_player_can_seek()
+    {
+        var (owner, projectId) = await RecordedAsync();
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/projects/{projectId}/increments/1/video");
+        request.Headers.Range = new RangeHeaderValue(1000, 1099);
+
+        var response = await owner.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.PartialContent, response.StatusCode);
+        Assert.Equal(Mp4[1000..1100], await response.Content.ReadAsByteArrayAsync());
+        Assert.Equal(4096, response.Content.Headers.ContentRange!.Length);
+    }</pre>
+  <div class="result red">✘ 4 failed · 404 Not Found: no route</div>
+</section>
+
+<section id="e2e" data-part="5" data-cue="End to end, a live test runs a real worker">
+  <div class="code-file">e2e/tests/pipeline/watch-an-increment-demonstration-live.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1-2,4-6">    await increment.open(projectId, 1);
+    await expect(increment.videoFooter).toContainText(/^Captioned walkthrough · 1080p · 0:0[1-9]/);
+    await expect(increment.videoFooter).toContainText(/docs\/videos\/[a-z0-9-]+\/$/);
+    await increment.play.click();
+    await expect(increment.caption).not.toBeEmpty();
+    await expect.poll(() =&gt; increment.currentTime()).toBeGreaterThan(0.5);</pre>
+</section>
+
+<section id="tests" data-part="5" data-cue="All green, the backend has">
+  <div class="cols cols--3">
+    <div class="card"><h3>248 backend</h3><p class="small">4 new: video, range, failed, Viewers</p></div>
+    <div class="card"><h3>145 worker · 4 view tests</h3><p class="small">The PR links the video at its commit</p></div>
+    <div class="card"><h3>10 new e2e</h3><p class="small">4 behaviour, 1 live, 3 visual, 2 a11y</p></div>
+  </div>
+</section>
+
+<section id="clip-watch" data-part="6" data-cue="Here is Kiln Booking, built end to end by a real worker." data-clip="clips/watch.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">From the backlog to increment 1; then Space, the arrows, Home and Enter</aside>
+</section>
+
+<section id="themes" data-part="6" data-cue="As a Viewer the player reads the same in dark mode">
+  <div class="cols">
+    <figure><img src="screens/increment-dark.png" alt="The increment page with its player in dark mode, as a Viewer"></figure>
+    <figure class="phone"><img src="screens/increment-phone.png" alt="The increment page with its player on a phone"></figure>
+  </div>
+</section>
+
+<section id="failed" data-part="6" data-cue="When the recording failed, the page gives the reason">
+  <div class="cols">
+    <figure><img src="screens/increment-video-failed.png" alt="Video failed with its reason; the timeline shows the pull request opened"></figure>
+    <figure><img src="screens/failed-notes.png" alt="The pull request body's Notes: Video failed: browser crashed during capture"></figure>
+  </div>
+</section>
+
+<section id="waiting" data-part="6" data-cue="Before green, and when Blocked">
+  <div class="cols">
+    <figure><img src="screens/increment-implementing.png" alt="The walkthrough records once every test is green, implementing iteration 3 of 10"></figure>
+    <figure><img src="screens/increment-blocked.png" alt="Blocked after 10 iterations; no video is recorded until every test is green"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="7" data-cue="Journey nineteen is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>The walkthrough plays on the increment page</li>
+    <li>Served from the commit that recorded it</li>
+    <li>A failed video says why, and never blocks</li>
+    <li>The PR's video link works</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

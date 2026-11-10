@@ -11,7 +11,8 @@ export interface PullRequestFacts {
   iterations: number;
   maxIterations: number;
   rebases: number;
-  video: { path: string } | { failed: string };
+  /** The recorded video's path, and its GitHub address at the commit that recorded it when known. */
+  video: { path: string; url?: string } | { failed: string };
   runId: string;
   directionId: string;
 }
@@ -40,7 +41,9 @@ export function pullRequestBody(facts: PullRequestFacts): string {
   return `## What
 
 ${increment.title}: ${increment.l2Ids.join(', ')} of journey ${increment.journey}, ${facts.journeyTitle}.${
-    'path' in facts.video ? `\n\n[Video](${facts.video.path}) of the journey in the running app.` : ''
+    'path' in facts.video
+      ? `\n\n[Video](${facts.video.url ?? facts.video.path}) of the journey in the running app.`
+      : ''
   }
 
 ## Design and decisions
