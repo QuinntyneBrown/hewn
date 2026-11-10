@@ -60,6 +60,8 @@ jobs:
       - run: npm ci
       # The stage 2 validator renders mocks in Chromium.
       - run: npx playwright-core install --with-deps chromium
+      # The scripted agent records each increment's stand-in video with ffmpeg.
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm test
