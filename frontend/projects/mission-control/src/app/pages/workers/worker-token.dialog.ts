@@ -44,7 +44,12 @@ import { notCreated, startCommand } from './workers-text';
             </button>
           </div>
           <p class="field__label mt-4">Start the worker</p>
-          <pre class="pre mt-2">{{ command() }}</pre>
+          <pre
+            class="pre mt-2"
+            tabindex="0"
+            role="region"
+            aria-label="Docker command to start the worker"
+            >{{ command() }}</pre>
           <p class="text-caption mt-2">Outbound HTTPS only; the worker needs no inbound ports.</p>
           <p class="visually-hidden" aria-live="polite">{{ copied() ? 'Token copied' : '' }}</p>
         </div>

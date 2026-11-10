@@ -35,6 +35,10 @@ export interface WorkerOptions {
   namePrefix?: string;
   /** A stage in which the agent tries a tool and a host it may not use, so both show refused in the log (L2-042). */
   probeStage?: number;
+  /** A worker token an Owner created (L2-041); the configured development token by default. */
+  token?: string;
+  /** Called with each worker's exit code, e.g. 3 when the API refused its token. */
+  onExit?: (code: number | null) => void;
 }
 
 export function startWorkers(count: number, stepMs: number, options: WorkerOptions = {}): () => Promise<void> {
@@ -50,7 +54,7 @@ export function startWorkers(count: number, stepMs: number, options: WorkerOptio
       env: {
         ...process.env,
         HEWN_API_URL: 'http://localhost:5300',
-        HEWN_WORKER_TOKEN: E2E_WORKER_TOKEN,
+        HEWN_WORKER_TOKEN: options.token ?? E2E_WORKER_TOKEN,
         HEWN_LOCATION: options.location ?? 'Local',
         HEWN_WORKER_NAME: `${options.namePrefix ?? 'e2e-worker'}-${i + 1}`,
         HEWN_EXECUTOR: options.executor ?? 'stages',
@@ -80,6 +84,7 @@ export function startWorkers(count: number, stepMs: number, options: WorkerOptio
       stdio: output,
     }),
   );
+  if (options.onExit) for (const worker of workers) worker.once('exit', (code) => options.onExit?.(code));
 
   return async () => {
     await Promise.all(
