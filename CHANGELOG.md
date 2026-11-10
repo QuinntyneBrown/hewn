@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Connect a GitHub repository (journey 22, L2-036, L2-001 AC4). The installation token that creates a project's
+  repository now asks only to administer repositories, rather than for every permission on every repository; the
+  new repository is tagged with a token limited to it, like every other call (ADR 0024). The e2e stack's fake GitHub
+  answers `GET /api/fakes/github/{owner}/{name}` with a repository's visibility, topics and required checks, and the
+  run pipeline test checks stage 0's private repository and stage 6's branch protection.
 - Manage Owner and Viewer access (journey 21, L2-038 AC5, L2-039): Settings shows "Who can sign in", each GitHub
   login with its role and last sign-in. An Owner adds a login as Viewer or Owner once GitHub confirms it exists, and
   removes any login but their own; a removed login is signed out on its next request (ADR 0023). Viewers see the

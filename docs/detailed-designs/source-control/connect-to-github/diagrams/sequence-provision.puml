@@ -16,31 +16,38 @@ skinparam package {
 }
 skinparam sequenceMessageAlign left
 box "Backend — Hewn Application and Domain" #ECFDF3
-  participant "PipelineOrchestrator" as orch
+  participant "LeaseRunHandler" as lease
   participant "RepositoryProvisioner" as prov
-  participant "RepositoryTokenBroker" as tokens
-  participant "BranchProtectionConfigurer" as bp
+  participant "ProtectDefaultBranchHandler" as bp
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  participant "GitHubAppClient" as tokens
 end box
 box "External systems" #F2F4F7
   participant "GitHub" as gh
 end box
-orch -> prov : EnsureAsync(project) before stage 0
+lease -> prov : EnsureRepositoryAsync(project) when a worker first leases stage 0
 alt project has no repository
   prov -> prov : "Kiln Scheduler" -> kiln-scheduler
+  prov -> tokens : Repository token for {owner}/kiln-scheduler
+  tokens -> gh : POST access_tokens {repositories: [kiln-scheduler]}
   prov -> gh : Look up {owner}/kiln-scheduler
   alt absent
-    prov -> gh : Create private repo (L2-036 AC1)
+    prov -> tokens : Account token to create it
+    tokens -> gh : POST access_tokens {permissions: {administration: write}}
+    prov -> gh : POST orgs/{owner}/repos, private (L2-036 AC1)
+    prov -> tokens : Repository token for the new repository
+    tokens -> gh : POST access_tokens {repositories: [kiln-scheduler]} (L2-036 AC3)
+    prov -> gh : PUT topics [hewn]
   else empty repo with topic hewn (earlier attempt crashed before recording)
     prov -> prov : Adopt
   else anything else
-    prov -> orch : Fail run with GitHub's message
+    prov -> lease : Fail run with GitHub's message
   end
   prov -> prov : Record repository on the project
 end
-prov -> tokens : GetTokenAsync(project)
-tokens -> gh : Installation token, repositories=[kiln-scheduler] (L2-036 AC3)
-gh --> tokens : Token (1 h), cached inside the API
-== stage 6 succeeded ==
-orch -> bp : RequireAsync(project, checks)
-bp -> gh : Require CI checks on default branch (L2-036 AC2)
+== stage 6: the worker merges the scaffold ==
+bp -> bp : Fence the lease; protect_branch allowed in stage 6 only
+bp -> tokens : Repository token for {owner}/kiln-scheduler
+bp -> gh : PUT branches/main/protection, required checks (L2-036 AC2)
 @enduml
