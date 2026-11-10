@@ -337,7 +337,7 @@ def sidebar(active: str, role: str = "owner", conn: str = "live", stopped: bool 
   <div class="sidebar__foot">
     <div class="conn">{conn_html}<span class="tabular text-subtle">{"0" if stopped else "3"} of 4 workers</span></div>
     {stop}
-    <div class="user"><span class="avatar" aria-hidden="true">QB</span><div class="truncate"><div class="user__name truncate">{"quinntynebrown" if owner else "ama-osei"}</div><div class="user__role">{"Owner" if owner else "Viewer"}</div></div></div>
+    <div class="user"><span class="avatar" aria-hidden="true">QB</span><div class="truncate"><div class="user__name truncate">{"quinntynebrown" if owner else "ama-osei"}</div><div class="user__role">{"Owner" if owner else "Viewer"}</div></div><a class="btn btn--ghost btn--icon btn--sm" href="{page_link("sign-in", "signed-out")}" aria-label="Sign out" title="Sign out" style="margin-left: auto">{icon("log-out", "icon--sm")}</a></div>
   </div>
 </div>"""
 

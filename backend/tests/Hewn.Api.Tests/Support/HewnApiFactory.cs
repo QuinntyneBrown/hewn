@@ -26,6 +26,8 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
 
     public const string WorkerToken = "test-worker-token-0123456789";
 
+    public const string GitHubClientId = "Iv1.test-client-id";
+
     public const string SkillsSource = "https://github.com/QuinntyneBrown/greenlit.git";
 
     public FakeGitHub GitHub { get; } = new();
@@ -72,6 +74,7 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Testing");
         builder.UseSetting("Hewn:Auth:DevSignIn", "true");
         builder.UseSetting("HEWN_WORKER_TOKEN", WorkerToken);
+        builder.UseSetting("HEWN_GITHUB_CLIENT_ID", GitHubClientId);
         builder.UseSetting("HEWN_GITHUB_OWNER", "hewn-builds");
         builder.UseSetting("HEWN_SKILLS_SOURCE", SkillsSource);
         builder.UseSetting("Hewn:Leases:ReaperEnabled", "false");
@@ -99,6 +102,8 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
             services.RemoveAll<IGitHubRepositoryProbe>();
             services.AddSingleton<IGitHubRepositoryProbe>(GitHub);
             services.AddSingleton<IGitHubRepositories>(GitHub);
+            services.RemoveAll<IGitHubIdentity>();
+            services.AddSingleton<IGitHubIdentity, Hewn.Infrastructure.Fakes.FakeGitHubIdentity>();
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Clock);
         });

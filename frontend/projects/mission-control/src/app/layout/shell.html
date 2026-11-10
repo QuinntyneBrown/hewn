@@ -55,6 +55,18 @@
               <div class="user__name truncate">{{ me.login }}</div>
               <div class="user__role">{{ me.role }}</div>
             </div>
+            <button
+              class="btn btn--ghost btn--icon btn--sm"
+              type="button"
+              aria-label="Sign out"
+              title="Sign out"
+              style="margin-left: auto"
+              [disabled]="signingOut()"
+              [attr.aria-busy]="signingOut() || null"
+              (click)="signOut()"
+            >
+              <svg hw-icon [name]="signingOut() ? 'spinner' : 'logOut'" class="icon--sm"></svg>
+            </button>
           </div>
         }
       </div>

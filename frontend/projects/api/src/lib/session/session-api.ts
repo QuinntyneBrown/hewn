@@ -19,6 +19,8 @@ export interface SessionApi {
   /** Also refreshes the XSRF-TOKEN cookie used on writes. Errors with 401 when signed out. */
   me(): Observable<Me>;
   config(): Observable<PublicConfig>;
+  /** Ends the session on the server; its cookie is refused from then on (L2-038 AC3). */
+  signOut(): Observable<void>;
 }
 
 export const SESSION_API = new InjectionToken<SessionApi>('SessionApi');
@@ -33,5 +35,9 @@ export class HttpSessionApi implements SessionApi {
 
   config(): Observable<PublicConfig> {
     return this.http.get<PublicConfig>('/api/config');
+  }
+
+  signOut(): Observable<void> {
+    return this.http.post<void>('/api/auth/sign-out', {});
   }
 }

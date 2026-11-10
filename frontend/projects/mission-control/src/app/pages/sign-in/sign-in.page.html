@@ -1,0 +1,97 @@
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="auth">
+  <main id="main" class="auth__main">
+    <span class="wordmark wordmark--lg" role="img" aria-label="Hewn"
+      ><svg viewBox="0 0 32 32" aria-hidden="true">
+        <rect class="mark__body" x="0" y="0" width="10" height="32" />
+        <rect class="mark__body" x="10" y="13" width="12" height="6" />
+        <polygon class="mark__body" points="22,10 32,0 32,32 22,32" />
+        <polygon class="mark__chip" points="22,0 29,0 22,7" /></svg
+      ><span class="wordmark__text" aria-hidden="true">hewn</span></span
+    >
+    <div class="auth__center">
+      <h1 class="auth__headline">Give it a direction.<br /><span>Get back merged code.</span></h1>
+      <p class="auth__lede">
+        Mission Control is where you give Hewn direction and watch every stage, decision, pull
+        request and dollar as it happens.
+      </p>
+      @switch (state().kind) {
+        @case ('denied') {
+          <div class="callout callout--danger" role="alert">
+            <svg hw-icon name="shieldAlert" class="icon--lg"></svg>
+            <div>
+              <p class="callout__title">This account doesn’t have access</p>
+              <p class="callout__body">
+                {{ '@' + $any(state()).login }} isn’t on this Hewn’s allow list. Ask the Owner to
+                add your GitHub login.
+              </p>
+            </div>
+          </div>
+        }
+        @case ('error') {
+          <div class="callout callout--danger" role="alert">
+            <svg hw-icon name="warning" class="icon--lg"></svg>
+            <div>
+              <p class="callout__title">GitHub didn’t answer</p>
+              <p class="callout__body">
+                Sign-in timed out after 30 seconds. GitHub may be having trouble; your projects are
+                unaffected. Try again in a moment.
+              </p>
+            </div>
+          </div>
+        }
+        @case ('expired') {
+          <div class="callout" role="status">
+            <svg hw-icon name="clock" class="icon--lg"></svg>
+            <div>
+              <p class="callout__body" style="margin-top: 0">
+                Your session ended after 8 hours. Work kept running while you were away; sign in to
+                catch up.
+              </p>
+            </div>
+          </div>
+        }
+        @case ('signed-out') {
+          <div class="callout callout--ok" role="status">
+            <svg hw-icon name="checkCircle" class="icon--lg"></svg>
+            <div>
+              <p class="callout__title">You’re signed out</p>
+              <p class="callout__body">
+                Agents keep running on your workers. Sign in again to watch them.
+              </p>
+            </div>
+          </div>
+        }
+      }
+      @if (waiting()) {
+        <button class="btn btn--stone auth__btn" type="button" aria-busy="true" disabled>
+          <svg hw-icon name="spinner" class="icon--lg"></svg>Waiting for GitHub…
+        </button>
+      } @else {
+        <a class="btn btn--stone auth__btn" [href]="href()" (click)="leave()"
+          ><svg hw-icon name="github" class="icon--lg"></svg
+          >{{ state().kind === 'error' ? 'Try again with GitHub' : 'Continue with GitHub' }}</a
+        >
+      }
+      <p class="text-caption mt-4">Only GitHub accounts on the allow list can sign in.</p>
+    </div>
+    <p class="text-caption">Hewn · MIT</p>
+  </main>
+  <aside class="auth__aside" aria-label="The pipeline">
+    <p class="text-sm text-muted" style="font-weight: var(--font-weight-medium)">
+      Every direction runs the same pipeline
+    </p>
+    <ol class="auth__stages mt-6">
+      @for (stage of pipeline; track stage[0]) {
+        <li>
+          <span class="n">{{ stage[0] }}</span
+          ><span>{{ stage[1] }}</span
+          ><span class="out">{{ stage[2] }}</span>
+        </li>
+      }
+    </ol>
+    <p class="text-sm text-muted mt-6" style="max-width: 24rem">
+      Nothing waits for approval. Each increment ends in a video, a pull request and a merge.
+    </p>
+  </aside>
+</div>

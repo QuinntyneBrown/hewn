@@ -15,6 +15,16 @@ internal sealed class AllowListEntryConfiguration : IEntityTypeConfiguration<All
     }
 }
 
+internal sealed class RevokedSessionConfiguration : IEntityTypeConfiguration<RevokedSession>
+{
+    public void Configure(EntityTypeBuilder<RevokedSession> b)
+    {
+        b.ToTable("revoked_sessions");
+        b.HasKey(s => s.Id);
+        b.Property(s => s.Id).ValueGeneratedNever();
+    }
+}
+
 internal sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
 {
     public void Configure(EntityTypeBuilder<Project> b)

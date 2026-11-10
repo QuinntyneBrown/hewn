@@ -7,6 +7,8 @@ public interface IAppDbContext
 {
     DbSet<AllowListEntry> AllowList { get; }
 
+    DbSet<RevokedSession> RevokedSessions { get; }
+
     DbSet<Project> Projects { get; }
 
     DbSet<Direction> Directions { get; }

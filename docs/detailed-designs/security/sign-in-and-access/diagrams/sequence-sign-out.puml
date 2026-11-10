@@ -1,0 +1,42 @@
+@startuml
+title UML sequence behaviour — Sign out
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "User" as user
+box "Frontend — Mission Control application" #E0F2FE
+  participant "ShellComponent" as shell
+  participant "sessionExpiryInterceptor" as expiry
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "AuthController" as auth
+  participant "RevokedSessions" as revoked
+  participant "AuthSetup.OnValidatePrincipal" as validate
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+user -> shell : Sign out
+shell -> auth : POST /api/auth/sign-out (X-XSRF-TOKEN)
+auth -> db : Insert revoked_sessions(sid, expires)
+auth -> revoked : Add(sid)
+auth --> shell : 204; clear hewn.session
+shell --> user : Reload at /sign-in?reason=signed-out (L2-038 AC3)
+== The old cookie replayed, or 8 hours passed ==
+expiry -> validate : Any API call with hewn.session
+validate -> revoked : Contains(sid)? older than 8 h?
+validate --> expiry : 401
+expiry --> user : Reload at /sign-in?reason=expired&returnUrl (L2-038 AC3)
+@enduml

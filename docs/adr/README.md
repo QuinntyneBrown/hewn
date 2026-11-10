@@ -25,3 +25,4 @@ Read the ADRs that cover an area before changing it. New ADRs take the next numb
 | [0019](0019-traces-are-read-from-the-head-on-request.md) | Traces are read from the repository's head on request | Accepted |
 | [0020](0020-decisions-are-listed-from-hewns-record.md) | Decisions are listed from Hewn's record, with the commit that wrote them | Accepted |
 | [0021](0021-increment-videos-are-served-through-the-api.md) | Increment videos are served through the Hewn API from the commit that recorded them | Accepted |
+| [0022](0022-the-api-serves-mission-control-and-ends-sessions-by-id.md) | The API serves Mission Control with its protections, and ends sessions by id | Accepted |

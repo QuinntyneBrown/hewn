@@ -21,4 +21,10 @@ export class SessionStore {
     this.me.set(me.status === 'fulfilled' ? me.value : null);
     if (me.status === 'fulfilled' && config.status === 'fulfilled') this.config.set(config.value);
   }
+
+  /** Ends the session on the server (L2-038 AC3); the caller then leaves for sign-in. */
+  async signOut(): Promise<void> {
+    await firstValueFrom(this.api.signOut());
+    this.me.set(null);
+  }
 }

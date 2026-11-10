@@ -78,3 +78,14 @@ Journey 10 built L2-043 AC4.
 - **New direction** shows the rate-limited mock's warning callout, "Too many directions in a minute", with when the
   Owner can submit again, keeps everything typed, and disables Start direction until then.
 - **Not built in this journey:** the security headers, anti-forgery filter changes and the ZAP job (AC2, AC3, AC5).
+
+## Decisions made while building the page protections
+
+Journey 20 built L2-043 AC2 ([ADR 0022](../../../adr/0022-the-api-serves-mission-control-and-ends-sessions-by-id.md)).
+
+- **`UseSecurityHeaders`** in `MissionControlPages` marks every response `nosniff`, and gives each HTML response
+  without a policy of its own the CSP and `Referrer-Policy: same-origin`. Previews keep their own sandboxed policy.
+- **`script-src 'self' 'unsafe-hashes'`** plus the hash of Angular's stylesheet loader, `this.media='all'`; no
+  `'unsafe-inline'` scripts. Styles allow `'unsafe-inline'`, since Angular binds `style` attributes.
+- **AC1 and AC3 were already covered** by the direction submission tests (400 with field errors, 400 without the
+  anti-forgery token). The ZAP job (AC5) is still not built.
