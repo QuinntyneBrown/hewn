@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<HeldLease>();
         services.AddScoped<Spend.PriceTable>();
         services.AddScoped<Spend.DirectionDefaultsReader>();
+        services.AddScoped<Skills.SkillsUpdateMerger>();
         services.AddScoped<RepositoryProvisioner>();
         services.AddScoped<CheckRecorder>();
         services.AddSingleton<CheckPoller>();

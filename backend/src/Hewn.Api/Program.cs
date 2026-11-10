@@ -37,6 +37,11 @@ if (builder.Configuration.GetValue("Hewn:Checks:PollerEnabled", true))
     builder.Services.AddHostedService<CheckPollerService>();
 }
 
+if (builder.Configuration.GetValue("Hewn:Skills:MergerEnabled", true))
+{
+    builder.Services.AddHostedService<SkillsUpdateMergerService>();
+}
+
 builder.Services
     .AddControllers(o => o.Filters.Add<ValidateAntiforgeryFilter>())
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));

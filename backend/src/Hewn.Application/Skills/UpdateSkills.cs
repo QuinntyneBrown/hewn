@@ -15,7 +15,7 @@ public sealed record UpdateSkillsResult(SkillsUpdatePullRequestDto PullRequest);
 /// <summary>
 /// L2-008 AC2: opens a pull request on <c>hewn/update-skills-{short-sha}</c> that writes Greenlit's skill files at its
 /// head and the new <c>.hewn/skills.lock</c>. Skill folders the project kept at bootstrap stay its own; skills new in
-/// Greenlit are added. <c>SkillsUpdateMerger</c> merges it when its checks pass. While one is open, asking again
+/// Greenlit are added. <see cref="SkillsUpdateMerger"/> merges it when its checks pass. While one is open, asking again
 /// returns it.
 /// </summary>
 public sealed class UpdateSkillsHandler(
@@ -26,8 +26,6 @@ public sealed class UpdateSkillsHandler(
     ICurrentUser user,
     TimeProvider clock) : IRequestHandler<UpdateSkillsCommand, UpdateSkillsResult>
 {
-    private static readonly string[] Roots = [".claude/skills", ".agents/skills"];
-
     public async Task<UpdateSkillsResult> Handle(UpdateSkillsCommand command, CancellationToken cancellationToken)
     {
         var project = await db.Projects.AsNoTracking().SingleOrDefaultAsync(p => p.Id == command.ProjectId, cancellationToken)
@@ -53,18 +51,7 @@ public sealed class UpdateSkillsHandler(
             throw new ConflictException("skills_up_to_date", "The skills are already at Greenlit’s head.");
         }
 
-        // Folders the repository had that the lock doesn't list were kept at bootstrap (L2-007 AC3): leave them alone.
-        var existing = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var root in Roots)
-        {
-            existing.UnionWith(await gitHub.ListDirectoriesAsync(owner, name, root, cancellationToken));
-        }
-
-        var kept = existing.Except(locked.Skills).ToHashSet(StringComparer.Ordinal);
-        var files = (await skills.SkillFilesAsync(head, cancellationToken)).Where(f => !kept.Contains(SkillName(f.Path))).ToList();
-        var lockFile = new SkillsLock(locked.Source, head, [.. files.Select(f => SkillName(f.Path)).Distinct().Order(StringComparer.Ordinal)]);
-        files.Add(new RepositoryFile(SkillsLock.Path, lockFile.ToBytes()));
-
+        var files = await SkillsUpdateFiles.BuildAsync(gitHub, skills, owner, name, locked, head, cancellationToken);
         var shortSha = head[..7];
         var branch = $"hewn/update-skills-{shortSha}";
         var title = $"Update skills to greenlit@{shortSha}";
@@ -79,9 +66,6 @@ public sealed class UpdateSkillsHandler(
         return new UpdateSkillsResult(new SkillsUpdatePullRequestDto(pull.Number, pull.Url));
     }
 
-    /// <summary>The skill a file under <c>.claude/skills/</c> or <c>.agents/skills/</c> belongs to.</summary>
-    private static string SkillName(string path) => path.Split('/')[2];
-
     private static string Body(string from, string to, IReadOnlyList<SkillsCommit> commits)
     {
         var body = new StringBuilder()
@@ -94,4 +78,30 @@ public sealed class UpdateSkillsHandler(
 
         return body.ToString();
     }
+}
+
+/// <summary>The files a skills update commits: Greenlit's skill files at <c>head</c>, and the new lock.</summary>
+public static class SkillsUpdateFiles
+{
+    private static readonly string[] Roots = [".claude/skills", ".agents/skills"];
+
+    public static async Task<List<RepositoryFile>> BuildAsync(
+        IGitHubRepositories gitHub, ISkillsSource skills, string owner, string name, SkillsLock locked, string head, CancellationToken cancellationToken)
+    {
+        // Folders the repository had that the lock doesn't list were kept at bootstrap (L2-007 AC3): leave them alone.
+        var existing = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var root in Roots)
+        {
+            existing.UnionWith(await gitHub.ListDirectoriesAsync(owner, name, root, cancellationToken));
+        }
+
+        var kept = existing.Except(locked.Skills).ToHashSet(StringComparer.Ordinal);
+        var files = (await skills.SkillFilesAsync(head, cancellationToken)).Where(f => !kept.Contains(SkillName(f.Path))).ToList();
+        var lockFile = new SkillsLock(locked.Source, head, [.. files.Select(f => SkillName(f.Path)).Distinct().Order(StringComparer.Ordinal)]);
+        files.Add(new RepositoryFile(SkillsLock.Path, lockFile.ToBytes()));
+        return files;
+    }
+
+    /// <summary>The skill a file under <c>.claude/skills/</c> or <c>.agents/skills/</c> belongs to.</summary>
+    private static string SkillName(string path) => path.Split('/')[2];
 }
