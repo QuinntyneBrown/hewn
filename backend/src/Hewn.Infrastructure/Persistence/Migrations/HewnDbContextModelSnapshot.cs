@@ -23,6 +23,16 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                         .HasMaxLength(39)
                         .HasColumnType("TEXT");
 
+                    b.Property<long?>("AddedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AddedBy")
+                        .HasMaxLength(39)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("LastSignInAt")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(16)

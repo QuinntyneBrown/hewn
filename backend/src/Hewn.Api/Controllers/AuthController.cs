@@ -91,6 +91,7 @@ public sealed class AuthController(IMediator mediator, IConfiguration configurat
         }
 
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, AuthSetup.Principal(signIn.Entry), AuthSetup.SessionProperties(clock));
+        await mediator.Send(new RecordSignInCommand(signIn.Entry.Login), cancellationToken);
         return Redirect(started.Value.ReturnUrl);
     }
 
@@ -152,6 +153,7 @@ public sealed class AuthController(IMediator mediator, IConfiguration configurat
             CookieAuthenticationDefaults.AuthenticationScheme,
             AuthSetup.Principal(entry),
             AuthSetup.SessionProperties(clock));
+        await mediator.Send(new RecordSignInCommand(entry.Login), cancellationToken);
         return NoContent();
     }
 

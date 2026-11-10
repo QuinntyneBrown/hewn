@@ -68,4 +68,37 @@ public sealed class GitHubOAuthIdentity(HttpClient http, IOptions<GitHubOAuthOpt
             throw new GitHubException("GitHub didn't answer the sign-in");
         }
     }
+
+    public async Task<string?> FindLoginAsync(string login, CancellationToken cancellationToken)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(Timeout);
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{options.Value.ApiBaseUrl.TrimEnd('/')}/users/{Uri.EscapeDataString(login)}");
+            request.Headers.UserAgent.Add(new ProductInfoHeaderValue("Hewn", "1.0"));
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+            using var answered = await http.SendAsync(request, timeout.Token);
+            if (answered.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+
+            if (!answered.IsSuccessStatusCode)
+            {
+                var why = (int)answered.StatusCode is 403 or 429 ? "rate limited" : $"HTTP {(int)answered.StatusCode}";
+                throw new GitHubException($"GitHub couldn't confirm the login exists ({why})");
+            }
+
+            return (await answered.Content.ReadFromJsonAsync<JsonElement>(timeout.Token)).GetProperty("login").GetString();
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new GitHubException("GitHub couldn't confirm the login exists (timed out)");
+        }
+        catch (Exception e) when (e is HttpRequestException or JsonException)
+        {
+            throw new GitHubException("GitHub couldn't confirm the login exists");
+        }
+    }
 }

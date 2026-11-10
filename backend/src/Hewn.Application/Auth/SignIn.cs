@@ -114,12 +114,3 @@ public sealed class SignOutHandler(IAppDbContext db, RevokedSessions revoked, Ti
         revoked.Prune(now);
     }
 }
-
-/// <summary>Whether a session was signed out.</summary>
-public sealed record IsSessionRevokedQuery(Guid SessionId) : IRequest<bool>;
-
-public sealed class IsSessionRevokedHandler(IAppDbContext db, RevokedSessions revoked) : IRequestHandler<IsSessionRevokedQuery, bool>
-{
-    public Task<bool> Handle(IsSessionRevokedQuery query, CancellationToken cancellationToken) =>
-        revoked.ContainsAsync(query.SessionId, db, cancellationToken);
-}
