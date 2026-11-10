@@ -42,6 +42,9 @@ public sealed class HewnClient
 
     public Task<HttpResponseMessage> GetAsync(string url) => _http.GetAsync(url);
 
+    /// <summary>Sends a request as built, such as a GET with a Range header.</summary>
+    public Task<HttpResponseMessage> SendAsync(HttpRequestMessage request) => _http.SendAsync(request);
+
     public Task<HttpResponseMessage> PostAsync(string url, object body)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = JsonContent.Create(body) };

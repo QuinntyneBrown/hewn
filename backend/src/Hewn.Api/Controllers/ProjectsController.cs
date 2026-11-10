@@ -42,6 +42,24 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> Increment(Guid projectId, int number, CancellationToken cancellationToken) =>
         Ok(await mediator.Send(new Hewn.Application.Increments.GetIncrementQuery(projectId, number), cancellationToken));
 
+    /// <summary>L2-023 AC2: the increment's recorded MP4, with byte ranges so the player can seek.</summary>
+    [HttpGet("{projectId:guid}/increments/{number:int}/video")]
+    public async Task<IActionResult> IncrementVideo(Guid projectId, int number, CancellationToken cancellationToken)
+    {
+        var video = await mediator.Send(new Hewn.Application.Increments.GetIncrementVideoQuery(projectId, number, Captions: false), cancellationToken);
+        Response.Headers.CacheControl = "private, max-age=300";
+        return File(video.Content, video.ContentType, enableRangeProcessing: true);
+    }
+
+    /// <summary>L2-023 AC2: the video's WebVTT captions, for the player's caption track.</summary>
+    [HttpGet("{projectId:guid}/increments/{number:int}/video/captions")]
+    public async Task<IActionResult> IncrementCaptions(Guid projectId, int number, CancellationToken cancellationToken)
+    {
+        var captions = await mediator.Send(new Hewn.Application.Increments.GetIncrementVideoQuery(projectId, number, Captions: true), cancellationToken);
+        Response.Headers.CacheControl = "private, max-age=300";
+        return File(captions.Content, captions.ContentType);
+    }
+
     /// <summary>L2-011 AC1: each exported screen and state, with its Magic Patterns link and a signed preview URL.</summary>
     [HttpGet("{projectId:guid}/designs")]
     public Task<Hewn.Application.Designs.DesignsDto> Designs(Guid projectId, CancellationToken cancellationToken) =>

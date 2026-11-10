@@ -437,7 +437,10 @@ public sealed class FakeRepository(string owner, string name, bool isPrivate, Li
             tree[file.Path] = file.Content;
         }
 
-        return Convert.ToHexStringLower(SHA1.HashData(Encoding.UTF8.GetBytes($"{branch}\n{message}\n{string.Join('\n', files.Select(f => f.Path))}")));
+        var sha = Convert.ToHexStringLower(SHA1.HashData(Encoding.UTF8.GetBytes($"{branch}\n{message}\n{string.Join('\n', files.Select(f => f.Path))}")));
+        // GitHub keeps a branch commit's files, so they can be read at its SHA as on the default branch.
+        Snapshots[sha] = new Dictionary<string, byte[]>(tree, StringComparer.Ordinal);
+        return sha;
     }
 
     internal string Commit(string message, IReadOnlyList<RepositoryFile> files)
