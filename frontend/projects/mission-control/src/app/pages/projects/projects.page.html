@@ -204,6 +204,16 @@
                     >
                       <svg hw-icon name="archive"></svg>
                     </button>
+                    <button
+                      class="icon-action"
+                      type="button"
+                      [attr.aria-label]="'Delete ' + p.name"
+                      title="Delete"
+                      [attr.aria-disabled]="pending().has(p.id) ? 'true' : null"
+                      (click)="pending().has(p.id) || delete(p)"
+                    >
+                      <svg hw-icon name="trash"></svg>
+                    </button>
                   } @else {
                     <span
                       class="icon-action"
@@ -215,6 +225,17 @@
                       "
                       title="Cancel the running direction first"
                       ><svg hw-icon name="archive"></svg
+                    ></span>
+                    <span
+                      class="icon-action"
+                      role="button"
+                      aria-disabled="true"
+                      tabindex="0"
+                      [attr.aria-label]="
+                        'Delete ' + p.name + ': cancel the running direction first'
+                      "
+                      title="Cancel the running direction first"
+                      ><svg hw-icon name="trash"></svg
                     ></span>
                   }
                 </span>

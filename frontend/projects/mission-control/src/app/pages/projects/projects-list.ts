@@ -62,6 +62,18 @@ export function archiveRefusal(status: number, title: string | null): string {
   return `The Hewn API returned ${status || 'no response'}. Try again.`;
 }
 
+/** The delete dialog's field error (L2-003 AC3): nothing until something different from the name is typed. */
+export function confirmNameError(typed: string, name: string): string | null {
+  return typed === '' || typed === name ? null : `Type ${name} exactly to delete it.`;
+}
+
+/** Why a project wasn't deleted, for the delete dialog's danger callout. */
+export function deleteFailure(status: number, title: string | null): string {
+  if (status === 409 && title) return `${title}. Nothing was removed.`;
+  if (status === 403) return 'Only an Owner can delete a project. Nothing was removed.';
+  return `The API returned ${status || 'no response'}. Nothing was removed; try again.`;
+}
+
 const shortDate = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'short',

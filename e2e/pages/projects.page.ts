@@ -17,6 +17,10 @@ export interface ProjectRow {
   archiveRefused: Locator;
   /** Restore, for an Owner, on an archived project (L2-003 AC1). */
   restore: Locator;
+  /** Delete, for an Owner, on a project with no active direction (L2-003 AC3). */
+  delete: Locator;
+  /** Delete, disabled with the reason, on a project with an active direction (L2-003 AC2). */
+  deleteRefused: Locator;
 }
 
 /** The Projects page (/projects): the filter tabs, the rows and the empty, loading and error states. Owns every selector for it. */
@@ -120,8 +124,10 @@ export class ProjectsPage {
       spend: root.locator('.row__end.tabular'),
       activity: root.locator('.row__end.text-subtle'),
       archive: root.locator('.row__actions').getByRole('button', { name: /^Archive [^:]*$/ }),
-      archiveRefused: root.locator('.row__actions [aria-disabled="true"]'),
+      archiveRefused: root.locator('.row__actions').getByRole('button', { name: /^Archive .*: cancel/ }),
       restore: root.locator('.row__actions').getByRole('button', { name: /^Restore / }),
+      delete: root.locator('.row__actions').getByRole('button', { name: /^Delete [^:]*$/ }),
+      deleteRefused: root.locator('.row__actions').getByRole('button', { name: /^Delete .*: cancel/ }),
     };
   }
 }
