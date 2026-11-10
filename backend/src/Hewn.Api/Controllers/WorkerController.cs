@@ -69,7 +69,12 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
 
     [HttpPost("register")]
     public async Task<IActionResult> Register(RegisterRequest request, CancellationToken cancellationToken) =>
-        Ok(new { workerId = await mediator.Send(new RegisterWorkerCommand(request.Name, request.Location, request.Host, request.Version), cancellationToken) });
+        Ok(new
+        {
+            workerId = await mediator.Send(
+                new RegisterWorkerCommand(request.Name, request.Location, request.Host, request.Version, User.FindFirst(WorkerTokenAuthenticationHandler.TokenIdClaim)?.Value),
+                cancellationToken),
+        });
 
     /// <summary>
     /// 200 with the leased run, or 204 when there is no work. With <paramref name="waitSeconds"/> (at most 30), an idle

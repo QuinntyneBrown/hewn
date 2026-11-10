@@ -121,6 +121,24 @@ internal sealed class WorkerConfiguration : IEntityTypeConfiguration<Worker>
         b.Property(w => w.Version).HasMaxLength(64);
         b.Property(w => w.Location).HasConversion<string>().HasMaxLength(16);
         b.Property(w => w.Status).HasConversion<string>().HasMaxLength(16);
+        b.Property(w => w.TokenId).HasMaxLength(32);
+        b.HasIndex(w => w.TokenId);
+    }
+}
+
+internal sealed class WorkerTokenConfiguration : IEntityTypeConfiguration<WorkerToken>
+{
+    public void Configure(EntityTypeBuilder<WorkerToken> b)
+    {
+        b.ToTable("worker_tokens");
+        b.HasKey(t => t.Id);
+        b.Property(t => t.Id).HasMaxLength(32);
+        b.Property(t => t.Name).HasMaxLength(40);
+        b.Property(t => t.Location).HasConversion<string>().HasMaxLength(16);
+        b.Property(t => t.Hash).HasMaxLength(64).IsFixedLength();
+        b.HasIndex(t => t.Hash).IsUnique();
+        b.Property(t => t.CreatedBy).HasMaxLength(39);
+        b.Property(t => t.RevokedBy).HasMaxLength(39);
     }
 }
 

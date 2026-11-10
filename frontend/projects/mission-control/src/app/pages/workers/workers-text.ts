@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { IconName } from '@hewn/components';
 
 const and = (names: string[]) =>
@@ -90,4 +91,32 @@ export function connectedFor(since: string, now: number): string {
   const minutes = Math.max(0, Math.floor((now - Date.parse(since)) / 60_000));
   if (minutes < 60) return `${minutes}m`;
   return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, '0')}m`;
+}
+
+/** The command that starts a worker with a new token (L2-041 AC1), against the API at `origin`. */
+export function startCommand(origin: string, token: string): string {
+  return [
+    'docker run -d --name hewn-worker \\',
+    `  -e HEWN_API_URL=${origin} \\`,
+    `  -e HEWN_WORKER_TOKEN=${token} \\`,
+    '  hewn-worker',
+  ].join('\n');
+}
+
+const answered = (error: unknown) =>
+  error instanceof HttpErrorResponse && error.status > 0
+    ? `The API returned ${error.status}`
+    : 'Hewn couldn’t reach the API';
+
+/** Why a token wasn't created: nothing was saved. */
+export function notCreated(error: unknown): string {
+  return `${answered(error)}. Nothing was saved; try again.`;
+}
+
+/** Why a worker's token is still active after Revoke (L2-041 AC2). */
+export function notRevoked(name: string, error: unknown): string {
+  if (error instanceof HttpErrorResponse && error.status === 409) {
+    return `${name} uses the development token set in the API’s configuration; remove HEWN_WORKER_TOKEN there to stop it.`;
+  }
+  return `${answered(error)}. ${name} can still register; try again.`;
 }

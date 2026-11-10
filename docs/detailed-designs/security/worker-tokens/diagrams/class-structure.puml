@@ -12,31 +12,45 @@ skinparam class {
 title Class structure — Worker tokens
 
 class WorkerToken {
-  +WorkerTokenId Id
+  +string Id
   +string Name
-  +byte[] Hash
+  +WorkerLocation Location
+  +string Hash
+  +string CreatedBy
   +DateTimeOffset CreatedAt
   +DateTimeOffset ExpiresAt
   +DateTimeOffset? RevokedAt
-  +bool IsValid(now): bool
+  +string? RevokedBy
+  +IsValid(now): bool
+  +Revoke(login, now)
+  {static} +int[] ExpiryDays
 }
-enum TokenExpiry {
-  Days30
-  Days90
-  Year1
+class Worker {
+  +string Id
+  +string Name
+  +string? TokenId
+  +DateTimeOffset? RevokedAt
+  +Revoke(now)
 }
-class WorkerTokenService {
-  +CreateAsync(name: string, e: TokenExpiry): Task<(WorkerToken, string)>
-  +RevokeAsync(id: WorkerTokenId): Task
+class WorkerTokenHash {
+  {static} +string Prefix = "hwt_"
+  {static} +NewToken(): string
+  {static} +Of(token): string
 }
-class WorkerTokenAuthHandler {
-  +HandleAuthenticateAsync(): Task<AuthenticateResult>
+class CreateWorkerTokenHandler {
+  +Handle(command): CreatedWorkerToken
 }
-class WorkerDisconnector {
-  +DisconnectAsync(id: WorkerTokenId): Task
+class RevokeWorkerHandler {
+  +Handle(command)
 }
-WorkerTokenService ..> WorkerToken
-WorkerTokenService ..> TokenExpiry
-WorkerTokenAuthHandler ..> WorkerToken : verifies hash
-WorkerDisconnector ..> WorkerToken
+class WorkerTokenAuthenticationHandler {
+  +HandleAuthenticateAsync(): AuthenticateResult
+}
+Worker --> "0..1" WorkerToken : registered with
+CreateWorkerTokenHandler ..> WorkerTokenHash
+CreateWorkerTokenHandler ..> WorkerToken : stores
+RevokeWorkerHandler ..> WorkerToken : revokes
+RevokeWorkerHandler ..> Worker : revokes, releases its run
+WorkerTokenAuthenticationHandler ..> WorkerTokenHash
+WorkerTokenAuthenticationHandler ..> WorkerToken : IsValid
 @enduml

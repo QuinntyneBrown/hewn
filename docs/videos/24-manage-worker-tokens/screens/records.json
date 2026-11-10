@@ -1,0 +1,17 @@
+{
+  "copied": true,
+  "tokenPrefix": "hwt_",
+  "tokenLength": 47,
+  "workersResponseHasToken": false,
+  "stored": "wtk_64d34c839fab|studio-mac-pqlx|6c972230b547fcd2f7b3cdbb6b0077310aed03d0c065745fb95cdba269f915ec|639376960212419340",
+  "storedHasToken": false,
+  "rowGoneAfterMs": 35,
+  "containerAfterRevoke": "exited 3",
+  "containerExitedAfterMs": 293,
+  "resumedOnStandbyAfterMs": 295,
+  "containerLogTail": [
+    "{\"at\":\"2026-11-10T15:07:21.323Z\",\"message\":\"Checkpoint\",\"runId\":\"d6c644b8-4986-4421-9227-f42d0a357065\",\"step\":1}",
+    "{\"at\":\"2026-11-10T15:07:24.583Z\",\"message\":\"Lease lost\",\"runId\":\"d6c644b8-4986-4421-9227-f42d0a357065\"}",
+    "{\"at\":\"2026-11-10T15:07:24.587Z\",\"message\":\"The API refused this worker’s token (revoked or expired); stopping\"}"
+  ]
+}

@@ -1,5 +1,6 @@
 import {
   LeaseLostError,
+  TokenRefusedError,
   type CheckpointVerdict,
   type CommitFile,
   type HewnApi,
@@ -51,6 +52,18 @@ export class FakeHewnApi implements HewnApi {
   /** Halts the runs whose control poll is held now, as Stop all workers does (L2-029 AC4). */
   halt(): void {
     this.answerHeld('Halt');
+  }
+
+  private revoked = false;
+
+  /**
+   * Revokes the worker's token, as an Owner does from Workers (L2-041 AC2): held control polls answer that the lease
+   * is lost, and every later call is refused.
+   */
+  revoke(): void {
+    this.revoked = true;
+    for (const done of [...this.held.values()]) done();
+    this.wake?.();
   }
 
   /** Queues a run again, as Start workers does for a halted run. */
@@ -142,6 +155,7 @@ export class FakeHewnApi implements HewnApi {
   ): Promise<RunControl | null> {
     this.record({ method: 'control', runId: run.runId });
     if (this.controls.has(run.runId)) return this.controls.get(run.runId)!;
+    const revokedBefore = this.revoked;
     await new Promise<void>((resolve) => {
       const done = () => {
         clearTimeout(timer);
@@ -153,6 +167,7 @@ export class FakeHewnApi implements HewnApi {
       signal.addEventListener('abort', done, { once: true });
       this.held.set(run.runId, done);
     });
+    if (this.revoked && !revokedBefore) throw new LeaseLostError();
     return this.controls.get(run.runId) ?? null;
   }
 
@@ -231,6 +246,7 @@ export class FakeHewnApi implements HewnApi {
   }
 
   private record(call: Omit<Call, 'at'>): void {
+    if (this.revoked) throw new TokenRefusedError('refused');
     this.calls.push({ ...call, at: Date.now() });
   }
 }

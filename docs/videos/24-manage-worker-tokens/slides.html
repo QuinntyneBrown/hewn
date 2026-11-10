@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 24 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="24" data-video-title="Manage worker tokens" data-parts="Introduction|Goal|Creating a token|What Hewn keeps|A worker on the token|Revoking|The worker stops|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 24</div>
+  <h1>Manage worker tokens</h1>
+  <p class="lead">Shown once, stored as a hash, revoked in seconds.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video shows an Owner creating one">
+  <figure><img src="screens/workers-owner.png" alt="Workers as an Owner: New worker token at the top, and Revoke on each worker row"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="An Owner creates a worker token, and sees it exactly once">
+  <ul class="bullets">
+    <li>Shown once; only its hash is stored (L2-041 AC1)</li>
+    <li>Expires in 30 days, 90 days or a year, and stops working then (AC3)</li>
+    <li>Revoked: its worker disconnected within 10 s, its lease released (AC2)</li>
+  </ul>
+</section>
+
+<section id="clip-create" data-part="2" data-cue="Here is Workers, signed in as an Owner." data-clip="clips/create-token.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Name, Local, in 90 days · Create token · Copy · Done</aside>
+</section>
+
+<section id="shown-once" data-part="2" data-cue="Create token shows it once">
+  <figure><img src="screens/token-shown-once.png" alt="Token created for the worker: the token with a Copy button, the docker run command to start the worker, and Done"></figure>
+</section>
+
+<section id="make" data-part="3" data-cue="Here is how a token is made.">
+  <div class="code-file">backend/src/Hewn.Application/Workers/WorkerTokens.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="3,5,8-9">public static class WorkerTokenHash
+{
+    public const string Prefix = "hwt_";
+
+    public static string Of(string token) =&gt; Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+
+    /// &lt;summary&gt;32 random bytes, base64url, after the &lt;c&gt;hwt_&lt;/c&gt; prefix that lets secret scanners spot it.&lt;/summary&gt;
+    public static string NewToken() =&gt; Prefix + Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+        .TrimEnd('=').Replace('+', '-').Replace('/', '_');</pre>
+</section>
+
+<section id="create" data-part="3" data-cue="Creating a token stores its SHA">
+  <div class="code-file">backend/src/Hewn.Application/Workers/WorkerTokens.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="2,5">        var token = WorkerTokenHash.NewToken();
+        var stored = new WorkerToken(name, location, WorkerTokenHash.Of(token), command.CreatedBy, clock.GetUtcNow(), command.ExpiresInDays);
+        db.WorkerTokens.Add(stored);
+        await db.SaveChangesAsync(cancellationToken);
+        return new CreatedWorkerTokenDto(stored.Id, stored.Name, stored.Location.ToString(), stored.ExpiresAt, token);</pre>
+</section>
+
+<section id="stored" data-part="3" data-cue="This is the row Hewn keeps">
+  <div class="code-file">backend/e2e.db, after the token above was created</div>
+  <pre class="code tight" data-lang="sql" data-mark="3-5,7-8">sqlite&gt; select Id, Name, Hash from worker_tokens
+   ...&gt;  where Name = 'studio-mac-pqlx';
+wtk_64d34c839fab | studio-mac-pqlx
+  | 6c972230b547fcd2f7b3cdbb6b007731
+    0aed03d0c065745fb95cdba269f915ec
+
+GET /api/workers contains the token? false
+worker_tokens row contains it?      false</pre>
+</section>
+
+<section id="auth" data-part="3" data-cue="Every worker request is checked by hash.">
+  <div class="code-file">backend/src/Hewn.Api/Auth/WorkerTokenAuthentication.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="4-9,10-12">        var presented = header["Bearer ".Length..].Trim();
+        if (presented.StartsWith(WorkerTokenHash.Prefix, StringComparison.Ordinal))
+        {
+            // Looked up by hash: the token itself is never stored, compared or logged.
+            var hash = WorkerTokenHash.Of(presented);
+            var token = await db.WorkerTokens.AsNoTracking()
+                .Where(t =&gt; t.Hash == hash)
+                .Select(t =&gt; new { t.Id, t.RevokedAt, t.ExpiresAt })
+                .SingleOrDefaultAsync(Context.RequestAborted);
+            if (token is null || token.RevokedAt is not null || clock.GetUtcNow() &gt;= token.ExpiresAt)
+            {
+                return AuthenticateResult.Fail("Invalid worker token.");
+            }
+
+            return Success(new Claim(TokenIdClaim, token.Id));</pre>
+</section>
+
+<section id="docker" data-part="4" data-cue="Here the command runs with Docker.">
+  <div class="code-file">The command from the dialog</div>
+  <pre class="code tight" data-lang="sh" data-mark="3">$ docker run -d --name studio-mac \
+    -e HEWN_API_URL=http://host.docker.internal:5300 \
+    -e HEWN_WORKER_TOKEN=hwt_… \
+    hewn-worker:dev</pre>
+</section>
+
+<section id="clip-register" data-part="4" data-cue="The worker registers under the token's name" data-clip="clips/worker-registers.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Registers as the token's name; leases a new direction</aside>
+</section>
+
+<section id="register" data-part="4" data-cue="In the register handler">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/WorkerCommands.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="2-4,6-7">        // An issued token names its worker and says where it runs (L2-041); the configured token leaves both to the worker.
+        var token = command.TokenId is null
+            ? null
+            : await db.WorkerTokens.AsNoTracking().Where(t =&gt; t.Id == command.TokenId).Select(t =&gt; new { t.Name, t.Location }).SingleAsync(cancellationToken);
+        var worker = new Worker(
+            token?.Name ?? command.Name,
+            token?.Location ?? Enum.Parse&lt;WorkerLocation&gt;(command.Location, ignoreCase: true),
+            command.Host,
+            command.Version,
+            clock.GetUtcNow(),
+            command.TokenId);</pre>
+</section>
+
+<section id="viewer" data-part="5" data-cue="Each worker row now has Revoke.">
+  <div class="cols">
+    <figure><img src="screens/workers-owner.png" alt="Workers as an Owner, with New worker token and Revoke"></figure>
+    <figure><img src="screens/workers-viewer.png" alt="Workers as a Viewer, with neither control"></figure>
+  </div>
+</section>
+
+<section id="confirm" data-part="5" data-cue="Revoke asks first.">
+  <figure><img src="screens/revoke-dialog.png" alt="Revoke the worker? Its token stops working immediately; a running step's lease is released and the run resumes elsewhere from its last checkpoint. Cancel, Revoke token"></figure>
+</section>
+
+<section id="revoke" data-part="5" data-cue="Confirming revokes the token">
+  <div class="code-file">backend/src/Hewn.Application/Workers/WorkerTokens.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="3-4,7,11">        var now = clock.GetUtcNow();
+        var token = await db.WorkerTokens.SingleAsync(t =&gt; t.Id == worker.TokenId, cancellationToken);
+        token.Revoke(command.RevokedBy, now);
+        var onToken = await db.Workers.Where(w =&gt; w.TokenId == token.Id &amp;&amp; w.RevokedAt == null).ToListAsync(cancellationToken);
+        foreach (var revoked in onToken)
+        {
+            revoked.Revoke(now);
+        }
+
+        // Stored before any run is released, so no request on this token is accepted from here on.
+        await db.SaveChangesAsync(cancellationToken);</pre>
+</section>
+
+<section id="release" data-part="5" data-cue="Then each run those workers lease is halted and released">
+  <div class="code-file">backend/src/Hewn.Application/Workers/WorkerTokens.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="4-6,16">            foreach (var run in await db.Runs.Where(r =&gt; runIds.Contains(r.Id) &amp;&amp; r.Status == RunStatus.Leased).ToListAsync(cancellationToken))
+            {
+                var name = onToken.First(w =&gt; w.Id == run.WorkerId).Name;
+                run.Halt();
+                run.Release();
+                await RunLog.InfoAsync(db, events, run, $"Released: {name}'s token revoked by {command.RevokedBy}; resumes from step {run.CheckpointStep + 1}", now, cancellationToken);
+            }
+
+            await db.SaveChangesAsync(cancellationToken);
+            await events.PublishAsync(cancellationToken);
+        }
+
+        // Wakes the held control poll, which finds the run no longer this worker's; a fresh signal for the next holder.
+        foreach (var run in held)
+        {
+            signals.RequestStop(run.Id);</pre>
+</section>
+
+<section id="clip-revoke" data-part="5" data-cue="Here it is with the worker in the middle of a step." data-clip="clips/revoke.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Revoke a leased worker; the standby takes the run</aside>
+</section>
+
+<section id="measured" data-part="5" data-cue="The container exits within a third of a second">
+  <div class="code-file">Measured while recording (screens/records.json)</div>
+  <pre class="code tight" data-lang="text" data-mark="1-3,6-7">row gone from Workers        35 ms
+container                    exited, code 3  (293 ms)
+run leased by the standby    295 ms
+
+Checkpoint
+Lease lost
+The API refused this worker’s token (revoked or expired); stopping</pre>
+</section>
+
+<section id="worker" data-part="6" data-cue="On the worker, any 401 means">
+  <div class="code-file">worker/src/work-loop.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="4-5,7">      } catch (error) {
+        if (lease.signal.aborted) return;
+        // The API took the run back (a revoked token, L2-041 AC2): stop now rather than at the next heartbeat.
+        if (error instanceof LeaseLostError || error instanceof TokenRefusedError) {
+          if (error instanceof TokenRefusedError) this.refused = true;
+          else this.log('Lease lost', { runId: run.runId });
+          lease.abort(error);
+          return;
+        }</pre>
+  <div class="code-file">worker/src/main.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1">if (loop.tokenRefused) process.exitCode = 3;</pre>
+</section>
+
+<section id="sequence" data-part="6" data-cue="The sequence puts it together">
+  <figure class="diagram"><img src="../../detailed-designs/security/worker-tokens/diagrams/sequence-create-and-revoke.png" alt="Sequence diagram: the Owner creates a token, the API stores its hash and shows it once; the worker registers and holds a control poll; the Owner revokes; the run is released; the worker's next call gets 401 and it exits with code 3"></figure>
+</section>
+
+<section id="test-backend" data-part="7" data-cue="On the backend, eleven new tests">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Workers/WorkerTokenTests.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,5-6,8,11-12">        var revoked = await owner.PostAsync($"/api/workers/{worker.WorkerId}/revoke", new { });
+
+        Assert.Equal(HttpStatusCode.NoContent, revoked.StatusCode);
+        // The held control poll ends: the run is no longer this worker's.
+        Assert.Equal(HttpStatusCode.Conflict, (await control).StatusCode);
+        Assert.True(clock.Elapsed &lt; TimeSpan.FromSeconds(10), $"disconnected after {clock.Elapsed}");
+        // Every further call is refused.
+        Assert.Equal(HttpStatusCode.Unauthorized, (await worker.HeartbeatAsync(run)).StatusCode);
+        // The lease is released: another worker resumes the run after its checkpoint.
+        var other = await _factory.RegisterWorkerAsync("hewn-cloud-eus-01");
+        var resumed = await other.LeaseAsync();
+        Assert.NotNull(resumed);</pre>
+  <div class="result red">✘ 'HewnDbContext' does not contain a definition for 'WorkerTokens'</div>
+  <div class="result green">✔ backend 294 of 294</div>
+</section>
+
+<section id="test-worker" data-part="7" data-cue="On the worker, two new tests">
+  <div class="code-file">worker/test/revoke.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="6,9-10,12">    void new WorkLoop({ api, executor: slowSteps(3, finished), registration, log: (m) =&gt; logs.push(m) })
+      .run(stop.signal)
+      .then(() =&gt; (ended = true));
+    await vi.advanceTimersByTimeAsync(6_000);
+
+    api.revoke();
+    await vi.advanceTimersByTimeAsync(100);
+
+    expect(finished).toEqual(['s3.1']);
+    expect(logs).toContain('Lease lost');
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(logs).toContain('The API refused this worker’s token (revoked or expired); stopping');</pre>
+  <div class="result red">✘ TypeError: api.revoke is not a function</div>
+  <div class="result green">✔ worker 155 of 155</div>
+</section>
+
+<section id="test-e2e" data-part="7" data-cue="End to end, four new tests">
+  <div class="code-file">e2e/tests/pipeline/manage-worker-tokens.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1,4,6-7,9">    await workers.revoke(name).click();
+    await expect(workers.revokeDialog).toContainText(`Revoke ${name}?`);
+    const revoked = Date.now();
+    await workers.revokeConfirm.click();
+    await expect(workers.revokeDialog).toBeHidden();
+    await expect(workers.row(name)).toHaveCount(0, { timeout: 10_000 });
+    await expect.poll(() =&gt; exitCode, { timeout: 10_000 - (Date.now() - revoked) }).toBe(3);
+
+    await expect(workers.details(`${standby}-1`).workingOn).toHaveText(direction, { timeout: 30_000 });</pre>
+  <div class="result green">✔ 4 e2e · 4 visual against the mocks · 1 accessibility</div>
+</section>
+
+<section id="screens" data-part="8" data-cue="Workers reads the same in dark mode">
+  <div class="cols">
+    <figure><img src="screens/workers-dark.png" alt="Workers in dark mode"></figure>
+    <figure class="phone"><img src="screens/workers-phone.png" alt="Workers on a phone"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="9" data-cue="Journey twenty four is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Tokens are shown once and stored as a SHA-256 hash</li>
+    <li>30 days, 90 days or a year, then 401</li>
+    <li>Revoke: worker gone in seconds, the run resumes elsewhere</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

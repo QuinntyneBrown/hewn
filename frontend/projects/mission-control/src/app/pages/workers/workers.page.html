@@ -5,17 +5,31 @@
       One container image, local or cloud. At most one worker leases a project at a time.
     </p>
   </div>
+  @if (session.isOwner()) {
+    <div class="cluster">
+      <button class="btn btn--primary btn--sm" type="button" (click)="openNewToken()">
+        <svg hw-icon name="key" class="icon--sm"></svg>New worker token
+      </button>
+    </div>
+  }
 </div>
 <div class="pad" style="padding-bottom: var(--space-10)">
   @if (store.view(); as view) {
     @if (rows().length === 0) {
       <p class="text-muted">No worker has registered yet.</p>
     } @else {
-      <div class="rows rows--workers-viewer">
+      <div
+        class="rows"
+        [class.rows--workers]="session.isOwner()"
+        [class.rows--workers-viewer]="!session.isOwner()"
+      >
         <div class="rows__head" aria-hidden="true">
           <span>Host</span><span>Location</span><span>Version</span><span>Status</span
           ><span>Working on</span><span class="row__end">Heartbeat</span
           ><span class="row__end">Connected</span>
+          @if (session.isOwner()) {
+            <span class="visually-hidden">Actions</span>
+          }
         </div>
         <ul aria-label="Workers">
           @for (w of rows(); track w.id) {
@@ -72,6 +86,18 @@
                 >{{ w.seen }}</span
               >
               <span class="lg-only tabular text-subtle row__end">{{ w.connected }}</span>
+              @if (session.isOwner()) {
+                <span class="row__actions"
+                  ><button
+                    class="btn btn--ghost btn--sm"
+                    type="button"
+                    [attr.aria-label]="'Revoke ' + w.name"
+                    (click)="openRevoke(w)"
+                  >
+                    Revoke
+                  </button></span
+                >
+              }
             </li>
           }
         </ul>

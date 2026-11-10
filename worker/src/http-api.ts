@@ -1,6 +1,7 @@
 import {
   HewnApiError,
   LeaseLostError,
+  TokenRefusedError,
   type CommitOptions,
   type Increment,
   type IncrementUpdate,
@@ -224,6 +225,7 @@ export class HttpHewnApi implements HewnApi {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
 
+    if (response.status === 401) throw new TokenRefusedError(`Hewn API ${path.split('?')[0]} refused the worker token`);
     if (response.status === 409) throw new LeaseLostError();
     if (!response.ok) {
       const problem = (await response.json().catch(() => null)) as { code?: string; title?: string } | null;

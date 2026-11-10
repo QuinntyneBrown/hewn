@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Manage worker tokens (journey 24, L2-041): an Owner creates a worker token on Workers with a name, Local or Cloud,
+  and an expiry of 30 days, 90 days or a year. The token (`hwt_…`) is shown once, with Copy and the command that
+  starts a worker; only its SHA-256 is stored. A worker on it is named and placed by it. Each worker row has Revoke:
+  the token stops working at once, its run is released to resume elsewhere from its checkpoint, and the worker is
+  refused within 10 seconds and exits with code 3 (ADR 0026). `POST /api/worker-tokens`,
+  `POST /api/workers/{id}/revoke`; migration `ManageWorkerTokens` adds `worker_tokens` and the workers' `TokenId`
+  and `RevokedAt`. The configured `HEWN_WORKER_TOKEN` still works as a development token.
 - Run workers locally or in the cloud (journey 23, L2-026, L2-027, L2-042):
   - `worker/Dockerfile` builds the one worker image. It runs on a developer machine with Docker or in the cloud,
     and `HEWN_LOCATION` and the other settings are the only differences.
