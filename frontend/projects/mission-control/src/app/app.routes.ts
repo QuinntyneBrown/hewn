@@ -54,6 +54,12 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/project/project.page').then((m) => m.ProjectPage),
       },
       {
+        path: 'projects/:projectId/artifacts',
+        title: 'Artifacts · Hewn',
+        data: { section: 'artifacts' },
+        loadComponent: () => import('./pages/project/project.page').then((m) => m.ProjectPage),
+      },
+      {
         path: 'projects/:projectId/increments/:number',
         title: 'Increment · Hewn',
         loadComponent: () =>
