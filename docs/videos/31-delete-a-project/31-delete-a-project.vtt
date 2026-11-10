@@ -1,0 +1,226 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:06.65
+This is journey thirty one of Hewn, the software factory: delete a project.
+
+00:00:06.65 --> 00:00:09.89
+Archiving hides a project and keeps everything.
+
+00:00:09.89 --> 00:00:13.39
+Sometimes an Owner wants Hewn's copy gone for good.
+
+00:00:13.39 --> 00:00:16.48
+This video shows an Owner deleting a project,
+
+00:00:16.48 --> 00:00:20.40
+and the repository it built staying exactly where it was.
+
+00:00:21.55 --> 00:00:26.46
+An Owner chooses Delete, types the project name exactly and confirms.
+
+00:00:26.46 --> 00:00:31.43
+Hewn's records, logs and stored artifacts for the project are removed,
+
+00:00:31.43 --> 00:00:34.56
+and the GitHub repository is left untouched.
+
+00:00:34.56 --> 00:00:35.91
+The dialog says so.
+
+00:00:35.91 --> 00:00:41.53
+Deleting a project with an active direction is refused with "Cancel the running
+
+00:00:41.53 --> 00:00:42.74
+direction first".
+
+00:00:43.89 --> 00:00:45.94
+Here an Owner opens Projects.
+
+00:00:45.94 --> 00:00:49.48
+Beside Archive, each of their rows now has Delete.
+
+00:00:49.48 --> 00:00:53.94
+Harbor CRM's direction was cancelled, so its Delete is enabled.
+
+00:00:53.94 --> 00:00:59.95
+The dialog asks the Owner to type the name, and says what goes: its directions, runs,
+
+00:00:59.95 --> 00:01:02.50
+decisions, events and spend history.
+
+00:01:02.50 --> 00:01:07.88
+Under the field it says the GitHub repository is kept; only Hewn's record is
+
+00:01:07.88 --> 00:01:08.45
+deleted.
+
+00:01:08.45 --> 00:01:12.06
+The Owner types only part of the name and moves on.
+
+00:01:12.06 --> 00:01:17.51
+The field says to type Harbor CRM exactly, and Delete project stays disabled.
+
+00:01:17.51 --> 00:01:21.26
+With the whole name typed, Delete project is enabled.
+
+00:01:21.26 --> 00:01:22.61
+The Owner confirms.
+
+00:01:22.61 --> 00:01:26.36
+In about a third of a second the row leaves the list,
+
+00:01:26.36 --> 00:01:29.19
+and a toast says the repository is kept.
+
+00:01:29.54 --> 00:01:33.55
+Hewn no longer knows the project: its page is not found.
+
+00:01:33.55 --> 00:01:38.63
+But the repository is still there on GitHub, with its README unchanged.
+
+00:01:39.78 --> 00:01:42.48
+Tidewater's direction is still running.
+
+00:01:42.48 --> 00:01:47.73
+Its Delete is disabled, and its name and tooltip say why: cancel the running
+
+00:01:47.73 --> 00:01:48.84
+direction first.
+
+00:01:48.84 --> 00:01:50.63
+Pressing it opens nothing.
+
+00:01:50.63 --> 00:01:56.44
+If the API refuses for any reason, the dialog says so, and that nothing was removed.
+
+00:01:57.59 --> 00:02:01.00
+The handler checks the same guard as Archive first,
+
+00:02:01.00 --> 00:02:05.34
+so a project with an active direction is refused with a conflict.
+
+00:02:05.34 --> 00:02:09.35
+Then it compares the typed name with the project's, exactly,
+
+00:02:09.35 --> 00:02:11.02
+so case and spaces count.
+
+00:02:11.02 --> 00:02:14.76
+A mismatch is a field error with the dialog's own words.
+
+00:02:15.11 --> 00:02:18.55
+Then it removes every row Hewn keeps for the project.
+
+00:02:18.55 --> 00:02:23.41
+That's the directions and their stages, runs, events, log lines, decisions,
+
+00:02:23.41 --> 00:02:28.53
+model calls, GitHub mutations, increments and their checks, and skills updates.
+
+00:02:28.53 --> 00:02:32.23
+All of it goes in one save, so a failure removes nothing.
+
+00:02:32.23 --> 00:02:37.22
+The design had planned a purge job, but these are small rows in one database.
+
+00:02:37.22 --> 00:02:41.57
+The new decision record explains why one save is simpler and safer.
+
+00:02:41.57 --> 00:02:43.25
+Nothing here calls GitHub.
+
+00:02:43.60 --> 00:02:48.65
+Once saved, every open Projects page hears that the project was deleted,
+
+00:02:48.65 --> 00:02:49.92
+and drops its row.
+
+00:02:50.27 --> 00:02:54.66
+The dialog enables Delete project only when the typed name matches.
+
+00:02:54.66 --> 00:02:59.51
+It shows the field error once the field is left with something else in it,
+
+00:02:59.51 --> 00:03:01.15
+as the invalid mock does.
+
+00:03:01.50 --> 00:03:05.00
+This sequence shows the whole path, from the row to the toast.
+
+00:03:06.15 --> 00:03:09.09
+The backend tests go through the real API.
+
+00:03:09.09 --> 00:03:13.59
+A project that ran its first stage, with a log line, a decision,
+
+00:03:13.59 --> 00:03:16.25
+a model call and a commit, is deleted.
+
+00:03:16.25 --> 00:03:19.55
+Afterwards every one of its tables counts zero.
+
+00:03:19.55 --> 00:03:25.38
+Another project's records are untouched, and the repository still holds its README.
+
+00:03:25.38 --> 00:03:28.96
+A name that differs is refused and deletes nothing.
+
+00:03:28.96 --> 00:03:30.93
+So does an active direction.
+
+00:03:30.93 --> 00:03:35.63
+A Viewer is forbidden, and a Projects page hears the deletion live.
+
+00:03:35.63 --> 00:03:39.00
+Before the endpoint existed, all of them failed.
+
+00:03:39.00 --> 00:03:42.79
+All three hundred and twenty seven backend tests pass.
+
+00:03:43.14 --> 00:03:47.75
+End to end, a behaviour test types part of the name, sees the error,
+
+00:03:47.75 --> 00:03:49.58
+types the rest and deletes.
+
+00:03:49.58 --> 00:03:54.87
+It then checks the project is gone and the repository's README is still there.
+
+00:03:54.87 --> 00:03:59.89
+Others cover Cancel, a failure and Try again, the refusal, and the Viewer.
+
+00:03:59.89 --> 00:04:04.91
+Against the old page the first test failed, with no Delete button to find.
+
+00:04:04.91 --> 00:04:10.61
+Visual tests compare the dialog's default, invalid, confirm, busy and failed states,
+
+00:04:10.61 --> 00:04:13.46
+and the Delete controls, with their mocks.
+
+00:04:13.46 --> 00:04:18.95
+An accessibility test checks each state, and that Escape returns focus to Delete.
+
+00:04:20.10 --> 00:04:23.54
+A failure keeps what was typed, so Try again works.
+
+00:04:23.54 --> 00:04:29.00
+The dialog reads the same in dark mode, and on a phone it becomes a bottom sheet.
+
+00:04:30.15 --> 00:04:32.33
+Journey thirty one is complete.
+
+00:04:32.33 --> 00:04:35.91
+Owners delete a project by typing its name exactly.
+
+00:04:35.91 --> 00:04:40.48
+Hewn's records go in one save, and the GitHub repository is kept.
+
+00:04:40.48 --> 00:04:43.99
+And a project with an active direction is refused,
+
+00:04:43.99 --> 00:04:46.94
+with "Cancel the running direction first".
+
+00:04:46.94 --> 00:04:49.05
+Next comes journey thirty two.

@@ -90,7 +90,7 @@ export class DeleteProjectDialog {
   protected readonly deleting = signal(false);
   protected readonly failure = signal<string | null>(null);
   protected readonly matches = computed(() => this.typed() === this.data.projectName);
-  /** Shown once the field is left with something other than the name, or the API refused the name. */
+  /** Shown once the field is left with something other than the name. */
   protected readonly error = computed(() =>
     this.touched() ? confirmNameError(this.typed(), this.data.projectName) : null,
   );
