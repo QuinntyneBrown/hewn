@@ -1,0 +1,70 @@
+<div class="video" #frame>
+  <video
+    #media
+    class="video__media"
+    [src]="src()"
+    preload="metadata"
+    playsinline
+    [attr.aria-label]="'Walkthrough of ' + title()"
+    (loadedmetadata)="loaded()"
+    (durationchange)="loaded()"
+    (timeupdate)="tick()"
+    (play)="playing.set(true)"
+    (pause)="playing.set(false)"
+    (ended)="playing.set(false)"
+  >
+    <track kind="captions" srclang="en" label="English" [src]="captions()" default />
+  </video>
+  @if (captionsOn() && cue()) {
+    <div class="video__caption" aria-live="polite">
+      <span>{{ cue() }}</span>
+    </div>
+  }
+  <div class="video__controls">
+    <button
+      class="video__btn"
+      type="button"
+      [attr.aria-label]="playing() ? 'Pause' : 'Play'"
+      (click)="toggle()"
+    >
+      <svg hw-icon [name]="playing() ? 'pause' : 'play'"></svg></button
+    ><span class="tabular">{{ time(current()) }} / {{ time(total()) }}</span>
+    <div
+      class="video__track"
+      role="slider"
+      aria-label="Seek"
+      aria-valuemin="0"
+      [attr.aria-valuemax]="round(total())"
+      [attr.aria-valuenow]="round(current())"
+      [attr.aria-valuetext]="valueText()"
+      tabindex="0"
+      (click)="seekClick($event)"
+      (keydown)="seekKey($event)"
+    >
+      <span [style.right.%]="100 - percent()"></span>
+    </div>
+    <button
+      class="video__btn"
+      type="button"
+      [attr.aria-label]="captionsOn() ? 'Captions on' : 'Captions off'"
+      [attr.aria-pressed]="captionsOn()"
+      (click)="toggleCaptions()"
+    >
+      <svg hw-icon name="captions"></svg>
+    </button>
+    <button
+      class="video__btn sm-only"
+      type="button"
+      aria-label="Full screen"
+      (click)="fullScreen()"
+    >
+      <svg hw-icon name="fullScreen"></svg>
+    </button>
+  </div>
+</div>
+<div class="cluster cluster--between mt-3 text-sm">
+  <span class="text-muted">Captioned walkthrough · 1080p · {{ time(total()) }}</span>
+  @if (folder()) {
+    <span class="text-mono-xs text-subtle">{{ folder() }}</span>
+  }
+</div>

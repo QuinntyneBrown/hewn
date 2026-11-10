@@ -12,3 +12,19 @@
 .cdk-dialog-container:focus {
   outline: none;
 }
+
+/*
+ * The increment video (L2-023 AC2): the design system's .video player with a real <video> under its captions and
+ * controls. The mock draws the frame; the app plays the recorded MP4 in its place.
+ */
+.video__media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--color-preview-canvas);
+}
+.video__track {
+  cursor: pointer;
+}

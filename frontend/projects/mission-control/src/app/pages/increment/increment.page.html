@@ -89,7 +89,31 @@
         </p>
         <div class="split split--aside mt-8">
           <section aria-labelledby="timeline-title">
-            <h2 id="timeline-title" style="font: var(--text-h3)">Test first</h2>
+            <section aria-label="Increment video">
+              @if (i.videoUrl && i.captionsUrl) {
+                <hw-increment-video
+                  [src]="i.videoUrl"
+                  [captions]="i.captionsUrl"
+                  [folder]="i.videoNote"
+                  [title]="i.title"
+                />
+              } @else if (placeholder(); as p) {
+                <div class="video video--placeholder">
+                  @if (p.tone === 'failed') {
+                    <svg hw-icon name="warning" class="icon--xl s-icon--warn"></svg>
+                    <p
+                      style="color: var(--color-fg-default); font-weight: var(--font-weight-medium)"
+                    >
+                      {{ p.title }}
+                    </p>
+                  } @else {
+                    <svg hw-icon name="video" class="icon--xl"></svg>
+                  }
+                  <p class="max-measure">{{ p.text }}</p>
+                </div>
+              }
+            </section>
+            <h2 id="timeline-title" class="mt-10" style="font: var(--text-h3)">Test first</h2>
             <ol class="timeline">
               @for (step of timeline(); track step.title) {
                 <li class="timeline__item">

@@ -37,6 +37,11 @@ export const ICONS = {
   close: '<path d="M18 6 6 18M6 6l12 12"/>',
   play: '<polygon points="6 3 20 12 6 21 6 3"/>',
   stop: '<rect x="3" y="3" width="18" height="18" rx="2"/>',
+  video:
+    '<path d="m16 13 5.22 3.48a.5.5 0 0 0 .78-.42V7.94a.5.5 0 0 0-.76-.43L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
+  captions:
+    '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h4M15 15h2M7 11h2M13 11h4"/>',
+  fullScreen: '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',
   pause:
     '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
   arrowDown: '<path d="M12 5v14M19 12l-7 7-7-7"/>',

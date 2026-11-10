@@ -197,3 +197,54 @@ export function pullRequestMeta(pr: IncrementPullRequest): string {
   const state = pr.state === 'merged' ? 'squash-merged' : 'open';
   return `#${pr.number} · ${state} · +${pr.additions} −${pr.deletions} · ${plural(pr.changedFiles, 'file')}`;
 }
+
+/** "1:22", "0:03": a player position in minutes and seconds. */
+export function playerTime(seconds: number): string {
+  const whole = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+}
+
+/** "1 minute 22 of 2 minutes 14", the seek slider's spoken position. */
+export function playerValueText(current: number, total: number): string {
+  const spoken = (seconds: number) => {
+    const whole = Math.floor(Number.isFinite(seconds) ? Math.max(seconds, 0) : 0);
+    const minutes = Math.floor(whole / 60);
+    const rest = whole % 60;
+    return minutes === 0
+      ? `${rest} seconds`
+      : `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}${rest ? ` ${rest}` : ''}`;
+  };
+  return `${spoken(current)} of ${spoken(total)}`;
+}
+
+/**
+ * What the video area says when there is nothing to play (L2-023): why it failed, that a Blocked increment records
+ * none, or that it records once every test is green. Null when the video was recorded.
+ */
+export function videoPlaceholder(
+  d: IncrementDetail,
+): { tone: 'failed' | 'waiting'; title?: string; text: string } | null {
+  if (d.video === 'Recorded') return null;
+  if (d.video === 'Failed') {
+    return {
+      tone: 'failed',
+      title: `Video failed: ${d.videoNote ?? 'no reason given'}`,
+      text: 'The capture failed, was retried once and failed again. The pull request went ahead with this noted under Notes.',
+    };
+  }
+  if (d.status === 'Blocked') {
+    return {
+      tone: 'waiting',
+      text: `Blocked after ${d.iterations} iterations; no video is recorded until every test is green.`,
+    };
+  }
+  if (d.greenAfter !== null)
+    return { tone: 'waiting', text: 'Every test is green; the walkthrough is being recorded.' };
+  return {
+    tone: 'waiting',
+    text:
+      d.iterations > 0
+        ? `The walkthrough records once every test is green. Implementing, iteration ${d.iterations} of ${d.maxIterations}.`
+        : 'The walkthrough records once every test is green.',
+  };
+}
