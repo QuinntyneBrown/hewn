@@ -125,12 +125,19 @@
           [routerLink]="['/projects', p.id, 'backlog']"
           [attr.aria-current]="section() === 'backlog' ? 'page' : null"
           >Backlog</a
+        ><a
+          class="tab"
+          [routerLink]="['/projects', p.id, 'designs']"
+          [attr.aria-current]="section() === 'designs' ? 'page' : null"
+          >Designs</a
         >
       </div>
     </nav>
   </header>
   @if (section() === 'backlog') {
     <hw-backlog [projectId]="p.id" [changes]="backlogChanges()" />
+  } @else if (section() === 'designs') {
+    <hw-designs [projectId]="p.id" [projectName]="p.name" />
   } @else {
     <div class="pad section">
       <div class="split split--pipeline">

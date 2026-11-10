@@ -66,6 +66,39 @@ public sealed class GitHubAppRepositories(GitHubAppClient client) : IGitHubRepos
             .ToList();
     }
 
+    public async Task<RepositoryContent?> ReadFileAsync(string owner, string name, string path, string? sha, CancellationToken cancellationToken)
+    {
+        var token = await RepositoryTokenAsync(owner, name, cancellationToken);
+        var at = sha;
+        if (at is null)
+        {
+            var branch = await DefaultBranchAsync(token, owner, name, cancellationToken);
+            var head = await GetJsonAsync(token, $"repos/{owner}/{name}/git/ref/heads/{branch}", cancellationToken);
+            if (head is null)
+            {
+                return null;
+            }
+
+            at = head.Value.GetProperty("object").GetProperty("sha").GetString()!;
+        }
+
+        var file = await GetJsonAsync(token, $"repos/{owner}/{name}/contents/{Uri.EscapeDataString(path).Replace("%2F", "/", StringComparison.Ordinal)}?ref={at}", cancellationToken);
+        if (file is not { ValueKind: JsonValueKind.Object } entry || entry.GetProperty("type").GetString() != "file")
+        {
+            return null;
+        }
+
+        // The contents API inlines files up to 1 MB as base64; larger ones come from the blob.
+        var encoded = entry.GetProperty("content").GetString();
+        if (string.IsNullOrEmpty(encoded))
+        {
+            var blob = await GetJsonAsync(token, $"repos/{owner}/{name}/git/blobs/{entry.GetProperty("sha").GetString()}", cancellationToken);
+            encoded = blob?.GetProperty("content").GetString() ?? string.Empty;
+        }
+
+        return new RepositoryContent(Convert.FromBase64String(encoded.Replace("\n", string.Empty, StringComparison.Ordinal)), at);
+    }
+
     public async Task<Stream> DownloadArchiveAsync(string owner, string name, CancellationToken cancellationToken)
     {
         var token = await RepositoryTokenAsync(owner, name, cancellationToken);

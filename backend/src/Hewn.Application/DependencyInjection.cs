@@ -27,6 +27,8 @@ public static class DependencyInjection
         services.AddScoped<RepositoryProvisioner>();
         services.AddScoped<CheckRecorder>();
         services.AddSingleton<CheckPoller>();
+        services.AddSingleton<Designs.PreviewTokens>();
+        services.AddSingleton<Designs.PreviewFileCache>();
         services.AddSingleton(TimeProvider.System);
         return services;
     }

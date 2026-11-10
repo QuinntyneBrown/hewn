@@ -31,11 +31,16 @@ const DESIGN_SYSTEM = `:root {
   --color-primary: #2563eb;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --color-surface: #111827;
     --color-text: #f9fafb;
     --color-primary: #60a5fa;
   }
+}
+:root[data-theme="dark"] {
+  --color-surface: #111827;
+  --color-text: #f9fafb;
+  --color-primary: #60a5fa;
 }
 `;
 

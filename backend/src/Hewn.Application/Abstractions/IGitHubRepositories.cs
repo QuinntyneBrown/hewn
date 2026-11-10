@@ -4,6 +4,9 @@ public sealed record GitHubRepositoryInfo(string Owner, string Name, bool IsPriv
 
 public sealed record RepositoryFile(string Path, byte[] Content);
 
+/// <summary>A file's bytes at a commit, and that commit's SHA.</summary>
+public sealed record RepositoryContent(byte[] Content, string Sha);
+
 /// <summary>A pull request with its body and size: lines added and deleted, and files changed.</summary>
 public sealed record PullRequestInfo(int Number, string Url, string Head, bool Merged, string Title, string Body = "", int Additions = 0, int Deletions = 0, int ChangedFiles = 0);
 
@@ -26,6 +29,12 @@ public interface IGitHubRepositories
 
     /// <summary>Names of the directories directly under <paramref name="path"/> on the default branch; empty when the path is absent.</summary>
     Task<IReadOnlyList<string>> ListDirectoriesAsync(string owner, string name, string path, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The file at <paramref name="path"/> at commit <paramref name="sha"/>, or at the default branch's head when it is
+    /// null; null when the file (or the commit) doesn't exist.
+    /// </summary>
+    Task<RepositoryContent?> ReadFileAsync(string owner, string name, string path, string? sha, CancellationToken cancellationToken);
 
     /// <summary>The default branch as a gzipped tarball with one top-level folder, as GitHub serves it.</summary>
     Task<Stream> DownloadArchiveAsync(string owner, string name, CancellationToken cancellationToken);

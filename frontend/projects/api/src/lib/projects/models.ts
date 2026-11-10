@@ -293,3 +293,28 @@ export interface IncrementDetail {
   pullRequest: IncrementPullRequest | null;
   checks: IncrementCheck[];
 }
+
+/** One exported state of a screen; `previewUrl` is a signed URL on the separate preview origin (L2-011 AC2). */
+export interface DesignState {
+  state: string;
+  label: string;
+  /** Where the mock lives in the repository, such as `docs/mocks/statements/default.html`. */
+  path: string;
+  previewUrl: string;
+}
+
+/** One designed screen, as stage 2 listed it in `docs/mocks/manifest.json`. */
+export interface DesignScreen {
+  screen: string;
+  title: string;
+  magicPatternsUrl: string | null;
+  states: DesignState[];
+}
+
+/** GET /api/projects/{id}/designs: every exported screen and state at one commit (L2-011 AC1). */
+export interface Designs {
+  /** The commit everything was read at; null before stage 2. */
+  sha: string | null;
+  stateCount: number;
+  screens: DesignScreen[];
+}

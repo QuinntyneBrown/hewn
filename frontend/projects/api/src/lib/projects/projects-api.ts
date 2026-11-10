@@ -5,6 +5,7 @@ import { toFieldErrors } from '../problems/field-errors';
 import { toRateLimited } from '../problems/rate-limited';
 import {
   Backlog,
+  Designs,
   IncrementDetail,
   LogLine,
   Project,
@@ -31,6 +32,8 @@ export interface ProjectsApi {
   getBacklog(projectId: string): Observable<Backlog>;
   /** One increment of the current direction followed to merge; GitHub failures are 502 `github_failed`. */
   getIncrement(projectId: string, number: number): Observable<IncrementDetail>;
+  /** Every exported screen and state with signed preview URLs; an unreadable manifest is 502 `github_failed`. */
+  getDesigns(projectId: string): Observable<Designs>;
   /** Adds a feature direction (L2-005). Errors with FieldErrorsProblem when a field rule is broken. */
   submitFeatureDirection(
     projectId: string,
@@ -93,6 +96,10 @@ export class HttpProjectsApi implements ProjectsApi {
     return this.http.get<IncrementDetail>(
       `/api/projects/${encodeURIComponent(projectId)}/increments/${number}`,
     );
+  }
+
+  getDesigns(projectId: string): Observable<Designs> {
+    return this.http.get<Designs>(`/api/projects/${encodeURIComponent(projectId)}/designs`);
   }
 
   submitFeatureDirection(

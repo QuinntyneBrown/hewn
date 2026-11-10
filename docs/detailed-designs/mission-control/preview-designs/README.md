@@ -13,14 +13,29 @@ Terms used in this design:
 
 ## Description
 
-The slice spans two Angular pages, a shared preview component and the preview host.
+The slice spans the project page's Designs tab, a shared preview component, the designs endpoint and the preview
+host. Journey 14 built the Designs tab (L2-011). The Design system tab (L2-012 AC4) will reuse the preview, and the
+host already serves `docs/design-system/`.
 
-- **`DesignsPage`** — route `/projects/:id/designs`. Reads `docs/mocks/manifest.json` through the API and lists screens and states, each with a thumbnail and an Open in Magic Patterns link to its `magic_patterns_url`.
-- **`DesignSystemPage`** — route `/projects/:id/design-system`. Lists foundation and component pages from `docs/design-system/`.
-- **`SandboxedPreview`** — shared component holding the iframe, the width segmented control (375, 576, 768, 992, 1200) and the theme control. Theme is passed as `?theme=light|dark` in the iframe URL.
-- **`PreviewTokenService`** — API service that issues a short-lived signed URL on the preview origin for `{project, sha, path}`; the preview host serves only paths under `docs/mocks/` and `docs/design-system/`.
-- **`MockPreviewHost`** — static host on the preview origin. It fetches the file at the given SHA from GitHub, caches it, and serves it with `Content-Security-Policy: sandbox allow-scripts` and no cookies.
-- **`ThumbnailRenderer`** — renders a small PNG per screen and state after stage 2 and stores it next to the cached file.
+- **`DesignsComponent`**: the Designs tab of `ProjectPage`, route `/projects/:projectId/designs`. It reads
+  `GET /api/projects/{id}/designs` and lists screens and states, each with a thumbnail and an Open in Magic Patterns
+  link to the screen's `magicPatternsUrl`. It holds the chosen state, width and theme.
+- **`DesignSystemPage`**: route `/projects/:id/design-system`. It lists foundation and component pages from
+  `docs/design-system/` in the same preview. Not built yet; see L2-012 AC4.
+- **`SandboxedPreviewComponent`**: the iframe on the preview origin, `sandbox="allow-scripts"` with no
+  `allow-same-origin`. It is laid out at exactly the chosen width and scaled to fit the frame. The theme is passed
+  as `?theme=light|dark`.
+- **`GetDesignsHandler`**: reads `docs/mocks/manifest.json` at the default branch's head (stage 2's
+  `{screens: [{screen, feature, magicPatternsUrl, states}]}`). It returns each state's label, path and a preview
+  URL signed by `PreviewTokens` for that commit.
+- **`PreviewTokens`**: signs `{project}.{sha}.{expiry}` with HMAC-SHA256 under a key made at start-up, and checks
+  it. Links last 60 minutes.
+- **`PreviewEndpoint` and `ServePreviewHandler`**: the preview host. `GET /preview/{token}/{path}` exists only on
+  the host of `Hewn:Preview:Origin`. It serves paths under `docs/mocks/` and `docs/design-system/` at the signed
+  SHA, read from GitHub and cached, with `Content-Security-Policy: sandbox allow-scripts`, no cookies, and the
+  theme set on `<html data-theme>`.
+- **Thumbnails**: each state's own page, small, in the same sandboxed frame. It loads lazily and replaces the
+  design's `ThumbnailRenderer` (ADR 0018).
 
 ## Requirements
 
@@ -55,7 +70,7 @@ Both pages reuse one `SandboxedPreview`, which gives the design system the same 
 
 ### Class structure
 
-`SandboxedPreview` holds width and theme as signals; its `src` comes from a signed URL that the preview host accepts only for the two allowed roots. The token lifetime is <TO SUPPLY>.
+`SandboxedPreview` holds width and theme as signals; its `src` comes from a signed URL that the preview host accepts only for the two allowed roots. A preview link lasts 60 minutes (`Hewn:Preview:TokenMinutes`; ADR 0018).
 
 ![Class diagram for previewing designs and the design system](diagrams/class-structure.png)
 
@@ -64,3 +79,27 @@ Both pages reuse one `SandboxedPreview`, which gives the design system the same 
 The gallery lists screens and states with thumbnails and Magic Patterns links (L2-011 AC1); the page loads from a separate origin in a sandbox (AC2); width and theme controls resize and re-theme it (AC3).
 
 ![Sequence diagram: preview a screen state](diagrams/sequence-preview.png)
+
+## Decisions made while building the slice
+
+- **The preview host is the API on another host name** (ADR 0018). The route is mapped with `RequireHost` for
+  `Hewn:Preview:Origin`, so on Mission Control's host it doesn't exist. Locally and in e2e the origin is
+  `127.0.0.1:{port}` while Mission Control is on `localhost`. Cookies are kept per host, so none reach the preview.
+- **A token covers a commit, not a file.** One token per designs read signs the project and the manifest's SHA, so
+  a mock's relative links to its CSS or another state still work. Paths with empty, `.` or `..` segments, or
+  outside the two roots, are 404, and so are tampered or expired tokens.
+- **Pinned to the commit.** A preview shows the files as they were when the designs were read, even after a newer
+  commit; reading the designs again moves to the head.
+- **Theme by `data-theme`.** The exported mocks theme by `<html data-theme>`, as Hewn's own do. The host adds it
+  for `?theme=light|dark`, so a mock needs no script to follow the control.
+- **The states.**
+  - Loading is the mock's skeleton.
+  - A project without a repository or manifest gets "No designs yet", with Open the pipeline.
+  - An unreadable manifest is `502 github_failed` titled "docs/mocks/manifest.json couldn’t be read at
+    {sha7}". The page shows it with Try again. The error mock's Open in Magic Patterns becomes Open the pipeline,
+    because no Magic Patterns link can be read without the manifest.
+- **Controls are radio groups.** Width and theme are `role="radio"` buttons, with arrow keys moving within each
+  group. The selection lives in the page, not the URL.
+- **Read on open.** The tab reads the designs when it opens and on Try again. It doesn't follow events, because
+  every read signs new links and would reload the frames.
+

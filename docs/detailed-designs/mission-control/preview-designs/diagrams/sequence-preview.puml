@@ -16,30 +16,33 @@ skinparam package {
 }
 skinparam sequenceMessageAlign left
 actor "Owner or Viewer" as user
-box "Frontend — Mission Control application" #E0F2FE
-  participant "DesignsPage" as page
-  participant "SandboxedPreview" as prev
+box "Frontend — Mission Control (app origin)" #E0F2FE
+  participant "DesignsComponent" as page
+  participant "SandboxedPreviewComponent" as prev
 end box
-box "Backend — Hewn API application" #D1FADF
-  participant "DesignsController" as ctrl
-  participant "PreviewTokenService" as tok
+box "Backend — Hewn API" #D1FADF
+  participant "ProjectsController" as ctrl
+  participant "GetDesignsHandler" as list
+  participant "PreviewTokens" as tok
 end box
-box "Backend — Hewn Infrastructure" #FFF4E5
-  participant "MockPreviewHost" as host
+box "Backend — preview host (Hewn API on the preview origin)" #FFF4E5
+  participant "ServePreviewHandler" as host
 end box
 box "External systems" #F2F4F7
   participant "GitHub" as gh
 end box
 user -> page : Open Designs
-page -> ctrl : GET /api/projects/{id}/designs
-ctrl --> page : Screens, states, thumbnails, Magic Patterns URLs (L2-011 AC1)
+page -> ctrl : GET /api/projects/{id}/designs (session cookie)
+ctrl -> list : GetDesignsQuery
+list -> gh : Read docs/mocks/manifest.json at the head
+list -> tok : Sign(project, sha)
+list --> page : Screens, states, Magic Patterns URLs, preview URLs (L2-011 AC1)
 user -> page : Select Reconcile statement · Review
-page -> prev : show(path)
-prev -> tok : Sign(project, sha, path)
-tok --> prev : https://mocks.hewn.dev/...?t=...
-prev -> host : iframe sandbox="allow-scripts" (no allow-same-origin) (L2-011 AC2)
-host -> gh : Fetch file at SHA (cached)
-host --> prev : HTML, CSP sandbox, no cookies
+page -> prev : url, width 992, light
+prev -> host : iframe sandbox="allow-scripts" (no allow-same-origin)\nGET /preview/{token}/docs/mocks/...?theme=light (no cookies) (AC2)
+host -> tok : Read(token): project, sha, not expired
+host -> gh : File at the signed SHA (cached)
+host --> prev : HTML, CSP sandbox allow-scripts, <html data-theme>
 user -> prev : Choose XS and Dark
-prev -> prev : Width 375 px; src ?theme=dark (L2-011 AC3)
+prev -> prev : Lay out at 375 px, scale to fit; src ?theme=dark (AC3)
 @enduml

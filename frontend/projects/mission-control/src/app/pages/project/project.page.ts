@@ -38,6 +38,7 @@ import {
 import { SessionStore } from '../../core/session-store';
 import { Toasts } from '../../core/toasts';
 import { BacklogComponent } from './backlog.component';
+import { DesignsComponent } from './designs.component';
 import { LiveLogComponent } from './live-log.component';
 import { RaiseBudgetDialog, RaiseBudgetData } from './raise-budget.dialog';
 import { suggestedBudget } from './raise-budget';
@@ -126,6 +127,7 @@ const BACKLOG_EVENTS = new Set([
     StatusIconComponent,
     LiveLogComponent,
     BacklogComponent,
+    DesignsComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './project.page.html',
@@ -140,8 +142,8 @@ export class ProjectPage {
   readonly projectId = input.required<string>();
   /** `?stage=` from the URL: the stage the user selected. */
   readonly stage = input<string>();
-  /** The section tab, from the route's data: the pipeline, or the backlog at `/projects/{id}/backlog`. */
-  readonly section = input<'pipeline' | 'backlog'>('pipeline');
+  /** The section tab, from the route's data: the pipeline, `/projects/{id}/backlog` or `/projects/{id}/designs`. */
+  readonly section = input<'pipeline' | 'backlog' | 'designs'>('pipeline');
 
   /** Bumped by "Try again" to load the project once more. */
   private readonly attempt = signal(0);

@@ -1,0 +1,247 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:07.07
+This is journey fourteen of Hewn, the software factory: preview product designs.
+
+00:00:07.07 --> 00:00:12.51
+Stage two designs every screen of a product in Magic Patterns, in every state,
+
+00:00:12.51 --> 00:00:16.06
+and exports the HTML into the project's repository.
+
+00:00:16.06 --> 00:00:21.71
+Owners and Viewers want to look at those designs without leaving Mission Control,
+
+00:00:21.71 --> 00:00:26.86
+at any size and in either theme, and jump to Magic Patterns to change one.
+
+00:00:26.86 --> 00:00:31.32
+This video walks through how it was built: the designs endpoint,
+
+00:00:31.32 --> 00:00:37.11
+a preview host on its own origin, the sandboxed frame, the size and theme controls,
+
+00:00:37.11 --> 00:00:38.08
+and the tests.
+
+00:00:39.23 --> 00:00:44.56
+A user opens a project's Designs and sees a gallery of every screen and state,
+
+00:00:44.56 --> 00:00:48.45
+each with a thumbnail and an open in Magic Patterns link.
+
+00:00:48.45 --> 00:00:51.87
+Opening a state renders it from a separate origin,
+
+00:00:51.87 --> 00:00:57.20
+inside a sandboxed frame that can't read Mission Control's cookies or storage.
+
+00:00:57.20 --> 00:01:01.16
+And the user picks X S, S, M, L or X L, and light or dark,
+
+00:01:01.16 --> 00:01:04.57
+and the frame resizes and switches theme to match.
+
+00:01:05.72 --> 00:01:06.89
+Here is the flow.
+
+00:01:06.89 --> 00:01:09.96
+The Designs tab asks the API for the designs.
+
+00:01:09.96 --> 00:01:15.30
+The API reads the manifest stage two wrote, at the head of the default branch,
+
+00:01:15.30 --> 00:01:18.10
+and signs a preview link for that commit.
+
+00:01:18.10 --> 00:01:21.73
+The frame then loads each page from the preview host,
+
+00:01:21.73 --> 00:01:26.72
+which checks the signature and serves the file at that commit, sandboxed.
+
+00:01:27.87 --> 00:01:33.16
+The designs handler reads docs slash mocks slash manifest dot json from GitHub,
+
+00:01:33.16 --> 00:01:35.23
+with the commit it was read at.
+
+00:01:35.23 --> 00:01:39.79
+Each screen gives its title, its Magic Patterns link and its states,
+
+00:01:39.79 --> 00:01:42.60
+and each state its path and a preview URL.
+
+00:01:42.60 --> 00:01:46.95
+A project before stage two has no manifest, so it has no designs,
+
+00:01:46.95 --> 00:01:51.97
+and a manifest that can't be parsed is a five oh two that names the commit.
+
+00:01:53.12 --> 00:01:58.05
+A preview link carries a token: the project, the commit and an expiry,
+
+00:01:58.05 --> 00:02:02.13
+signed with an H-MAC under a key made when the API starts.
+
+00:02:02.13 --> 00:02:07.89
+One token covers the whole commit, so a mock's links to its own styles still work.
+
+00:02:07.89 --> 00:02:13.24
+It lasts sixty minutes, and a tampered or expired token is simply not found.
+
+00:02:14.39 --> 00:02:18.79
+The preview host is the API itself, but only on another host name.
+
+00:02:18.79 --> 00:02:22.52
+The route is mapped for the preview origin's host alone,
+
+00:02:22.52 --> 00:02:25.59
+so on Mission Control's host it doesn't exist.
+
+00:02:25.59 --> 00:02:31.12
+It serves only docs slash mocks and docs slash design system, at the signed commit,
+
+00:02:31.12 --> 00:02:32.99
+read from GitHub and cached.
+
+00:02:32.99 --> 00:02:38.52
+Every response says content security policy sandbox allow scripts, sends no cookie,
+
+00:02:38.52 --> 00:02:41.59
+and sets the theme on the page's html element.
+
+00:02:42.74 --> 00:02:46.74
+In the browser, the frame is sandboxed with allow scripts,
+
+00:02:46.74 --> 00:02:48.67
+and never allow same origin.
+
+00:02:48.67 --> 00:02:51.98
+So the page runs in an opaque origin of its own.
+
+00:02:51.98 --> 00:02:57.42
+Reading document dot cookie, local storage or the parent page throws a security
+
+00:02:57.42 --> 00:02:57.83
+error.
+
+00:02:57.83 --> 00:03:03.55
+And because cookies are kept per host, Mission Control's session never even reaches
+
+00:03:03.55 --> 00:03:04.86
+the preview origin.
+
+00:03:06.01 --> 00:03:10.96
+Width and theme are radio groups, with the arrow keys moving within each.
+
+00:03:10.96 --> 00:03:14.35
+The frame is laid out at exactly the chosen width,
+
+00:03:14.35 --> 00:03:18.90
+three seventy five up to twelve hundred pixels, then scaled to fit,
+
+00:03:18.90 --> 00:03:22.35
+so the mock's own media queries see the real width.
+
+00:03:22.35 --> 00:03:26.15
+The theme goes to the preview host as a query parameter.
+
+00:03:27.30 --> 00:03:32.29
+The backend tests came first, and failed with not found: there was no route.
+
+00:03:32.29 --> 00:03:36.82
+Now eight tests cover the listing, the sandbox headers and the theme,
+
+00:03:36.82 --> 00:03:41.62
+a preview pinned to its commit, the two allowed folders and nothing else,
+
+00:03:41.62 --> 00:03:45.76
+tampered and expired tokens and Mission Control's host refused,
+
+00:03:45.76 --> 00:03:49.89
+a project with no designs, an unreadable manifest, and Viewers.
+
+00:03:50.24 --> 00:03:54.39
+The isolation test runs a probe page inside the real frame.
+
+00:03:54.39 --> 00:03:58.04
+It reports its own origin as null, and that cookies,
+
+00:03:58.04 --> 00:04:01.13
+storage and the parent page are all blocked,
+
+00:04:01.13 --> 00:04:04.71
+while Mission Control itself has a readable cookie.
+
+00:04:04.71 --> 00:04:09.69
+Another test clicks X S to X L and watches the probe report each width,
+
+00:04:09.69 --> 00:04:11.24
+then switches to dark.
+
+00:04:11.59 --> 00:04:15.56
+All green, the backend has two hundred and twenty two tests,
+
+00:04:15.56 --> 00:04:20.58
+the worker one hundred and forty four, and the frontend five new view tests.
+
+00:04:20.58 --> 00:04:24.62
+End to end, there are fourteen new tests: five for behaviour,
+
+00:04:24.62 --> 00:04:29.25
+five visual comparisons with the mocks, and four accessibility checks.
+
+00:04:30.40 --> 00:04:35.18
+Here is Kiln Booking, after a real worker ran stages zero to two.
+
+00:04:35.18 --> 00:04:40.26
+Its Designs tab lists every screen and state that stage two exported,
+
+00:04:40.26 --> 00:04:42.25
+each with a live thumbnail.
+
+00:04:42.25 --> 00:04:45.26
+Choosing a state opens it in the preview.
+
+00:04:45.26 --> 00:04:49.09
+Then the sizes, from X S to X L, and dark, and back.
+
+00:04:49.44 --> 00:04:52.49
+At X S and dark, the frame is phone width.
+
+00:04:52.49 --> 00:04:57.22
+At X L it is laid out at twelve hundred pixels and scaled to fit.
+
+00:04:57.22 --> 00:05:01.58
+The tab works in Mission Control's dark mode and on a phone.
+
+00:05:01.93 --> 00:05:06.31
+Here is the probe in the real frame, served from another origin,
+
+00:05:06.31 --> 00:05:07.96
+with every read blocked.
+
+00:05:07.96 --> 00:05:11.93
+And a project before stage two says it has no designs yet,
+
+00:05:11.93 --> 00:05:16.18
+while an unreadable manifest names its commit, with try again.
+
+00:05:17.33 --> 00:05:19.28
+Journey fourteen is complete.
+
+00:05:19.28 --> 00:05:24.88
+The gallery lists every screen and state, with thumbnails and Magic Patterns links.
+
+00:05:24.88 --> 00:05:29.26
+Each preview comes from a separate origin, signed for one commit,
+
+00:05:29.26 --> 00:05:32.36
+in a sandbox that can't reach Mission Control.
+
+00:05:32.36 --> 00:05:37.35
+And the frame resizes from X S to X L and switches between light and dark.
+
+00:05:37.35 --> 00:05:39.17
+Next comes journey fifteen.

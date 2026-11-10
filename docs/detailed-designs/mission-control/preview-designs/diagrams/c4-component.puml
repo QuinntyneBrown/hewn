@@ -3,18 +3,24 @@
 LAYOUT_WITH_LEGEND()
 title Components — Preview designs and the design system
 
-Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
-Container(preview, "Mock preview host", "Static file host on a separate origin", "Serves exported mocks and design-system pages")
-Container_Boundary(spa_b, "Mission Control") {
-  Component(designs, "DesignsPage", "Angular route component", "Screens and states with thumbnails and MP links")
-  Component(ds, "DesignSystemPage", "Angular route component", "Token and component pages")
-  Component(prev, "SandboxedPreview", "Angular component", "Iframe, width and theme controls")
+System_Ext(gh, "GitHub", "The project's repository: docs/mocks/ and docs/design-system/")
+Container_Boundary(spa_b, "Mission Control (localhost / app origin)") {
+  Component(designs, "DesignsComponent", "Angular, Designs tab of ProjectPage", "Screens and states with live thumbnails and Magic Patterns links")
+  Component(prev, "SandboxedPreviewComponent", "Angular component", "Iframe sandbox=allow-scripts at 375-1200 px, light or dark")
+}
+Container_Boundary(api_b, "Hewn API") {
+  Component(ctrl, "ProjectsController", "ASP.NET Core", "GET /api/projects/{id}/designs, session required")
+  Component(list, "GetDesignsHandler", "MediatR", "Reads docs/mocks/manifest.json at the head; signs preview URLs")
+  Component(tok, "PreviewTokens", "HMAC-SHA256", "{project}.{sha}.{expiry}, 60 minutes")
+  Component(host, "PreviewEndpoint + ServePreviewHandler", "Minimal API on the preview host only", "GET /preview/{token}/{path}; CSP sandbox; no cookies")
 }
 
 Rel(designs, prev, "Uses")
-Rel(ds, prev, "Uses")
-Rel(designs, api, "GET manifest", "JSON/HTTPS")
-Rel(ds, api, "GET design-system pages", "JSON/HTTPS")
-Rel(prev, api, "GET signed URL", "JSON/HTTPS")
-Rel(prev, preview, "iframe src", "HTTPS")
+Rel(designs, ctrl, "GET designs", "JSON/HTTPS")
+Rel(ctrl, list, "Sends GetDesignsQuery")
+Rel(list, tok, "Signs")
+Rel(list, gh, "Reads the manifest at the head")
+Rel(prev, host, "iframe src on the preview origin", "HTTPS")
+Rel(host, tok, "Verifies")
+Rel(host, gh, "Reads the file at the signed SHA (cached)")
 @enduml

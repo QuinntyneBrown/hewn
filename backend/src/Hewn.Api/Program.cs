@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Hewn.Api.Auth;
+using Hewn.Api.Designs;
 using Hewn.Api.Errors;
 using Hewn.Api.Hubs;
 using Hewn.Api.Pipeline;
@@ -41,6 +42,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<MissionControlHub>(MissionControlHub.Path);
+app.MapPreview();
 app.MapGet("/health/live", () => Results.Ok(new { status = "Healthy" })).AllowAnonymous();
 
 if (app.Configuration.GetValue<bool>("Hewn:Fakes:Enabled"))
@@ -50,6 +52,19 @@ if (app.Configuration.GetValue<bool>("Hewn:Fakes:Enabled"))
         gitHub.Repository(owner, name) is { } repository
             ? Results.Ok(repository.PullRequests.Select(p => new { p.Number, p.Title, p.Head, p.Open, p.Merged, Labels = p.Labels.ToList() }).ToList())
             : Results.NotFound());
+
+    // Commits files to a fake repository, making it when it doesn't exist, as stage 2 or someone outside Hewn would.
+    app.MapPut("/api/fakes/github/{owner}/{name}/files", (string owner, string name, Dictionary<string, string> files, Hewn.Infrastructure.Fakes.InMemoryGitHub gitHub) =>
+    {
+        var repository = gitHub.Repository(owner, name) ?? gitHub.Seed(owner, name, topics: ["hewn"]);
+        var sha = string.Empty;
+        foreach (var (path, content) in files)
+        {
+            sha = repository.Write(path, content);
+        }
+
+        return Results.Ok(new { sha });
+    });
 
     // How long each check takes in the fake CI, so a test or a video can watch checks turn green (0: at once).
     app.MapPut("/api/fakes/github/check-seconds", (CheckPace pace, Hewn.Infrastructure.Fakes.InMemoryGitHub gitHub) =>
