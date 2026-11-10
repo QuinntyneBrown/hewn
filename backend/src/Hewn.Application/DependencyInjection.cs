@@ -25,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<LeaseService>();
         services.AddSingleton<RunControlSignals>();
         services.AddSingleton<WorkSignal>();
+        services.AddSingleton<Workers.WorkerPresence>();
         services.AddScoped<HeldLease>();
         services.AddScoped<Spend.PriceTable>();
         services.AddScoped<Spend.DirectionDefaultsReader>();

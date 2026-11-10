@@ -27,6 +27,11 @@ if (builder.Configuration.GetValue("Hewn:Leases:ReaperEnabled", true))
     builder.Services.AddHostedService<LeaseReaper>();
 }
 
+if (builder.Configuration.GetValue("Hewn:Workers:PresenceWatcherEnabled", true))
+{
+    builder.Services.AddHostedService<WorkerPresenceWatcher>();
+}
+
 if (builder.Configuration.GetValue("Hewn:Checks:PollerEnabled", true))
 {
     builder.Services.AddHostedService<CheckPollerService>();
