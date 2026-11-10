@@ -17,5 +17,5 @@ Rel(impl, github, "Pushes iteration commits", "Git/HTTPS")
 Rel(impl, gate, "Runs after each iteration")
 Rel(impl, block, "After iteration 10 fails")
 Rel(block, api, "IncrementBlocked; asks next runnable increment", "HTTPS")
-Rel(impl, api, "IterationProgress", "SignalR")
+Rel(impl, api, "Iteration progress: PUT increments/{n}", "JSON/HTTPS")
 @enduml

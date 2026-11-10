@@ -4,10 +4,11 @@ public sealed record GitHubRepositoryInfo(string Owner, string Name, bool IsPriv
 
 public sealed record RepositoryFile(string Path, byte[] Content);
 
-public sealed record PullRequestInfo(int Number, string Url, string Head, bool Merged, string Title);
+/// <summary>A pull request with its body and size: lines added and deleted, and files changed.</summary>
+public sealed record PullRequestInfo(int Number, string Url, string Head, bool Merged, string Title, string Body = "", int Additions = 0, int Deletions = 0, int ChangedFiles = 0);
 
 /// <summary>A check on a pull request's head commit: status queued, in_progress or completed; conclusion once completed.</summary>
-public sealed record CheckRunInfo(string Name, string Status, string? Conclusion);
+public sealed record CheckRunInfo(string Name, string Status, string? Conclusion, DateTimeOffset? StartedAt = null, DateTimeOffset? CompletedAt = null);
 
 /// <summary>A GitHub refusal or failure whose message is safe to show (it never carries a credential).</summary>
 public class GitHubException(string message) : Exception(message);

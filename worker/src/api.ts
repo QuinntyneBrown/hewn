@@ -111,6 +111,13 @@ export interface IncrementUpdate {
   iterations?: number;
   failingTests?: string[];
   pullRequestNumber?: number;
+  /** Acceptance tests in the test commit. */
+  testCount?: number;
+  /** The iteration on which every test first passed. */
+  greenAfter?: number;
+  /** The video's outcome, with its folder or why it failed (never blocks the increment). */
+  video?: 'Recorded' | 'Failed';
+  videoNote?: string;
 }
 
 /** A refusal from the API, with the ProblemDetails code clients branch on. */

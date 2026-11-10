@@ -1,5 +1,5 @@
 @startuml
-title UML sequence behaviour — Open the PR, watch checks and merge
+title UML sequence behaviour — Open the PR, follow its checks and merge
 skinparam backgroundColor #FFFFFF
 skinparam shadowing false
 skinparam roundcorner 12
@@ -15,46 +15,55 @@ skinparam package {
   BackgroundColor #F9FAFB
 }
 skinparam sequenceMessageAlign left
-box "Backend — Worker stage execution" #ECFDF3
-  participant "PullRequestStep" as pr
-  participant "MergeStep" as merge
+box "Worker" #ECFDF3
+  participant "IncrementStageExecutor" as worker
 end box
 box "Backend — Hewn API application" #D1FADF
-  participant "GitHubWriteBroker" as broker
-  participant "GitPushProxy" as proxy
+  participant "WorkerController\n(GitHub mutations)" as broker
+  participant "GetPullRequestChecksHandler" as checks
   participant "GitHubWebhookController" as hook
+  participant "CheckRecorder" as recorder
   participant "MissionControlHub" as hub
 end box
 box "Frontend — Mission Control application" #E0F2FE
-  participant "IncrementPrPanel" as panel
+  participant "IncrementPage" as page
 end box
 box "External systems" #F2F4F7
   participant "GitHub" as gh
 end box
-pr -> broker : OpenPullRequest(epoch, key {run}/pull-request/open, title, body)
-broker -> gh : Fenced; adopt existing open PR or create "Reconcile a card statement (journey 4, L2-018, L2-019)" (L2-024 AC1)
-note right of pr : Body: What, Design and decisions, API, Tests (commands + counts), Deferred, Notes, attribution (L2-024 AC2)
-broker --> pr : PR 42
-gh -> hook : check_run webhook (signed)
-hook -> hook : Verify signature; else 401 and log (L2-037 AC2)
-hook -> hub : CheckChanged
-hub -> panel : Live check status within 1 s (L2-024 AC3, L2-037 AC1)
-hub -> merge : Check results
+worker -> broker : open_pull_request(epoch, key, title, body)
+broker -> gh : Fenced; adopt the branch's open PR or create it (L2-024 AC1, AC2)
+broker --> worker : PR 42
+worker -> broker : PUT increments/{n} {pullRequestNumber: 42}
+broker -> hub : IncrementChanged
+hub -> page : Reads GET /api/projects/{id}/increments/{n}: PR link and body (L2-024 AC3)
+loop until every required check completed
+  worker -> checks : GET pull-requests/42/checks
+  checks -> gh : List check runs on the head commit
+  checks -> recorder : Record; changed checks only
+  recorder -> hub : CheckChanged (L2-037 AC1)
+  hub -> page : Reads the increment again: checks turn green live
+end
+gh -> hook : check_run webhook, X-Hub-Signature-256
+hook -> hook : WebhookSignature: HMAC-SHA256 with HEWN_GITHUB_WEBHOOK_SECRET;\nelse 401 and logged (L2-037 AC2)
+hook -> recorder : RecordCheckRunCommand
+recorder -> hub : CheckChanged
 alt a required check failed
-  merge --> pr : FailedCheck -> back to ImplementStep (L2-025 AC3)
-else default branch moved
-  loop up to 3 attempts
-    merge -> merge : Rebase locally; resolve conflicts
-    merge -> proxy : git push via sidecar (fenced; run's branch only); checks re-run
+  worker -> worker : A failed iteration: implement again (L2-025 AC3, L2-022 AC2)
+else the default branch moved (400 branch_behind)
+  loop up to 3 rebases
+    worker -> broker : commit {rebase: true} onto the default branch's head
+    worker -> worker : Gate again; the agent resolves files both sides changed
   end
-  opt still not mergeable
-    merge -> merge : Increment Blocked (L2-025 AC2)
+  opt still behind
+    worker -> broker : PUT increments/{n} Blocked (L2-025 AC2)
   end
 else all required checks passed
-  merge -> broker : MergePullRequest(epoch, key {run}/merge/merge, squash)
-  broker -> gh : Fenced; merge unless already merged (L2-025 AC1)
-  merge -> broker : DeleteBranch(epoch, key {run}/merge/delete-branch)
-  broker -> gh : Delete feature branch
-  merge -> merge : Update percent complete and docs/estimates/ before next increment (L2-025 AC4)
+  worker -> broker : merge_pull_request (squash)
+  broker -> gh : Squash-merge unless already merged; delete the branch (L2-025 AC1)
+  worker -> broker : PUT increments/{n} Merged
+  broker -> hub : IncrementChanged
+  hub -> page : Squash-merge: Branch deleted
+  worker -> broker : Commit docs/estimates/ progress before the next increment (L2-025 AC4)
 end
 @enduml

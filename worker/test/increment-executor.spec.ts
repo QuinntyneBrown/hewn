@@ -213,9 +213,14 @@ describe('stage 10, Increments', () => {
     expect(readFileSync(join(repo, 'docs/estimates/kiln.md'), 'utf8')).toContain(
       '| [sign-in](../detailed-designs/kiln/sign-in/README.md) | 1 | 100% |',
     );
+    // Each step is reported as it happens, so the increment page follows it (L2-021 AC3, L2-022, L2-024 AC3).
     expect(h.updates).toEqual([
       { number: 1, update: { status: 'InProgress' } },
-      { number: 1, update: { status: 'InProgress', redFailing: 1, redPassing: 0 } },
+      { number: 1, update: { status: 'InProgress', testCount: 1, redFailing: 1, redPassing: 0 } },
+      { number: 1, update: { status: 'InProgress', iterations: 1 } },
+      { number: 1, update: { status: 'InProgress', iterations: 1, greenAfter: 1 } },
+      { number: 1, update: { status: 'InProgress', video: 'Recorded', videoNote: 'docs/videos/sign-in/' } },
+      { number: 1, update: { status: 'InProgress', pullRequestNumber: 41 } },
       { number: 1, update: { status: 'Merged', pullRequestNumber: 41, iterations: 1 } },
     ]);
     expect(h.pulls[0]!.title).toBe('Sign in (journey 1, L2-001)');
@@ -233,7 +238,7 @@ describe('stage 10, Increments', () => {
 
     await deliver(agent, h.ctx);
 
-    expect(h.updates[1]!.update).toEqual({ status: 'InProgress', redFailing: 0, redPassing: 1 });
+    expect(h.updates[1]!.update).toEqual({ status: 'InProgress', testCount: 1, redFailing: 0, redPassing: 1 });
     expect(h.pulls[0]!.body).toContain('Tests passed before implementation');
   });
 
@@ -340,6 +345,11 @@ describe('stage 10, Increments', () => {
 
     expect(agent.tasks.filter((t) => t.increment!.phase === 'video')).toHaveLength(2);
     expect(h.pulls[0]!.body).toContain('Video failed: browser crashed during capture');
+    expect(h.updates.map((u) => u.update)).toContainEqual({
+      status: 'InProgress',
+      video: 'Failed',
+      videoNote: 'browser crashed during capture',
+    });
     expect(h.commits.flatMap((c) => [...c.files.keys()]).some((p) => p.startsWith('docs/videos/'))).toBe(false);
     expect(h.updates.at(-1)!.update.status).toBe('Merged');
   });

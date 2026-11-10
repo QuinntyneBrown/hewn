@@ -22,7 +22,7 @@ box "Backend — Worker stage execution" #ECFDF3
   participant "RedRunRecorder" as red
 end box
 box "Backend — Hewn API application" #D1FADF
-  participant "IncrementsController" as ctrl
+  participant "WorkerController" as ctrl
 end box
 box "External systems" #F2F4F7
   participant "Target repository (via write broker)" as gh

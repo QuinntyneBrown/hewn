@@ -24,6 +24,11 @@ if (builder.Configuration.GetValue("Hewn:Leases:ReaperEnabled", true))
     builder.Services.AddHostedService<LeaseReaper>();
 }
 
+if (builder.Configuration.GetValue("Hewn:Checks:PollerEnabled", true))
+{
+    builder.Services.AddHostedService<CheckPollerService>();
+}
+
 builder.Services
     .AddControllers(o => o.Filters.Add<ValidateAntiforgeryFilter>())
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -45,8 +50,17 @@ if (app.Configuration.GetValue<bool>("Hewn:Fakes:Enabled"))
         gitHub.Repository(owner, name) is { } repository
             ? Results.Ok(repository.PullRequests.Select(p => new { p.Number, p.Title, p.Head, p.Open, p.Merged, Labels = p.Labels.ToList() }).ToList())
             : Results.NotFound());
+
+    // How long each check takes in the fake CI, so a test or a video can watch checks turn green (0: at once).
+    app.MapPut("/api/fakes/github/check-seconds", (CheckPace pace, Hewn.Infrastructure.Fakes.InMemoryGitHub gitHub) =>
+    {
+        gitHub.CheckSeconds = Math.Clamp(pace.Seconds, 0, 600);
+        return Results.NoContent();
+    });
 }
 
 app.Run();
 
 public partial class Program;
+
+internal sealed record CheckPace(double Seconds);

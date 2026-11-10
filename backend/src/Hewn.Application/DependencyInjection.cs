@@ -25,6 +25,8 @@ public static class DependencyInjection
         services.AddScoped<Spend.PriceTable>();
         services.AddScoped<Spend.DirectionDefaultsReader>();
         services.AddScoped<RepositoryProvisioner>();
+        services.AddScoped<CheckRecorder>();
+        services.AddSingleton<CheckPoller>();
         services.AddSingleton(TimeProvider.System);
         return services;
     }

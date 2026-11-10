@@ -21,7 +21,7 @@ box "Backend — Worker stage execution" #ECFDF3
   participant "IncrementBlocker" as block
 end box
 box "Backend — Hewn API application" #D1FADF
-  participant "IncrementsController" as ctrl
+  participant "WorkerController" as ctrl
   participant "BacklogCursor" as cursor
 end box
 box "External systems" #F2F4F7
@@ -30,7 +30,7 @@ end box
 loop iteration i = 1..10
   impl -> impl : Agent changes code using last failures
   impl -> gh : Commit iteration i
-  impl -> ctrl : IterationProgress(i of 10)
+  impl -> ctrl : PUT increments/{n} {InProgress, iterations: i} -> IncrementChanged
   impl -> gate : Backend, frontend lint + unit, acceptance, full e2e (L2-022 AC1)
   gate --> impl : GateResult
   break all green

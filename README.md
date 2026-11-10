@@ -223,7 +223,8 @@ Secrets are never written to configuration files in the repository.
 | `HEWN_ALLOWED_GITHUB_USERS`     | API     | Comma-separated GitHub logins allowed to sign in                         |
 | `HEWN_GITHUB_APP_ID`            | API     | GitHub App used for repositories, pull requests and checks               |
 | `HEWN_GITHUB_APP_PRIVATE_KEY`   | API     | GitHub App private key (secret)                                          |
-| `HEWN_GITHUB_WEBHOOK_SECRET`    | API     | Verifies GitHub webhook signatures (secret)                              |
+| `HEWN_GITHUB_WEBHOOK_SECRET`    | API     | Verifies GitHub webhook signatures at `POST /api/github/webhook` (secret); without it every delivery is refused |
+| `Hewn__Checks__PollerEnabled`   | API     | Reads pull request checks after 60 s without a webhook; defaults to `true` |
 | `HEWN_GITHUB_OWNER`             | API     | Account or organization where new product repositories are created      |
 | `ANTHROPIC_API_KEY`             | Worker  | Model access for agents (secret)                                         |
 | `HEWN_MAGIC_PATTERNS_TOKEN`     | Worker  | Magic Patterns MCP credential (secret)                                   |

@@ -18,6 +18,14 @@ public class InMemoryGitHub(IConfiguration? configuration) : IGitHubRepositoryPr
     private readonly Dictionary<string, FakeRepository> _repositories = new(StringComparer.OrdinalIgnoreCase);
     private readonly Lock _lock = new();
 
+    /// <summary>
+    /// Seconds each check takes in the fake CI, one after another from the branch's last commit (e2e and videos
+    /// watch checks turn green). 0, the default, completes every check at once.
+    /// </summary>
+    public double CheckSeconds { get; set; } = double.TryParse(configuration?["Hewn:Fakes:GitHub:CheckSeconds"], System.Globalization.CultureInfo.InvariantCulture, out var seconds) ? seconds : 0;
+
+    public TimeProvider Clock { get; set; } = TimeProvider.System;
+
     public void SetAccess(string owner, string name, RepositoryAccess access)
     {
         lock (_lock)
@@ -39,7 +47,7 @@ public class InMemoryGitHub(IConfiguration? configuration) : IGitHubRepositoryPr
     {
         lock (_lock)
         {
-            var repository = new FakeRepository(owner, name, isPrivate, [.. topics]);
+            var repository = new FakeRepository(owner, name, isPrivate, [.. topics]) { Clock = Clock };
             repository.Commit("Initial commit", (files ?? new() { ["README.md"] = $"# {name}\n" })
                 .Select(f => new RepositoryFile(f.Key, Encoding.UTF8.GetBytes(f.Value))).ToList());
             _repositories[$"{owner}/{name}"] = repository;
@@ -205,12 +213,25 @@ public class InMemoryGitHub(IConfiguration? configuration) : IGitHubRepositoryPr
         {
             var repository = Existing(owner, name);
             var pull = repository.PullRequests.Single(p => p.Number == number);
-            // The fake "runs" CI instantly: one check per job in the head branch's workflow.
-            // A merged pull request's branch is gone; its checks are those of the merge.
+            // The fake runs one check per job in the head branch's workflow, each CheckSeconds long, in order from
+            // the branch's last commit. A merged pull request's branch is gone; its checks are those of the merge.
             var tree = repository.Branches.GetValueOrDefault(pull.Head) ?? repository.Files;
             var workflow = tree.TryGetValue(".github/workflows/ci.yml", out var bytes) ? Encoding.UTF8.GetString(bytes) : string.Empty;
-            IReadOnlyList<CheckRunInfo> checks = [.. WorkflowJobs(workflow).Select(job =>
-                new CheckRunInfo(job, "completed", repository.FailingChecks.Contains(job) ? "failure" : "success"))];
+            var from = repository.BranchTimes.GetValueOrDefault(pull.Head, DateTimeOffset.MinValue);
+            var now = Clock.GetUtcNow();
+            IReadOnlyList<CheckRunInfo> checks = [.. WorkflowJobs(workflow).Select((job, i) =>
+            {
+                if (CheckSeconds <= 0 || pull.Merged || from == DateTimeOffset.MinValue)
+                {
+                    return new CheckRunInfo(job, "completed", repository.FailingChecks.Contains(job) ? "failure" : "success");
+                }
+
+                var started = from.AddSeconds(i * CheckSeconds / 2);
+                var completed = from.AddSeconds((i + 1) * CheckSeconds);
+                return now < started ? new CheckRunInfo(job, "queued", null)
+                    : now < completed ? new CheckRunInfo(job, "in_progress", null, started)
+                    : new CheckRunInfo(job, "completed", repository.FailingChecks.Contains(job) ? "failure" : "success", started, completed);
+            })];
             return Task.FromResult(checks);
         }
     }
@@ -232,6 +253,7 @@ public class InMemoryGitHub(IConfiguration? configuration) : IGitHubRepositoryPr
             }
 
             var files = repository.Branches[pull.Head].Select(f => new RepositoryFile(f.Key, f.Value)).ToList();
+            pull.Size = repository.Size(pull.Head);
             pull.Merged = true;
             return Task.FromResult(repository.Commit($"{title} (#{number})", files));
         }
@@ -316,8 +338,29 @@ public sealed class FakeRepository(string owner, string name, bool isPrivate, Li
     public string Write(string path, string content) =>
         Commit($"Update {path}", [new RepositoryFile(path, Encoding.UTF8.GetBytes(content))]);
 
-    internal PullRequestInfo PullRequestInfo(FakePullRequest pull) =>
-        new(pull.Number, $"https://github.com/{Owner}/{Name}/pull/{pull.Number}", pull.Head, pull.Merged, pull.Title);
+    /// <summary>Last commit time of each branch, from which the fake CI times its checks.</summary>
+    public Dictionary<string, DateTimeOffset> BranchTimes { get; } = new(StringComparer.Ordinal);
+
+    internal TimeProvider Clock { get; set; } = TimeProvider.System;
+
+    internal PullRequestInfo PullRequestInfo(FakePullRequest pull)
+    {
+        var (additions, deletions, changed) = pull.Size ?? Size(pull.Head);
+        return new(pull.Number, $"https://github.com/{Owner}/{Name}/pull/{pull.Number}", pull.Head, pull.Merged, pull.Title, pull.Body, additions, deletions, changed);
+    }
+
+    /// <summary>Lines added and deleted, and files changed, between a branch and the default branch.</summary>
+    internal (int Additions, int Deletions, int Changed) Size(string branch)
+    {
+        if (!Branches.TryGetValue(branch, out var tree))
+        {
+            return (0, 0, 0);
+        }
+
+        static int Lines(byte[]? bytes) => bytes is null ? 0 : Encoding.UTF8.GetString(bytes).Split('\n', StringSplitOptions.RemoveEmptyEntries).Length;
+        var changed = tree.Where(f => !Files.TryGetValue(f.Key, out var before) || !before.AsSpan().SequenceEqual(f.Value)).ToList();
+        return (changed.Sum(f => Lines(f.Value)), changed.Sum(f => Lines(Files.GetValueOrDefault(f.Key))), changed.Count);
+    }
 
     /// <summary>Commits to a branch as the broker does; tests also use it to make a branch Hewn did not.</summary>
     public string CommitToBranch(string branch, string message, IReadOnlyList<RepositoryFile> files, bool rebase = false)
@@ -328,6 +371,8 @@ public sealed class FakeRepository(string owner, string name, bool isPrivate, Li
             Branches[branch] = tree;
             BranchBases[branch] = Commits.Count;
         }
+
+        BranchTimes[branch] = Clock.GetUtcNow();
 
         foreach (var file in files)
         {
@@ -369,4 +414,7 @@ public sealed class FakePullRequest(int number, string head, string title, strin
     public bool Open => !Merged;
 
     public List<string> Labels { get; } = [];
+
+    /// <summary>The size when merged, after which the branch is gone.</summary>
+    public (int Additions, int Deletions, int Changed)? Size { get; set; }
 }

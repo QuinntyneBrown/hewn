@@ -1,0 +1,280 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:06.00
+This is journey thirteen of Hewn, the software factory: follow an increment to
+
+00:00:06.00 --> 00:00:06.35
+merge.
+
+00:00:06.35 --> 00:00:09.99
+Stage ten builds a product one increment at a time, test first,
+
+00:00:09.99 --> 00:00:11.78
+and merges each one on its own.
+
+00:00:11.78 --> 00:00:15.47
+Owners and Viewers want to watch that happen: the failing tests,
+
+00:00:15.47 --> 00:00:19.86
+each attempt to make them pass, the pull request, its checks, and the merge.
+
+00:00:19.86 --> 00:00:24.19
+This video walks through how it was built: the progress the worker reports,
+
+00:00:24.19 --> 00:00:28.64
+stored checks, a signed webhook, a poller, the increment page, and the tests.
+
+00:00:29.79 --> 00:00:34.42
+A user opens an increment and sees red recorded before any implementation,
+
+00:00:34.42 --> 00:00:36.81
+or a flag when the tests passed first.
+
+00:00:36.81 --> 00:00:39.75
+They see each iteration against the cap of ten,
+
+00:00:39.75 --> 00:00:44.14
+and an increment that never goes green blocked with its failing tests,
+
+00:00:44.14 --> 00:00:45.39
+while Hewn moves on.
+
+00:00:45.39 --> 00:00:50.03
+Once the pull request is open, its link and its required checks show live,
+
+00:00:50.03 --> 00:00:51.03
+within a second.
+
+00:00:51.03 --> 00:00:55.04
+And when every check passes, it squash-merges, with no approval.
+
+00:00:56.19 --> 00:00:57.35
+Here is the flow.
+
+00:00:57.35 --> 00:01:01.75
+The worker opens the pull request through the API and reports it.
+
+00:01:01.75 --> 00:01:07.38
+Checks reach Hewn three ways: the worker's own reads, a signed webhook from GitHub,
+
+00:01:07.38 --> 00:01:08.26
+and a poller.
+
+00:01:08.26 --> 00:01:11.71
+Each change is stored, emits a check changed event,
+
+00:01:11.71 --> 00:01:15.03
+and the increment page reads the increment again.
+
+00:01:16.18 --> 00:01:21.26
+Stage ten already ran test first, then implement until green, then the video,
+
+00:01:21.26 --> 00:01:23.30
+the pull request and the merge.
+
+00:01:23.30 --> 00:01:25.94
+What it didn't do was say so as it went.
+
+00:01:25.94 --> 00:01:31.27
+Now the worker reports the test count with red, the iteration as each one starts,
+
+00:01:31.27 --> 00:01:36.48
+the iteration that went green, the video as recorded or failed with its reason,
+
+00:01:36.48 --> 00:01:39.64
+and the pull request number the moment it opens.
+
+00:01:39.64 --> 00:01:43.20
+The API stamps the time of each step on the increment,
+
+00:01:43.20 --> 00:01:47.75
+and redacts the failing tests and the video note before storing them.
+
+00:01:48.90 --> 00:01:54.18
+Required checks are now stored, one row per check, per pull request, per increment.
+
+00:01:54.18 --> 00:01:58.69
+The check recorder takes the project's lock, updates only what changed,
+
+00:01:58.69 --> 00:02:04.10
+and appends a check changed event for each change, under the project's next sequence,
+
+00:02:04.10 --> 00:02:05.56
+before broadcasting it.
+
+00:02:05.56 --> 00:02:09.25
+The worker's own check reads go through the same recorder,
+
+00:02:09.25 --> 00:02:11.66
+so the page sees what the worker sees.
+
+00:02:12.81 --> 00:02:16.51
+GitHub can tell Hewn about a check as soon as it changes.
+
+00:02:16.51 --> 00:02:20.20
+The webhook is anonymous, so the signature is everything.
+
+00:02:20.20 --> 00:02:25.51
+Hewn computes the H-MAC SHA two fifty six of the raw body with the webhook secret,
+
+00:02:25.51 --> 00:02:29.01
+and compares it with GitHub's header in constant time.
+
+00:02:29.01 --> 00:02:33.10
+No secret configured, no header, a malformed one or a mismatch,
+
+00:02:33.10 --> 00:02:37.44
+and the answer is four oh one, logged with the delivery, the event,
+
+00:02:37.44 --> 00:02:40.23
+the address and the reason, never the body.
+
+00:02:41.38 --> 00:02:46.40
+Webhooks don't always arrive: a self-hosted Hewn may sit behind a firewall.
+
+00:02:46.40 --> 00:02:52.02
+So a poller looks every ten seconds for open pull requests that have been silent for
+
+00:02:52.02 --> 00:02:54.03
+sixty, and reads their checks.
+
+00:02:54.03 --> 00:02:58.38
+Any news, from a webhook, the worker or a poll, resets the clock,
+
+00:02:58.38 --> 00:03:02.13
+so a pull request with working webhooks is never polled.
+
+00:03:03.28 --> 00:03:07.28
+In Mission Control, each Backlog title now opens its increment.
+
+00:03:07.28 --> 00:03:11.16
+The page follows the mock: a test first timeline on the left,
+
+00:03:11.16 --> 00:03:13.32
+and the pull request on the right.
+
+00:03:13.32 --> 00:03:16.56
+The timeline builds each step from what was stored.
+
+00:03:16.56 --> 00:03:19.73
+Red recorded shows the failing and passing counts.
+
+00:03:19.73 --> 00:03:22.91
+Tests that passed first are flagged, never hidden.
+
+00:03:22.91 --> 00:03:28.24
+And a blocked increment names its failing tests, and the increment Hewn moved on to.
+
+00:03:28.59 --> 00:03:34.06
+The pull request card shows its title, size and state, then the required checks,
+
+00:03:34.06 --> 00:03:38.24
+each with its status and duration, read out as well as drawn,
+
+00:03:38.24 --> 00:03:40.22
+and announced as they change.
+
+00:03:40.22 --> 00:03:42.55
+Then the body, section by section.
+
+00:03:42.55 --> 00:03:46.51
+If GitHub can't be read, the page says so, with try again.
+
+00:03:47.66 --> 00:03:52.27
+The backend tests came first, and failed with not found and unauthorized.
+
+00:03:52.27 --> 00:03:57.14
+Now eight tests cover red, each iteration and green, tests that passed first,
+
+00:03:57.14 --> 00:04:00.24
+a blocked increment and the one Hewn moved on to,
+
+00:04:00.24 --> 00:04:03.65
+the pull request with its checks and the squash-merge,
+
+00:04:03.65 --> 00:04:08.51
+a signed webhook emitting check changed, unsigned and wrongly signed webhooks
+
+00:04:08.51 --> 00:04:11.73
+refused, the poller after sixty seconds of silence,
+
+00:04:11.73 --> 00:04:13.95
+and Viewers following an increment.
+
+00:04:14.30 --> 00:04:18.09
+All green, the backend has two hundred and fourteen tests,
+
+00:04:18.09 --> 00:04:23.12
+the worker one hundred and forty four, and the frontend eight new view tests.
+
+00:04:23.12 --> 00:04:27.70
+End to end, there are nineteen new tests: seven for the page's states,
+
+00:04:27.70 --> 00:04:31.95
+six visual comparisons with the mocks, five accessibility checks,
+
+00:04:31.95 --> 00:04:33.72
+and one with a real worker.
+
+00:04:33.72 --> 00:04:38.76
+To make checks visible, the fake GitHub can now take a few seconds per check.
+
+00:04:38.76 --> 00:04:43.53
+The live test watches red, green, the checks turning green and the merge,
+
+00:04:43.53 --> 00:04:47.85
+all without a reload, then sends a signed and an unsigned webhook.
+
+00:04:49.00 --> 00:04:53.71
+Here is Kiln Booking's first increment, opened as stage ten takes it.
+
+00:04:53.71 --> 00:04:56.65
+The tests are written, and red is recorded.
+
+00:04:56.65 --> 00:05:01.65
+The implementation goes green after one iteration, the video is recorded,
+
+00:05:01.65 --> 00:05:03.49
+and the pull request opens.
+
+00:05:03.49 --> 00:05:09.03
+The three required checks turn green one by one, and the increment squash-merges,
+
+00:05:09.03 --> 00:05:10.67
+with its branch deleted.
+
+00:05:11.02 --> 00:05:14.27
+The merged increment shows every step with its time.
+
+00:05:14.27 --> 00:05:16.59
+It works in dark mode and on a phone.
+
+00:05:16.94 --> 00:05:21.09
+And here is Parcel Post, whose main workflow never went green.
+
+00:05:21.09 --> 00:05:24.98
+It is blocked after ten iterations, with its failing test,
+
+00:05:24.98 --> 00:05:27.52
+and the pull request was never opened.
+
+00:05:28.67 --> 00:05:30.67
+Journey thirteen is complete.
+
+00:05:30.67 --> 00:05:34.39
+Red is recorded before any implementation, or flagged.
+
+00:05:34.39 --> 00:05:39.76
+Each iteration shows against the cap, and a blocked increment lists what still
+
+00:05:39.76 --> 00:05:40.17
+fails.
+
+00:05:40.17 --> 00:05:45.20
+Required checks arrive by signed webhook or by poll, and turn green live.
+
+00:05:45.20 --> 00:05:48.16
+And the increment squash-merges on its own.
+
+00:05:48.16 --> 00:05:50.09
+Next comes journey fourteen.

@@ -14,6 +14,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Follow an increment to merge (journey 13, L2-021 AC3, L2-022 AC2, L2-024 AC3, L2-025, L2-037): an increment's
+  page (`/projects/{id}/increments/{n}`, from a Backlog title) shows the test commit and red recorded, or tests
+  that passed before implementation flagged; the iteration under way against the cap; Blocked with its failing
+  tests and the increment Hewn moved on to; the video; the pull request with its required checks, size and body;
+  and the squash-merge, all updating live. Checks are stored and emit `CheckChanged`, arriving by a signed
+  `check_run` webhook (`POST /api/github/webhook`, 401 and logged when unsigned or invalid), the worker's reads,
+  or a poll after 60 s of silence (ADR 0017). New `GET /api/projects/{id}/increments/{n}`. The fake CI can be
+  paced (`PUT /api/fakes/github/check-seconds`) so checks can be watched turning green.
+
 - Review the backlog (journey 12, L2-020 AC2, L2-019 AC4, L2-018, L2-025 AC4): a project's Backlog tab
   (`/projects/{id}/backlog`, beside Pipeline) lists the current direction's increments in order with status,
   estimate and pull request link, the merged and estimated totals with percent complete, and the deferred designs

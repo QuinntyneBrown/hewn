@@ -20,7 +20,7 @@ The slice covers the first two steps of the increment run.
 - **`TestFirstStep`** — creates `feature/{increment-slug}` from `origin/{default}`, runs `StageAgent` with the `implementing-incrementally` skill restricted to test paths, and commits only test files.
 - **`TestCommitGuard`** — rejects the commit if it contains any non-test file or any test file whose first line lacks a `Traces to:` header naming L2s in the increment.
 - **`RedRunRecorder`** — runs the new tests, records `RedRecorded(failing, passing)` or `TestsPassedEarly`, and stores the result on the increment.
-- **`IncrementTimeline (Angular)`** — Test first timeline on the increment page; shows "Red recorded" or "Tests passed before implementation".
+- **`IncrementPage (Angular)`** — the Test first timeline on the increment page; shows "Red recorded" or "Tests passed before implementation".
 
 ## Requirements
 
@@ -75,4 +75,7 @@ The branch comes from the latest default branch (L2-021 AC1). The first commit h
   and Playwright output and stored as `RedFailing`/`RedPassing` on the increment with `TestsPassedEarly`.
 - **Keys.** Commit keys carry the lease epoch (`{run}/e{epoch}/i{n}/tests`), so a resumed run commits its own work;
   pull request and merge keys do not, so a resume finds the same pull request.
-- **Deferred:** the increment page timeline (journey 13).
+- **The increment page** (`/projects/{id}/increments/{n}`, journey 13) shows the test commit with its test count,
+  then "Red recorded" with the failing and passing counts, or "Tests passed before implementation" as Skipped,
+  flagged rather than hidden (L2-021 AC3). The worker reports the test count with red, and the API stamps
+  `TestsCommittedAt` when red is first recorded.

@@ -26,6 +26,8 @@ public sealed class HewnDbContext(DbContextOptions<HewnDbContext> options) : DbC
 
     public DbSet<Increment> Increments => Set<Increment>();
 
+    public DbSet<IncrementCheck> IncrementChecks => Set<IncrementCheck>();
+
     public DbSet<ModelCall> ModelCalls => Set<ModelCall>();
 
     public DbSet<DirectionDefaults> DirectionDefaults => Set<DirectionDefaults>();

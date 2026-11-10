@@ -195,6 +195,9 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<long?>("ChecksHeardAt")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("DependsOn")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -210,6 +213,15 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.Property<string>("FailingTests")
                         .HasMaxLength(52000)
                         .HasColumnType("TEXT");
+
+                    b.Property<long?>("FinishedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("GreenAfter")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("GreenAt")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("Iterations")
                         .HasColumnType("INTEGER");
@@ -228,6 +240,9 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.Property<int?>("PullRequestNumber")
                         .HasColumnType("INTEGER");
 
+                    b.Property<long?>("PullRequestOpenedAt")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Reason")
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
@@ -238,10 +253,19 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.Property<int?>("RedPassing")
                         .HasColumnType("INTEGER");
 
+                    b.Property<long?>("StartedAt")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("TestCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("TestsCommittedAt")
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool>("TestsPassedEarly")
                         .HasColumnType("INTEGER");
@@ -251,11 +275,64 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Video")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("VideoAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("VideoNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("PullRequestNumber");
 
                     b.HasIndex("DirectionId", "Number");
 
                     b.ToTable("increments", (string)null);
+                });
+
+            modelBuilder.Entity("Hewn.Domain.IncrementCheck", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("CompletedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Conclusion")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("IncrementId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PullRequestNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("StartedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IncrementId", "PullRequestNumber", "Name")
+                        .IsUnique();
+
+                    b.ToTable("increment_checks", (string)null);
                 });
 
             modelBuilder.Entity("Hewn.Domain.LeasingSwitch", b =>

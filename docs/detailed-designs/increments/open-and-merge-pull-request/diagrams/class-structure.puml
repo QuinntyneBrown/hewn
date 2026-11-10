@@ -11,45 +11,62 @@ skinparam class {
 }
 title Class structure — Open and merge the pull request
 
-class PullRequestTemplate {
-  +Title(journey: string, n: int, l2: string[]): string
-  +Body(ctx: IncrementContext, gate: GateResult, video: VideoOutcome, red: RedResult): string
+class IncrementStageExecutor <<worker>> {
+  -deliver(increment): Merged | Blocked
+  -waitForChecks(number): CheckRun[]
+  -rebase(): up to 3 attempts
 }
-class PullRequestStep <<worker>> {
-  +RunAsync(ctx: IncrementContext): Task<int>
+class "pull-request.ts" as PrTemplate <<worker>> {
+  +pullRequestTitle(journey, increment): string
+  +pullRequestBody(facts): string
 }
-class MergeStep <<worker>> {
-  +int MaxRebaseAttempts = 3
-  +RunAsync(pr: int): Task<MergeOutcome>
+class Increment {
+  +Status: IncrementStatus
+  +TestCount, RedFailing, RedPassing: int?
+  +Iterations: int
+  +GreenAfter: int?
+  +Video, VideoNote: string?
+  +PullRequestNumber: int?
+  +StartedAt, TestsCommittedAt, GreenAt, VideoAt
+  +PullRequestOpenedAt, FinishedAt, ChecksHeardAt
+  +Apply(progress: IncrementProgress, now): bool
+  +HeardChecks(now)
 }
-enum MergeOutcome {
-  Merged
-  FailedCheck
-  Blocked
+class IncrementCheck {
+  +PullRequestNumber: int
+  +Name, Status: string
+  +Conclusion: string?
+  +StartedAt, CompletedAt
+  +Update(status, conclusion, started, completed): bool
 }
 class GitHubWebhookController {
-  +Receive(signature: string, body: byte[]): IActionResult
+  +Receive(): 202 | 401
 }
-class WebhookSignatureVerifier {
-  +Verify(body: byte[], signature: string): bool
+class WebhookSignature <<static>> {
+  +Problem(secret, body, header): string?
+}
+class CheckRecorder {
+  +FindAsync(project, number): Increment?
+  +RecordAsync(project, increment, checks)
 }
 class CheckPoller {
-  +Interval: TimeSpan = 60 s
+  +Silence: TimeSpan = 60 s
+  +PollAsync(): int
 }
-class CheckChanged {
-  +ProjectId ProjectId
-  +int PullRequest
-  +string Check
-  +CheckState State
-  +long Sequence
+class GetIncrementHandler {
+  +Handle(GetIncrementQuery): IncrementDetailDto
 }
-class ProgressUpdater <<worker>> {
-  +UpdateAsync(d: DirectionId): Task
+class IncrementPage <<Angular>> {
+  +timeline: TimelineStep[]
+  +checks
 }
-PullRequestStep ..> PullRequestTemplate
-MergeStep --> MergeOutcome
-GitHubWebhookController ..> WebhookSignatureVerifier
-GitHubWebhookController ..> CheckChanged : emits
-CheckPoller ..> CheckChanged : emits
-MergeStep ..> ProgressUpdater : after merge
+IncrementStageExecutor ..> PrTemplate
+Increment "1" *-- "*" IncrementCheck
+GitHubWebhookController ..> WebhookSignature
+GitHubWebhookController ..> CheckRecorder : RecordCheckRunCommand
+CheckPoller ..> CheckRecorder
+CheckRecorder ..> IncrementCheck : CheckChanged
+GetIncrementHandler ..> Increment
+GetIncrementHandler ..> IncrementCheck
+IncrementPage ..> GetIncrementHandler : GET increments/{n}
 @enduml

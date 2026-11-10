@@ -37,6 +37,11 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
         mediator.Send(new ListProjectsQuery(), cancellationToken);
 
     /// <summary>L2-020 AC2, L2-019 AC4: the current direction's increments, deferred designs and totals.</summary>
+    /// <summary>One increment of the current direction, followed to merge (journey 13).</summary>
+    [HttpGet("{projectId:guid}/increments/{number:int}")]
+    public async Task<IActionResult> Increment(Guid projectId, int number, CancellationToken cancellationToken) =>
+        Ok(await mediator.Send(new Hewn.Application.Increments.GetIncrementQuery(projectId, number), cancellationToken));
+
     [HttpGet("{projectId:guid}/backlog")]
     public Task<BacklogDto> Backlog(Guid projectId, CancellationToken cancellationToken) =>
         mediator.Send(new GetProjectBacklogQuery(projectId), cancellationToken);

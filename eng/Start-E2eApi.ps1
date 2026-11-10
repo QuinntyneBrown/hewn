@@ -20,6 +20,8 @@ $env:HEWN_ALLOWED_GITHUB_USERS = 'quinntynebrown:Owner,ada:Viewer,grace:Owner'
 $env:HEWN_GITHUB_OWNER = 'hewn-builds'
 $env:HEWN_DEFAULT_BUDGET_USD = '300'
 $env:HEWN_WORKER_TOKEN = 'e2e-worker-token-not-a-secret'
+# Signs the webhooks e2e tests send as GitHub would (L2-037 AC2).
+$env:HEWN_GITHUB_WEBHOOK_SECRET = 'e2e-webhook-secret-not-a-secret'
 # Short waits before each automatic retry of a failed run (30 s, 2 min, 10 min in production; L2-006 AC1).
 # The suites submit many directions as one Owner; 10 a minute (the default, proven in the backend tests) is too few.
 if (-not $env:Hewn__RateLimit__DirectionsPerMinute) { $env:Hewn__RateLimit__DirectionsPerMinute = '30' }

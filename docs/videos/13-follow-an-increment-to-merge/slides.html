@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 13 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="13" data-video-title="Follow an increment to merge" data-parts="Introduction|Goal|Progress|Checks|Webhook|Poller|Increment page|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 13</div>
+  <h1>Follow an increment to merge</h1>
+  <p class="lead">Red, each iteration, the pull request and its checks, and the squash-merge, live.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video walks through how it was built">
+  <figure><img src="screens/merged-desktop.png" alt="Kiln Booking's increment 1, Merged: every step of the test first timeline with its time, and the squash-merged pull request with three passed checks"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="A user opens an increment and sees red recorded">
+  <div class="cols cols--wide">
+    <figure><img src="screens/red-desktop.png" alt="Increment 1 In progress: failing tests committed and red recorded"></figure>
+    <ul class="bullets small">
+      <li>Red, or flagged green first</li>
+      <li>Iteration n of 10</li>
+      <li>Blocked: failing tests, move on</li>
+      <li>PR link and checks, live</li>
+      <li>Squash-merge, no approval</li>
+    </ul>
+  </div>
+</section>
+
+<section id="flow" data-part="1" data-cue="Here is the flow.">
+  <figure class="diagram"><img src="../../detailed-designs/increments/open-and-merge-pull-request/diagrams/sequence-open-checks-merge.png" alt="Sequence diagram: the worker opens the PR; check reads, a signed webhook and the recorder emit CheckChanged; the increment page reads the increment again; the merge"></figure>
+</section>
+
+<section id="reread" data-part="1" data-cue="and the increment page reads the increment again">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/increment/increment.page.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1-2,4-6,9">          const mine = (e: ProjectEvent) =&gt;
+            CHANGES.has(e.type) &amp;&amp; (e.payload['number'] === undefined || e.payload['number'] === n);
+          // The first read, then one more after each of this increment's events.
+          const reads$ = merge(
+            of(null),
+            this.events.follow(id, project.lastSequence).pipe(filter(mine)),
+          ).pipe(
+            scan((count) =&gt; count + 1, 0),
+            switchMap(() =&gt; this.api.getIncrement(id, n)),</pre>
+</section>
+
+<section id="report" data-part="2" data-cue="Now the worker reports the test count with red">
+  <div class="code-file">worker/src/executors/increment-executor.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3-5">      await context.updateIncrement(n, {
+        status: 'InProgress',
+        testCount: red.failed + red.passed,
+        redFailing: red.failed,
+        redPassing: red.passed,
+      });</pre>
+  <div class="code-file">worker/src/executors/increment-executor.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="4">        while (state.iterations &lt; maxIterations) {
+          state.iterations++;
+          // Each iteration is reported as it starts, so Mission Control shows "iteration n of 10" live.
+          await context.updateIncrement(n, { status: 'InProgress', iterations: state.iterations });</pre>
+</section>
+
+<section id="report2" data-part="2" data-cue="the video as recorded or failed with its reason">
+  <div class="code-file">worker/src/executors/increment-executor.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="4-5">      await context.updateIncrement(
+        n,
+        'path' in video
+          ? { status: 'InProgress', video: 'Recorded', videoNote: `docs/videos/${slug}/` }
+          : { status: 'InProgress', video: 'Failed', videoNote: video.failed.slice(0, 500) },</pre>
+  <div class="code-file">worker/src/executors/increment-executor.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2">      // L2-024 AC3: the increment shows its pull request, and the API follows its checks from now on.
+      await context.updateIncrement(n, { status: 'InProgress', pullRequestNumber: pull.number });</pre>
+</section>
+
+<section id="recorder" data-part="3" data-cue="The check recorder takes the project's lock">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/CheckRecorder.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,3,15-16">            if (row.Update(check.Status, check.Conclusion, check.StartedAt, check.CompletedAt))
+            {
+                await events.AppendAsync(projectId, "CheckChanged", new
+                {
+                    directionId = increment.DirectionId,
+                    number = increment.Number,
+                    pullRequestNumber = number,
+                    name = check.Name,
+                    status = check.Status,
+                    conclusion = check.Conclusion,
+                }, cancellationToken);
+            }
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        await events.PublishAsync(cancellationToken);</pre>
+</section>
+
+<section id="signature" data-part="4" data-cue="Hewn computes the H-MAC SHA two fifty six">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/WebhookSignature.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,6,11">        if (string.IsNullOrEmpty(secret))
+        {
+            return "no webhook secret is configured";
+        }
+
+        if (string.IsNullOrEmpty(header))
+        {
+            return "unsigned";
+        }
+
+        if (!header.StartsWith(Prefix, StringComparison.Ordinal) || header.Length != Prefix.Length + 64)
+        {
+            return "malformed signature";</pre>
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/WebhookSignature.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1-2">        var expected = HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), body);
+        return CryptographicOperations.FixedTimeEquals(expected, given) ? null : "signature mismatch";</pre>
+</section>
+
+<section id="refuse" data-part="4" data-cue="the answer is four oh one">
+  <div class="code-file">backend/src/Hewn.Api/Controllers/GitHubWebhookController.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="1,4-5">        var problem = WebhookSignature.Problem(configuration["HEWN_GITHUB_WEBHOOK_SECRET"], body, Request.Headers["X-Hub-Signature-256"].ToString());
+        if (problem is not null)
+        {
+            logger.LogWarning("Rejected GitHub webhook {Delivery} ({Event}) from {Address}: {Problem}", delivery, type, HttpContext.Connection.RemoteIpAddress, problem);
+            return Problem(statusCode: StatusCodes.Status401Unauthorized, title: "The webhook signature is missing or invalid.", extensions: new Dictionary&lt;string, object?&gt; { ["code"] = "webhook_signature_invalid" });
+        }</pre>
+  <div class="result red">✘ 401 webhook_signature_invalid · logged, never the body</div>
+</section>
+
+<section id="poller" data-part="5" data-cue="So a poller looks every ten seconds">
+  <figure class="diagram"><img src="../../detailed-designs/increments/open-and-merge-pull-request/diagrams/sequence-poll-when-silent.png" alt="Sequence diagram: every 10 seconds the poller reads checks of pull requests silent for 60 seconds and records them"></figure>
+</section>
+
+<section id="page" data-part="6" data-cue="each Backlog title now opens its increment">
+  <figure><img src="screens/checks-desktop.png" alt="The increment page: the test first timeline, and the pull request with its required checks running"></figure>
+</section>
+
+<section id="timeline" data-part="6" data-cue="Red recorded shows the failing and passing counts">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/increment/increment-view.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3-4,6,9,12">      : d.testsPassedEarly
+        ? {
+            title: 'Tests passed before implementation',
+            status: 'Skipped',
+            time: time(d.testsCommittedAt),
+            detail: `${d.redPassing} of ${d.testCount} passed on the test commit; flagged in the PR Notes`,
+          }
+        : {
+            title: 'Red recorded',
+            status: 'Failed',
+            time: time(d.testsCommittedAt),
+            detail: `${d.redFailing} failing, ${d.redPassing} passing`,
+          },
+  );</pre>
+</section>
+
+<section id="blocked-code" data-part="6" data-cue="And a blocked increment names its failing tests">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/increment/increment-view.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2,4-5,7">  if (blocked) {
+    const failing = `${d.failingTests.length} of ${d.testCount ?? d.failingTests.length} failing: ${d.failingTests.join(', ')}.`;
+    steps.push({
+      title: `Blocked after ${plural(d.iterations, 'iteration')}`,
+      status: 'Blocked',
+      time: time(d.finishedAt),
+      detail: `${failing} ${d.movedOnTo !== null ? `Moved on to increment ${d.movedOnTo}.` : 'Every increment left depends on it.'}`,
+    });</pre>
+</section>
+
+<section id="checks" data-part="6" data-cue="The pull request card shows its title, size and state">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/increment/increment.page.html</div>
+  <pre class="code tight" data-lang="html" data-mark="2,5-8">              &lt;h3 class="subhead mt-6"&gt;Required checks&lt;/h3&gt;
+              &lt;ul class="checks mt-2" aria-live="polite"&gt;
+                @for (check of checks(); track check.name) {
+                  &lt;li&gt;
+                    &lt;svg hw-status-icon [status]="check.status"&gt;&lt;/svg
+                    &gt;&lt;span class="visually-hidden"&gt;{{ check.status }}:&lt;/span
+                    &gt;&lt;span class="checks__name"&gt;{{ check.name }}&lt;/span
+                    &gt;&lt;span class="checks__d"&gt;{{ check.detail }}&lt;/span&gt;
+                  &lt;/li&gt;
+                } @empty {</pre>
+</section>
+
+<section id="red" data-part="7" data-cue="The backend tests came first">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Increments/FollowAnIncrementTests.cs</div>
+  <pre class="code tight" data-lang="csharp" data-mark="2,5-6,8">    [Fact]
+    public async Task An_increment_shows_red_recorded_each_iteration_and_green()
+    {
+        var (owner, projectId, worker, run) = await LeaseIncrementsAsync();
+        await UpdateAsync(worker, run, 1, new { status = "InProgress" });
+        await UpdateAsync(worker, run, 1, new { status = "InProgress", testCount = 4, redFailing = 4, redPassing = 0 });
+        await UpdateAsync(worker, run, 1, new { status = "InProgress", iterations = 3 });
+
+        var implementing = await IncrementAsync(owner, projectId, 1);</pre>
+  <div class="result red">✘ 8 failed · 404 Not Found, 401 Unauthorized</div>
+</section>
+
+<section id="tests" data-part="7" data-cue="All green, the backend has">
+  <div class="cols cols--3">
+    <div class="card"><h3>214 backend</h3><p class="small">8 new, through the real API</p></div>
+    <div class="card"><h3>144 worker · 8 view</h3><p class="small">progress reported; timeline, checks, size</p></div>
+    <div class="card"><h3>19 new e2e</h3><p class="small">states, visual, a11y, live</p></div>
+  </div>
+</section>
+
+<section id="e2e" data-part="7" data-cue="The live test watches red, green">
+  <div class="code-file">e2e/tests/pipeline/follow-an-increment-live.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2-3,7,9-10">    // L2-021 AC3, L2-022: red recorded, then green.
+    await expect(increment.step('Red recorded').detail).toHaveText(/^\d+ failing, 0 passing$/, { timeout: 30_000 });
+    await expect(increment.step('Green after 1 iteration').title).toBeVisible({ timeout: 30_000 });
+
+    // L2-024 AC3, L2-037 AC1: the pull request and its required checks, as they change.
+    await expect(increment.pullRequest).toBeVisible({ timeout: 30_000 });
+    await expect(increment.pullRequest).toContainText(/#\d+ · open/);
+    await expect(increment.checks.filter({ hasText: 'Running:' }).first()).toBeVisible({ timeout: 30_000 });
+    for (const name of ['backend', 'frontend', 'e2e']) {
+      await expect(increment.check(name).root).toContainText('Succeeded:', { timeout: 30_000 });</pre>
+  <div class="result green">✓ Red → green → checks → Merged, no reload</div>
+</section>
+
+<section id="e2e-hook" data-part="7" data-cue="then sends a signed and an unsigned webhook">
+  <div class="code-file">e2e/tests/pipeline/follow-an-increment-live.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2,4,8">    const unsigned = await page.request.post('/api/github/webhook', { data: body, headers });
+    expect(unsigned.status()).toBe(401);
+    const signature = `sha256=${createHmac('sha256', WEBHOOK_SECRET).update(body).digest('hex')}`;
+    const signed = await page.request.post('/api/github/webhook', {
+      data: body,
+      headers: { ...headers, 'X-Hub-Signature-256': signature },
+    });
+    expect(signed.status()).toBe(202);</pre>
+</section>
+
+<section id="clip-live" data-part="8" data-cue="Here is Kiln Booking's first increment" data-clip="clips/live.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Red recorded, green, the video, the pull request; three checks turn green, then the squash-merge</aside>
+</section>
+
+<section id="merged" data-part="8" data-cue="The merged increment shows every step with its time.">
+  <figure><img src="screens/merged-desktop.png" alt="Increment 1 Merged, with every step's time"></figure>
+</section>
+
+<section id="themes" data-part="8" data-cue="It works in dark mode and on a phone.">
+  <div class="cols">
+    <figure><img src="screens/merged-desktop-dark.png" alt="The merged increment in dark mode"></figure>
+    <figure class="phone"><img src="screens/merged-phone.png" alt="The merged increment on a phone"></figure>
+  </div>
+</section>
+
+<section id="blocked-screen" data-part="8" data-cue="And here is Parcel Post">
+  <div class="cols cols--wide">
+    <figure><img src="screens/blocked-desktop.png" alt="Parcel Post's Main workflow increment: Blocked after 10 iterations, its failing test listed, the pull request never opened"></figure>
+    <figure class="phone"><img src="screens/blocked-phone.png" alt="The blocked increment on a phone"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="9" data-cue="Journey thirteen is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Red recorded, or flagged</li>
+    <li>Iterations against the cap; Blocked names its tests</li>
+    <li>Checks by signed webhook or poll, live</li>
+    <li>Squash-merges on its own</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

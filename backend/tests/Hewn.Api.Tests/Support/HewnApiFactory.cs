@@ -75,6 +75,7 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("HEWN_GITHUB_OWNER", "hewn-builds");
         builder.UseSetting("HEWN_SKILLS_SOURCE", SkillsSource);
         builder.UseSetting("Hewn:Leases:ReaperEnabled", "false");
+        builder.UseSetting("Hewn:Checks:PollerEnabled", "false");
         builder.UseSetting("ConnectionStrings:Hewn", "DataSource=:memory:");
         foreach (var (key, value) in _settings)
         {

@@ -18,11 +18,11 @@ The slice spans the PR step in the worker, check intake in the API, and the incr
 - **`PullRequestStep (worker)`** — renders the title and body from `PullRequestTemplate` and asks the API's `GitHubWriteBroker` to open the PR (`OpenPullRequest`, idempotency key `{run}/pull-request/open`). The worker never calls GitHub; the broker fences the lease epoch, adopts an existing open PR on the branch, and stores the result so a resumed run gets the same PR number ([Connect to GitHub](../../source-control/connect-to-github/README.md), [Worker loop](../../agent-runtime/worker-loop/README.md)). The body carries `Hewn-Run: {run}/pull-request`.
 - **`PullRequestTemplate`** — builds the title and the six body sections, the test commands with pass counts from `GateResult`, the video link or failure note, the early-green flag, and the attribution line.
 - **`GitHubWebhookController`** — `POST /api/github/webhook`, anonymous but signature-verified with `HEWN_GITHUB_WEBHOOK_SECRET`. Unsigned or invalid requests return 401 and are logged.
-- **`CheckPoller`** — background service that polls the checks of each open PR every 60 seconds when no webhook has arrived in that interval.
-- **`CheckStatusProjector`** — turns check changes into `CheckChanged` events on the project's stream (L2-031).
+- **`CheckPoller`** — background service (`CheckPollerService`, every 10 s) that reads the checks of each in-progress increment's PR once 60 seconds pass with no check news from a webhook or the worker.
+- **`CheckRecorder`** — stores each increment's checks in `increment_checks` and appends `CheckChanged` for each one that changed, on the project's stream (L2-031).
 - **`MergeStep (worker)`** — waits for all required checks, then requests `MergePullRequest` and `DeleteBranch` from the broker (keys `{run}/merge/merge` and `{run}/merge/delete-branch`). On a moved default branch it rebases locally and pushes through the git proxy, re-running checks, up to 3 attempts; on a failed check it returns to `ImplementStep` as a failed iteration. The broker re-reads the PR before merging: one already merged by an earlier attempt counts as success, so a resumed run never merges twice.
 - **`ProgressUpdater`** — after merge, recomputes percent complete and commits the updated `docs/estimates/` before the next increment starts.
-- **`IncrementPrPanel (Angular)`** — PR link, live required checks and the body on the increment page.
+- **`IncrementPage (Angular)`** — the increment page's pull request rail: PR link and size, live required checks and the body, read from `GET /api/projects/{id}/increments/{n}` (`GetIncrementHandler`).
 
 ## Requirements
 
@@ -83,5 +83,23 @@ If no webhook arrives for an open PR within 60 seconds, the poller reads the che
 - **Stage 10's writes.** `feature/{slug}` branches take any path except `.github/`, `.claude/`, `.agents/`,
   `.hewn/` and `docs/specs/`; the default branch only `docs/estimates/` (progress) and the decision log.
 - **Attribution** is "Built by Hewn · direction {id8} · run-{id8}", the last line of the body.
-- **Deferred:** webhooks, the check poller and `CheckChanged` (L2-037, L2-024 AC3) with journey 13 and
-  source control; until then the worker polls checks through the API.
+- **Checks are stored per increment** (journey 13) in `increment_checks`, keyed by increment, pull request and
+  check name. Three paths record them through `CheckRecorder`: the worker's own reads, a signed `check_run`
+  webhook, and `CheckPoller`. Each stored change appends `CheckChanged {number, pullRequestNumber, name, status,
+  conclusion}` under the project's next sequence and is then broadcast (L2-037 AC1, L2-031). See ADR 0017.
+- **The webhook** is `POST /api/github/webhook`, anonymous and without antiforgery, at most 1 MB. It checks
+  `X-Hub-Signature-256` as HMAC-SHA256 of the raw body with `HEWN_GITHUB_WEBHOOK_SECRET`, compared in constant
+  time; a missing, malformed or wrong signature, or no secret configured, is `401 webhook_signature_invalid`,
+  logged with the delivery id, event, caller IP and reason, never the body (L2-037 AC2). A valid request is 202
+  whether or not it matched an increment.
+- **The poller** runs every 10 s and reads the checks of each in-progress increment with a pull request whose last
+  check news (`ChecksHeardAt`, or the PR's opening) is over 60 s old, so a PR is polled after 60 s of silence.
+  `Hewn:Checks:PollerEnabled=false` turns it off; the API tests do.
+- **The increment page** reads `GET /api/projects/{id}/increments/{n}`, which takes the pull request's title, body
+  and size from GitHub on each read; when GitHub can't be read it is `502 github_failed` and the page says so
+  with Try again. The page reads again after each `IncrementChanged` or `CheckChanged` for its increment, so the
+  checks and the squash-merge show without a reload (L2-024 AC3). The body is split on its `## ` headings, with
+  the "Built by Hewn" line as the attribution. The mock's percent complete after merge is not shown; the
+  Backlog tab carries it.
+- **Paced fake CI.** The fake GitHub can take `Hewn:Fakes:GitHub:CheckSeconds` per check, set at run time in the
+  e2e stack with `PUT /api/fakes/github/check-seconds`, so a test or a video can watch checks turn green.
