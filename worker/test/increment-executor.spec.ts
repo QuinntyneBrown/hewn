@@ -109,12 +109,15 @@ function harness(backlog: Increment[]) {
   const logs: string[] = [];
   const state = { checks: [] as CheckRun[][], behind: 0 };
   const status = new Map(backlog.map((i) => [i.number, i.status]));
+  /** Each reported decision, with the commit made just before it. */
+  const decisions: { question: string; after: (typeof commits)[number] | undefined }[] = [];
 
   const ctx: RunContext = {
     workspace: mkdtempSync(join(root, 'workspace-')),
     log: async (_level, text) => void logs.push(text),
     listSkillFolders: async () => ({}),
-    recordDecisions: async () => {},
+    recordDecisions: async (reported) =>
+      void decisions.push(...reported.map((d) => ({ question: d.question, after: commits.at(-1) }))),
     recordModelCall: async () => {},
     downloadRepository: async () => execFileSync('tar', ['-czf', '-', '-C', root, 'kiln-abc1234']),
     commit: async (step, message, files: CommitFile[], branch, options) => {
@@ -166,7 +169,7 @@ function harness(backlog: Increment[]) {
       status.set(number, update.status);
     },
   };
-  return { ctx, commits, updates, pulls, merges, logs, state };
+  return { ctx, commits, updates, pulls, merges, logs, state, decisions };
 }
 
 const increment = (
@@ -392,6 +395,18 @@ describe('stage 10, Increments', () => {
     expect(h.commits[0]!.files.get('e2e/tests/sign-in.spec.ts')).toMatch(
       /^\/\/ Acceptance Test\n\/\/ Traces to: L2-001\n/,
     );
+  });
+
+  it('reports each decision an increment records once, after the commit that wrote it', async () => {
+    const h = harness([increment(1, 'Sign in', 1, 'L2-001'), increment(2, 'Book a firing', 2, 'L2-002', [1])]);
+
+    await deliver(new ScriptedStageAgent(() => '2026-11-09'), h.ctx);
+
+    expect(h.decisions.map((d) => d.question)).toEqual([
+      'How should Sign in be built?',
+      'How should Book a firing be built?',
+    ]);
+    for (const d of h.decisions) expect(d.after!.files.get('docs/decisions.md')).toContain(d.question);
   });
 
   it('tells every session to decide for itself, never gives it a way to ask, and checks the decisions it records', async () => {
