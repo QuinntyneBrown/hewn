@@ -38,6 +38,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 22 | [Connect a GitHub repository](22-connect-a-github-repository/README.md) | ~4:19 | Journey 22 |
 | 23 | [Run workers locally or in the cloud](23-run-workers-locally-or-in-cloud/README.md) | ~5:06 | Journey 23 |
 | 24 | [Manage worker tokens](24-manage-worker-tokens/README.md) | ~5:29 | Journey 24 |
+| 25 | [Inspect worker activity](25-inspect-worker-activity/README.md) | ~4:39 | Journey 25 |
 
 ## Voice
 
