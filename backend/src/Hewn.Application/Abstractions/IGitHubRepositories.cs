@@ -60,6 +60,9 @@ public interface IGitHubRepositories
 
     Task<PullRequestInfo?> GetPullRequestAsync(string owner, string name, int number, CancellationToken cancellationToken);
 
+    /// <summary>Every pull request, open, closed or merged, newest first, without bodies or sizes (L2-035 AC1).</summary>
+    Task<IReadOnlyList<PullRequestInfo>> ListPullRequestsAsync(string owner, string name, CancellationToken cancellationToken);
+
     /// <summary>Adds a label to a pull request, leaving it open (L2-029 AC3).</summary>
     Task AddLabelAsync(string owner, string name, int number, string label, CancellationToken cancellationToken);
 

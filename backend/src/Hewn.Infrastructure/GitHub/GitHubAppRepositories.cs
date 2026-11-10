@@ -178,6 +178,32 @@ public sealed class GitHubAppRepositories(GitHubAppClient client) : IGitHubRepos
         return pull is null ? null : ToPullRequest(pull.Value);
     }
 
+    public async Task<IReadOnlyList<PullRequestInfo>> ListPullRequestsAsync(string owner, string name, CancellationToken cancellationToken)
+    {
+        var token = await RepositoryTokenAsync(owner, name, cancellationToken);
+        var pulls = new List<PullRequestInfo>();
+        // At most ten pages of 100; a list item says it merged with merged_at.
+        for (var page = 1; page <= 10; page++)
+        {
+            var batch = await GetJsonAsync(token, $"repos/{owner}/{name}/pulls?state=all&sort=created&direction=desc&per_page=100&page={page}", cancellationToken);
+            if (batch is not { ValueKind: JsonValueKind.Array } items || items.GetArrayLength() == 0)
+            {
+                break;
+            }
+
+            pulls.AddRange(items.EnumerateArray().Select(p => ToPullRequest(p) with
+            {
+                Merged = p.TryGetProperty("merged_at", out var at) && at.ValueKind == JsonValueKind.String,
+            }));
+            if (items.GetArrayLength() < 100)
+            {
+                break;
+            }
+        }
+
+        return pulls;
+    }
+
     public async Task AddLabelAsync(string owner, string name, int number, string label, CancellationToken cancellationToken)
     {
         var token = await RepositoryTokenAsync(owner, name, cancellationToken);
