@@ -1,0 +1,211 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:06.58
+This is journey twenty nine of Hewn, the software factory: update project skills.
+
+00:00:06.58 --> 00:00:11.34
+Every project starts with skills copied from Greenlit, Hewn's skill library,
+
+00:00:11.34 --> 00:00:15.17
+and stage zero records the commit it copied in a skills lock.
+
+00:00:15.17 --> 00:00:17.42
+Greenlit keeps improving after that.
+
+00:00:17.42 --> 00:00:21.69
+This video shows an Owner seeing that a project's skills are behind,
+
+00:00:21.69 --> 00:00:25.95
+and bringing them up to date with a pull request that merges itself.
+
+00:00:27.10 --> 00:00:31.26
+When Greenlit's default branch is ahead of a project's skills lock,
+
+00:00:31.26 --> 00:00:35.48
+an Owner sees "Skills update available", with the number of commits.
+
+00:00:35.48 --> 00:00:40.45
+Choosing Update skills opens a pull request that updates the skill files and the
+
+00:00:40.45 --> 00:00:43.62
+lock, and it merges automatically when checks pass.
+
+00:00:43.62 --> 00:00:44.86
+Viewers see no link.
+
+00:00:44.86 --> 00:00:49.90
+This is for Owners, who keep each project's agents working with Greenlit's latest
+
+00:00:49.90 --> 00:00:50.33
+skills.
+
+00:00:51.48 --> 00:00:54.95
+Here a project's lock is three commits behind Greenlit.
+
+00:00:54.95 --> 00:00:59.74
+The project header shows the Owner "Skills update available, three commits".
+
+00:00:59.74 --> 00:01:04.22
+The dialog lists Greenlit's commits since the locked one, newest first,
+
+00:01:04.22 --> 00:01:08.13
+and says the running increment finishes on the current skills.
+
+00:01:08.13 --> 00:01:10.15
+The Owner chooses Update skills.
+
+00:01:10.15 --> 00:01:12.86
+In under a second the pull request is open,
+
+00:01:12.86 --> 00:01:17.91
+the toast says it merges automatically when checks pass, and the link goes away.
+
+00:01:17.91 --> 00:01:21.63
+About eight seconds after the click the checks have passed,
+
+00:01:21.63 --> 00:01:26.68
+the pull request has merged, and the lock on the default branch names Greenlit's
+
+00:01:26.68 --> 00:01:26.99
+head.
+
+00:01:27.34 --> 00:01:32.68
+When Greenlit can't be reached, the dialog says the skills weren't updated, and why.
+
+00:01:32.68 --> 00:01:35.66
+The project keeps running on the skills it has,
+
+00:01:35.66 --> 00:01:38.33
+and Try again sends the request once more.
+
+00:01:39.48 --> 00:01:42.17
+The design planned a worker run for this.
+
+00:01:42.17 --> 00:01:47.30
+But an update belongs to no direction and no stage, so the API does it itself,
+
+00:01:47.30 --> 00:01:49.66
+as the new decision record explains.
+
+00:01:49.66 --> 00:01:53.14
+The project page asks for the update only for Owners.
+
+00:01:53.14 --> 00:01:57.48
+The handler reads the lock from the repository, and asks Greenlit,
+
+00:01:57.48 --> 00:02:02.80
+through a bare git clone fetched at most once a minute, for the commits after it.
+
+00:02:03.15 --> 00:02:08.66
+Update skills commits Greenlit's skill files and the new lock to a branch named for
+
+00:02:08.66 --> 00:02:11.58
+Greenlit's head, and opens the pull request.
+
+00:02:11.58 --> 00:02:14.96
+Folders the project kept at bootstrap stay its own.
+
+00:02:14.96 --> 00:02:20.01
+The update is recorded, and an event tells Mission Control to read it again.
+
+00:02:20.01 --> 00:02:22.26
+Only one update is open at a time.
+
+00:02:22.61 --> 00:02:25.80
+A merger sweeps open updates every ten seconds.
+
+00:02:25.80 --> 00:02:30.28
+It waits while checks run, and merges once every check has passed.
+
+00:02:30.28 --> 00:02:34.29
+If the default branch moved, it puts the same files on top,
+
+00:02:34.29 --> 00:02:35.98
+and the checks run again.
+
+00:02:35.98 --> 00:02:39.85
+A failed check leaves the pull request open and unmerged,
+
+00:02:39.85 --> 00:02:42.03
+and the update is offered again.
+
+00:02:42.38 --> 00:02:45.83
+This sequence shows the whole path, from the link to the merge.
+
+00:02:46.98 --> 00:02:49.74
+The backend tests go through the real API,
+
+00:02:49.74 --> 00:02:53.35
+against a real git repository standing in for Greenlit.
+
+00:02:53.35 --> 00:02:58.08
+The update test opens the pull request and checks the branch, the title,
+
+00:02:58.08 --> 00:03:02.21
+the new skill files, the folder the project kept, and the lock.
+
+00:03:02.21 --> 00:03:05.04
+Asking again returns the same pull request.
+
+00:03:05.04 --> 00:03:10.48
+Other tests cover skills already up to date, an unreachable Greenlit, and a Viewer,
+
+00:03:10.48 --> 00:03:11.60
+who is forbidden.
+
+00:03:11.95 --> 00:03:16.94
+The merger tests merge once checks pass, rebase a branch that fell behind,
+
+00:03:16.94 --> 00:03:18.83
+and leave a failed one open.
+
+00:03:18.83 --> 00:03:23.82
+A repository with no CI at all reports no checks, so it would never merge.
+
+00:03:23.82 --> 00:03:29.49
+That test failed first, and now such an update merges once no check has appeared for
+
+00:03:29.49 --> 00:03:30.30
+two minutes.
+
+00:03:30.30 --> 00:03:33.67
+All three hundred and eighteen backend tests pass.
+
+00:03:34.02 --> 00:03:38.43
+End to end, a behaviour test commits to the e2e stack's own Greenlit,
+
+00:03:38.43 --> 00:03:43.17
+then updates the skills in Mission Control and waits for the lock to reach
+
+00:03:43.17 --> 00:03:44.19
+Greenlit's head.
+
+00:03:44.19 --> 00:03:47.39
+Other tests cover the failed state and the Viewer.
+
+00:03:47.39 --> 00:03:52.13
+Visual tests compare the link and the dialog with their mocks, by default,
+
+00:03:52.13 --> 00:03:56.10
+busy and failed, and an accessibility test checks every state.
+
+00:03:57.25 --> 00:03:59.95
+A Viewer sees the project with no link.
+
+00:03:59.95 --> 00:04:03.75
+The dialog reads the same in dark mode, and on a phone.
+
+00:04:04.90 --> 00:04:07.09
+Journey twenty nine is complete.
+
+00:04:07.09 --> 00:04:10.91
+Owners see when Greenlit is ahead of a project's skills.
+
+00:04:10.91 --> 00:04:15.62
+Update skills opens a pull request with the new skill files and lock.
+
+00:04:15.62 --> 00:04:18.49
+And it merges itself once its checks pass.
+
+00:04:18.49 --> 00:04:20.26
+Next comes journey thirty.
