@@ -10,6 +10,13 @@ public sealed class SignalRProjectEventPublisher(IHubContext<MissionControlHub> 
     /// <summary>Events that never change a project's row: its log and its recorded decisions.</summary>
     private static readonly HashSet<string> RowNeutral = ["LogLines", "DecisionRecorded"];
 
+    public async Task ProjectDeletedAsync(Guid projectId, CancellationToken cancellationToken)
+    {
+        var deleted = new { projectId };
+        await hub.Clients.Group(MissionControlHub.ProjectsGroup).SendAsync("ProjectDeleted", deleted, cancellationToken);
+        await hub.Clients.Group(MissionControlHub.ProjectGroup(projectId)).SendAsync("ProjectDeleted", deleted, cancellationToken);
+    }
+
     public async Task PublishAsync(IReadOnlyList<StoredEvent> events, CancellationToken cancellationToken)
     {
         foreach (var stored in events)

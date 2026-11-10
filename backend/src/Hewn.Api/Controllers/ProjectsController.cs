@@ -90,6 +90,17 @@ public sealed class ProjectsController(IMediator mediator) : ControllerBase
         return NoContent();
     }
 
+    public sealed record DeleteProjectRequest(string? ConfirmName);
+
+    /// <summary>L2-003 AC2, AC3: deletes Hewn's records for the project once its name is typed exactly; the repository is kept.</summary>
+    [HttpDelete("{projectId:guid}")]
+    [Authorize(Policy = AuthSetup.OwnerPolicy)]
+    public async Task<IActionResult> Delete(Guid projectId, DeleteProjectRequest request, CancellationToken cancellationToken)
+    {
+        await mediator.Send(new DeleteProjectCommand(projectId, request.ConfirmName), cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>L2-003 AC1: returns an archived project to the default list.</summary>
     [HttpPost("{projectId:guid}/restore")]
     [Authorize(Policy = AuthSetup.OwnerPolicy)]
