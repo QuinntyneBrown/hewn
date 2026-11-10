@@ -32,7 +32,8 @@ $env:Hewn__Preview__Origin = "http://127.0.0.1:$Port"
 $env:HEWN_GITHUB_WEBHOOK_SECRET = 'e2e-webhook-secret-not-a-secret'
 # Short waits before each automatic retry of a failed run (30 s, 2 min, 10 min in production; L2-006 AC1).
 # The suites submit many directions as one Owner; 10 a minute (the default, proven in the backend tests) is too few.
-if (-not $env:Hewn__RateLimit__DirectionsPerMinute) { $env:Hewn__RateLimit__DirectionsPerMinute = '30' }
+# The behaviour suite now submits more than 30 directions a minute as one Owner; the rate-limit spec reads the limit from the 429.
+if (-not $env:Hewn__RateLimit__DirectionsPerMinute) { $env:Hewn__RateLimit__DirectionsPerMinute = '60' }
 if (-not $env:Hewn__Retry__BackoffSeconds) { $env:Hewn__Retry__BackoffSeconds = '2,3,4' }
 # Greenlit is a local repository the skills-update tests commit to; read it fresh on every request.
 $env:Hewn__Skills__FetchSeconds = '0'
