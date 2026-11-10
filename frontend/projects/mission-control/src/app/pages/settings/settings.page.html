@@ -30,12 +30,12 @@
         </div>
       }
       <hw-error-summary [items]="summary()" purpose="before the defaults can be saved" />
-      @if (saved(); as budget) {
+      @if (saved(); as defaults) {
         <div class="callout callout--ok" role="status">
           <svg hw-icon name="checkCircle" class="icon--lg"></svg>
           <div>
             <p class="callout__title">Defaults saved</p>
-            <p class="callout__body">{{ savedText(budget) }}</p>
+            <p class="callout__body">{{ savedText(defaults) }}</p>
           </div>
         </div>
       }
@@ -65,6 +65,25 @@
             [attr.aria-invalid]="error('defaultBudgetUsd') ? 'true' : null"
             [attr.aria-describedby]="describedBy('default-budget', error('defaultBudgetUsd'))"
           />
+        </div>
+      </hw-field>
+      <hw-field
+        controlId="threshold"
+        label="Descope threshold"
+        hint="Designs estimated above this are split, or deferred with a reason."
+        [error]="error('descopeThresholdDays')"
+      >
+        <div class="cluster">
+          <input
+            class="input"
+            style="width: 6rem"
+            id="threshold"
+            inputmode="numeric"
+            formControlName="threshold"
+            [readOnly]="readOnly()"
+            [attr.aria-invalid]="error('descopeThresholdDays') ? 'true' : null"
+            [attr.aria-describedby]="describedBy('threshold', error('descopeThresholdDays'))"
+          /><span class="text-sm text-muted">ideal days</span>
         </div>
       </hw-field>
       @if (session.isOwner()) {

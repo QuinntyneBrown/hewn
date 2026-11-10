@@ -8,13 +8,19 @@ export interface AccessRow {
   remove: Locator;
 }
 
-/** Settings (/settings): Who can sign in, its Add a GitHub login dialog, and Direction defaults. Owns every selector. */
+/**
+ * Settings (/settings): Who can sign in, its Add a GitHub login dialog, and Direction defaults (the default budget and
+ * the descope threshold). Owns every selector.
+ */
 export class SettingsPage {
   readonly heading: Locator;
   readonly defaults: Locator;
   readonly defaultBudget: Locator;
   readonly defaultBudgetField: Locator;
   readonly defaultBudgetError: Locator;
+  readonly threshold: Locator;
+  readonly thresholdField: Locator;
+  readonly thresholdError: Locator;
   readonly save: Locator;
   readonly errorSummary: Locator;
   readonly savedCallout: Locator;
@@ -44,6 +50,9 @@ export class SettingsPage {
     this.defaultBudget = page.getByLabel('Default budget per direction');
     this.defaultBudgetField = this.defaults.locator('.field').first();
     this.defaultBudgetError = page.locator('#default-budget-err');
+    this.threshold = page.getByLabel('Descope threshold');
+    this.thresholdField = this.defaults.locator('.field').nth(1);
+    this.thresholdError = page.locator('#threshold-err');
     this.save = page.getByRole('button', { name: /Save defaults|Saving…/ });
     this.errorSummary = page.locator('.form-summary');
     this.savedCallout = page.locator('.callout--ok', { hasText: 'Defaults saved' });
@@ -127,10 +136,15 @@ export class SettingsPage {
     await this.save.click();
   }
 
-  /** Puts the shared default back through the API, so other suites see the configured $300. */
-  async resetDefaultBudget(budget = 300): Promise<void> {
+  async setThreshold(days: string): Promise<void> {
+    await this.threshold.fill(days);
+    await this.save.click();
+  }
+
+  /** Puts the shared defaults back through the API, so other suites see the configured $300 and 3 days. */
+  async resetDefaultBudget(budget = 300, descopeThresholdDays = 3): Promise<void> {
     const response = await this.page.request.put('/api/settings/direction-defaults', {
-      data: { defaultBudgetUsd: budget },
+      data: { defaultBudgetUsd: budget, descopeThresholdDays },
       headers: { 'X-XSRF-TOKEN': await this.xsrf() },
     });
     if (!response.ok()) throw new Error(`reset default budget: ${response.status()}`);
