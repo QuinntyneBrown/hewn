@@ -17,18 +17,25 @@ skinparam package {
 skinparam sequenceMessageAlign left
 actor "Owner or Viewer" as user
 box "Frontend — Mission Control application" #E0F2FE
-  participant "DecisionsPage" as page
+  participant "DecisionsComponent" as page
 end box
 box "Backend — Hewn API application" #D1FADF
-  participant "DecisionsController" as ctrl
+  participant "ProjectsController" as ctrl
+  participant "GetDecisionsHandler" as handler
 end box
 box "Backend — Hewn Infrastructure" #FFF4E5
   database "Hewn database" as db
 end box
 user -> page : Open Decisions; choose stage Stack
+page -> page : Navigate to /projects/{id}/decisions?stage=4
 page -> ctrl : GET /api/projects/{id}/decisions?stage=4
-ctrl -> db : Select by project and stage order by date desc
-db --> ctrl : Decisions
-ctrl --> page : DecisionDto[] (L2-054 AC3)
-page --> user : Cards with question, answer, rationale and commit link
+ctrl -> handler : GetDecisionsQuery(projectId, 4)
+handler -> db : run_decisions where project and stage
+db --> handler : Decisions with commit SHA and ADR
+handler --> ctrl : DecisionsDto, newest first (L2-054 AC3)
+ctrl --> page : 200 JSON
+page --> user : Question, answer, rationale, stage, time,\ncommit link and ADR link
+opt DecisionRecorded event
+  page -> ctrl : GET decisions again
+end
 @enduml

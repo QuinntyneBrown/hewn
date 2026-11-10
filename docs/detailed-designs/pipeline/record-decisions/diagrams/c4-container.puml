@@ -17,8 +17,8 @@ System_Ext(claude, "Claude model API", "Anthropic models, called through the Cla
 Rel(worker, claude, "Asks decision agent", "HTTPS")
 Rel(worker, api, "Commits decisions via the git proxy", "Git smart HTTP (outbound)")
 Rel(api, github, "Forwards fenced pushes and PR mutations", "Git/HTTPS, GitHub App")
-Rel(worker, api, "Reports DecisionRecorded", "HTTPS (outbound)")
-Rel(api, db, "Indexes decisions", "SQL")
+Rel(worker, api, "Reports decisions after committing them", "HTTPS (outbound)")
+Rel(api, db, "Keeps each decision with its commit", "SQL")
 Rel(spa, api, "GET decisions", "JSON/HTTPS")
 Rel(owner, spa, "Opens Decisions", "HTTPS")
 @enduml
