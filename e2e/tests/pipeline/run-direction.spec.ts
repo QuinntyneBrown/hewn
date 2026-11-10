@@ -1,6 +1,6 @@
 // Acceptance Test
 // Traces to: L2-004, L2-007, L2-030, L2-031, L2-036
-// Description: A submitted product direction runs stages 0 to 10 in order on a worker and Mission Control shows it live to Complete
+// Description: A submitted product direction runs stages 0 to 10 in order on a worker and Mission Control shows it live to Complete; stage 0 creates a private repository named in kebab case under the configured owner, and once stage 6 completes its default branch requires the CI checks (L2-036 AC1, AC2)
 
 import { expect, signIn, test, uniqueName } from '../../fixtures/test';
 import { startWorkers } from '../../support/workers';
@@ -31,8 +31,12 @@ test.describe('Run a product direction', () => {
     await newDirection.submit();
     await project.heading.waitFor();
 
-    // Stage 0 creates the repository; the link appears without a reload.
-    await expect(project.repository).toHaveText(`hewn-builds/${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, { timeout: 60_000 });
+    // Stage 0 creates a private repository; the link appears without a reload.
+    const repository = `hewn-builds/${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    await expect(project.repository).toHaveText(repository, { timeout: 60_000 });
+    const created = await project.gitHubRepository(repository);
+    expect(created.private).toBe(true);
+    expect(created.topics).toContain('hewn');
 
     // While a stage runs, every earlier stage has Succeeded and every later stage is still Pending.
     await expect(project.currentStage()).toBeVisible({ timeout: 60_000 });
@@ -48,11 +52,17 @@ test.describe('Run a product direction', () => {
     expect(await project.stageStatuses()).toEqual(Array(11).fill('Succeeded'));
     await expect(project.projectStatus).toHaveText('Complete');
     await expect(project.currentStage()).toHaveCount(0);
+
+    // Stage 6 left the default branch requiring the scaffold's CI checks.
+    expect((await project.gitHubRepository(repository)).requiredChecks).toEqual(['backend', 'frontend', 'e2e']);
   });
 
   test('a page opened mid-run catches up and keeps following', async ({ newDirection, project, page }) => {
     await newDirection.open();
-    await newDirection.fill({ name: uniqueName('Tidewater'), idea: 'Tide tables and harbour notices for small marinas.' });
+    await newDirection.fill({
+      name: uniqueName('Tidewater'),
+      idea: 'Tide tables and harbour notices for small marinas.',
+    });
     await newDirection.submit();
     await project.heading.waitFor();
     await expect(project.currentStage()).toBeVisible({ timeout: 60_000 });

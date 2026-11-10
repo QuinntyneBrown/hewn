@@ -138,6 +138,21 @@ export class ProjectPage {
     return (await response.json()) as { number: number; open: boolean; merged: boolean; labels: string[] }[];
   }
 
+  /** The project's repository as the fake GitHub holds it: private or not, its topics and required checks (e2e stack only). */
+  async gitHubRepository(
+    repository: string,
+  ): Promise<{ owner: string; name: string; private: boolean; topics: string[]; requiredChecks: string[] }> {
+    const response = await this.page.request.get(`/api/fakes/github/${repository}`);
+    if (!response.ok()) throw new Error(`repository: ${response.status()}`);
+    return (await response.json()) as {
+      owner: string;
+      name: string;
+      private: boolean;
+      topics: string[];
+      requiredChecks: string[];
+    };
+  }
+
   /** The project's event stream from the start, as the API serves it to Mission Control. */
   async events(): Promise<{ type: string; payload: Record<string, unknown> }[]> {
     const response = await this.page.request.get(`/api/projects/${this.projectIdFromUrl()}/events?after=0`);
