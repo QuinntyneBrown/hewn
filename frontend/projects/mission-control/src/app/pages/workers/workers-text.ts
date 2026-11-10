@@ -120,3 +120,21 @@ export function notRevoked(name: string, error: unknown): string {
   }
   return `${answered(error)}. ${name} can still register; try again.`;
 }
+
+/** Why Workers couldn't load; the workers themselves are unaffected. */
+export function notLoaded(error: unknown): string {
+  return `${answered(error)}. Connected workers keep their leases and heartbeats.`;
+}
+
+const activityRank: Record<string, number> = { Busy: 0, Idle: 1, Offline: 2 };
+
+/** Workers order: leased first, then idle, then offline; within each, the longest connected first. */
+export function byActivity(
+  a: { status: string; registeredAt: string },
+  b: { status: string; registeredAt: string },
+): number {
+  return (
+    (activityRank[a.status] ?? 3) - (activityRank[b.status] ?? 3) ||
+    a.registeredAt.localeCompare(b.registeredAt)
+  );
+}

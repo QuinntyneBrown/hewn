@@ -14,9 +14,43 @@
   }
 </div>
 <div class="pad" style="padding-bottom: var(--space-10)">
-  @if (store.view(); as view) {
+  @if (failure(); as message) {
+    <div class="empty empty--error" role="alert">
+      <svg hw-icon name="warning"></svg>
+      <div>
+        <h2 class="empty__title">Workers couldn’t load</h2>
+        <p class="empty__text">{{ message }}</p>
+      </div>
+      <div class="cluster">
+        <button class="btn" type="button" (click)="retry()">
+          <svg hw-icon name="refresh"></svg>Try again
+        </button>
+      </div>
+    </div>
+  } @else if (store.view(); as view) {
     @if (rows().length === 0) {
-      <p class="text-muted">No worker has registered yet.</p>
+      <div class="empty">
+        <svg hw-icon name="workers"></svg>
+        <div>
+          <h2 class="empty__title">No workers yet</h2>
+          @if (session.isOwner()) {
+            <p class="empty__text">
+              A worker runs the agents. Create a token, then start the container on your machine or
+              in the cloud; it needs no inbound ports.
+            </p>
+          } @else {
+            <p class="empty__text">
+              A worker runs the agents. When an Owner starts one, it appears here with its location,
+              version and heartbeat.
+            </p>
+          }
+        </div>
+        @if (session.isOwner()) {
+          <button class="btn btn--primary" type="button" (click)="openNewToken()">
+            <svg hw-icon name="key"></svg>New worker token
+          </button>
+        }
+      </div>
     } @else {
       <div
         class="rows"
@@ -102,16 +136,44 @@
           }
         </ul>
       </div>
+      @if (view.leasing.stopped) {
+        <p class="text-caption mt-4">
+          Leasing is off. Each halted run resumes from its last checkpoint when you start workers.
+        </p>
+      } @else {
+        <p class="text-caption mt-4">
+          A worker that misses heartbeats for 60 seconds loses its lease; the run resumes elsewhere
+          from its last checkpoint.
+        </p>
+      }
     }
-    @if (view.leasing.stopped) {
-      <p class="text-caption mt-4">
-        Leasing is off. Each halted run resumes from its last checkpoint when you start workers.
-      </p>
-    } @else {
-      <p class="text-caption mt-4">
-        A worker that misses heartbeats for 60 seconds loses its lease; the run resumes elsewhere
-        from its last checkpoint.
-      </p>
-    }
+  } @else {
+    <div aria-busy="true" aria-live="polite">
+      <p class="visually-hidden">Loading workers</p>
+      <div
+        class="rows"
+        [class.rows--workers]="session.isOwner()"
+        [class.rows--workers-viewer]="!session.isOwner()"
+      >
+        <div class="rows__head" aria-hidden="true">
+          <span>Host</span><span>Location</span><span>Version</span><span>Status</span
+          ><span>Working on</span><span class="row__end">Heartbeat</span
+          ><span class="row__end">Connected</span>
+          @if (session.isOwner()) {
+            <span class="visually-hidden">Actions</span>
+          }
+        </div>
+        <ul>
+          @for (i of [1, 2, 3, 4]; track i) {
+            <li class="row" aria-hidden="true">
+              <span class="stack stack--sm"
+                ><span class="skeleton skeleton--w50"></span
+                ><span class="skeleton skeleton--w25 skeleton--sm"></span></span
+              ><span class="skeleton skeleton--w66"></span>
+            </li>
+          }
+        </ul>
+      </div>
+    </div>
   }
 </div>
