@@ -83,6 +83,11 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/workers/workers.page').then((m) => m.WorkersPage),
       },
       {
+        path: 'audit',
+        title: 'Audit · Hewn',
+        loadComponent: () => import('./pages/audit/audit.page').then((m) => m.AuditPage),
+      },
+      {
         path: 'settings',
         title: 'Settings · Hewn',
         loadComponent: () => import('./pages/settings/settings.page').then((m) => m.SettingsPage),
