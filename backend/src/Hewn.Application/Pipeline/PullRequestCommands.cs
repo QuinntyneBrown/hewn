@@ -57,7 +57,8 @@ public sealed class OpenPullRequestHandler(IAppDbContext db, LeaseService leases
 {
     public async Task<PullRequestDto> Handle(OpenPullRequestCommand command, CancellationToken cancellationToken)
     {
-        var run = await leases.FenceAsync(command.RunId, command.WorkerId, command.Epoch, cancellationToken);
+        using var write = await leases.FenceForWriteAsync(command.RunId, command.WorkerId, command.Epoch, cancellationToken);
+        var run = write.Run;
         if (await MutationLedger.FindAsync(db, command.IdempotencyKey, cancellationToken) is { } done)
         {
             return JsonSerializer.Deserialize<PullRequestDto>(done, MutationLedger.Json)!;
@@ -78,7 +79,8 @@ public sealed class MergePullRequestHandler(IAppDbContext db, LeaseService lease
 {
     public async Task<string> Handle(MergePullRequestCommand command, CancellationToken cancellationToken)
     {
-        var run = await leases.FenceAsync(command.RunId, command.WorkerId, command.Epoch, cancellationToken);
+        using var write = await leases.FenceForWriteAsync(command.RunId, command.WorkerId, command.Epoch, cancellationToken);
+        var run = write.Run;
         if (await MutationLedger.FindAsync(db, command.IdempotencyKey, cancellationToken) is { } done)
         {
             return JsonDocument.Parse(done).RootElement.GetProperty("sha").GetString()!;
@@ -113,7 +115,8 @@ public sealed class ProtectDefaultBranchHandler(IAppDbContext db, LeaseService l
 {
     public async Task Handle(ProtectDefaultBranchCommand command, CancellationToken cancellationToken)
     {
-        var run = await leases.FenceAsync(command.RunId, command.WorkerId, command.Epoch, cancellationToken);
+        using var write = await leases.FenceForWriteAsync(command.RunId, command.WorkerId, command.Epoch, cancellationToken);
+        var run = write.Run;
         if (await MutationLedger.FindAsync(db, command.IdempotencyKey, cancellationToken) is not null)
         {
             return;

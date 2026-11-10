@@ -9,7 +9,7 @@ namespace Hewn.Application.Pipeline;
 /// Leased only if no other run of the same project is leased, so at most one worker holds a project (L2-026 AC4).
 /// Every grant raises the run's epoch; LeaseEpoch is a concurrency token, so a write based on an older read fails.
 /// </summary>
-public sealed class LeaseService(IAppDbContext db, TimeProvider clock)
+public sealed class LeaseService(IAppDbContext db, TimeProvider clock, RunWriteLock locks)
 {
     private const int Attempts = 5;
 
@@ -39,6 +39,7 @@ public sealed class LeaseService(IAppDbContext db, TimeProvider clock)
                 return null;
             }
 
+            using var held = await locks.HoldAsync(candidate.Id, cancellationToken);
             var now = clock.GetUtcNow();
             var expires = now + Run.LeaseDuration;
             var granted = await db.Runs
@@ -77,16 +78,54 @@ public sealed class LeaseService(IAppDbContext db, TimeProvider clock)
         return run;
     }
 
+    /// <summary>
+    /// Fences a GitHub write and holds the run's write lock until the result is disposed, so the lease cannot be
+    /// moved between the fence check and the write's saved record.
+    /// </summary>
+    public async Task<FencedWrite> FenceForWriteAsync(Guid runId, string workerId, long epoch, CancellationToken cancellationToken)
+    {
+        var held = await locks.HoldAsync(runId, cancellationToken);
+        try
+        {
+            return new FencedWrite(await FenceAsync(runId, workerId, epoch, cancellationToken), held);
+        }
+        catch
+        {
+            held.Dispose();
+            throw;
+        }
+    }
+
     /// <summary>Returns runs whose lease has had no heartbeat for 60 seconds to the queue, keeping the checkpoint.</summary>
-    public Task<int> ExpireStaleAsync(CancellationToken cancellationToken)
+    public async Task<int> ExpireStaleAsync(CancellationToken cancellationToken)
     {
         var now = clock.GetUtcNow();
-        return db.Runs
+        var stale = await db.Runs.AsNoTracking()
             .Where(r => r.Status == RunStatus.Leased && r.LeaseExpiresAt < now)
-            .ExecuteUpdateAsync(set => set
-                .SetProperty(r => r.Status, RunStatus.Queued)
-                .SetProperty(r => r.WorkerId, (string?)null)
-                .SetProperty(r => r.LeaseExpiresAt, (DateTimeOffset?)null),
-                cancellationToken);
+            .Select(r => r.Id)
+            .ToListAsync(cancellationToken);
+        var expired = 0;
+        foreach (var runId in stale)
+        {
+            // Waits for a write in flight under this lease; a heartbeat that renewed it meanwhile keeps it.
+            using var held = await locks.HoldAsync(runId, cancellationToken);
+            expired += await db.Runs
+                .Where(r => r.Id == runId && r.Status == RunStatus.Leased && r.LeaseExpiresAt < now)
+                .ExecuteUpdateAsync(set => set
+                    .SetProperty(r => r.Status, RunStatus.Queued)
+                    .SetProperty(r => r.WorkerId, (string?)null)
+                    .SetProperty(r => r.LeaseExpiresAt, (DateTimeOffset?)null),
+                    cancellationToken);
+        }
+
+        return expired;
     }
+}
+
+/// <summary>A fenced run with its write lock held; dispose it once the write is recorded.</summary>
+public sealed class FencedWrite(Run run, IDisposable held) : IDisposable
+{
+    public Run Run { get; } = run;
+
+    public void Dispose() => held.Dispose();
 }

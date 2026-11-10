@@ -76,7 +76,8 @@ public sealed class CommitFilesHandler(IAppDbContext db, LeaseService leases, IG
 
     public async Task<string> Handle(CommitFilesCommand command, CancellationToken cancellationToken)
     {
-        var run = await leases.FenceAsync(command.RunId, command.WorkerId, command.Epoch, cancellationToken);
+        using var write = await leases.FenceForWriteAsync(command.RunId, command.WorkerId, command.Epoch, cancellationToken);
+        var run = write.Run;
         var done = await db.GitHubMutations.AsNoTracking()
             .SingleOrDefaultAsync(m => m.IdempotencyKey == command.IdempotencyKey, cancellationToken);
         if (done is not null)

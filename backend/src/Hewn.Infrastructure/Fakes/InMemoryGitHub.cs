@@ -159,11 +159,19 @@ public class InMemoryGitHub(IConfiguration? configuration) : IGitHubRepositoryPr
         }
     }
 
-    public Task<string> CommitAsync(string owner, string name, string message, IReadOnlyList<RepositoryFile> files, CancellationToken cancellationToken)
+    /// <summary>Awaited before each default-branch commit, so a test can hold a write in flight.</summary>
+    public Func<Task>? BeforeCommit { get; set; }
+
+    public async Task<string> CommitAsync(string owner, string name, string message, IReadOnlyList<RepositoryFile> files, CancellationToken cancellationToken)
     {
+        if (BeforeCommit is { } wait)
+        {
+            await wait();
+        }
+
         lock (_lock)
         {
-            return Task.FromResult(Existing(owner, name).Commit(message, files));
+            return Existing(owner, name).Commit(message, files);
         }
     }
 

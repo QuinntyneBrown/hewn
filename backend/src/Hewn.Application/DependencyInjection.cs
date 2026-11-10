@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<Projects.ProjectSummaryReader>();
         services.AddScoped<PipelineOrchestrator>();
         services.AddScoped<LeaseService>();
+        services.AddSingleton<RunWriteLock>();
         services.AddSingleton<RunControlSignals>();
         services.AddSingleton<WorkSignal>();
         services.AddSingleton<Workers.WorkerPresence>();
