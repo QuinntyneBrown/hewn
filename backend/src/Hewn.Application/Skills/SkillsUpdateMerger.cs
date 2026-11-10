@@ -8,7 +8,7 @@ namespace Hewn.Application.Skills;
 
 /// <summary>
 /// L2-008 AC2 with L2-025: merges each open skills update once every check on its pull request has passed. A default
-/// branch that moved is rebased (the checks then run again); a failed check leaves the pull request open and unmerged,
+/// branch that moved is rebased (the checks then run again); a repository that reports no checks for two minutes merges; a failed check leaves the pull request open and unmerged,
 /// and the update is offered again.
 /// </summary>
 public sealed class SkillsUpdateMerger(
@@ -19,6 +19,8 @@ public sealed class SkillsUpdateMerger(
     TimeProvider clock,
     ILogger<SkillsUpdateMerger> logger)
 {
+    private static readonly TimeSpan NoChecksGrace = TimeSpan.FromMinutes(2);
+
     /// <summary>Checks every open update once; returns how many it merged.</summary>
     public async Task<int> SweepAsync(CancellationToken cancellationToken)
     {
@@ -44,7 +46,8 @@ public sealed class SkillsUpdateMerger(
         var project = await db.Projects.AsNoTracking().SingleAsync(p => p.Id == update.ProjectId, cancellationToken);
         var (owner, name) = (project.RepositoryOwner!, project.RepositoryName!);
         var checks = await gitHub.ListChecksAsync(owner, name, update.PullRequestNumber, cancellationToken);
-        if (checks.Count == 0 || checks.Any(c => c.Status != "completed"))
+        // A repository with no CI reports no checks; once none has appeared for two minutes there is nothing to wait for.
+        if (checks.Count == 0 ? clock.GetUtcNow() - update.CreatedAt < NoChecksGrace : checks.Any(c => c.Status != "completed"))
         {
             return false;
         }

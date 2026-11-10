@@ -34,6 +34,8 @@ $env:HEWN_GITHUB_WEBHOOK_SECRET = 'e2e-webhook-secret-not-a-secret'
 # The suites submit many directions as one Owner; 10 a minute (the default, proven in the backend tests) is too few.
 if (-not $env:Hewn__RateLimit__DirectionsPerMinute) { $env:Hewn__RateLimit__DirectionsPerMinute = '30' }
 if (-not $env:Hewn__Retry__BackoffSeconds) { $env:Hewn__Retry__BackoffSeconds = '2,3,4' }
+# Greenlit is a local repository the skills-update tests commit to; read it fresh on every request.
+$env:Hewn__Skills__FetchSeconds = '0'
 
 # A small Greenlit for stage 0 to copy from: a git repository built from e2e/fixtures/greenlit.
 $greenlit = Join-Path $root 'backend/.e2e/greenlit'

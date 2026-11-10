@@ -1,6 +1,6 @@
 // Acceptance Test
 // Traces to: L2-008, L2-025
-// Description: The skills update's pull request merges once every check has passed, so the default branch's lock moves to Greenlit's head and no update is offered; it waits while checks run, is rebased when the default branch moved, and is left open, unmerged, when a check fails (AC2)
+// Description: The skills update's pull request merges once every check has passed, so the default branch's lock moves to Greenlit's head and no update is offered; it waits while checks run (or two minutes for a repository that reports none), is rebased when the default branch moved, and is left open, unmerged, when a check fails (AC2)
 
 using System.Text;
 using Hewn.Api.Tests.Support;
@@ -33,7 +33,7 @@ public sealed class MergeSkillsUpdateTests : IAsyncLifetime
     private FakeRepository Repository => _factory.GitHub.Repository("northwind", "ledgerline")!;
 
     /// <summary>A project one Greenlit commit behind, with Update skills chosen; returns the pull request's number.</summary>
-    private async Task<(HewnClient Owner, Guid ProjectId, int Number)> UpdatingAsync()
+    private async Task<(HewnClient Owner, Guid ProjectId, int Number)> UpdatingAsync(bool withCi = true)
     {
         var locked = _greenlit.Commit("Greenlit", (".claude/skills/grilling/SKILL.md", "Grill."));
         _head = _greenlit.Commit("grilling: answer for the user when running unattended", (".claude/skills/grilling/SKILL.md", "Grill, unattended."));
@@ -41,8 +41,12 @@ public sealed class MergeSkillsUpdateTests : IAsyncLifetime
         {
             [".hewn/skills.lock"] = _greenlit.Lock(locked, "grilling"),
             [".claude/skills/grilling/SKILL.md"] = "Grill.",
-            [".github/workflows/ci.yml"] = Workflow,
         });
+        if (withCi)
+        {
+            Repository.Write(".github/workflows/ci.yml", Workflow);
+        }
+
         var owner = await _factory.SignInAsync("quinntynebrown", Role.Owner);
         var submitted = await owner.PostAsync("/api/projects", new
         {
@@ -81,6 +85,20 @@ public sealed class MergeSkillsUpdateTests : IAsyncLifetime
         Assert.Equal(System.Text.Json.JsonValueKind.Null, update.GetProperty("pullRequest").ValueKind);
         var events = await _factory.QueryAsync(db => Task.FromResult(db.Events.Where(e => e.ProjectId == projectId).Select(e => e.Type).ToList()));
         Assert.Contains("SkillsUpdateMerged", events);
+    }
+
+    [Fact]
+    public async Task A_repository_with_no_checks_merges_once_none_appear_for_two_minutes()
+    {
+        var (_, _, number) = await UpdatingAsync(withCi: false);
+
+        await _factory.MergeSkillsUpdatesAsync();
+        Assert.False(Repository.PullRequests.Single(p => p.Number == number).Merged);
+
+        _factory.Clock.Advance(TimeSpan.FromSeconds(121));
+        await _factory.MergeSkillsUpdatesAsync();
+
+        Assert.True(Repository.PullRequests.Single(p => p.Number == number).Merged);
     }
 
     [Fact]

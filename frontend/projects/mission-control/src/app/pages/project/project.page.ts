@@ -11,6 +11,7 @@ import {
   PROJECT_EVENTS,
   ProjectEvent,
   PROJECTS_API,
+  UpdateSkillsResult,
   StageDetail,
 } from '@hewn/api';
 import { IconComponent, StatusComponent, StatusIconComponent, StatusName } from '@hewn/components';
@@ -37,6 +38,8 @@ import {
 } from 'rxjs';
 import { SessionStore } from '../../core/session-store';
 import { Toasts } from '../../core/toasts';
+import { UpdateSkillsData, UpdateSkillsDialog } from './update-skills.dialog';
+import { skillsUpdateLink, updatedToast } from './update-skills';
 import { BacklogComponent } from './backlog.component';
 import { DesignsComponent } from './designs.component';
 import { DesignSystemComponent } from './design-system.component';
@@ -115,6 +118,13 @@ const LOG_PAGE = 5000;
  * latest log line; the selected stage's runs, log, artifacts and decisions. Kept current by the live event stream.
  */
 /** Events after which the backlog or its totals may differ: a plan, an increment's progress, a stage, a direction. */
+/** Events after which the skills update is read again (L2-008). */
+const SKILLS_EVENTS = new Set([
+  'SkillsUpdateOpened',
+  'SkillsUpdateMerged',
+  'SkillsUpdateChecksFailed',
+]);
+
 const BACKLOG_EVENTS = new Set([
   'BacklogPlanned',
   'IncrementChanged',
@@ -212,6 +222,49 @@ export class ProjectPage {
     filter((event): event is ProjectEvent => event !== null),
     distinctUntilChanged((a, b) => a.sequence === b.sequence),
   );
+
+  /** L2-008 AC1: Greenlit's commits after the skills lock, read for an Owner on load and after each skills update event. */
+  private readonly skillsUpdate = toSignal(
+    combineLatest([
+      toObservable(this.projectId),
+      this.events$.pipe(
+        filter((e) => SKILLS_EVENTS.has(e.type)),
+        startWith(null),
+      ),
+    ]).pipe(
+      switchMap(([id]) =>
+        this.session.isOwner()
+          ? this.api.getSkillsUpdate(id).pipe(catchError(() => of(null)))
+          : of(null),
+      ),
+    ),
+    { initialValue: null },
+  );
+
+  protected readonly skillsLink = computed(() =>
+    skillsUpdateLink(this.skillsUpdate(), this.session.isOwner()),
+  );
+
+  /** Update skills (L2-008 AC2): the dialog opens the pull request; a toast says it merges when checks pass. */
+  protected openUpdateSkills(): void {
+    const project = this.project();
+    const update = this.skillsUpdate();
+    if (!project || !update?.lockedSha || !this.session.isOwner()) return;
+    const ref = this.dialog.open<UpdateSkillsResult, UpdateSkillsData>(UpdateSkillsDialog, {
+      data: {
+        projectId: project.id,
+        projectName: project.name,
+        lockedSha: update.lockedSha,
+        commits: update.commits,
+      },
+      ariaLabelledBy: 'skills-title',
+      ariaDescribedBy: 'skills-desc',
+      backdropClass: 'backdrop',
+    });
+    ref.closed.subscribe((result) => {
+      if (result) this.toasts.show(updatedToast(project.name, result.pullRequest.number));
+    });
+  }
 
   /** Counts the events that can change the backlog, so the Backlog tab reads it again after each (L2-025 AC4). */
   protected readonly backlogChanges = toSignal(
