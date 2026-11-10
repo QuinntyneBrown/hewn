@@ -17,6 +17,7 @@ public static class DependencyInjection
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         services.AddSingleton<Projects.DirectionSubmissionGate>();
         services.AddSingleton<Auth.RevokedSessions>();
+        services.AddSingleton<Auth.AllowListAccess>();
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly, includeInternalTypes: true);
         services.AddScoped<EventAppender>();
         services.AddScoped<Projects.ProjectSummaryReader>();

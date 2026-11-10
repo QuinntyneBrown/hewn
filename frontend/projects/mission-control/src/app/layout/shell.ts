@@ -23,6 +23,8 @@ interface NavItem {
   label: string;
   link: string;
   icon: IconName;
+  /** Hidden from Viewers, as the mocks show (the audit log is the Owners'). */
+  ownerOnly?: boolean;
 }
 
 /** Sidebar, top bar and main region shared by every signed-in page. */
@@ -113,13 +115,16 @@ export class ShellComponent {
     });
   }
 
-  protected readonly nav: NavItem[] = [
+  private readonly allNav: NavItem[] = [
     { label: 'Dashboard', link: '/dashboard', icon: 'dashboard' },
     { label: 'Projects', link: '/projects', icon: 'projects' },
     { label: 'Workers', link: '/workers', icon: 'workers' },
-    { label: 'Audit', link: '/audit', icon: 'audit' },
+    { label: 'Audit', link: '/audit', icon: 'audit', ownerOnly: true },
     { label: 'Settings', link: '/settings', icon: 'settings' },
   ];
+  protected readonly nav = computed(() =>
+    this.allNav.filter((item) => !item.ownerOnly || this.session.isOwner()),
+  );
 
   protected readonly initials = computed(() =>
     (this.session.me()?.login ?? '?').slice(0, 2).toUpperCase(),

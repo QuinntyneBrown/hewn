@@ -12,6 +12,7 @@ internal sealed class AllowListEntryConfiguration : IEntityTypeConfiguration<All
         b.HasKey(a => a.Login);
         b.Property(a => a.Login).HasMaxLength(39);
         b.Property(a => a.Role).HasConversion<string>().HasMaxLength(16);
+        b.Property(a => a.AddedBy).HasMaxLength(39);
     }
 }
 

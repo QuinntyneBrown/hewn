@@ -1,0 +1,60 @@
+@startuml
+title UML sequence behaviour — Manage the allow list
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+skinparam package {
+  BorderColor #667085
+  FontColor #101828
+  BackgroundColor #F9FAFB
+}
+skinparam sequenceMessageAlign left
+actor "Owner" as owner
+actor "Removed user" as removed
+box "Frontend — Mission Control application" #E0F2FE
+  participant "AllowListComponent" as list
+  participant "AddUserDialog" as dialog
+end box
+box "Backend — Hewn API application" #D1FADF
+  participant "AllowListController" as api
+  participant "AddToAllowListHandler" as add
+  participant "AllowListAccess" as access
+  participant "AuthSetup.OnValidatePrincipal" as validate
+end box
+box "Backend — Hewn Infrastructure" #FFF4E5
+  database "Hewn database" as db
+end box
+box "External systems" #F2F4F7
+  participant "GitHub" as gh
+end box
+owner -> dialog : Add @nadia-k as Viewer
+dialog -> api : POST /api/allow-list (OwnerPolicy)
+api -> add : AddToAllowListCommand
+add -> db : Already listed?
+alt listed, malformed or unknown to GitHub
+  add --> dialog : 400 field error on login
+else GitHub can't say (rate limited)
+  add -> gh : GET /users/nadia-k
+  gh --> add : 403
+  add --> dialog : 502 github_failed; nothing added
+else
+  add -> gh : GET /users/nadia-k
+  add -> db : Insert allow_list (role, added by, at)
+  add -> access : Set(nadia-k, Viewer)
+  add --> list : 201; list reloads (L2-038 AC5)
+end
+owner -> list : Remove @ama-osei
+list -> api : DELETE /api/allow-list/ama-osei
+api -> db : Delete (never the caller's own login: 409)
+api -> access : Remove(ama-osei)
+removed -> validate : Next request with the old session
+validate -> access : RoleOf(ama-osei)?
+access --> validate : none
+validate --> removed : 401; Mission Control reloads at sign-in
+@enduml

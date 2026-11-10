@@ -1,0 +1,16 @@
+{
+  "addAsViewer": 403,
+  "stopAsViewer": 403,
+  "removedMe": 401,
+  "hidden": {
+    "url": "/api/projects/0b5e1f9c-7d1a-4c55-9a6e-3f1f1b2b9c11",
+    "status": 404,
+    "body": {
+      "type": "https://tools.ietf.org/html/rfc9110#section-15.5.5",
+      "title": "Not found",
+      "status": 404,
+      "code": "not_found",
+      "traceId": "00-3638d5f67c89391824b81e11f94229bc-ee9dd90a4642c0d2-00"
+    }
+  }
+}

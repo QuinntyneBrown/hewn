@@ -2,7 +2,7 @@ import type { Locator, Page } from '@playwright/test';
 
 /**
  * The sign-in page (/sign-in) in every state, the e2e stack's fake GitHub authorize page it hands over to, and the
- * sidebar's Sign out button. Owns every selector for them.
+ * sidebar's account controls: Sign out, and the navigation and New direction a role sees. Owns every selector for them.
  */
 export class SignInPage {
   readonly heading: Locator;
@@ -15,6 +15,8 @@ export class SignInPage {
   readonly allowListNote: Locator;
   readonly pipeline: Locator;
   readonly signOut: Locator;
+  readonly sidebarNav: Locator;
+  readonly newDirection: Locator;
   readonly gitHubLogin: Locator;
   readonly gitHubAuthorize: Locator;
   readonly gitHubCancel: Locator;
@@ -33,6 +35,8 @@ export class SignInPage {
     this.allowListNote = page.getByText('Only GitHub accounts on the allow list can sign in.');
     this.pipeline = page.getByRole('complementary', { name: 'The pipeline' }).getByRole('listitem');
     this.signOut = page.locator('.sidebar__foot').getByRole('button', { name: 'Sign out' });
+    this.sidebarNav = page.getByRole('navigation', { name: 'Primary' }).getByRole('link');
+    this.newDirection = page.locator('.sidebar').getByRole('link', { name: 'New direction' });
     this.gitHubLogin = page.getByLabel('GitHub login');
     this.gitHubAuthorize = page.getByRole('button', { name: 'Authorize' });
     this.gitHubCancel = page.getByRole('link', { name: 'Cancel' });

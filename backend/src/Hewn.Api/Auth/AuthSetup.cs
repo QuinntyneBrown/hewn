@@ -25,7 +25,7 @@ public static class AuthSetup
                 o.ReturnUrlParameter = "returnUrl";
                 o.Events.OnRedirectToLogin = ctx => Challenge(ctx, StatusCodes.Status401Unauthorized);
                 o.Events.OnRedirectToAccessDenied = ctx => Challenge(ctx, StatusCodes.Status403Forbidden);
-                o.Events.OnValidatePrincipal = RefuseSignedOutSessions;
+                o.Events.OnValidatePrincipal = RefuseEndedSessions;
             })
             .AddScheme<AuthenticationSchemeOptions, WorkerTokenAuthenticationHandler>(WorkerTokenAuthenticationHandler.SchemeName, null);
 
@@ -48,11 +48,14 @@ public static class AuthSetup
             ],
             CookieAuthenticationDefaults.AuthenticationScheme));
 
-    private static async Task RefuseSignedOutSessions(CookieValidatePrincipalContext ctx)
+    private static async Task RefuseEndedSessions(CookieValidatePrincipalContext ctx)
     {
         var sid = ctx.Principal?.FindFirstValue(SessionIdClaim);
+        var login = ctx.Principal?.FindFirstValue(ClaimTypes.Name);
+        var role = ctx.Principal?.FindFirstValue(ClaimTypes.Role);
         var mediator = ctx.HttpContext.RequestServices.GetRequiredService<MediatR.IMediator>();
-        if (!Guid.TryParse(sid, out var id) || await mediator.Send(new Hewn.Application.Auth.IsSessionRevokedQuery(id), ctx.HttpContext.RequestAborted))
+        if (!Guid.TryParse(sid, out var id) || login is null || role is null
+            || !await mediator.Send(new Hewn.Application.Auth.IsSessionValidQuery(id, login, role), ctx.HttpContext.RequestAborted))
         {
             ctx.RejectPrincipal();
         }

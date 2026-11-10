@@ -8,4 +8,10 @@ public interface IGitHubIdentity
 {
     /// <summary>The GitHub login the code belongs to; throws <see cref="GitHubException"/> when GitHub refuses or doesn't answer.</summary>
     Task<string> LoginForCodeAsync(string code, string redirectUri, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The account GitHub has under <paramref name="login"/>, or null when there is none (L2-038 AC5); throws
+    /// <see cref="GitHubException"/> when GitHub can't say, such as when it rate limits.
+    /// </summary>
+    Task<string?> FindLoginAsync(string login, CancellationToken cancellationToken);
 }

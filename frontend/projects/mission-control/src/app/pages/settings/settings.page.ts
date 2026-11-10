@@ -10,17 +10,25 @@ import {
 } from '@hewn/components';
 import { SessionStore } from '../../core/session-store';
 import { dollars } from '../project/pipeline-view';
+import { AllowListComponent } from './allow-list';
 
 /** Server field name → control id on this page. */
 const CONTROL_IDS: Record<string, string> = { defaultBudgetUsd: 'default-budget' };
 
 /**
- * Settings (L2-053 AC1): the default budget every new direction starts with. Owners save it; Viewers see it
- * read-only. Appearance, sign-in access, the descope threshold and integrations arrive with their journeys.
+ * Settings: who can sign in (L2-038 AC5) and the default budget every new direction starts with (L2-053 AC1).
+ * Owners change them; Viewers see them read-only. Appearance, the descope threshold and integrations arrive with
+ * their journeys.
  */
 @Component({
   selector: 'hw-settings-page',
-  imports: [ReactiveFormsModule, FieldComponent, ErrorSummaryComponent, IconComponent],
+  imports: [
+    ReactiveFormsModule,
+    FieldComponent,
+    ErrorSummaryComponent,
+    IconComponent,
+    AllowListComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './settings.page.html',
 })

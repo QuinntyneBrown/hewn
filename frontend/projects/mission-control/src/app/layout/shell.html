@@ -11,7 +11,7 @@
         </div>
       }
       <nav class="sidebar__nav" aria-label="Primary">
-        @for (item of nav; track item.link) {
+        @for (item of nav(); track item.link) {
           <a
             class="nav-link"
             [routerLink]="item.link"

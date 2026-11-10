@@ -70,6 +70,13 @@ elsewhere or the 8 hours passing, reloads at sign-in saying the session ended (L
 
 ![Sequence diagram: sign out](diagrams/sequence-sign-out.png)
 
+### Behaviour — manage the allow list
+
+An Owner adds a login once GitHub confirms it exists, or removes one; a removed login's session ends on its next
+request (L2-038 AC5, AC3).
+
+![Sequence diagram: manage the allow list](diagrams/sequence-manage-allow-list.png)
+
 ### Behaviour — authorize a request
 
 A Viewer's state change returns 403 (L2-039 AC1); an inaccessible project returns 404 or a refused group (AC2). Owners edit the allow list; Viewers read it (L2-038 AC5).
@@ -96,4 +103,22 @@ Journey 20 built L2-038 AC1 to AC4 ([ADR 0022](../../../adr/0022-the-api-serves-
   states from its query. The sidebar's Sign out icon button, added to the Magic Patterns shell and the mocks for
   this journey, reloads at `/sign-in?reason=signed-out`. `sessionExpiryInterceptor` turns a 401 once signed in into
   `/sign-in?reason=expired&returnUrl=`.
-- **Not built in this journey:** the allow list in Settings (AC5). Revocations past their 8 hours are pruned at each sign-out.
+- **Not built in this journey:** the allow list in Settings (AC5), built in journey 21. Revocations past their 8 hours are pruned at each sign-out.
+
+## Decisions made while managing access
+
+Journey 21 built L2-038 AC5 and checked L2-039 AC1 and AC2 ([ADR 0023](../../../adr/0023-allow-list-changes-apply-on-the-next-request.md)).
+
+- **`AllowListController`** (`GET/POST /api/allow-list`, `DELETE /api/allow-list/{login}`), not the
+  `SettingsAccessSection` named above: Settings shows `AllowListComponent` ("Who can sign in") and
+  `AddUserDialog` on CDK Dialog. Owners come first, then logins in the order they were added.
+- **Adding asks GitHub** (`IGitHubIdentity.FindLoginAsync`): listed, malformed or unknown logins are 400 field
+  errors on `login`; GitHub not answering is 502 `github_failed`, the dialog's failed state.
+- **Every request checks the allow list**: `IsSessionValidQuery` replaces `IsSessionRevokedQuery`, using
+  `AllowListAccess` in memory. A removed login is 401 on its next request.
+- **An Owner can't remove themselves** (409 `cannot_remove_yourself`); their row has no Remove.
+- **Last sign-in** is recorded on the entry at each sign-in (`RecordSignInCommand`), with who added it and when.
+- **`ProjectAccessFilter` is not a class.** Every project route already answers an unknown project with the same
+  404 `not_found`, and `JoinProject` refuses it; every allow-listed user can see every project. Two acceptance
+  tests now call every state-changing endpoint as a Viewer (403) and every project route for a project nobody can
+  see (404), so a new endpoint without the rules fails them.

@@ -59,6 +59,21 @@ public sealed class HewnClient
         return _http.SendAsync(request);
     }
 
+    public Task<HttpResponseMessage> DeleteAsync(string url)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Delete, url);
+        request.Headers.Add("X-XSRF-TOKEN", _xsrfToken);
+        return _http.SendAsync(request);
+    }
+
+    /// <summary>Sends any method with a JSON body and the anti-forgery token, as the app would.</summary>
+    public Task<HttpResponseMessage> SendAsync(string method, string url, object body)
+    {
+        var request = new HttpRequestMessage(new HttpMethod(method), url) { Content = JsonContent.Create(body) };
+        request.Headers.Add("X-XSRF-TOKEN", _xsrfToken);
+        return _http.SendAsync(request);
+    }
+
     public static async Task<JsonElement> ReadJsonAsync(HttpResponseMessage response)
     {
         var text = await response.Content.ReadAsStringAsync();

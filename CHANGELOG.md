@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Manage Owner and Viewer access (journey 21, L2-038 AC5, L2-039): Settings shows "Who can sign in", each GitHub
+  login with its role and last sign-in. An Owner adds a login as Viewer or Owner once GitHub confirms it exists, and
+  removes any login but their own; a removed login is signed out on its next request (ADR 0023). Viewers see the
+  list read-only. `GET/POST /api/allow-list`, `DELETE /api/allow-list/{login}`. Migration `ManageAllowList` adds
+  `LastSignInAt`, `AddedAt` and `AddedBy` to `allow_list`. New tests call every state-changing endpoint as a Viewer
+  (403) and every project route for an unseen project (404).
 - Sign in and sign out (journey 20, L2-038, L2-043): Mission Control signs in with GitHub through
   `GET /api/auth/github` and its callback; logins not on the allow list are refused with "This account doesn't have
   access", and the sign-in page shows the denied, GitHub failed, expired and signed-out states. The sidebar gains

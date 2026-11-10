@@ -21,19 +21,17 @@ box "Frontend — Mission Control application" #E0F2FE
 end box
 box "Backend — Hewn API application" #D1FADF
   participant "Authorization policies" as pol
-  participant "ProjectAccessFilter" as filter
+  participant "Project handlers" as handlers
   participant "MissionControlHub" as hub
 end box
-viewer -> spa : (crafted) POST /api/directions/{id}/pause
+viewer -> spa : (crafted) POST /api/projects/{id}/directions/{d}/pause
 spa -> pol : OwnerPolicy
-pol --> spa : 403 (L2-039 AC1)
+pol --> spa : 403, whatever the request holds (L2-039 AC1)
 viewer -> spa : GET /api/projects/{other}
-spa -> filter : Access to project?
-filter --> spa : 404, existence not revealed (L2-039 AC2)
+spa -> handlers : Find the project
+handlers --> spa : 404 not_found, the same as a project that never existed (L2-039 AC2)
 spa -> hub : JoinProject(other)
-hub -> filter : CanJoin?
-filter --> hub : No
-hub --> spa : Group refused
-viewer -> spa : Open Settings > Access
-spa --> viewer : Allow list read-only (L2-038 AC5)
+hub --> spa : Group refused, "Project not found."
+viewer -> spa : Open Settings
+spa --> viewer : Who can sign in, read-only (L2-038 AC5)
 @enduml

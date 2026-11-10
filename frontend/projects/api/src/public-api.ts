@@ -2,6 +2,7 @@
  * Public API Surface of api
  */
 
+export * from './lib/access/allow-list-api';
 export * from './lib/problems/field-errors';
 export * from './lib/problems/rate-limited';
 export * from './lib/projects/models';
