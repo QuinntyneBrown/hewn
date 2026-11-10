@@ -1,0 +1,217 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:06.74
+This is journey thirty two of Hewn, the software factory: review the audit log.
+
+00:00:06.74 --> 00:00:11.66
+When something changes, an Owner needs to know who did it, and from where.
+
+00:00:11.66 --> 00:00:15.51
+This video shows Hewn recording each action as it happens,
+
+00:00:15.51 --> 00:00:18.10
+and an Owner finding it again in Audit.
+
+00:00:19.25 --> 00:00:25.24
+Every sign-in, direction submission, pause, resume, cancel, stop all, start workers,
+
+00:00:25.24 --> 00:00:29.66
+token creation or revocation, and merge writes an audit entry.
+
+00:00:29.66 --> 00:00:33.37
+It records who did it, what, when and from which IP.
+
+00:00:33.37 --> 00:00:35.16
+No API can edit an entry.
+
+00:00:35.16 --> 00:00:38.44
+Owners open Audit to see entries newest first,
+
+00:00:38.44 --> 00:00:41.15
+and filter them by project and action.
+
+00:00:41.15 --> 00:00:43.29
+Viewers are not shown the log.
+
+00:00:44.44 --> 00:00:49.46
+Earlier, the Owner submitted two directions, paused and resumed Tidewater,
+
+00:00:49.46 --> 00:00:52.71
+cancelled Ledgerline and created a worker token.
+
+00:00:52.71 --> 00:00:56.65
+Here the Owner opens Workers and presses Stop all workers.
+
+00:00:56.65 --> 00:00:59.77
+The dialog asks first, and the Owner confirms.
+
+00:00:59.77 --> 00:01:02.68
+Every worker stops, and the banner says so.
+
+00:01:02.68 --> 00:01:04.92
+Then the Owner starts them again.
+
+00:01:05.27 --> 00:01:06.98
+Now the Owner opens Audit.
+
+00:01:06.98 --> 00:01:11.20
+Start workers and Stop all workers are at the top, newest first,
+
+00:01:11.20 --> 00:01:15.81
+with the time to the second, the Owner's login, the target and the IP.
+
+00:01:15.81 --> 00:01:19.95
+Below them come the sign-in, the token, the cancel, the resume,
+
+00:01:19.95 --> 00:01:21.93
+the pause and both directions.
+
+00:01:21.93 --> 00:01:27.33
+Cancel and Stop all read in the warning colour, and their names say what they did.
+
+00:01:27.68 --> 00:01:29.58
+The Owner chooses Tidewater.
+
+00:01:29.58 --> 00:01:34.86
+The filter goes into the address, and only Tidewater's three entries are left.
+
+00:01:34.86 --> 00:01:36.63
+Choosing Pause leaves one.
+
+00:01:36.63 --> 00:01:41.98
+Stop all workers isn't recorded against a project, and the empty state says so.
+
+00:01:41.98 --> 00:01:44.49
+Clear filters shows everything again.
+
+00:01:45.64 --> 00:01:51.16
+Every way an API might change an entry was tried: put, patch, delete and post,
+
+00:01:51.16 --> 00:01:53.07
+on the log and on an entry.
+
+00:01:53.07 --> 00:01:57.31
+Each answer is not found, because there is no such endpoint.
+
+00:01:57.31 --> 00:01:59.93
+Under that, the database refuses too.
+
+00:02:00.28 --> 00:02:04.17
+A Viewer who opens Audit sees that only Owners can read it,
+
+00:02:04.17 --> 00:02:06.81
+and the API answers them with forbidden.
+
+00:02:07.96 --> 00:02:11.86
+Each audited handler calls the audit writer before it saves.
+
+00:02:11.86 --> 00:02:14.78
+The writer adds the entry to the same change,
+
+00:02:14.78 --> 00:02:18.81
+so the action and its entry are saved together, or not at all.
+
+00:02:18.81 --> 00:02:24.26
+The address comes from the request, after forwarded headers from a proxy on the same
+
+00:02:24.26 --> 00:02:26.86
+machine, so a client can't name its own.
+
+00:02:27.21 --> 00:02:32.14
+A merge is made by Hewn, so its entry names whoever submitted the direction,
+
+00:02:32.14 --> 00:02:33.38
+and has no address.
+
+00:02:33.73 --> 00:02:39.04
+Hewn's database is SQLite, which has no roles to withhold update and delete.
+
+00:02:39.04 --> 00:02:42.67
+So the migration adds two triggers that refuse both,
+
+00:02:42.67 --> 00:02:45.40
+and a new decision record explains why.
+
+00:02:45.40 --> 00:02:50.78
+Each entry keeps its project's name, so deleting a project leaves its entries
+
+00:02:50.78 --> 00:02:51.41
+readable.
+
+00:02:51.76 --> 00:02:54.95
+The log is read newest first, a page at a time.
+
+00:02:54.95 --> 00:02:59.23
+The answer also names every project in the log, for the filter.
+
+00:02:59.58 --> 00:03:03.10
+This sequence shows a pause being recorded, and then found.
+
+00:03:04.25 --> 00:03:06.91
+The backend tests go through the real API.
+
+00:03:06.91 --> 00:03:11.61
+Signing in, submitting, pausing, resuming, cancelling, stopping, starting,
+
+00:03:11.61 --> 00:03:15.92
+creating and revoking a token, and merging each add the right entry,
+
+00:03:15.92 --> 00:03:17.00
+with the address.
+
+00:03:17.00 --> 00:03:21.06
+Filters and paging work, and an unknown action is a bad request.
+
+00:03:21.06 --> 00:03:22.45
+A Viewer is forbidden.
+
+00:03:22.45 --> 00:03:25.75
+And an update or delete straight on the table fails.
+
+00:03:25.75 --> 00:03:28.79
+Before the endpoint existed, all of them failed.
+
+00:03:28.79 --> 00:03:32.22
+All three hundred and thirty three backend tests pass.
+
+00:03:32.57 --> 00:03:37.01
+End to end, a behaviour test does the actions, finds them in Audit,
+
+00:03:37.01 --> 00:03:41.18
+filters by project and action, reloads, and clears the filters.
+
+00:03:41.18 --> 00:03:44.90
+Another tries every edit and checks a Viewer is refused.
+
+00:03:44.90 --> 00:03:49.54
+Without the Audit route the first test failed, finding Page not found.
+
+00:03:49.54 --> 00:03:52.65
+Visual tests compare every state with its mock,
+
+00:03:52.65 --> 00:03:55.44
+and an accessibility test checks each one.
+
+00:03:56.59 --> 00:03:58.97
+The log reads the same in dark mode.
+
+00:03:58.97 --> 00:04:03.86
+On a phone the target moves under the action, and the address column goes.
+
+00:04:05.01 --> 00:04:07.08
+Journey thirty two is complete.
+
+00:04:07.08 --> 00:04:11.87
+Each audited action records who, what, when, the target and the address,
+
+00:04:11.87 --> 00:04:13.00
+in the same save.
+
+00:04:13.00 --> 00:04:17.47
+Owners find entries in Audit and filter them by project and action.
+
+00:04:17.47 --> 00:04:22.46
+And nothing edits an entry: there is no endpoint, and the database refuses.
+
+00:04:22.46 --> 00:04:24.60
+Next comes journey thirty three.

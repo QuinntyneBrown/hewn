@@ -1,0 +1,106 @@
+{
+  "newest": [
+    {
+      "when": "10 Nov 2026, 13:33:27",
+      "who": "quinntynebrown",
+      "action": "Start workers",
+      "target": "All projects",
+      "ip": "::1"
+    },
+    {
+      "when": "10 Nov 2026, 13:33:23",
+      "who": "quinntynebrown",
+      "action": "Stop all workers",
+      "target": "All projects",
+      "ip": "::1"
+    },
+    {
+      "when": "10 Nov 2026, 13:33:09",
+      "who": "quinntynebrown",
+      "action": "Sign in",
+      "target": "—",
+      "ip": "::1"
+    },
+    {
+      "when": "10 Nov 2026, 13:33:09",
+      "who": "quinntynebrown",
+      "action": "Token created",
+      "target": "hewn-cloud-2x89",
+      "ip": "::1"
+    },
+    {
+      "when": "10 Nov 2026, 13:33:09",
+      "who": "quinntynebrown",
+      "action": "Cancel",
+      "target": "Ledgerline 2x89",
+      "ip": "::1"
+    },
+    {
+      "when": "10 Nov 2026, 13:33:09",
+      "who": "quinntynebrown",
+      "action": "Resume",
+      "target": "Tidewater 2x89",
+      "ip": "::1"
+    },
+    {
+      "when": "10 Nov 2026, 13:33:09",
+      "who": "quinntynebrown",
+      "action": "Pause",
+      "target": "Tidewater 2x89",
+      "ip": "::1"
+    },
+    {
+      "when": "10 Nov 2026, 13:33:09",
+      "who": "quinntynebrown",
+      "action": "Direction submitted",
+      "target": "Tidewater 2x89",
+      "ip": "::1"
+    }
+  ],
+  "tidewater": [
+    {
+      "when": "10 Nov 2026, 13:33:09",
+      "who": "quinntynebrown",
+      "action": "Resume",
+      "target": "Tidewater 2x89",
+      "ip": "::1"
+    },
+    {
+      "when": "10 Nov 2026, 13:33:09",
+      "who": "quinntynebrown",
+      "action": "Pause",
+      "target": "Tidewater 2x89",
+      "ip": "::1"
+    },
+    {
+      "when": "10 Nov 2026, 13:33:09",
+      "who": "quinntynebrown",
+      "action": "Direction submitted",
+      "target": "Tidewater 2x89",
+      "ip": "::1"
+    }
+  ],
+  "url": "?project=f84fa7bb-1235-429f-a703-25383836238e",
+  "tidewaterPause": [
+    {
+      "when": "10 Nov 2026, 13:33:09",
+      "who": "quinntynebrown",
+      "action": "Pause",
+      "target": "Tidewater 2x89",
+      "ip": "::1"
+    }
+  ],
+  "noResults": "Nobody stopped all workers from Tidewater 2x89. Stop all is recorded against All projects.",
+  "edits": {
+    "PUT /api/audit": 404,
+    "PUT /api/audit/1": 404,
+    "PATCH /api/audit": 404,
+    "PATCH /api/audit/1": 404,
+    "DELETE /api/audit": 404,
+    "DELETE /api/audit/1": 404,
+    "POST /api/audit": 404,
+    "POST /api/audit/1": 404
+  },
+  "viewerStatus": 403,
+  "viewerTitle": "You don’t have access"
+}
