@@ -42,6 +42,15 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
         return this;
     }
 
+    private readonly List<Action<IServiceCollection>> _services = [];
+
+    /// <summary>Changes the API's services after the test defaults, e.g. to make a dependency fail. Call before the first request.</summary>
+    public HewnApiFactory WithServices(Action<IServiceCollection> configure)
+    {
+        _services.Add(configure);
+        return this;
+    }
+
     private bool _ownsDatabase = true;
 
     private HewnApiFactory(string databaseFile) => _databaseFile = databaseFile;
@@ -107,6 +116,10 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
             services.AddSingleton<IGitHubIdentity, Hewn.Infrastructure.Fakes.FakeGitHubIdentity>();
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Clock);
+            foreach (var configure in _services)
+            {
+                configure(services);
+            }
         });
     }
 
