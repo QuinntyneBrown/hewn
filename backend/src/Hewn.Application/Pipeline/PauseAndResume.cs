@@ -1,4 +1,5 @@
 using Hewn.Application.Abstractions;
+using Hewn.Application.Audit;
 using Hewn.Application.Common;
 using Hewn.Application.Events;
 using Hewn.Domain;
@@ -20,6 +21,7 @@ public sealed class PauseDirectionHandler(
     PipelineOrchestrator pipeline,
     EventAppender events,
     ICurrentUser user,
+    AuditWriter audit,
     TimeProvider clock) : IRequestHandler<PauseDirectionCommand, DirectionControlResult>
 {
     public const string PauseRequested = "PauseRequested";
@@ -50,6 +52,7 @@ public sealed class PauseDirectionHandler(
             await pipeline.OnPauseTakesEffectAsync(run, project, direction, cancellationToken);
         }
 
+        audit.Record(AuditAction.Pause, user.Login, project);
         await db.SaveChangesAsync(cancellationToken);
         await events.PublishAsync(cancellationToken);
         return DirectionControl.Result(direction);
@@ -64,6 +67,7 @@ public sealed class ResumeDirectionHandler(
     PipelineOrchestrator pipeline,
     EventAppender events,
     ICurrentUser user,
+    AuditWriter audit,
     TimeProvider clock) : IRequestHandler<ResumeDirectionCommand, DirectionControlResult>
 {
     public const string DirectionResumed = "DirectionResumed";
@@ -86,6 +90,7 @@ public sealed class ResumeDirectionHandler(
         await events.AppendAsync(project.Id, DirectionResumed, new { directionId = direction.Id, resumedBy = user.Login }, cancellationToken);
         await RunLog.InfoAsync(db, events, run, $"Resumed by {user.Login}", clock.GetUtcNow(), cancellationToken);
         await pipeline.OnResumedAsync(run, project, direction, cancellationToken);
+        audit.Record(AuditAction.Resume, user.Login, project);
         await db.SaveChangesAsync(cancellationToken);
         await events.PublishAsync(cancellationToken);
         return DirectionControl.Result(direction);

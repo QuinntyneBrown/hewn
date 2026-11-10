@@ -9,6 +9,8 @@ public interface IAppDbContext
 
     DbSet<RevokedSession> RevokedSessions { get; }
 
+    DbSet<AuditEntry> AuditEntries { get; }
+
     DbSet<WorkerToken> WorkerTokens { get; }
 
     DbSet<Project> Projects { get; }

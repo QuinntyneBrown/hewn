@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using Hewn.Application.Abstractions;
+using Hewn.Application.Audit;
 using Hewn.Application.Common;
 using Hewn.Application.Events;
 using Hewn.Domain;
@@ -31,6 +32,7 @@ public sealed class CancelDirectionHandler(
     IGitHubRepositories gitHub,
     IOptions<PipelineOptions> options,
     ICurrentUser user,
+    AuditWriter audit,
     TimeProvider clock) : IRequestHandler<CancelDirectionCommand, CancelDirectionResult>
 {
     public const string DirectionCancelled = "DirectionCancelled";
@@ -62,6 +64,7 @@ public sealed class CancelDirectionHandler(
             }
 
             await pipeline.OnCancelledAsync(run, project, direction, user.Login, cancellationToken);
+            audit.Record(AuditAction.Cancel, user.Login, project);
         }
 
         await db.SaveChangesAsync(cancellationToken);

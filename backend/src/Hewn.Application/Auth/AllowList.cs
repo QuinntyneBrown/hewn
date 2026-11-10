@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Hewn.Application.Abstractions;
+using Hewn.Application.Audit;
 using Hewn.Application.Common;
 using Hewn.Domain;
 using MediatR;
@@ -101,7 +102,7 @@ public sealed class RemoveFromAllowListHandler(IAppDbContext db, AllowListAccess
 /// <summary>Records a sign-in's time on the login's allow-list entry.</summary>
 public sealed record RecordSignInCommand(string Login) : IRequest;
 
-public sealed class RecordSignInHandler(IAppDbContext db, TimeProvider clock) : IRequestHandler<RecordSignInCommand>
+public sealed class RecordSignInHandler(IAppDbContext db, AuditWriter audit, TimeProvider clock) : IRequestHandler<RecordSignInCommand>
 {
     public async Task Handle(RecordSignInCommand command, CancellationToken cancellationToken)
     {
@@ -109,6 +110,7 @@ public sealed class RecordSignInHandler(IAppDbContext db, TimeProvider clock) : 
         if (await db.AllowList.SingleOrDefaultAsync(a => a.Login == login, cancellationToken) is { } entry)
         {
             entry.RecordSignIn(clock.GetUtcNow());
+            audit.Record(AuditAction.SignIn, entry.Login, target: null);
             await db.SaveChangesAsync(cancellationToken);
         }
     }

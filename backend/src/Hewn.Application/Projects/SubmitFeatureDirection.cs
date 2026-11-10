@@ -1,5 +1,6 @@
 using FluentValidation;
 using Hewn.Application.Abstractions;
+using Hewn.Application.Audit;
 using Hewn.Application.Common;
 using Hewn.Application.Events;
 using Hewn.Application.Pipeline;
@@ -37,6 +38,7 @@ public sealed class SubmitFeatureDirectionHandler(
     EventAppender events,
     PipelineOrchestrator pipeline,
     Spend.DirectionDefaultsReader defaults,
+    AuditWriter audit,
     TimeProvider clock) : IRequestHandler<SubmitFeatureDirectionCommand, SubmitProductDirectionResult>
 {
     public async Task<SubmitProductDirectionResult> Handle(SubmitFeatureDirectionCommand command, CancellationToken cancellationToken)
@@ -63,6 +65,7 @@ public sealed class SubmitFeatureDirectionHandler(
             await pipeline.StartDirectionAsync(project, direction, cancellationToken);
         }
 
+        audit.Record(AuditAction.DirectionSubmitted, user.Login, project);
         await db.SaveChangesAsync(cancellationToken);
         await events.PublishAsync(cancellationToken);
         return new SubmitProductDirectionResult(project.Id, direction.Id);

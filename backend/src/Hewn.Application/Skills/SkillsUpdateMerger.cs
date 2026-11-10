@@ -1,4 +1,5 @@
 using Hewn.Application.Abstractions;
+using Hewn.Application.Audit;
 using Hewn.Application.Events;
 using Hewn.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +17,7 @@ public sealed class SkillsUpdateMerger(
     IGitHubRepositories gitHub,
     ISkillsSource skills,
     EventAppender events,
+    AuditWriter audit,
     TimeProvider clock,
     ILogger<SkillsUpdateMerger> logger)
 {
@@ -77,6 +79,7 @@ public sealed class SkillsUpdateMerger(
         }
 
         update.Merged(clock.GetUtcNow());
+        audit.RecordMerge(update.RequestedBy, project, update.PullRequestNumber);
         await events.AppendAsync(project.Id, "SkillsUpdateMerged", new { number = update.PullRequestNumber, toSha = update.ToSha }, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
         await events.PublishAsync(cancellationToken);

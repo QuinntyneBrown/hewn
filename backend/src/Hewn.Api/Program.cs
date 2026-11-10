@@ -15,6 +15,11 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
+builder.Services.AddScoped<IRequestOrigin, HttpRequestOrigin>();
+// The client's address for the audit log (L2-044): X-Forwarded-For is honoured only from a proxy on this machine
+// (loopback, the default known proxies), so a client can't name its own address.
+builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(o =>
+    o.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor);
 builder.Services.AddHewnAuth();
 builder.Services.AddAntiforgery(o => o.HeaderName = "X-XSRF-TOKEN");
 builder.Services.AddProblemDetails();
@@ -48,6 +53,7 @@ builder.Services
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
 app.UseSecurityHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();

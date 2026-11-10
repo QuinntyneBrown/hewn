@@ -1,4 +1,5 @@
 using Hewn.Application.Abstractions;
+using Hewn.Application.Audit;
 using Hewn.Application.Events;
 using Hewn.Application.Pipeline;
 using Hewn.Domain;
@@ -105,10 +106,12 @@ public sealed class StopWorkersHandler(
     RunControlSignals signals,
     IOptions<PipelineOptions> options,
     ICurrentUser user,
+    AuditWriter audit,
     TimeProvider clock) : IRequestHandler<StopWorkersCommand, StopWorkersResult>
 {
     public async Task<StopWorkersResult> Handle(StopWorkersCommand command, CancellationToken cancellationToken)
     {
+        audit.Record(AuditAction.StopAll, user.Login, AuditWriter.AllProjects);
         await Leasing.SetAsync(db, true, user.Login, clock.GetUtcNow(), cancellationToken);
 
         // A lease granted before the switch was saved shows up here; none is granted after it.
@@ -158,7 +161,7 @@ public sealed class StopWorkersHandler(
 /// <summary>Start workers: leasing is switched back on and every halted run is queued again, to resume after its checkpoint.</summary>
 public sealed record StartWorkersCommand : IRequest<LeasingDto>;
 
-public sealed class StartWorkersHandler(IAppDbContext db, EventAppender events, ICurrentUser user, TimeProvider clock)
+public sealed class StartWorkersHandler(IAppDbContext db, EventAppender events, ICurrentUser user, AuditWriter audit, TimeProvider clock)
     : IRequestHandler<StartWorkersCommand, LeasingDto>
 {
     public async Task<LeasingDto> Handle(StartWorkersCommand command, CancellationToken cancellationToken)
@@ -179,6 +182,7 @@ public sealed class StartWorkersHandler(IAppDbContext db, EventAppender events, 
         }
 
         // Queued again before leasing comes back on, so the halted runs keep their place in the queue.
+        audit.Record(AuditAction.StartWorkers, user.Login, AuditWriter.AllProjects);
         return await Leasing.SetAsync(db, false, user.Login, clock.GetUtcNow(), cancellationToken);
     }
 }

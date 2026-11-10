@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using Hewn.Application.Abstractions;
+using Hewn.Application.Audit;
 using Hewn.Application.Common;
 using Hewn.Application.Events;
 using Hewn.Application.Pipeline;
@@ -29,7 +30,7 @@ public sealed record CreatedWorkerTokenDto(string Id, string Name, string Locati
 /// <summary>An Owner creates a worker token (L2-041 AC1, AC3).</summary>
 public sealed record CreateWorkerTokenCommand(string Name, string Location, int ExpiresInDays, string CreatedBy) : IRequest<CreatedWorkerTokenDto>;
 
-public sealed partial class CreateWorkerTokenHandler(IAppDbContext db, TimeProvider clock) : IRequestHandler<CreateWorkerTokenCommand, CreatedWorkerTokenDto>
+public sealed partial class CreateWorkerTokenHandler(IAppDbContext db, AuditWriter audit, TimeProvider clock) : IRequestHandler<CreateWorkerTokenCommand, CreatedWorkerTokenDto>
 {
     public const string NameRule = "Worker name must be 3–40 lowercase letters, digits or hyphens.";
 
@@ -63,6 +64,7 @@ public sealed partial class CreateWorkerTokenHandler(IAppDbContext db, TimeProvi
         var token = WorkerTokenHash.NewToken();
         var stored = new WorkerToken(name, location, WorkerTokenHash.Of(token), command.CreatedBy, clock.GetUtcNow(), command.ExpiresInDays);
         db.WorkerTokens.Add(stored);
+        audit.Record(AuditAction.TokenCreated, command.CreatedBy, stored.Name);
         await db.SaveChangesAsync(cancellationToken);
         return new CreatedWorkerTokenDto(stored.Id, stored.Name, stored.Location.ToString(), stored.ExpiresAt, token);
     }
@@ -80,6 +82,7 @@ public sealed class RevokeWorkerHandler(
     EventAppender events,
     RunControlSignals signals,
     IWorkersNotifier workers,
+    AuditWriter audit,
     TimeProvider clock) : IRequestHandler<RevokeWorkerCommand>
 {
     public async Task Handle(RevokeWorkerCommand command, CancellationToken cancellationToken)
@@ -101,6 +104,8 @@ public sealed class RevokeWorkerHandler(
         {
             revoked.Revoke(now);
         }
+
+        audit.Record(AuditAction.TokenRevoked, command.RevokedBy, worker.Name);
 
         // Stored before any run is released, so no request on this token is accepted from here on.
         await db.SaveChangesAsync(cancellationToken);
