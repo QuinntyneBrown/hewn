@@ -19,8 +19,8 @@ The slice spans the Projects page, the delete dialog, three endpoints and a purg
 - **`DeleteProjectDialog`** — confirmation dialog. It states that the GitHub repository is kept, enables Delete only when the typed text equals the project name, and shows busy, invalid and failed states.
 - **`ProjectsController`** — `POST /api/projects/{id}/archive`, `POST /api/projects/{id}/restore` and `DELETE /api/projects/{id}` with body `{ confirmName }`. All require the `Owner` policy.
 - **`ArchiveProjectHandler / RestoreProjectHandler`** — refuse a project with `Project.HasActiveDirection` (409 `active_direction`), then set or clear `Project.ArchivedAt` and append `ProjectArchived` or `ProjectRestored`.
-- **`DeleteProjectHandler`** — checks the guard and the typed name, marks the project `Deleting`, and enqueues `PurgeProjectJob`.
-- **`PurgeProjectJob`** — background job that deletes the project's directions, runs, events, logs, decisions index, spend records and stored artifacts from Hewn storage. It never calls GitHub.
+- **`DeleteProjectHandler`** — checks the guard and the typed name, then removes the project's directions and stages, runs, events, log lines, decisions, model calls (spend), GitHub mutations, increments and their checks, and skills updates in one save. It never calls GitHub.
+- **`SignalRProjectEventPublisher`** — sends `ProjectDeleted { projectId }` to Projects pages and the project's own page.
 - **`Project.HasActiveDirection`** — true while any direction is active; `Project.Archive` throws if called then, and the handlers answer 409 `active_direction` with the title "Cancel the running direction first".
 
 Audit entries survive the purge, because L2-044 entries cannot be edited or removed through any API. Whether project deletion itself is an audited action is <TO SUPPLY>; L2-044 AC1 does not list it.
@@ -55,13 +55,13 @@ Both handlers call the same domain guard, so the API refuses the action even whe
 
 ### Class structure
 
-`Project` owns the guard and the archive state; `DeleteProjectHandler` depends on the typed confirmation and enqueues `PurgeProjectJob`.
+`Project` owns the guard and the archive state; `DeleteProjectHandler` depends on the typed confirmation and removes the project's records itself.
 
 ![Class diagram for archiving and deleting a project](diagrams/class-structure.png)
 
 ### Behaviour — delete a project
 
-The guard refuses projects with an active direction (L2-003 AC2). A mismatched name leaves the dialog in its invalid state. A match purges Hewn's data and keeps the repository (AC3).
+The guard refuses projects with an active direction (L2-003 AC2). A mismatched name leaves the dialog in its invalid state. A match removes Hewn's data in one save and keeps the repository (AC3).
 
 ![Sequence diagram: delete a project](diagrams/sequence-delete.png)
 
@@ -87,4 +87,24 @@ Archive moves the project under the Archived filter; Restore returns it to the d
   Projects page gets the changed row live. The Owner sees a success toast (with "Show archived" after archiving),
   or a danger toast with the API's reason. Both reuse the live-toast mocks, so no new mock was needed.
 - **Activity older than a week** reads as a date ("12 Oct"), as `pages/projects/archived.html` shows.
-- **Delete** (AC3) is journey 31; until then the row shows Archive only.
+- **Delete** (AC3) was journey 31; see below.
+
+## Decisions made while deleting a project (journey 31)
+
+- **Deleted in the request, in one save** ([ADR 0032](../../../adr/0032-a-project-is-deleted-in-one-save.md)). The
+  design planned a `Deleting` mark and a `PurgeProjectJob`. A project's records are small rows in one database, so
+  `DeleteProjectHandler` removes them all in one `SaveChanges`, and the API answers 204 once they are gone. A
+  failure removes nothing, so the failed dialog can say "Nothing was removed; try again". No `Deleting` state, no
+  job, no migration.
+- **What "records, logs and stored artifacts" means here.** Directions and their stages, runs, events, run log
+  lines, decisions, model calls (the spend history), GitHub mutations, increments and their checks, and skills
+  updates. Workers, worker tokens, users and settings belong to no project and stay.
+- **The name is checked on the server too.** `DELETE /api/projects/{id}` takes `{ confirmName }`; anything but the
+  name exactly (case and spaces count) answers 400 `confirm_name` with the dialog's message, "Type {name} exactly
+  to delete it." The active-direction guard is checked first, as for Archive (409 `active_direction`).
+- **The dialog.** Delete project is enabled only when the name matches. The field error shows once the field is
+  left with something else typed, as `invalid.html` shows. A failure keeps what was typed, so Try again works
+  (`failed.html` shows the field empty; with it empty, Try again could not be enabled).
+- **Live.** Every Projects page drops the row when `ProjectDeleted` arrives; the Owner gets a "{name} deleted"
+  toast, "Its GitHub repository is kept.", reusing the live-toast mocks.
+- **Archived projects** offer Restore only, as `archived.html` shows; restore one to delete it.

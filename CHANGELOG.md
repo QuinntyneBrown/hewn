@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Delete a project (journey 31, L2-003 AC2, AC3): an Owner chooses Delete on a project's row, types its name exactly
+  and confirms. Hewn removes its directions, runs, events, logs, decisions, spend history, increments and skills
+  updates, and leaves the GitHub repository untouched, as the dialog says. Delete is disabled with "Cancel the
+  running direction first" while a direction is active. `DELETE /api/projects/{id}` takes `{ confirmName }`, and
+  every open Projects page drops the row.
 - Archive and restore a project (journey 30, L2-003 AC1, AC2): an Owner archives a project with no active direction
   from its row on the Projects page. It leaves All and the status tabs, appears under the new Archived filter, and
   Restore brings it back. Archive is disabled with "Cancel the running direction first" while a direction is queued,
