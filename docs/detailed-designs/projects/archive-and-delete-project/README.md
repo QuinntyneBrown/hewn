@@ -31,7 +31,7 @@ The feature realizes the following level-2 (L2) requirements. Each L2 requiremen
 
 | L2 ID | Refines (L1) | Requirement |
 |-------|--------------|-------------|
-| `L2-003` | `L1-001` | **Archive and delete a project.**<br>1. Given a project with no active direction, when the Owner archives it, then it leaves the default list, appears under the Archived filter, and can be restored.<br>2. Given a project with an active direction, when the Owner tries to archive or delete it, then the action is refused with "Cancel the running direction first".<br>3. Given the Owner chooses Delete, when they type the project name exactly and confirm, then Hewn's records, logs and stored artifacts for the project are removed, and the GitHub repository is left untouched. The dialog states that the repository is kept. |
+| `L2-003` | `L1-001` | **Archive and delete a project.**<br>1. Given a project with no active direction, when the Owner archives it, then it leaves the default list, appears under the Archived filter, and can be restored. Viewers see the Archived filter without Archive or Restore, and an archived project takes no new direction until it is restored ("Restore the project first").<br>2. Given a project with an active direction (queued, running, paused or blocked), when the Owner tries to archive or delete it, then the action is refused with "Cancel the running direction first".<br>3. Given the Owner chooses Delete, when they type the project name exactly and confirm, then Hewn's records, logs and stored artifacts for the project are removed, and the GitHub repository is left untouched. The dialog states that the repository is kept. |
 
 ## Diagrams
 
