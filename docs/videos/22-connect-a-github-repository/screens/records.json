@@ -1,0 +1,28 @@
+{
+  "created": {
+    "owner": "hewn-builds",
+    "name": "kiln-scheduler",
+    "private": true,
+    "topics": [
+      "hewn"
+    ],
+    "requiredChecks": [
+      "backend",
+      "frontend",
+      "e2e"
+    ]
+  },
+  "protected": {
+    "owner": "hewn-builds",
+    "name": "kiln-scheduler",
+    "private": true,
+    "topics": [
+      "hewn"
+    ],
+    "requiredChecks": [
+      "backend",
+      "frontend",
+      "e2e"
+    ]
+  }
+}
