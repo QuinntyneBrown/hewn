@@ -1,8 +1,12 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { describe, expect, it } from 'vitest';
 import {
   busyLabel,
   connectedFor,
+  notCreated,
+  notRevoked,
   seenAgo,
+  startCommand,
   stopDialogText,
   stoppedBanner,
   unconfirmed,
@@ -102,5 +106,46 @@ describe('workers page text', () => {
     expect(connectedFor('2026-11-09T07:46:00Z', now)).toBe('2h 14m');
     expect(connectedFor('2026-11-09T09:22:00Z', now)).toBe('38m');
     expect(connectedFor('2026-11-09T04:58:00Z', now)).toBe('5h 02m');
+  });
+});
+
+describe('startCommand', () => {
+  it('starts the worker image against this API with the new token, one option per line', () => {
+    expect(startCommand('https://hewn.example', 'hwt_abc')).toBe(
+      [
+        'docker run -d --name hewn-worker \\',
+        '  -e HEWN_API_URL=https://hewn.example \\',
+        '  -e HEWN_WORKER_TOKEN=hwt_abc \\',
+        '  hewn-worker',
+      ].join('\n'),
+    );
+  });
+});
+
+describe('notCreated', () => {
+  it('gives the status the API answered, and says nothing was saved', () => {
+    expect(notCreated(new HttpErrorResponse({ status: 500 }))).toBe(
+      'The API returned 500. Nothing was saved; try again.',
+    );
+  });
+
+  it('says the API could not be reached when there was no answer', () => {
+    expect(notCreated(new HttpErrorResponse({ status: 0 }))).toBe(
+      'Hewn couldn’t reach the API. Nothing was saved; try again.',
+    );
+  });
+});
+
+describe('notRevoked', () => {
+  it('says the worker can still register, with the status the API answered', () => {
+    expect(notRevoked('build-box-02', new HttpErrorResponse({ status: 500 }))).toBe(
+      'The API returned 500. build-box-02 can still register; try again.',
+    );
+  });
+
+  it('explains that a worker on the configured development token is stopped in the API’s configuration', () => {
+    expect(notRevoked('dev-box', new HttpErrorResponse({ status: 409 }))).toBe(
+      'dev-box uses the development token set in the API’s configuration; remove HEWN_WORKER_TOKEN there to stop it.',
+    );
   });
 });
