@@ -16,15 +16,17 @@ skinparam package {
 }
 skinparam sequenceMessageAlign left
 box "Backend — Worker application" #D1FADF
-  participant "WorkerHost" as host
-  participant "LeaseClient" as lc
+  participant "WorkLoop" as loop
 end box
 box "Backend — Hewn API application" #D1FADF
-  participant "WorkerHub" as hub
+  participant "WorkerController" as ctrl
+  participant "MissionControlHub" as hub
 end box
 box "Backend — Hewn Application and Domain" #ECFDF3
-  participant "WorkerRegistry" as reg
+  participant "RegisterWorkerHandler" as reg
+  participant "HeldLease" as held
   participant "LeaseService" as lease
+  participant "WorkSignal" as signal
 end box
 box "Backend — Hewn Infrastructure" #FFF4E5
   database "Hewn database" as db
@@ -32,24 +34,24 @@ end box
 box "Frontend — Mission Control application" #E0F2FE
   participant "WorkersPage" as page
 end box
-host -> hub : Connect out with worker token (L2-027 AC3)
-host -> hub : Register(id, Local, quinn-mbp.local, 0.9.2)
-hub -> reg : Register
-reg -> db : Upsert worker
-reg -> page : WorkerChanged within 2 s (L2-026 AC1)
+loop -> ctrl : POST /api/worker/register {name, Local or Cloud, host, version}; outbound only (L2-027)
+ctrl -> reg : Send
+reg -> db : Insert worker
+reg -> hub : WorkersChanged to the workers group
+hub -> page : Read GET /api/workers again; the row shows within 2 s (L2-026 AC1)
 loop
-  lc -> hub : TryLease
-  hub -> lease : TryLeaseAsync(worker)
+  loop -> ctrl : POST /api/worker/lease?waitSeconds=20
+  ctrl -> held : Lease, holding for up to 30 s
+  held -> lease : TryLeaseAsync(worker)
   lease -> db : Oldest leasable run whose project has no lease (L2-026 AC4)
   alt run available
-    lease --> lc : Lease(run, expires in 60 s)
-    loop while running
-      lc -> hub : Heartbeat every 10 s (L2-026 AC2)
-      hub -> lease : Renew
-    end
-  else none
-    lease --> lc : Nothing
-    lc -> lc : Wait for WorkAvailable push; poll at most every 15 s (L2-026 AC5)
+    lease --> loop : 200 run, epoch, checkpoint
+    loop -> ctrl : Heartbeat every 10 s while running (L2-026 AC2)
+  else none yet
+    held -> signal : Wait for a stored event (EventAppender pulses it)
+    signal --> held : A direction was queued
+    held -> lease : TryLeaseAsync again; leased at once (L2-026 AC5)
+    note over loop, held : Nothing within the wait: 204, and the worker asks again\n15 s after its last request began, so at most 4 requests a minute
   end
 end
 @enduml

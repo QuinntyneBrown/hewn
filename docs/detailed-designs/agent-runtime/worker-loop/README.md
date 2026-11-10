@@ -83,7 +83,7 @@ A `Lease` ties one `Run` to one `Worker` until `ExpiresAt` and carries the `Epoc
 
 ### Behaviour — register, lease and heartbeat
 
-The worker registers and shows on the Workers page within 2 seconds (L2-026 AC1), leases one run and heartbeats every 10 seconds (AC2), with at most one lease per project (AC4). Idle, it waits for a push or polls at most every 15 seconds (AC5).
+The worker registers and shows on the Workers page within 2 seconds (L2-026 AC1), leases one run and heartbeats every 10 seconds (AC2), with at most one lease per project (AC4). Idle, it leases with a request the API holds open, so queued work is pushed to it at once, and it asks at most every 15 seconds (AC5).
 
 ![Sequence diagram: register, lease and heartbeat](diagrams/sequence-register-and-lease.png)
 

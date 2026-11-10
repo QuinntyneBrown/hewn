@@ -61,7 +61,7 @@ Every tool call passes `ToolGate`, every packet passes `EgressProxy`, and every 
 
 ### Behaviour — contain a run
 
-The run gets its own container and workspace (L2-042 AC1); git goes through the sidecar and the broker, while direct GitHub and other egress is blocked and logged (AC2); disallowed tools are denied and logged (AC3); no tool exists that could change Hewn configuration or push beyond the run's branch (AC4).
+As built in journey 23: the run gets its own workspace, and with `HEWN_SANDBOX=docker` its commands get their own containers (L2-042 AC1). Its proxy tunnels only to allowed hosts and logs every block (AC2). Its tool gate denies and logs tools outside the stage's allow list (AC3). It commits through the API, so no git remote or credential is ever in reach, and no tool exists that could change Hewn configuration (AC4).
 
 ![Sequence diagram: contain a run](diagrams/sequence-contain-a-run.png)
 
