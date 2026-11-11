@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 37 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="37" data-video-title="Configure protected service credentials" data-parts="Introduction|Goal|Supply|Redaction|Workspace|Agent tools|Tests|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 37</div>
+  <h1>Configure protected service credentials</h1>
+  <p class="lead">Credentials encrypted at rest, shown only as references, and redacted everywhere they could leak.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="The model API key, the Magic Patterns token">
+  <div class="cols">
+    <figure><img src="screens/log-desktop-light.png" alt="A failed stage whose error and log show *** where each secret was"></figure>
+  </div>
+</section>
+
+<section id="goal" data-part="1" data-cue="The requirements come in two parts.">
+  <ul class="bullets">
+    <li>Encrypted at rest: Key Vault in the cloud, the OS key store locally; no API response holds one (L2-040 AC1)</li>
+    <li>Stored secrets and GitHub, Anthropic, Azure tokens become *** in logs, events and PR bodies (AC2, AC3: workspaces)</li>
+    <li>No agent tool changes configuration, budgets, secrets or another project (L2-042 AC4)</li>
+  </ul>
+</section>
+
+<section id="supply" data-part="2" data-cue="An operator supplies a credential with the Hewn command line.">
+  <div class="code-file">Supplying a credential</div>
+  <pre class="code tight" data-lang="sh" data-mark="2,5">$ hewn secret set magic-patterns-token &lt; magic-patterns-token.txt
+Stored magic-patterns-token. Restart the API and workers to use it.
+
+$ echo 1000000 | hewn secret set budget
+budget isn&#x27;t a credential Hewn holds. Use one of: model-api-key, magic-patterns-token, github-app-private-key, github-client-secret, github-webhook-secret, worker-token, metrics-token.</pre>
+  <div class="code-file">backend/src/Hewn.Cli/Program.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="6,9">if (!Console.IsInputRedirected)
+{
+    Console.Error.WriteLine($&quot;Enter {args[2]}, then press Ctrl-D:&quot;);
+}
+
+var value = (await Console.In.ReadToEndAsync()).TrimEnd(&#x27;\r&#x27;, &#x27;\n&#x27;);
+try
+{
+    await store.SetAsync(args[2], value, CancellationToken.None);
+}
+catch (ArgumentException e)</pre>
+</section>
+
+<section id="list" data-part="2" data-cue="Hewn secret list prints each credential">
+  <div class="code-file">screens/records.json</div>
+  <pre class="code tight" data-lang="sh" data-mark="2-3,11-13">$ hewn secret list
+model-api-key            updated 2026-11-11 06:16:06Z
+magic-patterns-token     updated 2026-11-11 06:24:42Z
+github-app-private-key   not set
+github-client-secret     not set
+github-webhook-secret    updated 2026-11-11 06:16:07Z
+worker-token             updated 2026-11-11 06:16:06Z
+metrics-token            not set
+
+$ security find-generic-password -s hewn-video -a magic-patterns-token
+keychain: &quot;/Users/quinntynebrown/Library/Keychains/login.keychain-db&quot;
+class: &quot;genp&quot;
+    &quot;acct&quot;&lt;blob&gt;=&quot;magic-patterns-token&quot;
+    &quot;mdat&quot;&lt;timedate&gt;=0x32303236313131313036323434325A00  &quot;20261111062442Z\000&quot;
+    &quot;svce&quot;&lt;blob&gt;=&quot;hewn-video&quot;</pre>
+</section>
+
+<section id="api" data-part="2" data-cue="The API shows the same thing.">
+  <div class="code-file">No value field</div>
+  <pre class="code tight" data-lang="json" data-mark="2-3">$ curl /api/settings/credentials   (signed in as an Owner)
+{&quot;name&quot;: &quot;model-api-key&quot;, &quot;description&quot;: &quot;The Anthropic API key workers call the model with&quot;, &quot;updatedAt&quot;: &quot;2026-11-11T06:16:06.665+00:00&quot;}
+{&quot;name&quot;: &quot;magic-patterns-token&quot;, &quot;description&quot;: &quot;The Magic Patterns MCP credential the design stages use&quot;, &quot;updatedAt&quot;: &quot;2026-11-11T06:24:42.383+00:00&quot;}
+{&quot;name&quot;: &quot;github-app-private-key&quot;, &quot;description&quot;: &quot;The GitHub App&#x27;s private key, for repository writes&quot;, &quot;updatedAt&quot;: null}
+{&quot;name&quot;: &quot;github-client-secret&quot;, &quot;description&quot;: &quot;The GitHub OAuth app&#x27;s client secret, for sign-in&quot;, &quot;updatedAt&quot;: null}
+{&quot;name&quot;: &quot;github-webhook-secret&quot;, &quot;description&quot;: &quot;The secret GitHub signs webhook deliveries with&quot;, &quot;updatedAt&quot;: &quot;2026-11-11T06:16:07.058+00:00&quot;}
+{&quot;name&quot;: &quot;worker-token&quot;, &quot;description&quot;: &quot;The token workers authenticate to the API with&quot;, &quot;updatedAt&quot;: &quot;2026-11-11T06:16:06.29+00:00&quot;}
+{&quot;name&quot;: &quot;metrics-token&quot;, &quot;description&quot;: &quot;The bearer token a metrics scraper sends&quot;, &quot;updatedAt&quot;: null}</pre>
+  <div class="result green">✔ no response holds a value: the DTO has none</div>
+</section>
+
+<section id="store" data-part="2" data-cue="The secret store interface has three implementations.">
+  <div class="code-file">backend/src/Hewn.Infrastructure/Secrets/OsKeyStoreSecretStore.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="1,3">var item = $&quot;{Prefix}{clock.GetUtcNow().ToUnixTimeMilliseconds()}:{Convert.ToBase64String(Encoding.UTF8.GetBytes(value))}&quot;;
+var (exitCode, _) = _macOS
+    ? await commands.RunAsync(&quot;security&quot;, [&quot;-i&quot;], $&quot;add-generic-password -U -s {service} -a {name} -w {item}\n&quot;, cancellationToken)
+    : await commands.RunAsync(&quot;secret-tool&quot;, [&quot;store&quot;, &quot;--label&quot;, $&quot;Hewn {name}&quot;, &quot;service&quot;, service, &quot;account&quot;, name], item, cancellationToken);</pre>
+  <div class="code-file">backend/src/Hewn.Infrastructure/Secrets/SecretStores.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="3,6-7">foreach (var credential in Credentials.All)
+{
+    var value = _store.GetAsync(credential.Name, CancellationToken.None).GetAwaiter().GetResult();
+    if (value is not null)
+    {
+        data[credential.ConfigurationKey] = value;
+        SecretRedactor.Remember(value);
+    }</pre>
+</section>
+
+<section id="worker-store" data-part="2" data-cue="The worker reads its own credentials the same way">
+  <div class="code-file">worker/src/secret-store.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2-5">  const loaded: string[] = [];
+  for (const credential of WORKER_CREDENTIALS) {
+    const value = read(credential.name, options.service ?? &#x27;hewn&#x27;, platform, options.run ?? runTool);
+    if (value === undefined) continue;
+    env[credential.env] = value;
+    loaded.push(credential.name);
+  }
+  return loaded;
+}</pre>
+  <div class="code-file">worker standard output</div>
+  <pre class="code tight" data-lang="json">{&quot;timestamp&quot;: &quot;2026-11-11T06:24:43.786Z&quot;, &quot;level&quot;: &quot;Information&quot;, &quot;message&quot;: &quot;Read credentials from the OS key store&quot;, &quot;credentials&quot;: &quot;worker-token, model-api-key, magic-patterns-token&quot;}</pre>
+</section>
+
+<section id="planted" data-part="3" data-cue="To show redaction, a scripted run fails on purpose">
+  <div class="code-file">HEWN_SCRIPTED_FAIL_REASON (planted)</div>
+  <pre class="code tight" data-lang="txt">model call refused: the agent pasted sk-ant-api03-VideoDemoModelKey0123456789abcdef into a request,
+pushed with ghp_PlantedInARepositoryReadme0123456789 and read
+AccountKey=Zm9vYmFyYmF6cXV4MDEyMzQ1Njc4OWFiY2Q= from a mock</pre>
+  <div class="code-file">the same failure, stored</div>
+  <pre class="code tight" data-lang="txt">model call refused: the agent pasted *** into a request, pushed with *** and read AccountKey=***
+from a mock</pre>
+  <div class="result green">✔ model key, GitHub token and Azure key all ***</div>
+</section>
+
+<section id="screens" data-part="3" data-cue="Mission Control shows the failure with three stars">
+  <figure><img src="screens/log-desktop-light.png" alt="Designs failed after 3 retries; the error and the run log read: the agent pasted *** into a request, pushed with *** and read AccountKey=***"></figure>
+</section>
+
+<section id="screens-2" data-part="3" data-cue="Here it is in dark, and on a phone.">
+  <div class="cols">
+    <figure><img src="screens/log-desktop-dark.png" alt="The same failure in the dark theme"></figure>
+    <figure class="phone"><img src="screens/log-phone.png" alt="The same failure on a 390 px phone"></figure>
+  </div>
+</section>
+
+<section id="api-log" data-part="3" data-cue="JSON log line for the same failure">
+  <div class="code-file">API standard output · the failure</div>
+  <pre class="code tight" data-lang="txt" data-mark="4">timestamp: 2026-11-11T06:25:42.9795600Z
+level: Warning
+category: Hewn.Api.Controllers.WorkerController
+message: Run failed: model call refused: the agent pasted *** into a request, pushed with *** and read AccountKey=*** from a mock
+stage: 2
+runId: 47d6fec5-54c1-41d6-a772-b8a537f21ef6</pre>
+</section>
+
+<section id="pipeline" data-part="3" data-cue="The redaction pipeline shows every way out.">
+  <figure class="diagram"><img src="../../detailed-designs/security/secrets-and-redaction/diagrams/redaction-pipeline.png" alt="Redaction pipeline: worker text is redacted before it leaves; run log lines, pull requests, server log entries and event payloads pass SecretRedactor before the database, SignalR, GitHub and standard output"></figure>
+</section>
+
+<section id="redactor" data-part="3" data-cue="The redactor first replaces the value">
+  <div class="code-file">backend/src/Hewn.Application/Common/SecretRedactor.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="1,3">foreach (var value in _known)
+{
+    text = text.Replace(value, Mask, StringComparison.Ordinal);
+}</pre>
+  <div class="code-file">backend/src/Hewn.Application/Common/SecretRedactor.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="1,4,7-8">@&quot;|\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{20,}&quot; +
+@&quot;|\bgithub_pat_[A-Za-z0-9_]{20,}&quot; +
+// Anthropic keys (sk-ant-…) and other sk- keys.
+@&quot;|\bsk-[A-Za-z0-9_\-]{20,}&quot; +
+@&quot;|\bAKIA[0-9A-Z]{16}\b&quot; +
+// Azure: storage and Service Bus connection string keys, SAS signatures, and Entra ID client secrets.
+@&quot;|(?&lt;=\b(?i:AccountKey|SharedAccessKey|SharedAccessSignature|sig)=)[^;&amp;\s&quot;&quot;&#x27;]{8,}&quot; +
+@&quot;|\b[A-Za-z0-9_~.\-]{3}\dQ~[A-Za-z0-9_~.\-]{31,34}&quot; +
+@&quot;|(?&lt;=(?i:bearer)\s+)[A-Za-z0-9._\-~+/]{16,}=*&quot; +
+@&quot;|(?&lt;=(?i:(?:password|passwd|secret|token|api[_-]?key)\s*[:=]\s*))[^\s;&amp;&quot;&quot;&#x27;]+&quot;,</pre>
+</section>
+
+<section id="points" data-part="3" data-cue="Every event is redacted string by string">
+  <div class="code-file">backend/src/Hewn.Application/Events/EventAppender.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="2">// L2-040 AC2: no event is stored or sent with a secret in it.
+var stored = new StoredEvent(projectId, last + 1, type, Common.SecretRedactor.RedactJson(JsonSerializer.Serialize(payload, Json)), clock.GetUtcNow());</pre>
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/PullRequestCommands.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="2">// L2-040 AC2: a secret an agent wrote into the title or body never reaches GitHub.
+var pull = await gitHub.OpenPullRequestAsync(project.RepositoryOwner!, project.RepositoryName!, command.Head, SecretRedactor.Redact(command.Title), SecretRedactor.Redact(command.Body), cancellationToken);</pre>
+  <div class="result green">✔ RedactJson walks every string of every event; the JSON stays valid</div>
+</section>
+
+<section id="workspace" data-part="4" data-cue="The scripted run also writes git and npm credentials">
+  <div class="code-file">while stage 1 runs</div>
+  <pre class="code tight" data-lang="sh" data-mark="2-3">$ ls -A $TMPDIR/hewn-run-c6e39bc1-85bb-4eb8-8608-3fd59f0f896f-Wf2rfn
+.git-credentials
+.npmrc
+
+$ cat $TMPDIR/hewn-run-c6e39bc1-85bb-4eb8-8608-3fd59f0f896f-Wf2rfn/.git-credentials
+https://x-access-token:ghs_ScriptedInstallationToken0123456789ab@github.com</pre>
+  <div class="code-file">when it has ended</div>
+  <pre class="code tight" data-lang="sh" data-mark="2">$ ls -A $TMPDIR/hewn-run-c6e39bc1-85bb-4eb8-8608-3fd59f0f896f-Wf2rfn   (stage 1 has ended)
+ls: $TMPDIR/hewn-run-c6e39bc1-85bb-4eb8-8608-3fd59f0f896f-Wf2rfn: No such file or directory</pre>
+  <div class="result green">✔ the workspace, and the credentials in it, are gone</div>
+</section>
+
+<section id="remove" data-part="4" data-cue="A run can leave a folder read only">
+  <div class="code-file">worker/src/isolation/workspace.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2-4,6-7,10">export function removeWorkspace(workspace: string): { removed: boolean; credentialsLeft: string[] } {
+  for (let attempt = 0; attempt &lt; 2; attempt++) {
+    try {
+      rmSync(workspace, { recursive: true, force: true, maxRetries: 2 });
+      return { removed: true, credentialsLeft: [] };
+    } catch {
+      makeWritable(workspace);
+    }
+  }
+  return { removed: !existsSync(workspace), credentialsLeft: leftovers(workspace) };
+}</pre>
+</section>
+
+<section id="tools" data-part="5" data-cue="Every stage">
+  <div class="code-file">worker/src/agents/tool-catalog.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="4-8,10">export const INCREMENT_TOOLS = [&#x27;Read&#x27;, &#x27;Write&#x27;, &#x27;Edit&#x27;, &#x27;Glob&#x27;, &#x27;Grep&#x27;, &#x27;Bash&#x27;] as const;
+
+/** Each kind of stage&#x27;s tools. */
+export const STAGE_TOOLS = {
+  document: FILE_TOOLS,
+  design: [...FILE_TOOLS, ...MAGIC_PATTERNS_TOOLS],
+  increment: INCREMENT_TOOLS,
+} as const satisfies Record&lt;string, readonly string[]&gt;;
+
+export const TOOL_CATALOG: readonly string[] = [...new Set(Object.values(STAGE_TOOLS).flat())];</pre>
+</section>
+
+<section id="t-creds" data-part="6" data-cue="Each slice started with a failing test.">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Settings/ProtectedCredentialsTests.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="3,6-7,10">const string value = &quot;sk-ant-api03-supplied-model-key-0123456789abcdef&quot;;
+var supplied = DateTimeOffset.UtcNow;
+await Store.SetAsync(&quot;model-api-key&quot;, value, CancellationToken.None);
+
+var response = await owner.GetAsync(&quot;/api/settings/credentials&quot;);
+var body = await response.Content.ReadAsStringAsync();
+Assert.DoesNotContain(value, body);
+Assert.DoesNotContain(&quot;sk-ant&quot;, body);
+var model = (await CredentialsAsync(owner)).Single(c =&gt; c.GetProperty(&quot;name&quot;).GetString() == &quot;model-api-key&quot;);
+Assert.Equal([&quot;name&quot;, &quot;description&quot;, &quot;updatedAt&quot;], model.EnumerateObject().Select(p =&gt; p.Name));
+Assert.InRange(model.GetProperty(&quot;updatedAt&quot;).GetDateTimeOffset(), supplied.AddSeconds(-5), DateTimeOffset.UtcNow.AddSeconds(5));
+Assert.Equal(&quot;The Anthropic API key workers call the model with&quot;, model.GetProperty(&quot;description&quot;).GetString());</pre>
+  <div class="result red">✘ CS0246: The type or namespace name &#x27;ISecretStore&#x27; could not be found</div>
+  <div class="result green">✔ ProtectedCredentialsTests 3 · SecretStoreTests 4 · worker secret-store 4 passed</div>
+</section>
+
+<section id="t-redact" data-part="6" data-cue="The redaction test sends a log line">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Settings/RedactSecretsTests.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="6-7,9-10">Assert.Equal(HttpStatusCode.NoContent, (await worker.FailAsync(run, $&quot;model call refused: {Leaky}&quot;)).StatusCode);
+
+var (lines, events) = await _factory.QueryAsync(async db =&gt; (
+    await db.RunLogLines.AsNoTracking().Where(l =&gt; l.RunId == run.RunId).OrderBy(l =&gt; l.Sequence).Select(l =&gt; l.Text).ToListAsync(),
+    await db.Events.AsNoTracking().Where(e =&gt; e.ProjectId == run.ProjectId).Select(e =&gt; e.Payload).ToListAsync()));
+Assert.Equal(Masked, lines[0]);
+Assert.All(lines, line =&gt; Assert.DoesNotContain(&quot;sk-ant&quot;, line));
+Assert.Contains(events, e =&gt; e.Contains(JsonEncodedText.Encode(Masked).ToString()));
+foreach (var secret in Secrets)
+{
+    Assert.DoesNotContain(events, e =&gt; e.Contains(secret) || e.Contains(JsonEncodedText.Encode(secret).ToString()));</pre>
+  <div class="result red">✘ Expected: &quot;calling the model with *** and ***&quot; · Actual: &quot;… with [redacted] and plain-…&quot;</div>
+  <div class="result green">✔ RedactSecretsTests 2 · worker redaction 2 passed</div>
+</section>
+
+<section id="t-workspace" data-part="6" data-cue="The workspace test writes credentials">
+  <div class="code-file">worker/test/workspace-credentials.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1,9-10">  executor: writingCredentials(api, workspaces, &#x27;succeed&#x27;, true),
+  registration,
+  log: (message, fields) =&gt; entries.push({ message, fields }),
+}).run(stop.signal);
+
+await vi.advanceTimersByTimeAsync(10_000);
+stop.abort();
+
+expect(workspaces).toHaveLength(2);
+for (const workspace of workspaces) expect(existsSync(workspace)).toBe(false);
+expect(entries.filter((e) =&gt; e.fields?.[&#x27;level&#x27;] === &#x27;Error&#x27;)).toEqual([]);</pre>
+  <div class="result red">✘ ENOTEMPTY, Directory not empty · expected 2 runs, got 1</div>
+  <div class="result green">✔ workspace-credentials 4 passed</div>
+</section>
+
+<section id="t-agents" data-part="6" data-cue="The agent tests check the tool catalogue">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Workers/AgentReachTests.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="3-4">foreach (var (name, send) in attempts)
+{
+    var response = await send();
+    Assert.True(response.StatusCode == HttpStatusCode.Unauthorized, $&quot;{name}: {(int)response.StatusCode}&quot;);
+}</pre>
+  <div class="result green">✔ AgentReachTests 2 · worker agent-tools 3 passed (characterisation)</div>
+  <div class="result green">✔ pwsh eng/Test-Backend.ps1: 354 passed · worker npm test: 177 passed</div>
+</section>
+
+<section id="recap" data-part="7" data-cue="Journey thirty seven is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Key Vault or the OS key store, supplied on standard input, shown only as references</li>
+    <li>*** wherever a secret would leave: logs, events, pull requests</li>
+    <li>A run's workspace and its credentials are gone when the run ends</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>
