@@ -1,0 +1,35 @@
+# A local trace viewer and metrics store for Hewn (ADR 0036). Start it with eng/Start-Observability.ps1, then start
+# the API and worker with -Observability: they send traces over OTLP/HTTP to Jaeger, and Prometheus scrapes the API.
+#   Jaeger UI      http://localhost:16686
+#   Prometheus UI  http://localhost:9090
+name: hewn-observability
+services:
+  jaeger:
+    image: jaegertracing/jaeger:2.5.0
+    ports:
+      - "16686:16686" # UI
+      - "4318:4318" # OTLP/HTTP
+  prometheus:
+    image: prom/prometheus:v3.4.0
+    command: ["--config.file=/etc/prometheus/prometheus.yml"]
+    configs:
+      - source: prometheus
+        target: /etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+configs:
+  # Inline, so nothing is bind-mounted: scrapes the local API (eng/Start-Api.ps1 -Observability) every 5 seconds
+  # with its local metrics token.
+  prometheus:
+    content: |
+      global:
+        scrape_interval: 5s
+      scrape_configs:
+        - job_name: hewn-api
+          metrics_path: /metrics
+          authorization:
+            credentials: local-metrics-token-not-a-secret
+          static_configs:
+            - targets: ["host.docker.internal:5200"]

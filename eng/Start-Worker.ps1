@@ -4,7 +4,9 @@
 param(
     [string]$ApiUrl = 'http://localhost:5200',
     [int]$StepMs = 1000,
-    [int]$Count = 1
+    [int]$Count = 1,
+    # Send the worker's spans to the local Jaeger (eng/Start-Observability.ps1).
+    [switch]$Observability
 )
 $ErrorActionPreference = 'Stop'
 if (-not $env:HEWN_WORKER_TOKEN) { throw 'Set HEWN_WORKER_TOKEN (the API must be started with the same value).' }
@@ -13,6 +15,7 @@ $env:HEWN_API_URL = $ApiUrl
 $env:HEWN_LOCATION = 'Local'
 $env:HEWN_EXECUTOR = 'scripted'
 $env:HEWN_SCRIPTED_STEP_MS = "$StepMs"
+if ($Observability) { $env:OTEL_EXPORTER_OTLP_ENDPOINT = 'http://localhost:4318' }
 $main = Join-Path $root 'worker/src/main.ts'
 $jobs = 1..$Count | ForEach-Object {
     $env:HEWN_WORKER_NAME = "local-worker-$_"
