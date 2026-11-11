@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Choose a theme (journey 35, L2-048): Settings has an Appearance section where anyone signed in picks Light, Dark
+  or System for this device. The choice is kept across reloads and applied before the first paint; System, and no
+  choice, follow the operating system live. Every page is scanned with axe-core in both themes.
 - Use keyboard and assistive technology (journey 34, L2-047): stage changes are announced from the shell's one polite
   live region, at most once every 5 seconds per project, on the project page and now on Projects too. Settings shows
   section skeletons while the saved defaults load. Acceptance tests run axe-core on every page while loading and when

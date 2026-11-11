@@ -7,8 +7,10 @@ import {
   ErrorSummaryItem,
   FieldComponent,
   IconComponent,
+  IconName,
 } from '@hewn/components';
 import { SessionStore } from '../../core/session-store';
+import { ThemeChoice, ThemeService } from '../../core/theme';
 import { dollars } from '../project/pipeline-view';
 import { AllowListComponent } from './allow-list';
 
@@ -19,9 +21,9 @@ const CONTROL_IDS: Record<string, string> = {
 };
 
 /**
- * Settings: who can sign in (L2-038 AC5), the default budget every new direction starts with (L2-053 AC1) and the
- * descope threshold stage 9 uses (L2-019 AC1). Owners change them; Viewers see them read-only. Appearance and
- * integrations arrive with their journeys.
+ * Settings: the theme, on this device, for anyone signed in (L2-048 AC2), who can sign in (L2-038 AC5), the default budget every new direction starts with (L2-053 AC1) and the
+ * descope threshold stage 9 uses (L2-019 AC1). Owners change those; Viewers see them read-only. Integrations arrive
+ * with their journey.
  */
 @Component({
   selector: 'hw-settings-page',
@@ -38,6 +40,13 @@ const CONTROL_IDS: Record<string, string> = {
 export class SettingsPage {
   private readonly api = inject(SETTINGS_API);
   protected readonly session = inject(SessionStore);
+  protected readonly theme = inject(ThemeService);
+  protected readonly themes: { value: ThemeChoice; label: string; hint: string; icon: IconName }[] =
+    [
+      { value: 'light', label: 'Light', hint: 'Stone canvas, slate ink', icon: 'sun' },
+      { value: 'dark', label: 'Dark', hint: 'The Mission Control default at night', icon: 'moon' },
+      { value: 'system', label: 'System', hint: 'Follow your operating system', icon: 'monitor' },
+    ];
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     budget: this.session.config().defaultBudgetUsd.toFixed(2),

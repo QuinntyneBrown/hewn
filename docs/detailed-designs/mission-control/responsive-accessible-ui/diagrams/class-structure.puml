@@ -25,8 +25,16 @@ enum ThemeChoice {
 }
 class ThemeService <<Angular>> {
   +choice: Signal<ThemeChoice>
-  +set(c: ThemeChoice): void
-  -storageKey = "hewn.theme"
+  +choose(c: ThemeChoice): void
+}
+class "theme.ts functions" as ThemeFns <<TypeScript>> {
+  +THEME_KEY = "hewn.theme"
+  +readTheme(storage): ThemeChoice
+  +saveTheme(storage, c): void
+  +applyTheme(root, c): void
+}
+class SettingsPage <<Angular>> {
+  #themes: Light, Dark, System
 }
 class AppShell <<Angular>> {
   -menu: TemplateRef
@@ -38,8 +46,9 @@ class "Menu drawer" as MenuDrawer <<CDK Dialog>> {
   autoFocus = first-tabbable
 }
 ThemeService --> ThemeChoice
+ThemeService ..> ThemeFns : data-theme on <html>,\nlocalStorage
+SettingsPage ..> ThemeService : Appearance radios
 AppShell *-- MenuDrawer : below 992 px
-AppShell ..> ThemeService
 AppShell ..> StatusAnnouncer : renders message\nin role=status, polite
 ProjectPage ..> StatusAnnouncer : StageChanged
 ProjectsPage ..> StatusAnnouncer : row stage or status changed

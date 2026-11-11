@@ -17,6 +17,8 @@ skinparam package {
 skinparam sequenceMessageAlign left
 actor "Owner or Viewer" as user
 box "Frontend — Mission Control application" #E0F2FE
+  participant "index.html" as boot
+  participant "Settings" as settings
   participant "ThemeService" as theme
   participant "Project page or Projects" as live
   participant "AppShell" as shell
@@ -25,11 +27,13 @@ end box
 box "Backend — Hewn API application" #D1FADF
   participant "MissionControlHub" as hub
 end box
-theme -> theme : No saved choice -> follow prefers-color-scheme (L2-048 AC1)
-user -> theme : Choose Dark in Settings
-theme -> theme : localStorage hewn.theme = dark; data-theme=dark
-user -> theme : Reload
-theme -> theme : Apply saved Dark (L2-048 AC2)
+theme -> theme : No saved choice: no data-theme, so prefers-color-scheme decides, live (L2-048 AC1)
+user -> settings : Choose Dark in Appearance
+settings -> theme : choose(dark)
+theme -> theme : data-theme=dark; localStorage hewn.theme = dark
+user -> boot : Reload
+boot -> boot : data-theme=dark before the first paint (L2-048 AC2)
+boot -> theme : App starts; choice() = dark, Dark checked
 hub -> live : StageChanged x3 within 2 s (Ledgerline)
 live -> ann : announce(Ledgerline, msg) each time
 ann -> shell : message = first change at once
