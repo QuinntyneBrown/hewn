@@ -15,9 +15,16 @@ export class Theme {
     await this.page.emulateMedia({ colorScheme: scheme });
   }
 
-  /** Waits for the colours that ease from one theme to the other (links, buttons) to finish changing. */
+  /** Waits for the colours that ease from one theme to the other (links, buttons) to finish; spinners never do. */
   async settle(): Promise<void> {
-    await this.page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
+    await this.page.evaluate(() =>
+      Promise.all(
+        document
+          .getAnimations()
+          .filter((a) => a.effect?.getComputedTiming().endTime !== Infinity)
+          .map((a) => a.finished.catch(() => undefined)),
+      ),
+    );
   }
 
   /** The scheme the page is drawn in: the `color-scheme` its tokens set on the root. */
