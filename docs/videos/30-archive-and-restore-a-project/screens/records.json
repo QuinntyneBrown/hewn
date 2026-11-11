@@ -1,0 +1,8 @@
+{
+  "archivedToast": "Saltmarsh Survey 8cba archived\nIt’s under Archived, where you can restore it.\nShow archived",
+  "restoredStatus": "Cancelled",
+  "refusedName": "Archive Tidewater 8cba: cancel the running direction first",
+  "refusedTitle": "Cancel the running direction first",
+  "refusedToast": "Tidewater 8cba wasn’t archived\nCancel the running direction first.",
+  "viewerRestore": 0
+}

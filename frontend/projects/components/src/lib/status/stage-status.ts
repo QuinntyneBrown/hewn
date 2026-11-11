@@ -14,7 +14,8 @@ export type StatusName =
   | 'Skipped'
   | 'Cancelled'
   | 'Idle'
-  | 'Blocked';
+  | 'Blocked'
+  | 'Archived';
 
 interface StatusLook {
   icon: IconName;
@@ -34,6 +35,7 @@ export const STATUS_LOOKS: Record<StatusName, StatusLook> = {
   Cancelled: { icon: 'banCircle', tone: 'muted' },
   Idle: { icon: 'idleCircle', tone: 'idle' },
   Blocked: { icon: 'xCircle', tone: 'fail' },
+  Archived: { icon: 'archive', tone: 'muted' },
 };
 
 /** The small status icon in stage lists: `<svg hw-status-icon status="Succeeded">` → `icon s-icon--ok icon--sm`. */

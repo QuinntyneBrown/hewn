@@ -44,6 +44,10 @@ public sealed class SubmitFeatureDirectionHandler(
         var project = await db.Projects.Include(p => p.Directions)
             .SingleOrDefaultAsync(p => p.Id == command.ProjectId, cancellationToken)
             ?? throw new NotFoundException();
+        if (project.IsArchived)
+        {
+            throw new ConflictException("project_archived", "Restore the project first");
+        }
 
         var startsWith = await defaults.ReadAsync(cancellationToken);
         var startsNow = project.AddFeatureDirection(command.Idea!, command.BudgetUsd ?? startsWith.DefaultBudgetUsd, user.Login, clock.GetUtcNow(), out var direction);

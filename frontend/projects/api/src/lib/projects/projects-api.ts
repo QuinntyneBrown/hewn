@@ -81,6 +81,13 @@ export interface ProjectsApi {
    * error: 502 `greenlit_unreachable` or `github_failed`, 409 `skills_up_to_date`, 403 for a Viewer.
    */
   updateSkills(projectId: string): Observable<UpdateSkillsResult>;
+  /**
+   * L2-003 AC1: moves a project with no active direction under the Archived filter. Errors with the HTTP error: 409
+   * `active_direction` ("Cancel the running direction first"), 403 for a Viewer.
+   */
+  archive(projectId: string): Observable<void>;
+  /** L2-003 AC1: returns an archived project to the default list. */
+  restore(projectId: string): Observable<void>;
 }
 
 export const PROJECTS_API = new InjectionToken<ProjectsApi>('ProjectsApi');
@@ -228,5 +235,13 @@ export class HttpProjectsApi implements ProjectsApi {
       `/api/projects/${encodeURIComponent(projectId)}/skills-update`,
       {},
     );
+  }
+
+  archive(projectId: string): Observable<void> {
+    return this.http.post<void>(`/api/projects/${encodeURIComponent(projectId)}/archive`, {});
+  }
+
+  restore(projectId: string): Observable<void> {
+    return this.http.post<void>(`/api/projects/${encodeURIComponent(projectId)}/restore`, {});
   }
 }

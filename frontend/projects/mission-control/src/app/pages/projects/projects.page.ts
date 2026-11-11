@@ -9,13 +9,16 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { PROJECT_EVENTS, ProjectSummary } from '@hewn/api';
+import { PROJECT_EVENTS, PROJECTS_API, ProjectSummary } from '@hewn/api';
 import { IconComponent, StatusComponent } from '@hewn/components';
 import { map } from 'rxjs';
 import { ProjectsPrefetch } from '../../core/projects-prefetch';
 import { SessionStore } from '../../core/session-store';
+import { Toasts } from '../../core/toasts';
 import {
+  archiveRefusal,
   byActivity,
+  canArchive,
   countByStatus,
   lastActivityText,
   parseStatusFilter,
@@ -39,6 +42,8 @@ const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' 
 export class ProjectsPage {
   private readonly projects = inject(ProjectsPrefetch);
   private readonly live = inject(PROJECT_EVENTS);
+  private readonly api = inject(PROJECTS_API);
+  private readonly toasts = inject(Toasts);
   protected readonly session = inject(SessionStore);
 
   protected readonly filters = STATUS_FILTERS;
@@ -48,17 +53,22 @@ export class ProjectsPage {
   );
 
   private readonly all = signal<ProjectSummary[] | null>(null);
+  /** Projects with an archive or restore request in flight; their action is disabled until it answers. */
+  protected readonly pending = signal<ReadonlySet<string>>(new Set());
   protected readonly failure = signal<string | null>(null);
   private readonly now = signal(new Date());
 
   protected readonly loaded = computed(() => this.all() !== null);
-  protected readonly total = computed(() => this.all()?.length ?? 0);
+  /** Projects in the default list; archived ones are counted under Archived only. */
+  protected readonly total = computed(() => (this.all() ?? []).filter((p) => !p.archived).length);
+  protected readonly anyArchived = computed(() => (this.all() ?? []).some((p) => p.archived));
   protected readonly counts = computed(() => countByStatus(this.all() ?? []));
   protected readonly rows = computed(() =>
     withStatus(this.all() ?? [], this.filter()).map((p) => ({
       ...p,
       spend: usd.format(p.spendUsd),
       activity: lastActivityText(p.lastActivityAt, this.now()),
+      canArchive: canArchive(p),
     })),
   );
 
@@ -77,6 +87,64 @@ export class ProjectsPage {
       updates.unsubscribe();
     });
     this.load();
+  }
+
+  /** L2-003 AC1: moves the project under Archived; AC2: the API refuses one with an active direction. */
+  protected archive(project: ProjectSummary): void {
+    this.act(project, 'archive', () => ({
+      tone: 'ok',
+      title: `${project.name} archived`,
+      text: 'It’s under Archived, where you can restore it.',
+      actions: [
+        { label: 'Show archived', link: ['/projects'], queryParams: { status: 'archived' } },
+      ],
+    }));
+  }
+
+  /** L2-003 AC1: returns the project to the default list. */
+  protected restore(project: ProjectSummary): void {
+    this.act(project, 'restore', () => ({
+      tone: 'ok',
+      title: `${project.name} restored`,
+      text: 'It’s back in the projects list.',
+    }));
+  }
+
+  private act(
+    project: ProjectSummary,
+    action: 'archive' | 'restore',
+    done: () => Parameters<Toasts['show']>[0],
+  ): void {
+    if (this.pending().has(project.id)) return;
+    this.pending.update((ids) => new Set(ids).add(project.id));
+    const settle = () =>
+      this.pending.update((ids) => {
+        const next = new Set(ids);
+        next.delete(project.id);
+        return next;
+      });
+    this.api[action](project.id).subscribe({
+      next: () => {
+        settle();
+        // The live row follows; this keeps the list right if the hub is down.
+        this.all.update((rows) =>
+          (rows ?? []).map((r) =>
+            r.id === project.id ? { ...r, archived: action === 'archive' } : r,
+          ),
+        );
+        this.toasts.show(done());
+      },
+      error: (error: unknown) => {
+        settle();
+        const response = error instanceof HttpErrorResponse ? error : null;
+        const title = (response?.error as { title?: unknown } | null)?.title;
+        this.toasts.show({
+          tone: 'danger',
+          title: `${project.name} wasn’t ${action === 'archive' ? 'archived' : 'restored'}`,
+          text: archiveRefusal(response?.status ?? 0, typeof title === 'string' ? title : null),
+        });
+      },
+    });
   }
 
   protected load(): void {

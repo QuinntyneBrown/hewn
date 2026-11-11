@@ -1,6 +1,8 @@
 import type { ProjectSummary } from '@hewn/api';
 import { describe, expect, it } from 'vitest';
 import {
+  archiveRefusal,
+  canArchive,
   countByStatus,
   lastActivityText,
   parseStatusFilter,
@@ -24,6 +26,7 @@ const row = (
   spendUsd: 0,
   lastActivityAt,
   firstDirectionComplete: false,
+  archived: false,
 });
 
 describe('upsertRow (L2-002 AC4)', () => {
@@ -55,7 +58,7 @@ describe('the status filter (L2-002 AC2)', () => {
   it('reads only a known status from the query string', () => {
     expect(parseStatusFilter('Blocked')).toBe('Blocked');
     expect(parseStatusFilter('blocked')).toBe('Blocked');
-    expect(parseStatusFilter('Archived')).toBeNull();
+    expect(parseStatusFilter('Queued')).toBeNull();
     expect(parseStatusFilter(null)).toBeNull();
   });
 
@@ -63,6 +66,46 @@ describe('the status filter (L2-002 AC2)', () => {
     expect(countByStatus(rows)).toMatchObject({ Running: 2, Blocked: 1, Idle: 0 });
     expect(withStatus(rows, 'Running').map((r) => r.id)).toEqual(['a', 'c']);
     expect(withStatus(rows, null)).toHaveLength(3);
+  });
+});
+
+describe('the Archived filter (L2-003 AC1)', () => {
+  const rows = [
+    row('a', 'Running', 'x'),
+    { ...row('b', 'Idle', 'x'), archived: true },
+    row('c', 'Idle', 'x'),
+    { ...row('d', 'Cancelled', 'x'), archived: true },
+  ];
+
+  it('is read from the query string', () => {
+    expect(parseStatusFilter('archived')).toBe('Archived');
+  });
+
+  it('keeps archived projects out of All, each status and the counts, and lists only them under Archived', () => {
+    expect(withStatus(rows, null).map((r) => r.id)).toEqual(['a', 'c']);
+    expect(withStatus(rows, 'Idle').map((r) => r.id)).toEqual(['c']);
+    expect(withStatus(rows, 'Archived').map((r) => r.id)).toEqual(['b', 'd']);
+    expect(countByStatus(rows)).toMatchObject({ Running: 1, Idle: 1, Cancelled: 0 });
+  });
+});
+
+describe('archiving (L2-003 AC1, AC2)', () => {
+  it('is offered only for a project with no active direction', () => {
+    expect(canArchive(row('a', 'Idle', 'x'))).toBe(true);
+    expect(canArchive(row('a', 'Complete', 'x'))).toBe(true);
+    expect(canArchive(row('a', 'Cancelled', 'x'))).toBe(true);
+    expect(canArchive(row('a', 'Running', 'x'))).toBe(false);
+    expect(canArchive(row('a', 'Paused', 'x'))).toBe(false);
+    expect(canArchive(row('a', 'Blocked', 'x'))).toBe(false);
+    expect(canArchive({ ...row('a', 'Idle', 'x'), archived: true })).toBe(false);
+  });
+
+  it('says why it was refused', () => {
+    expect(archiveRefusal(409, 'Cancel the running direction first')).toBe(
+      'Cancel the running direction first.',
+    );
+    expect(archiveRefusal(403, null)).toBe('Only an Owner can archive or restore a project.');
+    expect(archiveRefusal(0, null)).toBe('The Hewn API returned no response. Try again.');
   });
 });
 
@@ -77,5 +120,10 @@ describe('lastActivityText (L2-002 AC1)', () => {
     expect(lastActivityText(ago(2 * 3_600_000), now)).toBe('2h ago');
     expect(lastActivityText(ago(30 * 3_600_000), now)).toBe('Yesterday');
     expect(lastActivityText(ago(3 * 86_400_000), now)).toBe('3 days ago');
+  });
+
+  it('gives the date after a week, as the archived mock does', () => {
+    expect(lastActivityText(ago(6 * 86_400_000), now)).toBe('6 days ago');
+    expect(lastActivityText('2026-10-12T09:00:00Z', now)).toBe('12 Oct');
   });
 });

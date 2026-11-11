@@ -37,9 +37,9 @@ owner -> dlg : Type the project name; press Delete project
 dlg -> ctrl : DELETE /api/projects/{id} { confirmName }
 ctrl -> del : DeleteProjectCommand
 del -> db : Load project with directions
-del -> proj : EnsureNoActiveDirection()
+del -> proj : HasActiveDirection
 alt active direction
-  proj --> del : ActiveDirectionException
+  del --> del : ConflictException active_direction
   del --> ctrl : 409 "Cancel the running direction first" (L2-003 AC2)
   ctrl --> dlg : Show refusal
 else confirmName differs

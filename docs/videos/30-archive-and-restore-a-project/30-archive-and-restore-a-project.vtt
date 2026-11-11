@@ -1,0 +1,211 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:07.16
+This is journey thirty of Hewn, the software factory: archive and restore a project.
+
+00:00:07.16 --> 00:00:12.48
+Over time the Projects list fills with projects that are finished or abandoned.
+
+00:00:12.48 --> 00:00:15.91
+This video shows an Owner archiving one to hide it,
+
+00:00:15.91 --> 00:00:20.02
+finding it again under the Archived filter, and restoring it.
+
+00:00:21.17 --> 00:00:24.68
+An Owner archives a project with no active direction.
+
+00:00:24.68 --> 00:00:30.17
+It leaves the default list, appears under the Archived filter, and can be restored.
+
+00:00:30.17 --> 00:00:35.46
+Archiving a project with an active direction is refused with "Cancel the running
+
+00:00:35.46 --> 00:00:36.59
+direction first".
+
+00:00:36.59 --> 00:00:41.22
+This is for Owners, who keep the list to the projects that matter now.
+
+00:00:42.37 --> 00:00:44.13
+Here an Owner opens Projects.
+
+00:00:44.13 --> 00:00:47.28
+Each of their rows now ends with an Archive control.
+
+00:00:47.28 --> 00:00:51.22
+Saltmarsh Survey's direction was cancelled, so nothing is active,
+
+00:00:51.22 --> 00:00:52.85
+and its Archive is enabled.
+
+00:00:52.85 --> 00:00:54.19
+The Owner archives it.
+
+00:00:54.19 --> 00:00:57.76
+A toast says it's under Archived, where it can be restored,
+
+00:00:57.76 --> 00:00:59.46
+and the row leaves the list.
+
+00:00:59.46 --> 00:01:02.13
+Show archived opens the new Archived filter.
+
+00:01:02.13 --> 00:01:06.55
+Saltmarsh Survey is there, with the status Archived and a Restore button.
+
+00:01:06.55 --> 00:01:11.28
+The Owner restores it, and it's back in All with the status it had, Cancelled.
+
+00:01:12.43 --> 00:01:15.05
+Tidewater's direction is still running.
+
+00:01:15.05 --> 00:01:20.23
+Its Archive control is disabled, and its name and tooltip say why: cancel the
+
+00:01:20.23 --> 00:01:21.85
+running direction first.
+
+00:01:21.85 --> 00:01:26.02
+Once the direction is cancelled, the control is enabled again.
+
+00:01:26.02 --> 00:01:31.41
+If a direction starts after the page loaded, the API refuses the archive itself,
+
+00:01:31.41 --> 00:01:35.31
+and the toast gives its reason: Tidewater wasn't archived.
+
+00:01:35.31 --> 00:01:37.66
+Cancel the running direction first.
+
+00:01:38.81 --> 00:01:41.81
+Archiving is a flag beside the project's status,
+
+00:01:41.81 --> 00:01:44.05
+as the new decision record explains.
+
+00:01:44.05 --> 00:01:49.10
+The project keeps its status, and the handler records when it was archived and by
+
+00:01:49.10 --> 00:01:49.41
+whom.
+
+00:01:49.41 --> 00:01:53.21
+Before that, it refuses any project with an active direction,
+
+00:01:53.21 --> 00:01:57.26
+with the code active direction and the same words the page shows.
+
+00:01:57.26 --> 00:02:02.30
+A queued direction counts as active, because it would start while the project was
+
+00:02:02.30 --> 00:02:02.87
+archived.
+
+00:02:02.87 --> 00:02:07.10
+An archived project also takes no new direction until it's restored.
+
+00:02:07.45 --> 00:02:12.85
+Archive and restore each append an event, so every open Projects page gets the
+
+00:02:12.85 --> 00:02:14.03
+changed row live.
+
+00:02:14.03 --> 00:02:18.25
+The list filters on the client, as it already did for status.
+
+00:02:18.25 --> 00:02:22.54
+All, each status and their counts leave archived projects out,
+
+00:02:22.54 --> 00:02:25.31
+and the Archived filter shows only them.
+
+00:02:25.66 --> 00:02:30.33
+This sequence shows the whole path, from the disabled control to the restore.
+
+00:02:31.48 --> 00:02:34.18
+The backend tests go through the real API.
+
+00:02:34.18 --> 00:02:39.31
+An idle project is archived and restored, and each step is recorded as an event.
+
+00:02:39.31 --> 00:02:41.37
+Archiving twice changes nothing.
+
+00:02:41.37 --> 00:02:45.35
+A project with an active direction is refused with a conflict,
+
+00:02:45.35 --> 00:02:46.89
+and nothing is recorded.
+
+00:02:46.89 --> 00:02:49.65
+An archived project takes no new direction.
+
+00:02:49.65 --> 00:02:53.37
+A Viewer is forbidden, and an unknown project isn't found.
+
+00:02:53.37 --> 00:02:56.71
+Before the endpoints existed, all four tests failed.
+
+00:02:56.71 --> 00:03:00.05
+All three hundred and twenty two backend tests pass.
+
+00:03:00.40 --> 00:03:05.14
+In Mission Control, unit tests cover the Archived filter, the counts,
+
+00:03:05.14 --> 00:03:08.44
+when archiving is offered, and the refusal text.
+
+00:03:08.44 --> 00:03:13.59
+One more follows the archived mock: after a week, activity reads as a date.
+
+00:03:13.59 --> 00:03:16.55
+It failed first with twenty eight days ago.
+
+00:03:16.90 --> 00:03:22.71
+End to end, a behaviour test archives an idle project, follows the toast to Archived,
+
+00:03:22.71 --> 00:03:23.81
+and restores it.
+
+00:03:23.81 --> 00:03:29.42
+Another checks the disabled control and the API's refusal, and a third the Viewer.
+
+00:03:29.42 --> 00:03:34.56
+Against the old page the first test failed, with no Archive button to find.
+
+00:03:34.56 --> 00:03:40.24
+Visual tests compare the Archived filter and the Archive controls with their mocks.
+
+00:03:40.24 --> 00:03:44.62
+That comparison found the Restore button overflowing its column,
+
+00:03:44.62 --> 00:03:50.09
+in the mock and the app alike, so the design system's column is now wide enough.
+
+00:03:50.09 --> 00:03:52.90
+An accessibility test checks every state.
+
+00:03:54.05 --> 00:03:57.45
+A Viewer sees the Archived filter, with no Restore.
+
+00:03:57.45 --> 00:04:01.58
+The archived list reads the same in dark mode, and on a phone.
+
+00:04:02.73 --> 00:04:04.53
+Journey thirty is complete.
+
+00:04:04.53 --> 00:04:09.80
+Owners archive a project with no active direction, and it moves under Archived.
+
+00:04:09.80 --> 00:04:12.86
+Restore brings it back with the status it had.
+
+00:04:12.86 --> 00:04:16.19
+And a project with an active direction is refused,
+
+00:04:16.19 --> 00:04:18.99
+with "Cancel the running direction first".
+
+00:04:18.99 --> 00:04:20.99
+Next comes journey thirty one.

@@ -41,7 +41,10 @@ internal sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
         b.Property(p => p.RepositoryName).HasMaxLength(100);
         b.Property(p => p.Status).HasConversion<string>().HasMaxLength(16);
         b.Property(p => p.CreatedBy).HasMaxLength(39);
+        b.Property(p => p.ArchivedBy).HasMaxLength(39);
         b.Ignore(p => p.Repository);
+        b.Ignore(p => p.IsArchived);
+        b.Ignore(p => p.HasActiveDirection);
         b.HasMany(p => p.Directions).WithOne().HasForeignKey(d => d.ProjectId);
         b.Navigation(p => p.Directions).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
