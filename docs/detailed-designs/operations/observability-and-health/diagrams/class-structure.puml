@@ -11,31 +11,53 @@ skinparam class {
 }
 title Class structure — Observability and health checks
 
-class LogContextEnricher {
-  +Enrich(e: LogEvent): void
-}
-class RunTraceContext {
-  +string TraceParent
-  +string? TraceState
-}
 class Run {
-  +RunId Id
-  +RunTraceContext Trace
+  +Guid Id
+  +string? TraceParent
+}
+class RunTracing <<static>> {
+  +ActivitySource Source
+  +Queued(run: Run, now): string?
+  +Start(name, traceParent): Activity?
+}
+class LeasedRunDto {
+  +string? TraceParent
+}
+class JsonLoggerProvider {
+  +CreateLogger(category): ILogger
+  +SetScopeProvider(scopes): void
+}
+class LogSink {
+  +WriteLine(line: string): void
+}
+class RunLogScopeFilter {
+  +OnActionExecutionAsync(context, next): Task
 }
 class HewnMetrics {
-  +StageDuration: Histogram
-  +StageRuns: Counter
-  +QueueDepth: ObservableGauge
-  +ActiveWorkers: ObservableGauge
-  +EventLatency: Histogram
-  +Tokens: Counter
-  +SpendUsd: Counter
+  +RunEnded(run: Run): void
+  +EventSent(stored: StoredEvent): void
+  +ModelCalled(model, input, output, costUsd): void
 }
-class DatabaseHealthCheck {
+class DatabaseReadinessCheck {
   +CheckHealthAsync(): Task<HealthCheckResult>
 }
-class BackplaneHealthCheck {
+class BackplaneReadinessCheck {
   +CheckHealthAsync(): Task<HealthCheckResult>
 }
-Run *-- RunTraceContext
+class "Tracer (worker)" as Tracer {
+  +start(name, options): Span
+}
+class "Span (worker)" as Span {
+  +traceId: string
+  +spanId: string
+  +traceParent: string
+  +fail(message): void
+  +end(): void
+}
+RunTracing ..> Run : reads TraceParent
+LeasedRunDto ..> RunTracing : TraceParent from Queued
+JsonLoggerProvider --> LogSink
+RunLogScopeFilter ..> JsonLoggerProvider : scope fields
+Tracer --> Span : starts
+Span ..> LeasedRunDto : continues TraceParent
 @enduml

@@ -5,35 +5,33 @@ skinparam shadowing false
 skinparam roundcorner 12
 skinparam defaultFontName Arial
 skinparam ArrowColor #344054
-skinparam rectangle {
-  BorderColor #344054
-  FontColor #101828
-}
-skinparam package {
-  BorderColor #667085
-  FontColor #101828
-  BackgroundColor #F9FAFB
-}
 skinparam sequenceMessageAlign left
+actor "Owner" as owner
 box "Backend — Hewn API application" #D1FADF
-  participant "Hewn API" as api
+  participant "ProjectsController" as projects
+  participant "WorkerController" as wc
+  participant "RunTracing" as rt
 end box
 box "Backend — Hewn Infrastructure" #FFF4E5
-  database "RunQueue" as db
+  database "Hewn database" as db
 end box
-box "Backend — Worker application" #D1FADF
-  participant "WorkerHost" as worker
+box "Worker" #ECFDF3
+  participant "WorkLoop" as worker
 end box
 box "External systems" #F2F4F7
-  participant "Claude model API" as claude
-  participant "Telemetry backend" as tel
+  participant "Trace viewer" as tel
 end box
-api -> api : Span "advance direction" (trace T)
-api -> db : Insert run with traceparent T
-worker -> db : Lease run (via API)
-db --> worker : Run with traceparent T
-worker -> worker : Restore context; span "stage 5" under T
-worker -> claude : Span "model call" under T
-worker -> tel : Spans and JSON logs with traceId T (L2-049 AC1, AC2)
-api -> tel : Spans and metrics (L2-049 AC3)
+owner -> projects : POST /api/projects (server span, trace T)
+projects -> db : Insert run with TraceParent under T
+worker -> wc : POST /api/worker/lease
+wc -> rt : Queued(run)
+rt -> rt : Span "Run queued" from queueing to now, under T
+wc -> wc : Span "Run leased"; log "Leased run" with traceId T and run IDs
+wc --> worker : Leased run with traceParent of "Run queued"
+worker -> worker : Span "Run stage n" under it; log lines carry traceId T
+worker -> wc : Model call report, traceparent of span "Model call"
+worker -> wc : Result, traceparent of "Run stage n"
+wc -> db : Queue the next stage with TraceParent under T
+worker -> tel : Spans as OTLP JSON (L2-049 AC2)
+wc -> tel : Spans over OTLP (L2-049 AC2)
 @enduml
