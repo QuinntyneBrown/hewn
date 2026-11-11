@@ -14,6 +14,7 @@ import { StageRouter, type StageExecutor } from './executors/stage-executor.ts';
 import { HttpHewnApi } from './http-api.ts';
 import { McpMagicPatterns } from './magic-patterns/magic-patterns.ts';
 import { jsonLog } from './json-log.ts';
+import { otlpExporter, Tracer } from './tracing.ts';
 import { WorkLoop } from './work-loop.ts';
 
 const VERSION = '0.1.0';
@@ -140,13 +141,19 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => st
 // One line of JSON per entry, with the run's IDs while one runs, and credentials redacted (L2-049 AC1).
 const log = jsonLog();
 
+// Spans for each run and its model calls go to the OTLP endpoint when one is set, as the API's do (L2-049 AC2).
+const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+const exporter = otlpEndpoint ? otlpExporter(otlpEndpoint, process.env.OTEL_SERVICE_NAME ?? 'hewn-worker') : undefined;
+
 const loop = new WorkLoop({
   api: new HttpHewnApi(apiUrl, token),
   executor,
   registration: { name: process.env.HEWN_WORKER_NAME ?? hostname(), location, host: hostname(), version: VERSION },
   log,
   isolation,
+  tracer: new Tracer(exporter?.export),
 });
 await loop.run(stop.signal);
+await exporter?.flush();
 // A revoked or expired token ends the worker; a supervisor shouldn't restart it with the same token.
 if (loop.tokenRefused) process.exitCode = 3;

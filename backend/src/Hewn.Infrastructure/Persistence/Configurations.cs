@@ -121,6 +121,7 @@ internal sealed class RunConfiguration : IEntityTypeConfiguration<Run>
         b.Property(r => r.Error).HasMaxLength(2000);
         b.Property(r => r.RanBy).HasMaxLength(32);
         b.Property(r => r.CurrentStepName).HasMaxLength(Run.MaxStepNameLength);
+        b.Property(r => r.TraceParent).HasMaxLength(64);
         b.HasIndex(r => new { r.DirectionId, r.Stage });
         b.Property(r => r.LeaseEpoch).IsConcurrencyToken();
         b.HasIndex(r => new { r.Status, r.CreatedAt });

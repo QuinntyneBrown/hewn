@@ -19,6 +19,8 @@ export interface ModelCall {
   model: string;
   inputTokens: number;
   outputTokens: number;
+  /** When the call to the model began (ms since the epoch), so its span shows how long it took; now when absent. */
+  startedAt?: number;
 }
 
 /** A step number, or a name for the steps inside a stage-10 increment (`i3/tests`); keys are `{run}/{step}/…`. */

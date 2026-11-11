@@ -1,3 +1,4 @@
+import { currentSpan } from '../../src/tracing.ts';
 import {
   LeaseLostError,
   TokenRefusedError,
@@ -90,6 +91,9 @@ export class FakeHewnApi implements HewnApi {
       wake();
     }
   }
+
+  /** The traceparent current when each method was last called, as the HTTP API would send it. */
+  readonly traceParents: Record<string, string | undefined> = {};
 
   enqueueStage(stage: number, checkpointStep = 0, lastStage = 10): LeasedRun {
     const run: LeasedRun = {
@@ -192,6 +196,7 @@ export class FakeHewnApi implements HewnApi {
   }
 
   async recordModelCall(_workerId: string, run: LeasedRun, call: ModelCallReport): Promise<ModelCallVerdict> {
+    this.traceParents['recordModelCall'] = currentSpan()?.traceParent;
     this.modelCalls.push({ runId: run.runId, ...call });
     return this.verdicts.shift() ?? { verdict: 'Continue', directionSpendUsd: 0, budgetUsd: 300 };
   }
@@ -203,6 +208,7 @@ export class FakeHewnApi implements HewnApi {
   }
 
   async result(_workerId: string, run: LeasedRun, outcome: RunOutcome): Promise<void> {
+    this.traceParents['result'] = currentSpan()?.traceParent;
     this.record({ method: 'result', runId: run.runId, outcome });
     if (outcome.outcome === 'Succeeded' && run.stage < this.lastStage) {
       this.enqueueStage(run.stage + 1, 0, this.lastStage);

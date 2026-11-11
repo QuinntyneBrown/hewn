@@ -3,13 +3,16 @@ using Hewn.Api.Auth;
 using Hewn.Api.Designs;
 using Hewn.Api.Errors;
 using Hewn.Api.Health;
+using Hewn.Api.Hubs;
 using Hewn.Api.Logging;
 using Hewn.Api.MissionControl;
-using Hewn.Api.Hubs;
 using Hewn.Api.Pipeline;
 using Hewn.Application;
 using Hewn.Application.Abstractions;
+using Hewn.Application.Pipeline;
 using Hewn.Infrastructure;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +22,18 @@ builder.Services.AddSingleton(new LogSink(Console.Out));
 builder.Logging.Services.AddSingleton<ILoggerProvider, JsonLoggerProvider>();
 
 builder.Services.AddApplication();
+
+// Traces: HTTP in and out plus Hewn's run spans, exported over OTLP when an endpoint is set (L2-049 AC2).
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService("hewn-api"))
+    .WithTracing(tracing =>
+    {
+        tracing.AddSource(RunTracing.SourceName).AddAspNetCoreInstrumentation().AddHttpClientInstrumentation();
+        if (!string.IsNullOrEmpty(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+        {
+            tracing.AddOtlpExporter();
+        }
+    });
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();

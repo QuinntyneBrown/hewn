@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using Hewn.Application.Common;
 using Hewn.Application.Pipeline;
@@ -57,10 +58,11 @@ public sealed class JsonLoggerProvider(LogSink sink) : ILoggerProvider, ISupport
             Collect(state, fields);
 
             using var buffer = new MemoryStream();
-            using (var json = new Utf8JsonWriter(buffer))
+            // Relaxed escaping keeps quotes and + readable; these lines are never put into HTML.
+            using (var json = new Utf8JsonWriter(buffer, new JsonWriterOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }))
             {
                 json.WriteStartObject();
-                json.WriteString("timestamp", DateTimeOffset.UtcNow.ToString("O"));
+                json.WriteString("timestamp", DateTime.UtcNow.ToString("O"));
                 json.WriteString("level", logLevel.ToString());
                 json.WriteString("category", category);
                 json.WriteString("message", SecretRedactor.Redact(formatter(state, exception)));

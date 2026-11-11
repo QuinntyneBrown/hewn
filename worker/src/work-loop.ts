@@ -14,6 +14,7 @@ import type { RunContext, StageExecutor } from './executors/stage-executor.ts';
 import { LogBatcher } from './log-batcher.ts';
 import { startRunIsolation, type IsolationSettings } from './isolation/run-isolation.ts';
 import { sleep } from './sleep.ts';
+import { currentSpan, Tracer, withTrace } from './tracing.ts';
 
 export type Log = (message: string, fields?: Record<string, unknown>) => void;
 
@@ -31,6 +32,8 @@ export interface WorkLoopOptions {
   controlWaitSeconds?: number;
   /** Each run's egress proxy, command sandbox and tool gates (L2-042); none when absent. */
   isolation?: IsolationSettings;
+  /** Spans for each run and its model calls, in the trace the lease hands over (L2-049 AC2); dropped when absent. */
+  tracer?: Tracer;
 }
 
 /**
@@ -42,6 +45,7 @@ export class WorkLoop {
   private readonly executor: StageExecutor;
   private readonly registration: WorkerRegistration;
   private readonly log: Log;
+  private readonly tracer: Tracer;
   private readonly pollIntervalMs: number;
   private readonly heartbeatIntervalMs: number;
   private readonly leaseWaitSeconds: number;
@@ -50,6 +54,7 @@ export class WorkLoop {
 
   constructor(options: WorkLoopOptions) {
     this.api = options.api;
+    this.tracer = options.tracer ?? new Tracer();
     this.executor = options.executor;
     this.registration = options.registration;
     this.log = options.log;
@@ -107,11 +112,31 @@ export class WorkLoop {
       directionId: run.directionId,
       stage: run.stage,
       runId: run.runId,
+      ...(currentSpan() ? { traceId: currentSpan()!.traceId } : {}),
       ...fields,
     });
   }
 
+  /** Runs the leased run inside its span, under the lease's span for the run's time in the queue. */
   private async execute(workerId: string, run: LeasedRun, stop: AbortSignal): Promise<void> {
+    const span = this.tracer.start(`Run stage ${run.stage}`, {
+      traceParent: run.traceParent,
+      attributes: {
+        'hewn.project.id': run.projectId,
+        'hewn.direction.id': run.directionId,
+        'hewn.stage': run.stage,
+        'hewn.run.id': run.runId,
+        'hewn.run.epoch': run.epoch,
+      },
+    });
+    try {
+      await withTrace(span, () => this.executeRun(workerId, run, stop));
+    } finally {
+      span.end();
+    }
+  }
+
+  private async executeRun(workerId: string, run: LeasedRun, stop: AbortSignal): Promise<void> {
     this.logRun(run, 'Leased run', {
       runId: run.runId,
       stage: run.stage,
@@ -166,11 +191,20 @@ export class WorkLoop {
       reportBacklog: (report) => this.api.reportBacklog(workerId, run, report),
       reportScope: (report) => this.api.reportScope(workerId, run, report),
       recordDecisions: (decisions) => this.api.recordDecisions(workerId, run, decisions),
-      recordModelCall: async (call) => {
-        const { verdict, directionSpendUsd, budgetUsd } = await this.api.recordModelCall(workerId, run, {
-          callId: randomUUID(),
-          ...call,
+      recordModelCall: async ({ startedAt, ...call }) => {
+        const span = this.tracer.start('Model call', {
+          parent: currentSpan(),
+          kind: 'client',
+          startMs: startedAt,
+          attributes: {
+            'gen_ai.request.model': call.model,
+            'gen_ai.usage.input_tokens': call.inputTokens,
+            'gen_ai.usage.output_tokens': call.outputTokens,
+          },
         });
+        const { verdict, directionSpendUsd, budgetUsd } = await withTrace(span, () =>
+          this.api.recordModelCall(workerId, run, { callId: randomUUID(), ...call }),
+        ).finally(() => span.end());
         const spend = `${dollars(directionSpendUsd)} of ${dollars(budgetUsd)}`;
         if (verdict === 'Warn') logs.add({ level: 'warn', text: `Spend at 80% of budget (${spend})` });
         if (verdict === 'Stop') {
@@ -222,11 +256,14 @@ export class WorkLoop {
         return;
       }
       if (lease.signal.aborted || error instanceof LeaseLostError || error instanceof TokenRefusedError) return;
+      currentSpan()?.fail(messageOf(error));
       this.logRun(run, 'Run failed', { level: 'Warning' });
       await logs.close();
       await this.api
         .result(workerId, run, { outcome: 'Failed', error: messageOf(error) })
-        .catch((reportError: unknown) => this.logRun(run, 'Could not report the failure', { level: 'Error', error: messageOf(reportError) }));
+        .catch((reportError: unknown) =>
+          this.logRun(run, 'Could not report the failure', { level: 'Error', error: messageOf(reportError) }),
+        );
     } finally {
       // Ends the control poll as well.
       if (!lease.signal.aborted) lease.abort(new Error('The run ended.'));

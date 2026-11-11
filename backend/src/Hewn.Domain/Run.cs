@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace Hewn.Domain;
 
 /// <summary>One execution of one stage for one direction. Leased by one worker at a time, fenced by its epoch.</summary>
@@ -26,7 +28,14 @@ public sealed class Run
         Status = RunStatus.Queued;
         CreatedAt = now;
         Attempt = 1;
+        TraceParent = Activity.Current?.Id;
     }
+
+    /// <summary>
+    /// The W3C traceparent of the work that queued the run, so its trace carries on through the queue, the worker and
+    /// its model calls (L2-049 AC2). None when nothing was being traced.
+    /// </summary>
+    public string? TraceParent { get; private set; }
 
     /// <summary>1 for the first try of a stage, 2 to 4 for its automatic retries (L2-006 AC1).</summary>
     public int Attempt { get; private set; }

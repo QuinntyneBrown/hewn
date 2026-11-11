@@ -91,6 +91,8 @@ public sealed class WorkerController(IMediator mediator, ILogger<WorkerControlle
             return NoContent();
         }
 
+        // Logged in the run's trace, not the idle worker's poll (L2-049 AC1).
+        using (RunTracing.Start("Run leased", run.TraceParent))
         using (logger.BeginRunScope(new RunCorrelation(run.ProjectId, run.DirectionId, run.Stage, run.RunId)))
         {
             logger.LogInformation("Leased run {RunId} at stage {Stage} to worker {WorkerId}, attempt {Attempt}", run.RunId, run.Stage, request.WorkerId, run.Attempt);
