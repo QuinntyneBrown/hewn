@@ -46,6 +46,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 30 | [Archive and restore a project](30-archive-and-restore-a-project/README.md) | ~4:24 | Journey 30 |
 | 31 | [Delete a project](31-delete-a-project/README.md) | ~4:52 | Journey 31 |
 | 32 | [Review the audit log](32-review-the-audit-log/README.md) | ~4:28 | Journey 32 |
+| 33 | [Use Mission Control on mobile](33-use-mission-control-on-mobile/README.md) | ~4:37 | Journey 33 |
 
 ## Voice
 

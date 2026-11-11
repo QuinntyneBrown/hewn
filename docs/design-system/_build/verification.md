@@ -15,4 +15,3 @@ Known gaps, deliberately left open:
 - Inter and JetBrains Mono are named but not bundled (the mocks never loaded them either); the system font stack renders until the app ships the fonts.
 - Menu, checkbox, switch, tooltip, pagination and chip are core-set components no mock uses yet. Their pages are marked as such, and the places they belong are named.
 - The drift entries below describe fixes for the mocks and the product; the mock generator has not been changed except for its stylesheet links.
-- L2-046 AC4 asks for 44×44 px targets at every width; the system uses 32–40 px controls from lg (above the WCAG 2.5.8 24 px minimum). The requirement or the system needs a decision.

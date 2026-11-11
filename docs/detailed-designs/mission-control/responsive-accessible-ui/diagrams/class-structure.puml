@@ -11,14 +11,6 @@ skinparam class {
 }
 title Class structure — Responsive, accessible and themed UI
 
-enum Band {
-  XS
-  SM
-  LXL
-}
-class BreakpointService <<Angular>> {
-  +band: Signal<Band>
-}
 class StatusAnnouncer <<Angular>> {
   +intervalMs = 5000
   +announce(p: ProjectId, msg: string): void
@@ -35,11 +27,16 @@ class ThemeService <<Angular>> {
   +set(c: ThemeChoice): void
   -storageKey = "hewn.theme"
 }
-class AppShell <<Angular>>
-class MobileNavDrawer <<Angular>>
-BreakpointService --> Band
+class AppShell <<Angular>> {
+  -menu: TemplateRef
+  #openMenu(): void
+  #closeMenu(): void
+}
+class "Menu drawer" as MenuDrawer <<CDK Dialog>> {
+  ariaLabel = "Menu"
+  autoFocus = first-tabbable
+}
 ThemeService --> ThemeChoice
-AppShell ..> BreakpointService
-AppShell *-- MobileNavDrawer
+AppShell *-- MenuDrawer : below 992 px
 AppShell ..> ThemeService
 @enduml

@@ -37,3 +37,4 @@ Read the ADRs that cover an area before changing it. New ADRs take the next numb
 | [0031](0031-archiving-is-a-flag-beside-the-projects-status.md) | Archiving is a flag beside the project's status | Accepted |
 | [0032](0032-a-project-is-deleted-in-one-save.md) | A project is deleted in one save | Accepted |
 | [0033](0033-audit-entries-are-append-only-in-the-database.md) | Audit entries are append-only in the database | Accepted |
+| [0034](0034-touch-targets-are-44-px-below-992-px.md) | Touch targets are 44 px below 992 px | Accepted |
