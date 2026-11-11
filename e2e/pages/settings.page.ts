@@ -27,6 +27,8 @@ export class SettingsPage {
   readonly readOnlyCallout: Locator;
   readonly access: Locator;
   readonly accessBody: Locator;
+  /** The first section's skeleton while the saved defaults load. */
+  readonly loadingSection: Locator;
   readonly accessRows: Locator;
   readonly addLogin: Locator;
   readonly addDialog: Locator;
@@ -59,6 +61,7 @@ export class SettingsPage {
     this.readOnlyCallout = page.locator('.callout', { hasText: 'Read-only for Viewers' });
     this.access = page.getByRole('region', { name: 'Who can sign in' });
     this.accessBody = this.access.locator('.settings-section__body');
+    this.loadingSection = page.locator('[aria-busy="true"] > .settings-section').first();
     this.accessRows = this.access.getByRole('list', { name: 'Who can sign in' }).getByRole('listitem');
     this.addLogin = this.access.getByRole('button', { name: 'Add a GitHub login' });
     this.addDialog = page.getByRole('dialog', { name: 'Add a GitHub login' });
