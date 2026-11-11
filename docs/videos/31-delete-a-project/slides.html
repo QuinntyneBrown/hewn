@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 31 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="31" data-video-title="Delete a project" data-parts="Introduction|Goal|Deleting|Refusal|How it works|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 31</div>
+  <h1>Delete a project</h1>
+  <p class="lead">Hewn's records go; the repository stays.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video shows an Owner deleting a project">
+  <figure><img src="screens/projects-owner.png" alt="Projects as an Owner sees them: each row ends with Archive and Delete, disabled on the running project"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="An Owner chooses Delete, types the project name exactly and confirms.">
+  <ul class="bullets">
+    <li>Type the name exactly, then confirm (L2-003 AC3)</li>
+    <li>Hewn's records, logs and artifacts go; the GitHub repository is kept</li>
+    <li>An active direction: "Cancel the running direction first" (AC2)</li>
+  </ul>
+</section>
+
+<section id="clip-delete" data-part="2" data-cue="Here an Owner opens Projects." data-clip="clips/delete.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">The wrong name, the right one, deleted; the repository still there</aside>
+</section>
+
+<section id="clip-refused" data-part="3" data-cue="Tidewater's direction is still running." data-clip="clips/refused.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">aria-label: "Delete Tidewater: cancel the running direction first"</aside>
+</section>
+
+<section id="guard" data-part="4" data-cue="The handler checks the same guard as Archive first">
+  <div class="code-file">backend/src/Hewn.Application/Projects/DeleteProject.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="4,6,9,11-13">        var project = await db.Projects.Include(p =&gt; p.Directions)
+            .SingleOrDefaultAsync(p =&gt; p.Id == command.ProjectId, cancellationToken)
+            ?? throw new NotFoundException();
+        if (project.HasActiveDirection)
+        {
+            throw new ConflictException("active_direction", "Cancel the running direction first");
+        }
+
+        if (!string.Equals(command.ConfirmName, project.Name, StringComparison.Ordinal))
+        {
+            throw new FieldValidationException(
+                [new FieldError("confirmName", $"Type {project.Name} exactly to delete it.", "The name doesn't match")],
+                "confirm_name");
+        }</pre>
+</section>
+
+<section id="remove" data-part="4" data-cue="Then it removes every row Hewn keeps for the project.">
+  <div class="code-file">backend/src/Hewn.Application/Projects/DeleteProject.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="4-6,8">        db.Runs.RemoveRange(await db.Runs.Where(r =&gt; r.ProjectId == project.Id).ToListAsync(cancellationToken));
+        db.Events.RemoveRange(await db.Events.Where(e =&gt; e.ProjectId == project.Id).ToListAsync(cancellationToken));
+        db.SkillsUpdates.RemoveRange(await db.SkillsUpdates.Where(u =&gt; u.ProjectId == project.Id).ToListAsync(cancellationToken));
+        db.Directions.RemoveRange(project.Directions);
+        db.Projects.Remove(project);
+        await db.SaveChangesAsync(cancellationToken);
+
+        await publisher.ProjectDeletedAsync(project.Id, cancellationToken);</pre>
+</section>
+
+<section id="dialog" data-part="4" data-cue="The dialog enables Delete project only when the typed name matches.">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/projects/delete-project.dialog.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="5,7-8">  protected readonly typed = signal('');
+  protected readonly touched = signal(false);
+  protected readonly deleting = signal(false);
+  protected readonly failure = signal&lt;string | null&gt;(null);
+  protected readonly matches = computed(() =&gt; this.typed() === this.data.projectName);
+  /** Shown once the field is left with something other than the name. */
+  protected readonly error = computed(() =&gt;
+    this.touched() ? confirmNameError(this.typed(), this.data.projectName) : null,
+  );</pre>
+</section>
+
+<section id="sequence" data-part="4" data-cue="This sequence shows the whole path">
+  <figure class="diagram"><img src="../../detailed-designs/projects/archive-and-delete-project/diagrams/sequence-delete.png" alt="Delete: 409 when a direction is active; 400 when the name differs; one save, ProjectDeleted, 204 and the toast"></figure>
+</section>
+
+<section id="test-api" data-part="5" data-cue="The backend tests go through the real API.">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Projects/DeleteProjectTests.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="1,3-4,9,12">        var response = await DeleteAsync(owner, projectId, "Harbor CRM");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(0, await RecordsAsync(projectId));
+        Assert.Equal(HttpStatusCode.NotFound, (await owner.GetAsync($"/api/projects/{projectId}")).StatusCode);
+        var rows = (await HewnClient.ReadJsonAsync(await owner.GetAsync("/api/projects"))).EnumerateArray();
+        Assert.DoesNotContain(rows, r =&gt; r.GetProperty("id").GetGuid() == projectId);
+        // Another project's records are untouched, and so is the repository (L2-003 AC3).
+        Assert.Equal(before, await RecordsAsync(otherId));
+        var repository = _factory.GitHub.Repository("northwind", "harbor-crm");
+        Assert.NotNull(repository);
+        Assert.Equal("# Harbor CRM", repository.Read("README.md"));</pre>
+  <div class="result red">✘ 4 failed: Expected NoContent, Actual NotFound</div>
+  <div class="result green">✔ backend 327</div>
+</section>
+
+<section id="test-e2e" data-part="5" data-cue="End to end, a behaviour test types part of the name">
+  <div class="code-file">e2e/tests/behavior/delete-a-project.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="4,6,8,11-12">    await expect(dialog.name).toHaveAttribute('aria-invalid', 'true');
+    await expect(dialog.confirm).toBeDisabled();
+
+    await dialog.name.fill(name);
+    await expect(dialog.error).toHaveCount(0);
+    await dialog.confirm.click();
+
+    await expect(projects.toast(`${name} deleted`)).toContainText('Its GitHub repository is kept.');
+    await expect(dialog.panel).toHaveCount(0);
+    await expect(row.root).toHaveCount(0);
+    await expect.poll(() =&gt; projectStatus(page, projectId)).toBe(404);
+    expect(await repositoryReadme(page, repository)).toBe(`# ${name}\n`);</pre>
+  <div class="result red">✘ locator.click: waiting for … getByRole('button', { name: /^Delete [^:]*$/ })</div>
+  <div class="result green">✔ behaviour 4 · visual 4 · a11y 1</div>
+</section>
+
+<section id="failed" data-part="6" data-cue="A failure keeps what was typed">
+  <figure><img src="screens/dialog-failed.png" alt="The failed dialog: Tidewater wasn't deleted; the API returned 503; nothing was removed; Try again"></figure>
+</section>
+
+<section id="screens" data-part="6" data-cue="The dialog reads the same in dark mode">
+  <div class="cols">
+    <figure><img src="screens/dialog-dark.png" alt="The Delete project dialog in dark mode"></figure>
+    <figure class="phone"><img src="screens/dialog-phone.png" alt="The Delete project dialog on a phone, as a bottom sheet"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="7" data-cue="Journey thirty one is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Type the name exactly to delete a project</li>
+    <li>Hewn's records go in one save; the GitHub repository is kept</li>
+    <li>An active direction is refused: "Cancel the running direction first"</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

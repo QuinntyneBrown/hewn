@@ -18,25 +18,25 @@ class Project {
   +string? ArchivedBy
   +bool IsArchived
   +bool HasActiveDirection
-  +ProjectLifecycle Lifecycle
   +Archive(login, now): bool
   +Restore(): bool
-  +MarkDeleting(): void
-}
-enum ProjectLifecycle {
-  Active
-  Deleting
 }
 class ConflictException {
   +string Code = "active_direction"
   +string Message = "Cancel the running direction first"
 }
 class DeleteProjectCommand {
-  +ProjectId ProjectId
-  +string ConfirmName
+  +Guid ProjectId
+  +string? ConfirmName
 }
 class DeleteProjectHandler {
-  +Handle(cmd: DeleteProjectCommand): Task<Result>
+  +Handle(cmd: DeleteProjectCommand): Task
+}
+class FieldValidationException {
+  +string Code = "confirm_name"
+}
+interface IProjectEventPublisher {
+  +ProjectDeletedAsync(projectId): Task
 }
 class ArchiveProjectHandler {
   +Handle(cmd: ArchiveProjectCommand): Task
@@ -44,16 +44,12 @@ class ArchiveProjectHandler {
 class RestoreProjectHandler {
   +Handle(cmd: RestoreProjectCommand): Task
 }
-class PurgeProjectJob {
-  +ProjectId ProjectId
-  +RunAsync(): Task
-}
 DeleteProjectHandler ..> DeleteProjectCommand : handles
-DeleteProjectHandler --> Project : guards / marks
-DeleteProjectHandler ..> PurgeProjectJob : enqueues
+DeleteProjectHandler --> Project : guards / removes
+DeleteProjectHandler ..> FieldValidationException : throws
+DeleteProjectHandler --> IProjectEventPublisher : tells Projects pages
 ArchiveProjectHandler --> Project : archives
 RestoreProjectHandler --> Project : restores
 ArchiveProjectHandler ..> ConflictException : throws
 DeleteProjectHandler ..> ConflictException : throws
-Project --> ProjectLifecycle
 @enduml

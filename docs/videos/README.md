@@ -44,6 +44,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 28 | [Configure automatic descoping](28-configure-automatic-descoping/README.md) | ~4:21 | Journey 28 |
 | 29 | [Update project skills](29-update-project-skills/README.md) | ~4:24 | Journey 29 |
 | 30 | [Archive and restore a project](30-archive-and-restore-a-project/README.md) | ~4:24 | Journey 30 |
+| 31 | [Delete a project](31-delete-a-project/README.md) | ~4:52 | Journey 31 |
 
 ## Voice
 

@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
@@ -15,6 +16,7 @@ import { map } from 'rxjs';
 import { ProjectsPrefetch } from '../../core/projects-prefetch';
 import { SessionStore } from '../../core/session-store';
 import { Toasts } from '../../core/toasts';
+import { DeleteProjectData, DeleteProjectDialog } from './delete-project.dialog';
 import {
   archiveRefusal,
   byActivity,
@@ -44,6 +46,7 @@ export class ProjectsPage {
   private readonly live = inject(PROJECT_EVENTS);
   private readonly api = inject(PROJECTS_API);
   private readonly toasts = inject(Toasts);
+  private readonly dialog = inject(Dialog);
   protected readonly session = inject(SessionStore);
 
   protected readonly filters = STATUS_FILTERS;
@@ -77,7 +80,11 @@ export class ProjectsPage {
     const updates = this.live.followProjects().subscribe({
       next: (update) => {
         if (update.kind === 'resync') this.load();
-        else if (this.all()) this.all.update((rows) => upsertRow(rows ?? [], update.row));
+        else if (update.kind === 'deleted') this.remove(update.projectId);
+        else if (this.all()) {
+          const row = update.row;
+          this.all.update((rows) => upsertRow(rows ?? [], row));
+        }
       },
       // The list still works without live rows; a reload brings them back.
       error: () => undefined,
@@ -99,6 +106,30 @@ export class ProjectsPage {
         { label: 'Show archived', link: ['/projects'], queryParams: { status: 'archived' } },
       ],
     }));
+  }
+
+  /** L2-003 AC3: the dialog deletes Hewn's records once the name is typed; the repository is kept. */
+  protected delete(project: ProjectSummary): void {
+    const ref = this.dialog.open<boolean, DeleteProjectData>(DeleteProjectDialog, {
+      data: { projectId: project.id, projectName: project.name },
+      role: 'alertdialog',
+      ariaLabelledBy: 'delete-title',
+      ariaDescribedBy: 'delete-desc',
+      backdropClass: 'backdrop',
+    });
+    ref.closed.subscribe((deleted) => {
+      if (!deleted) return;
+      this.remove(project.id);
+      this.toasts.show({
+        tone: 'ok',
+        title: `${project.name} deleted`,
+        text: 'Its GitHub repository is kept.',
+      });
+    });
+  }
+
+  private remove(projectId: string): void {
+    this.all.update((rows) => rows && rows.filter((r) => r.id !== projectId));
   }
 
   /** L2-003 AC1: returns the project to the default list. */

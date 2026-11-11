@@ -44,7 +44,10 @@ export interface ProjectEvents {
   retryNow(): void;
 }
 
-export type ProjectsUpdate = { kind: 'row'; row: ProjectSummary } | { kind: 'resync' };
+export type ProjectsUpdate =
+  | { kind: 'row'; row: ProjectSummary }
+  | { kind: 'deleted'; projectId: string }
+  | { kind: 'resync' };
 
 export const PROJECT_EVENTS = new InjectionToken<ProjectEvents>('ProjectEvents');
 
@@ -172,6 +175,8 @@ export class SignalRProjectEvents implements ProjectEvents, OnDestroy {
     return new Observable<ProjectsUpdate>((subscriber) => {
       let closed = false;
       const onRow = (row: ProjectSummary) => subscriber.next({ kind: 'row', row });
+      const onDeleted = (deleted: { projectId: string }) =>
+        subscriber.next({ kind: 'deleted', projectId: deleted.projectId });
       const join = () => this.connection.invoke('JoinProjects');
       const rejoin = async () => {
         await join();
@@ -179,6 +184,7 @@ export class SignalRProjectEvents implements ProjectEvents, OnDestroy {
       };
 
       this.connection.on('ProjectSummary', onRow);
+      this.connection.on('ProjectDeleted', onDeleted);
       this.rejoins.add(rejoin);
       this.ensureStarted().then(
         () => (closed ? undefined : join().catch((error: unknown) => subscriber.error(error))),
@@ -189,6 +195,7 @@ export class SignalRProjectEvents implements ProjectEvents, OnDestroy {
         closed = true;
         this.rejoins.delete(rejoin);
         this.connection.off('ProjectSummary', onRow);
+        this.connection.off('ProjectDeleted', onDeleted);
         if (this.connection.state === HubConnectionState.Connected) {
           void this.connection.invoke('LeaveProjects').catch(() => undefined);
         }

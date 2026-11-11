@@ -2,6 +2,8 @@ import type { ProjectSummary } from '@hewn/api';
 import { describe, expect, it } from 'vitest';
 import {
   archiveRefusal,
+  confirmNameError,
+  deleteFailure,
   canArchive,
   countByStatus,
   lastActivityText,
@@ -106,6 +108,29 @@ describe('archiving (L2-003 AC1, AC2)', () => {
     );
     expect(archiveRefusal(403, null)).toBe('Only an Owner can archive or restore a project.');
     expect(archiveRefusal(0, null)).toBe('The Hewn API returned no response. Try again.');
+  });
+});
+
+describe('deleting a project (L2-003 AC2, AC3)', () => {
+  it('asks for the name exactly, once something different was typed', () => {
+    expect(confirmNameError('', 'Harbor CRM')).toBeNull();
+    expect(confirmNameError('Harbor CRM', 'Harbor CRM')).toBeNull();
+    for (const typed of ['Harbor', 'harbor crm', 'Harbor CRM ']) {
+      expect(confirmNameError(typed, 'Harbor CRM')).toBe('Type Harbor CRM exactly to delete it.');
+    }
+  });
+
+  it('says why it wasn’t deleted, as the failed mock does', () => {
+    expect(deleteFailure(503, null)).toBe('The API returned 503. Nothing was removed; try again.');
+    expect(deleteFailure(0, null)).toBe(
+      'The API returned no response. Nothing was removed; try again.',
+    );
+    expect(deleteFailure(409, 'Cancel the running direction first')).toBe(
+      'Cancel the running direction first. Nothing was removed.',
+    );
+    expect(deleteFailure(403, null)).toBe(
+      'Only an Owner can delete a project. Nothing was removed.',
+    );
   });
 });
 

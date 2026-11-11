@@ -88,6 +88,11 @@ export interface ProjectsApi {
   archive(projectId: string): Observable<void>;
   /** L2-003 AC1: returns an archived project to the default list. */
   restore(projectId: string): Observable<void>;
+  /**
+   * L2-003 AC3: deletes Hewn's records for the project once `confirmName` is its name exactly; the GitHub repository
+   * is kept. Errors with the HTTP error: 400 `confirm_name`, 409 `active_direction`, 403 for a Viewer.
+   */
+  deleteProject(projectId: string, confirmName: string): Observable<void>;
 }
 
 export const PROJECTS_API = new InjectionToken<ProjectsApi>('ProjectsApi');
@@ -243,5 +248,11 @@ export class HttpProjectsApi implements ProjectsApi {
 
   restore(projectId: string): Observable<void> {
     return this.http.post<void>(`/api/projects/${encodeURIComponent(projectId)}/restore`, {});
+  }
+
+  deleteProject(projectId: string, confirmName: string): Observable<void> {
+    return this.http.delete<void>(`/api/projects/${encodeURIComponent(projectId)}`, {
+      body: { confirmName },
+    });
   }
 }

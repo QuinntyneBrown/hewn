@@ -1,0 +1,16 @@
+{
+  "title": "Delete Harbor CRM ee3d?",
+  "hint": "The GitHub repository is kept; only Hewn’s record is deleted.",
+  "error": "Type Harbor CRM ee3d exactly to delete it.",
+  "disabledWhenWrong": true,
+  "deletedMs": 349,
+  "toast": "Harbor CRM ee3d deleted\nIts GitHub repository is kept.",
+  "rowsAfter": 0,
+  "projectStatus": 404,
+  "readme": "# Harbor CRM ee3d\n\nA CRM for small harbour chandleries, built by Hewn.\n",
+  "refusedName": "Delete Tidewater ee3d: cancel the running direction first",
+  "refusedTitle": "Cancel the running direction first",
+  "dialogOnRefused": 0,
+  "failure": "Tidewater ee3d wasn’t deleted\n\nThe API returned 503. Nothing was removed; try again.",
+  "viewerDelete": 0
+}

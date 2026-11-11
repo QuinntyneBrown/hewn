@@ -8,9 +8,9 @@ ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Pro
 Container_Boundary(api_b, "Hewn API") {
   Component(ctrl, "ProjectsController", "ASP.NET Core controller", "Archive, restore, delete endpoints")
   Component(arch, "ArchiveProjectHandler", "Command handler", "Archive and restore")
-  Component(del, "DeleteProjectHandler", "Command handler", "Guards, checks typed name, enqueues purge")
+  Component(del, "DeleteProjectHandler", "Command handler", "Guards, checks the typed name, removes Hewn's records in one save")
   Component(guard, "Project", "Domain aggregate", "HasActiveDirection guard")
-  Component(purge, "PurgeProjectJob", "Background job", "Removes Hewn records, logs and artifacts")
+  Component(hub, "SignalRProjectEventPublisher", "SignalR", "Tells Projects pages a project was deleted")
 }
 
 Rel(spa, ctrl, "Calls", "JSON/HTTPS")
@@ -18,7 +18,8 @@ Rel(ctrl, arch, "Dispatches")
 Rel(ctrl, del, "Dispatches")
 Rel(arch, guard, "Checks")
 Rel(del, guard, "Checks")
-Rel(del, purge, "Enqueues")
+Rel(del, hub, "ProjectDeleted")
+Rel(hub, spa, "Pushes", "WebSocket")
 Rel(arch, db, "Saves", "SQL")
-Rel(purge, db, "Deletes project data", "SQL")
+Rel(del, db, "Deletes project data", "SQL")
 @enduml

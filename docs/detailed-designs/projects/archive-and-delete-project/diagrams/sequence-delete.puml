@@ -28,8 +28,8 @@ box "Backend — Hewn Application and Domain" #ECFDF3
   participant "Project" as proj
 end box
 box "Backend — Hewn Infrastructure" #FFF4E5
-  participant "PurgeProjectJob" as purge
   database "Hewn database" as db
+  participant "SignalRProjectEventPublisher" as hub
 end box
 owner -> page : Press Delete on a project row
 page -> dlg : Open; state that the GitHub repository is kept (L2-003 AC3)
@@ -43,14 +43,16 @@ alt active direction
   del --> ctrl : 409 "Cancel the running direction first" (L2-003 AC2)
   ctrl --> dlg : Show refusal
 else confirmName differs
-  del --> ctrl : 400 field error
+  del --> ctrl : 400 confirm_name "Type {name} exactly to delete it."
   ctrl --> dlg : Invalid state: type the name exactly
 else allowed
-  del -> proj : MarkDeleting()
-  del -> db : Save; enqueue PurgeProjectJob
-  del --> ctrl : 202 Accepted
-  ctrl --> dlg : Close; row leaves the list
-  purge -> db : Delete directions, runs, events, logs, spend, stored artifacts
-  note right of purge : No GitHub call; the repository is kept
+  del -> db : Remove the project, directions and stages, runs, events, log lines,\ndecisions, model calls, GitHub mutations, increments, checks, skills updates
+  del -> db : Save (one transaction: a failure removes nothing)
+  note right of db : No GitHub call; the repository is kept
+  del -> hub : ProjectDeletedAsync(id)
+  hub --> page : ProjectDeleted { projectId } to every Projects page
+  del --> ctrl : done
+  ctrl --> dlg : 204 No Content
+  dlg --> page : Close; row leaves the list; toast "{name} deleted"
 end
 @enduml

@@ -35,3 +35,4 @@ Read the ADRs that cover an area before changing it. New ADRs take the next numb
 | [0029](0029-a-direction-keeps-the-descope-threshold-it-was-submitted-with.md) | A direction keeps the descope threshold it was submitted with | Accepted |
 | [0030](0030-the-api-updates-a-projects-skills-itself.md) | The API updates a project's skills itself | Accepted |
 | [0031](0031-archiving-is-a-flag-beside-the-projects-status.md) | Archiving is a flag beside the project's status | Accepted |
+| [0032](0032-a-project-is-deleted-in-one-save.md) | A project is deleted in one save | Accepted |
