@@ -15,7 +15,7 @@ if ($DevSignIn) { $env:Hewn__Auth__DevSignIn = 'true' }
 if ($Observability) {
     $env:OTEL_EXPORTER_OTLP_ENDPOINT = 'http://localhost:4318'
     $env:OTEL_EXPORTER_OTLP_PROTOCOL = 'http/protobuf'
-    # The token eng/observability/prometheus.yml scrapes with; a local value, not a secret.
+    # The token eng/observability/compose.yaml's Prometheus scrapes with; a local value, not a secret.
     $env:HEWN_METRICS_TOKEN = 'local-metrics-token-not-a-secret'
 }
 
