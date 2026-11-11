@@ -1,11 +1,13 @@
 // Acceptance Test
 // Traces to: L2-047
-// Description: With the keyboard alone, every page can be tabbed through with a visible focus indicator at each stop and no traps, and a direction can be submitted, followed, and cancelled
+// Description: With the keyboard alone, every page can be tabbed through with a visible focus indicator at each stop and no traps, and a direction can be submitted, followed, and cancelled; when the user prefers reduced motion nothing animates
 
 import type { Page } from '@playwright/test';
 import { expect, signIn, test, uniqueName } from '../../fixtures/test';
 import { Keyboard } from '../../pages/keyboard';
+import { Motion } from '../../pages/motion';
 import { Navigation } from '../../pages/navigation';
+import { PageStates } from '../../pages/page-states';
 import type { NewDirectionPage } from '../../pages/new-direction.page';
 import type { ProjectPage } from '../../pages/project.page';
 
@@ -116,6 +118,52 @@ test.describe('Use keyboard and assistive technology', () => {
     await keyboard.tabTo(project.cancelConfirm);
     await keyboard.press('Enter');
     await expect(project.cancelledCallout).toBeVisible({ timeout: 30_000 });
+  });
+
+  test('when the user prefers reduced motion, spinners, skeletons, dialogs and the drawer do not animate', async ({
+    page,
+    newDirection,
+    project,
+    projects,
+  }) => {
+    const motion = new Motion(page);
+    const states = new PageStates(page);
+    const nav = new Navigation(page);
+    await signIn(page, 'quinntynebrown');
+    const id = await aProject(page, newDirection, project);
+    const moving: string[] = [];
+    const look = async (what: string) => {
+      for (const m of await motion.longerThan(0.01)) moving.push(`${what}: ${m}`);
+    };
+
+    for (const reduced of [false, true]) {
+      await motion.prefer(reduced);
+      moving.length = 0;
+      // A running project's spinner and its waiting stage.
+      await project.open(id);
+      await look('the project');
+      // A dialog opening.
+      await project.cancelButton.click();
+      await look('the cancel dialog');
+      await project.keepRunning.click();
+      // Skeletons while Projects loads, and its spinners.
+      await states.hold('/api/projects');
+      await page.goto('/projects');
+      await expect(states.busy).toBeVisible();
+      await look('Projects loading');
+      await states.release();
+      await projects.open();
+      await expect(projects.rows.first()).toBeVisible();
+      await look('Projects');
+      // The drawer sliding in on a phone.
+      await nav.width(375);
+      await nav.menuButton.click();
+      await look('the drawer');
+      await page.keyboard.press('Escape');
+      await nav.width(1280);
+      if (!reduced) expect(moving.length, 'without the preference, things move').toBeGreaterThan(0);
+    }
+    expect(moving).toEqual([]);
   });
 
   test('sign in with the keyboard alone', async ({ page, signInPage }) => {
