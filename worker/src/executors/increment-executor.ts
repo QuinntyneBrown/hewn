@@ -1,4 +1,5 @@
 import type { CommandSandbox } from '../isolation/run-sandbox.ts';
+import { STAGE_TOOLS } from '../agents/tool-catalog.ts';
 import { isolationFor } from './document-executor.ts';
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
@@ -21,7 +22,7 @@ import type { RunContext, StageExecutor, StageStep, StepKey } from './stage-exec
 const PASSING = new Set(['success', 'neutral', 'skipped']);
 const MAX_REBASES = 3;
 const VIDEO_ATTEMPTS = 2;
-const TOOLS = ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash'] as const;
+const TOOLS = STAGE_TOOLS.increment;
 
 export interface IncrementOptions {
   /** The local gate for a stack; the stack's own commands by default. */
