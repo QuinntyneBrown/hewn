@@ -24,7 +24,11 @@ builder.Logging.Services.AddSingleton<ILoggerProvider, JsonLoggerProvider>();
 builder.Services.AddApplication();
 
 // Traces: HTTP in and out plus Hewn's run spans, exported over OTLP when an endpoint is set (L2-049 AC2).
-builder.Services.AddOpenTelemetry()
+var telemetry = builder.Services.AddOpenTelemetry();
+
+// Metrics for a Prometheus scrape at /metrics, when a scrape token is configured (L2-049 AC3).
+telemetry.AddHewnMetrics();
+telemetry
     .ConfigureResource(resource => resource.AddService("hewn-api"))
     .WithTracing(tracing =>
     {
@@ -77,6 +81,7 @@ builder.Services
 var app = builder.Build();
 
 app.UseForwardedHeaders();
+app.UseHewnMetrics();
 app.UseSecurityHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();

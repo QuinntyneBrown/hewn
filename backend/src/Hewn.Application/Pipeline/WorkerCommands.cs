@@ -254,6 +254,7 @@ public sealed class ReportResultHandler(
     LeaseService leases,
     PipelineOrchestrator pipeline,
     EventAppender events,
+    HewnMetrics metrics,
     TimeProvider clock) : IRequestHandler<ReportResultCommand>
 {
     public async Task Handle(ReportResultCommand command, CancellationToken cancellationToken)
@@ -277,6 +278,7 @@ public sealed class ReportResultHandler(
 
         (await WorkerLookup.FindAsync(db, command.WorkerId, cancellationToken)).Seen(now, WorkerStatus.Idle);
         await FencedSave.SaveAsync(db, cancellationToken);
+        metrics.RunEnded(run);
         await events.PublishAsync(cancellationToken);
     }
 }
