@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Hewn.Api.Auth;
 using Hewn.Api.Designs;
 using Hewn.Api.Errors;
+using Hewn.Api.Health;
 using Hewn.Api.MissionControl;
 using Hewn.Api.Hubs;
 using Hewn.Api.Pipeline;
@@ -25,6 +26,7 @@ builder.Services.AddAntiforgery(o => o.HeaderName = "X-XSRF-TOKEN");
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApplicationExceptionHandler>();
 builder.Services.AddSignalR();
+builder.Services.AddHewnHealthChecks();
 builder.Services.AddSingleton<IProjectEventPublisher, SignalRProjectEventPublisher>();
 builder.Services.AddSingleton<IWorkersNotifier, SignalRWorkersNotifier>();
 if (builder.Configuration.GetValue("Hewn:Leases:ReaperEnabled", true))
@@ -63,7 +65,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<MissionControlHub>(MissionControlHub.Path);
 app.MapPreview();
-app.MapGet("/health/live", () => Results.Ok(new { status = "Healthy" })).AllowAnonymous();
+app.MapHewnHealthChecks();
 app.MapMissionControl();
 
 if (app.Configuration.GetValue<bool>("Hewn:Fakes:Enabled"))
