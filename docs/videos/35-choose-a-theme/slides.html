@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 35 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="35" data-video-title="Choose a theme" data-parts="Introduction|Goal|Choosing|The OS|Phone|How it works|Tests|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 35</div>
+  <h1>Choose a theme</h1>
+  <p class="lead">Light, Dark or System on each device, kept across reloads, readable in both.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video shows the choice being made">
+  <div class="cols">
+    <figure><img src="screens/projects-light.png" alt="Projects in the light theme"></figure>
+    <figure><img src="screens/projects-dark.png" alt="Projects in the dark theme"></figure>
+  </div>
+</section>
+
+<section id="goal" data-part="1" data-cue="The requirement has two parts.">
+  <ul class="bullets">
+    <li>With no saved choice, Mission Control follows the OS colour scheme (L2-048 AC1)</li>
+    <li>Light, Dark or System is kept across a reload (AC2)</li>
+    <li>Text contrast is at least 4.5:1 in both themes (AC2)</li>
+  </ul>
+</section>
+
+<section id="clip-choose" data-part="2" data-cue="Here is Settings." data-clip="clips/choose.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Dark, reload, Light, reload, System, with the OS set to light throughout</aside>
+</section>
+
+<section id="clip-os" data-part="3" data-cue="With System chosen, the operating system's setting is followed live." data-clip="clips/os.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">The OS preference switches four times; the caption is added for the recording</aside>
+</section>
+
+<section id="phone" data-part="4" data-cue="The choice is per device, and a Viewer can make it too.">
+  <figure><img src="screens/phone-strip.png" alt="A Viewer on a phone with Dark chosen: Settings, Projects, the menu drawer and a project page"></figure>
+</section>
+
+<section id="tokens" data-part="5" data-cue="The design tokens already held both themes.">
+  <div class="code-file">docs/design-system/tokens/tokens.css</div>
+  <pre class="code tight" data-lang="css" data-mark="1">:root {
+  /* ---------- Light theme (default) ---------- */
+  /* colour */
+  --color-bg-canvas: var(--palette-stone-100);</pre>
+  <pre class="code tight" data-lang="css" data-mark="1">[data-theme="dark"] {
+  /* colour */
+  --color-bg-canvas: var(--palette-slate-950);</pre>
+  <pre class="code tight" data-lang="css" data-mark="1-2">@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    /* colour */
+    --color-bg-canvas: var(--palette-slate-950);</pre>
+</section>
+
+<section id="service" data-part="5" data-cue="The theme service reads the saved choice">
+  <div class="code-file">frontend/projects/mission-control/src/app/core/theme.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2-3">export function applyTheme(root: HTMLElement, choice: ThemeChoice): void {
+  if (choice === 'system') root.removeAttribute('data-theme');
+  else root.setAttribute('data-theme', choice);
+}</pre>
+  <pre class="code tight" data-lang="ts" data-mark="4,8,11-15">export class ThemeService {
+  private readonly root = inject(DOCUMENT).documentElement;
+  private readonly storage = localStorageOf(inject(DOCUMENT));
+  private readonly current = signal&lt;ThemeChoice&gt;(readTheme(this.storage));
+  readonly choice = this.current.asReadonly();
+
+  constructor() {
+    applyTheme(this.root, this.current());
+  }
+
+  choose(choice: ThemeChoice): void {
+    this.current.set(choice);
+    applyTheme(this.root, choice);
+    saveTheme(this.storage, choice);
+  }
+}</pre>
+</section>
+
+<section id="boot" data-part="5" data-cue="A short script in index html">
+  <div class="code-file">frontend/projects/mission-control/src/index.html</div>
+  <pre class="code tight" data-lang="html" data-mark="3-5">&lt;script&gt;
+  try {
+    var theme = localStorage.getItem('hewn.theme');
+    if (theme === 'light' || theme === 'dark')
+      document.documentElement.setAttribute('data-theme', theme);
+  } catch (e) {}
+&lt;/script&gt;</pre>
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/settings/settings.page.html</div>
+  <pre class="code tight" data-lang="html" data-mark="5-6">  &lt;input
+    type="radio"
+    name="theme"
+    [value]="option.value"
+    [checked]="theme.choice() === option.value"
+    (change)="theme.choose(option.value)"
+  /&gt;</pre>
+</section>
+
+<section id="classes" data-part="5" data-cue="The class diagram shows Settings driving the service">
+  <figure class="diagram"><img src="../../detailed-designs/mission-control/responsive-accessible-ui/diagrams/class-structure.png" alt="Class structure: SettingsPage uses ThemeService, which uses the theme.ts functions"></figure>
+</section>
+
+<section id="sequence" data-part="5" data-cue="The sequence shows the choice being saved">
+  <figure class="diagram"><img src="../../detailed-designs/mission-control/responsive-accessible-ui/diagrams/sequence-theme-and-announce.png" alt="Sequence: choosing Dark saves it; a reload applies it in index.html before the app starts"></figure>
+</section>
+
+<section id="unit" data-part="6" data-cue="The theme functions have four unit tests">
+  <div class="code-file">frontend/projects/mission-control/src/app/core/theme.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3,5,7">it('sets data-theme for Light and Dark, and removes it for System so the OS decides', () =&gt; {
+  const el = root();
+  applyTheme(el, 'dark');
+  expect(el.attrs).toEqual({ 'data-theme': 'dark' });
+  applyTheme(el, 'light');
+  expect(el.attrs).toEqual({ 'data-theme': 'light' });
+  applyTheme(el, 'system');
+  expect(el.attrs).toEqual({});
+});</pre>
+  <div class="result red">✘ Cannot find module './theme'</div>
+  <div class="result green">✔ 4 passed · mission-control 168 passed</div>
+</section>
+
+<section id="behaviour" data-part="6" data-cue="The behaviour tests run in the browser">
+  <div class="code-file">e2e/tests/behavior/choose-a-theme.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="6-8,11">await settings.themeChoice('Dark').check();
+expect(await theme.shown()).toBe('dark');
+const dark = await theme.background();
+expect(dark, 'the page background changes with the theme').not.toBe(light);
+
+await page.reload();
+await expect(settings.themeChoice('Dark')).toBeChecked();
+expect(await theme.shown()).toBe('dark');
+await theme.osPrefers('dark');
+await theme.osPrefers('light');
+expect(await theme.shown(), 'a saved Dark ignores the OS').toBe('dark');</pre>
+  <div class="result red">✘ waiting for getByRole('region', { name: 'Appearance' })</div>
+  <div class="result green">✔ 4 passed</div>
+</section>
+
+<section id="contrast" data-part="6" data-cue="The contrast scan runs axe core on every page">
+  <div class="code-file">screens/records.json · axe-core, WCAG 2.2 A and AA</div>
+  <pre class="code tight" data-lang="out">Projects       light 0 violations ( 89 checked)   dark 0 violations ( 89 checked)
+New direction  light 0 violations ( 60 checked)   dark 0 violations ( 60 checked)
+Workers        light 0 violations (416 checked)   dark 0 violations (416 checked)
+Audit          light 0 violations (457 checked)   dark 0 violations (455 checked)
+Settings       light 0 violations (138 checked)   dark 0 violations (138 checked)</pre>
+  <div class="result red">✘ a dark text token at #3a3a3a: color-contrast on every page</div>
+  <div class="result green">✔ both themes: 3 passed, every page, light and dark</div>
+</section>
+
+<section id="visual" data-part="6" data-cue="The visual tests compare Appearance with its mock">
+  <div class="cols">
+    <figure><img src="screens/appearance-light.png" alt="Appearance in light"></figure>
+    <figure><img src="screens/appearance-dark.png" alt="Appearance in dark"></figure>
+  </div>
+  <div class="result green">✔ matches pages/settings/default.html in light and in dark</div>
+</section>
+
+<section id="recap" data-part="7" data-cue="Journey thirty five is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Follows the OS until you choose, live as it changes</li>
+    <li>Light, Dark or System kept on this device, applied before the first paint</li>
+    <li>4.5:1 contrast on every page in both themes, checked by axe-core</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

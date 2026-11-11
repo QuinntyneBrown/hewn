@@ -1,0 +1,202 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:06.34
+This is journey thirty five of Hewn, the software factory: choose a theme.
+
+00:00:06.34 --> 00:00:09.87
+Anyone who signs in to Mission Control can pick Light,
+
+00:00:09.87 --> 00:00:11.96
+Dark or System for their device.
+
+00:00:11.96 --> 00:00:16.02
+This video shows the choice being made and surviving a reload,
+
+00:00:16.02 --> 00:00:20.46
+the operating system changing the theme live, how the tokens switch,
+
+00:00:20.46 --> 00:00:23.60
+and the tests that hold contrast in both themes.
+
+00:00:24.75 --> 00:00:26.71
+The requirement has two parts.
+
+00:00:26.71 --> 00:00:32.14
+With no saved choice, Mission Control follows the operating system's colour scheme.
+
+00:00:32.14 --> 00:00:37.63
+And when the user picks Light, Dark or System, their choice is kept across a reload,
+
+00:00:37.63 --> 00:00:42.14
+with text contrast of at least four and a half to one in both themes.
+
+00:00:43.29 --> 00:00:44.39
+Here is Settings.
+
+00:00:44.39 --> 00:00:48.46
+The new Appearance section sits at the top, with System chosen,
+
+00:00:48.46 --> 00:00:50.72
+because nothing has been saved yet.
+
+00:00:50.72 --> 00:00:54.27
+The Owner picks Dark, and the whole page turns at once.
+
+00:00:54.27 --> 00:00:57.83
+They reload, and it stays dark, with Dark still chosen.
+
+00:00:57.83 --> 00:01:00.87
+Then Light, and another reload: light it stays.
+
+00:01:00.87 --> 00:01:05.39
+Finally System, which hands the decision back to the operating system.
+
+00:01:06.54 --> 00:01:11.48
+With System chosen, the operating system's setting is followed live.
+
+00:01:11.48 --> 00:01:14.96
+The clip switches the OS between light and dark,
+
+00:01:14.96 --> 00:01:18.88
+and Mission Control follows each time, with no reload.
+
+00:01:18.88 --> 00:01:22.22
+A saved Light or Dark ignores the OS entirely.
+
+00:01:23.37 --> 00:01:26.99
+The choice is per device, and a Viewer can make it too.
+
+00:01:26.99 --> 00:01:32.32
+On a phone, the menu drawer, Projects and the project page all draw in the chosen
+
+00:01:32.32 --> 00:01:32.71
+theme.
+
+00:01:33.86 --> 00:01:36.70
+The design tokens already held both themes.
+
+00:01:36.70 --> 00:01:41.06
+Every colour is a role, like the default foreground or the canvas,
+
+00:01:41.06 --> 00:01:46.21
+and the dark values are set in two places: on a root with the dark data theme,
+
+00:01:46.21 --> 00:01:51.03
+and under the dark colour scheme media query, unless the root says light.
+
+00:01:51.03 --> 00:01:53.67
+So the app never had to change a colour.
+
+00:01:53.67 --> 00:01:56.18
+It only sets or removes one attribute.
+
+00:01:56.53 --> 00:02:02.33
+The theme service reads the saved choice from local storage under hewn dot theme.
+
+00:02:02.33 --> 00:02:06.91
+Light and Dark set the data theme attribute on the html element.
+
+00:02:06.91 --> 00:02:10.21
+System removes it, so the media query decides.
+
+00:02:10.21 --> 00:02:13.57
+If storage can't be read, the choice is System.
+
+00:02:13.92 --> 00:02:19.83
+A short script in index html applies a saved Light or Dark before the first paint,
+
+00:02:19.83 --> 00:02:22.86
+so a reload never flashes the other theme.
+
+00:02:22.86 --> 00:02:27.62
+Settings' radios read the service's choice signal and call choose.
+
+00:02:27.97 --> 00:02:31.36
+The class diagram shows Settings driving the service,
+
+00:02:31.36 --> 00:02:34.04
+which works through three small functions.
+
+00:02:34.04 --> 00:02:36.72
+The sequence shows the choice being saved,
+
+00:02:36.72 --> 00:02:39.85
+and the reload applying it before Angular starts.
+
+00:02:41.00 --> 00:02:46.80
+The theme functions have four unit tests: no choice or an unknown one is System,
+
+00:02:46.80 --> 00:02:51.58
+a saved Light or Dark reads back, a save survives blocked storage,
+
+00:02:51.58 --> 00:02:53.97
+and System removes the attribute.
+
+00:02:53.97 --> 00:02:57.66
+They failed first, because the module didn't exist.
+
+00:02:58.01 --> 00:03:02.93
+The behaviour tests run in the browser with the OS preference emulated.
+
+00:03:02.93 --> 00:03:06.68
+With no choice, the page follows the OS as it changes.
+
+00:03:06.68 --> 00:03:10.28
+Dark and Light override the OS and survive a reload.
+
+00:03:10.28 --> 00:03:12.57
+System goes back to following it.
+
+00:03:12.57 --> 00:03:15.48
+And a Viewer's choice shows on every page.
+
+00:03:15.48 --> 00:03:19.77
+They failed first, because Settings had no Appearance section.
+
+00:03:20.12 --> 00:03:24.32
+The contrast scan runs axe core on every page in light and in dark,
+
+00:03:24.32 --> 00:03:26.63
+and on a saved choice against the OS.
+
+00:03:26.63 --> 00:03:29.89
+It found something on the way: right after a switch,
+
+00:03:29.89 --> 00:03:33.77
+links ease their colour for a hundred and twenty milliseconds,
+
+00:03:33.77 --> 00:03:35.58
+and axe caught them mid fade.
+
+00:03:35.58 --> 00:03:38.34
+The scan now waits for the switch to finish.
+
+00:03:38.34 --> 00:03:43.59
+To prove it would catch a real problem, a dark text token was dropped to near black:
+
+00:03:43.59 --> 00:03:44.72
+every page failed.
+
+00:03:44.72 --> 00:03:46.60
+With the real tokens, none do.
+
+00:03:46.95 --> 00:03:51.28
+The visual tests compare Appearance with its mock, in light and in dark.
+
+00:03:52.43 --> 00:03:54.65
+Journey thirty five is complete.
+
+00:03:54.65 --> 00:03:59.73
+Mission Control follows the operating system until you choose, and Light,
+
+00:03:59.73 --> 00:04:03.41
+Dark or System is kept on your device across reloads,
+
+00:04:03.41 --> 00:04:05.56
+applied before the first paint.
+
+00:04:05.56 --> 00:04:11.40
+Both themes hold four and a half to one contrast on every page, checked by axe core.
+
+00:04:11.40 --> 00:04:13.48
+Next comes journey thirty six.
