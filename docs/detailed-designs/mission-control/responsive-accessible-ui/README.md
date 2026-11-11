@@ -96,6 +96,8 @@ The theme follows the OS until chosen, then persists (L2-048 AC1, AC2). Status c
 - **A trap is a loop that never comes back.** The walk marks each element it lands on. Landing on the first stop
   again, or on the page itself, means focus came round; landing on another stop already seen is a trap. Modal dialogs
   and the drawer hold focus on purpose and are left with Escape, which their own tests check.
+- **The sweep reads the mock's projects.** Projects in the shared e2e database grows to hundreds of rows, each a few
+  more stops that add time but no coverage, so the keyboard sweep serves the Projects mock's seven projects.
 - **Settings has a loading state.** It showed the configured defaults, editable, until the saved ones arrived; it now
   shows the section skeletons of `pages/settings/loading.html`.
 - **What was already there.** Every page's focus indicator, the keyboard paths through New direction and Cancel, the

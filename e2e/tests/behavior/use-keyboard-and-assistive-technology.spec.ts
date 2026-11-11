@@ -8,6 +8,8 @@ import { Keyboard } from '../../pages/keyboard';
 import { Motion } from '../../pages/motion';
 import { Navigation } from '../../pages/navigation';
 import { PageStates } from '../../pages/page-states';
+import { mockProjects } from '../../support/mock-projects';
+import { serveProjects } from '../../support/projects';
 import type { NewDirectionPage } from '../../pages/new-direction.page';
 import type { ProjectPage } from '../../pages/project.page';
 
@@ -50,6 +52,8 @@ test.describe('Use keyboard and assistive technology', () => {
     const keyboard = new Keyboard(page);
     await signIn(page, 'quinntynebrown');
     const id = await aProject(page, newDirection, project);
+    // The mock's seven projects: the shared database's hundreds of rows would add stops, not coverage.
+    await serveProjects(page, mockProjects(new Date()));
 
     const problems: string[] = [];
     let stops = 0;
