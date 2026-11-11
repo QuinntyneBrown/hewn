@@ -1,0 +1,40 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName Arial
+skinparam ArrowColor #344054
+skinparam rectangle {
+  BorderColor #344054
+  FontColor #101828
+}
+title Redaction pipeline — every output passes the redactor (L2-040 AC2)
+left to right direction
+
+rectangle "Worker" #E0F2FE {
+  rectangle "Agent text\n(log lines, errors)" as agent
+  rectangle "redact()\nremembered credentials\n+ token patterns" as wred
+}
+rectangle "Hewn API" #D1FADF {
+  rectangle "Run log lines\nfailures, decisions\nincrement notes" as ingest
+  rectangle "Pull request\ntitle and body" as prin
+  rectangle "Server log entries" as srv
+  rectangle "Event payloads" as evin
+  rectangle "SecretRedactor\n1. stored values -> ***\n2. GitHub ghp_ / github_pat_\n3. Anthropic sk-ant-\n4. Azure AccountKey= / sig= / 8Q~\n5. private keys, bearer, token=" as red
+}
+database "run_log_lines\nevents" as db
+cloud "SignalR\nMission Control" as hub
+cloud "GitHub" as gh
+rectangle "standard output\n(JSON log)" as out
+
+agent --> wred
+wred --> ingest : HTTPS
+ingest --> red
+prin --> red
+srv --> red
+evin --> red
+red --> db : stored with ***
+red --> hub : sent with ***
+red --> gh : sent with ***
+red --> out : written with ***
+@enduml
