@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using FluentValidation;
 using Hewn.Application.Abstractions;
+using Hewn.Application.Audit;
 using Hewn.Application.Common;
 using Hewn.Application.Events;
 using Hewn.Application.Pipeline;
@@ -104,6 +105,7 @@ public sealed class SubmitProductDirectionHandler(
     EventAppender events,
     PipelineOrchestrator pipeline,
     Spend.DirectionDefaultsReader defaults,
+    AuditWriter audit,
     TimeProvider clock) : IRequestHandler<SubmitProductDirectionCommand, SubmitProductDirectionResult>
 {
     public async Task<SubmitProductDirectionResult> Handle(SubmitProductDirectionCommand command, CancellationToken cancellationToken)
@@ -135,6 +137,7 @@ public sealed class SubmitProductDirectionHandler(
             new { directionId = direction.Id, kind = direction.Kind.ToString(), stage = 0, stageStatus = StageStatus.Pending.ToString() },
             cancellationToken);
         pipeline.QueueFirstRun(direction);
+        audit.Record(AuditAction.DirectionSubmitted, user.Login, project);
 
         try
         {

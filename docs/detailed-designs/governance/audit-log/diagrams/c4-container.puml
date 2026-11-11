@@ -7,7 +7,7 @@ Person(owner, "Owner", "Gives direction, watches the work and uses the safety co
 System_Boundary(hewn, "Hewn") {
   Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
   Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
-  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
+  ContainerDb(db, "Hewn database", "SQLite", "Projects, directions, runs, events, spend, audit")
 }
 
 Rel(owner, spa, "Opens Audit", "HTTPS")

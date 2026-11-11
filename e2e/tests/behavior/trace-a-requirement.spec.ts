@@ -28,7 +28,7 @@ test.describe('Trace a requirement', () => {
     await traceability.open(id, 'L2-018');
 
     await expect(traceability.tab('Traceability')).toHaveAttribute('aria-current', 'page');
-    expect(await traceability.ids()).toEqual(['L2-013', 'L2-018', 'L2-020', 'L2-031']);
+    await expect.poll(() => traceability.ids()).toEqual(['L2-013', 'L2-018', 'L2-020', 'L2-031']);
     await expect(traceability.link('L2-018')).toHaveAttribute('aria-current', 'true');
     await expect(traceability.link('L2-031')).toContainText('Deferred');
 
@@ -74,7 +74,7 @@ test.describe('Trace a requirement', () => {
     await traceability.open(id, 'L2-018');
 
     await traceability.search.fill('close');
-    expect(await traceability.ids()).toEqual(['L2-020']);
+    await expect.poll(() => traceability.ids()).toEqual(['L2-020']);
     await traceability.search.fill('L2-099');
     await expect(traceability.noMatch).toHaveText(/^No requirement matches “L2-099”\. .+ has L2-013 to L2-031\.$/);
     // The open trace stays while searching.

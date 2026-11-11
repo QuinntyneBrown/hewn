@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.AddSingleton<Auth.AllowListAccess>();
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly, includeInternalTypes: true);
         services.AddScoped<EventAppender>();
+        services.AddScoped<Audit.AuditWriter>();
         services.AddScoped<Projects.ProjectSummaryReader>();
         services.AddScoped<PipelineOrchestrator>();
         services.AddScoped<LeaseService>();

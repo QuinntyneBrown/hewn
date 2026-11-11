@@ -1,5 +1,6 @@
 using FluentValidation;
 using Hewn.Application.Abstractions;
+using Hewn.Application.Audit;
 using Hewn.Application.Common;
 using Hewn.Application.Events;
 using Hewn.Application.Pipeline;
@@ -35,7 +36,8 @@ public sealed class RaiseAndResumeHandler(
     IAppDbContext db,
     PipelineOrchestrator pipeline,
     EventAppender events,
-    ICurrentUser user) : IRequestHandler<RaiseAndResumeCommand, RaiseAndResumeResult>
+    ICurrentUser user,
+    AuditWriter audit) : IRequestHandler<RaiseAndResumeCommand, RaiseAndResumeResult>
 {
     public const string BudgetRaised = "BudgetRaised";
 
@@ -77,6 +79,7 @@ public sealed class RaiseAndResumeHandler(
             new { directionId = direction.Id, budgetUsd = budget, spendUsd = direction.SpendUsd, raisedBy = user.Login },
             cancellationToken);
         await pipeline.OnBudgetRaisedAsync(run, project, direction, budget, cancellationToken);
+        audit.Record(AuditAction.Resume, user.Login, project);
         await db.SaveChangesAsync(cancellationToken);
         await events.PublishAsync(cancellationToken);
 

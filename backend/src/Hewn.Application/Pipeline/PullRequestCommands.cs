@@ -1,6 +1,7 @@
 using System.Text.Json;
 using FluentValidation;
 using Hewn.Application.Abstractions;
+using Hewn.Application.Audit;
 using Hewn.Application.Common;
 using Hewn.Domain;
 using MediatR;
@@ -74,7 +75,7 @@ public sealed class OpenPullRequestHandler(IAppDbContext db, LeaseService leases
     }
 }
 
-public sealed class MergePullRequestHandler(IAppDbContext db, LeaseService leases, IGitHubRepositories gitHub, TimeProvider clock)
+public sealed class MergePullRequestHandler(IAppDbContext db, LeaseService leases, IGitHubRepositories gitHub, AuditWriter audit, TimeProvider clock)
     : IRequestHandler<MergePullRequestCommand, string>
 {
     public async Task<string> Handle(MergePullRequestCommand command, CancellationToken cancellationToken)
@@ -104,6 +105,9 @@ public sealed class MergePullRequestHandler(IAppDbContext db, LeaseService lease
 
         // L2-025 AC1: the branch is deleted once merged.
         await gitHub.DeleteBranchAsync(project.RepositoryOwner!, project.RepositoryName!, pull.Head, cancellationToken);
+        // L2-044 AC1: Hewn merged for whoever submitted the direction; saved with the ledger entry, so a retry isn't recorded twice.
+        var submittedBy = await db.Directions.Where(d => d.Id == run.DirectionId).Select(d => d.SubmittedBy).SingleAsync(cancellationToken);
+        audit.RecordMerge(submittedBy, project, command.Number);
         await MutationLedger.RecordAsync(db, run, command.IdempotencyKey, "merge_pull_request", new { sha }, clock, cancellationToken);
         return sha;
     }

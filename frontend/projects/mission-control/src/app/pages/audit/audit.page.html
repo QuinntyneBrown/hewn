@@ -1,0 +1,166 @@
+@if (forbidden()) {
+  <div class="page-header">
+    <div class="truncate">
+      <h1>Audit</h1>
+      <p class="page-header__desc">Only Owners can read the audit log.</p>
+    </div>
+  </div>
+  <div class="pad">
+    <div class="empty">
+      <svg hw-icon name="lock"></svg>
+      <div>
+        <h2 class="empty__title">You don’t have access</h2>
+        <p class="empty__text">
+          The audit log records who did what and from where, so only Owners can read it. Ask an
+          Owner if you need an entry.
+        </p>
+      </div>
+      <a class="btn" routerLink="/dashboard">Back to dashboard</a>
+    </div>
+  </div>
+} @else {
+  <div class="page-header">
+    <div class="truncate">
+      <h1>Audit</h1>
+      <p class="page-header__desc">Who did what, when and from where. Entries can’t be edited.</p>
+    </div>
+    <div class="cluster">
+      <label class="inline-label"
+        ><span class="visually-hidden">Project</span
+        ><select class="select select--auto input--sm" (change)="filterBy('project', $event)">
+          <option value="" [selected]="!filters().project">All projects</option>
+          @for (p of projects(); track p.id) {
+            <option [value]="p.id" [selected]="filters().project === p.id">{{ p.name }}</option>
+          }
+        </select></label
+      ><label class="inline-label"
+        ><span class="visually-hidden">Action</span
+        ><select class="select select--auto input--sm" (change)="filterBy('action', $event)">
+          <option value="" [selected]="!filters().action">All actions</option>
+          @for (a of actions; track a.value) {
+            <option [value]="a.value" [selected]="filters().action === a.value">
+              {{ a.label }}
+            </option>
+          }
+        </select></label
+      >
+    </div>
+  </div>
+  <div class="pad" style="padding-bottom: var(--space-10)">
+    @if (failure(); as message) {
+      <div class="empty empty--error" role="alert">
+        <svg hw-icon name="warning"></svg>
+        <div>
+          <h2 class="empty__title">The audit log couldn’t load</h2>
+          <p class="empty__text">{{ message }}</p>
+        </div>
+        <div class="cluster">
+          <button class="btn" type="button" (click)="load()">
+            <svg hw-icon name="refresh"></svg>Try again
+          </button>
+        </div>
+      </div>
+    } @else if (entries() === null) {
+      <div aria-busy="true" aria-live="polite">
+        <p class="visually-hidden">Loading the audit log</p>
+        <div class="table-wrap">
+          <table class="table">
+            <caption class="visually-hidden">
+              Audit log
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">When</th>
+                <th scope="col">Who</th>
+                <th scope="col">Action</th>
+                <th scope="col" class="col-sm">Target</th>
+                <th scope="col" class="col-md num">IP</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (i of skeletonRows; track i) {
+                <tr aria-hidden="true">
+                  <td><span class="skeleton skeleton--line" aria-hidden="true"></span></td>
+                  <td><span class="skeleton skeleton--line" aria-hidden="true"></span></td>
+                  <td><span class="skeleton skeleton--line" aria-hidden="true"></span></td>
+                  <td class="col-sm">
+                    <span class="skeleton skeleton--line" aria-hidden="true"></span>
+                  </td>
+                  <td class="col-md">
+                    <span class="skeleton skeleton--line" aria-hidden="true"></span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    } @else if (rows().length === 0 && filtered()) {
+      <div class="empty empty--tight">
+        <svg hw-icon name="search"></svg>
+        <div>
+          <h2 class="empty__title">No entries match these filters</h2>
+          <p class="empty__text">{{ noResults() }}</p>
+        </div>
+        <a class="btn" routerLink="/audit">Clear filters</a>
+      </div>
+    } @else if (rows().length === 0) {
+      <div class="empty">
+        <svg hw-icon name="audit"></svg>
+        <div>
+          <h2 class="empty__title">No entries yet</h2>
+          <p class="empty__text">
+            Sign-ins, directions, pauses, cancels, stops, tokens and merges are recorded here as
+            they happen.
+          </p>
+        </div>
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table class="table">
+          <caption class="visually-hidden">
+            Audit log, newest first
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">When</th>
+              <th scope="col">Who</th>
+              <th scope="col">Action</th>
+              <th scope="col" class="col-sm">Target</th>
+              <th scope="col" class="col-md num">IP</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (e of rows(); track e.id) {
+              <tr>
+                <td class="mono text-muted tabular">{{ e.when }}</td>
+                <td>{{ e.actor }}</td>
+                <td>
+                  <span [class.text-warn]="e.warns">{{ e.label }}</span
+                  ><span class="text-caption sm-hide" style="display: block">{{
+                    e.shownTarget
+                  }}</span>
+                </td>
+                <td class="col-sm text-muted">{{ e.shownTarget }}</td>
+                <td class="col-md num mono text-subtle">{{ e.ip }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (next()) {
+        <div class="cluster mt-4">
+          <button
+            class="btn"
+            type="button"
+            [disabled]="loadingOlder()"
+            [attr.aria-busy]="loadingOlder() ? 'true' : null"
+            (click)="showOlder()"
+          >
+            Show older entries
+          </button>
+        </div>
+      }
+    }
+  </div>
+}

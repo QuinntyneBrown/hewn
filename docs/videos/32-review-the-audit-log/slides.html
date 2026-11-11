@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 32 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="32" data-video-title="Review the audit log" data-parts="Introduction|Goal|Finding it|Nothing edits it|How it works|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 32</div>
+  <h1>Review the audit log</h1>
+  <p class="lead">Who did what, when and from where. Entries can’t be edited.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video shows Hewn recording each action">
+  <figure><img src="screens/audit-owner.png" alt="Audit as an Owner sees it: entries newest first with when, who, action, target and IP"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="Every sign-in, direction submission, pause">
+  <ul class="bullets">
+    <li>Each audited action records who, what, when and from which IP (L2-044 AC1)</li>
+    <li>No API can edit an entry</li>
+    <li>Owners filter entries by project and action, newest first (AC2)</li>
+  </ul>
+</section>
+
+<section id="clip-audit" data-part="2" data-cue="Earlier, the Owner submitted two directions" data-clip="clips/audit.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Stop all, Start workers, then Audit and its filters</aside>
+</section>
+
+<section id="edits" data-part="3" data-cue="Every way an API might change an entry was tried">
+  <figure><img src="screens/edits-refused.png" alt="PUT, PATCH, DELETE and POST on /api/audit and /api/audit/1 each answered 404"></figure>
+</section>
+
+<section id="viewer" data-part="3" data-cue="A Viewer who opens Audit sees">
+  <figure><img src="screens/audit-viewer.png" alt="Audit as a Viewer sees it: You don't have access"></figure>
+  <aside class="clip-notes">GET /api/audit as a Viewer: 403</aside>
+</section>
+
+<section id="hook" data-part="4" data-cue="Each audited handler calls the audit writer before it saves.">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/PauseAndResume.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="7-8">if (run.Status is RunStatus.Queued or RunStatus.Halted)
+{
+    // No step is in progress (or all workers are stopped), so there is nothing to wait for.
+    await pipeline.OnPauseTakesEffectAsync(run, project, direction, cancellationToken);
+}
+
+audit.Record(AuditAction.Pause, user.Login, project);
+await db.SaveChangesAsync(cancellationToken);
+await events.PublishAsync(cancellationToken);
+return DirectionControl.Result(direction);</pre>
+</section>
+
+<section id="writer" data-part="4" data-cue="A merge is made by Hewn">
+  <div class="code-file">backend/src/Hewn.Application/Audit/AuditWriter.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="1-2">public void Record(AuditAction action, string actor, Project project) =&gt;
+    Add(action, actor, project.Id, project.Name, project.Name, origin.IpAddress);</pre>
+  <div class="code-file">backend/src/Hewn.Application/Audit/AuditWriter.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="2-3">/// &lt;summary&gt;Records a merge Hewn made for whoever submitted the direction: no IP address.&lt;/summary&gt;
+public void RecordMerge(string actor, Project project, int pullRequest) =&gt;
+    Add(AuditAction.Merge, actor, project.Id, project.Name, $"{project.Name} #{pullRequest}", null);</pre>
+</section>
+
+<section id="triggers" data-part="4" data-cue="Hewn's database is SQLite">
+  <div class="code-file">Migrations/20261110182203_RecordAuditEntries.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="2-3,5-6">migrationBuilder.Sql(
+    "CREATE TRIGGER audit_entries_no_update BEFORE UPDATE ON audit_entries " +
+    "BEGIN SELECT RAISE(ABORT, 'audit entries are append-only'); END;");
+migrationBuilder.Sql(
+    "CREATE TRIGGER audit_entries_no_delete BEFORE DELETE ON audit_entries " +
+    "BEGIN SELECT RAISE(ABORT, 'audit entries are append-only'); END;");</pre>
+  <aside class="clip-notes">ADR 0033: audit entries are append-only in the database</aside>
+</section>
+
+<section id="filtered" data-part="4" data-cue="The log is read newest first, a page at a time.">
+  <figure><img src="screens/audit-tidewater.png" alt="Audit filtered to Tidewater: its resume, pause and direction submitted"></figure>
+</section>
+
+<section id="sequence" data-part="4" data-cue="This sequence shows a pause being recorded">
+  <figure class="diagram"><img src="../../detailed-designs/governance/audit-log/diagrams/sequence-write-and-read.png" alt="A pause and its entry saved together; Audit reads them newest first; a Viewer sees the forbidden state"></figure>
+</section>
+
+<section id="test-api" data-part="5" data-cue="The backend tests go through the real API.">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Audit/AuditLogTests.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="4,7">var merges = Entries(await AuditAsync(owner, "?action=Merge"));
+
+var merge = Assert.Single(merges);
+Assert.Equal("quinntynebrown", merge.GetProperty("actor").GetString());
+Assert.Equal($"Ledgerline #{number}", Str(merge, "target"));
+Assert.Equal(projectId, merge.GetProperty("projectId").GetGuid());
+Assert.Null(Str(merge, "ipAddress"));</pre>
+  <div class="result red">✘ 6 failed: Expected: OK, Actual: NotFound</div>
+  <div class="result green">✔ backend 333</div>
+</section>
+
+<section id="test-e2e" data-part="5" data-cue="End to end, a behaviour test does the actions">
+  <div class="code-file">e2e/tests/behavior/review-the-audit-log.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1-2,6,10-11">await audit.projectFilter.selectOption({ label: tidewater });
+await expect(page).toHaveURL(new RegExp(`project=${tidewaterId}`));
+await expect(audit.rows).toHaveCount(2);
+expect((await audit.entries()).map((e) =&gt; e.action)).toEqual(['Cancel', 'Direction submitted']);
+
+await audit.actionFilter.selectOption({ label: 'Cancel' });
+await expect(audit.rows).toHaveCount(1);
+expect((await audit.entries())[0]).toMatchObject({ action: 'Cancel', target: tidewater });
+
+await audit.actionFilter.selectOption({ label: 'Stop all workers' });
+await expect(audit.emptyTitle).toHaveText('No entries match these filters');</pre>
+  <div class="result red">✘ Expected: "Audit" · Received: "Page not found"</div>
+  <div class="result green">✔ behaviour 2 · visual 4 · a11y 1</div>
+</section>
+
+<section id="screens" data-part="6" data-cue="The log reads the same in dark mode.">
+  <div class="cols">
+    <figure><img src="screens/audit-dark.png" alt="Audit in dark mode"></figure>
+    <figure class="phone"><img src="screens/audit-phone.png" alt="Audit on a phone: the target under the action"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="7" data-cue="Journey thirty two is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Each audited action records who, what, when, the target and the IP, in the same save</li>
+    <li>Owners find entries in Audit and filter by project and action</li>
+    <li>Nothing edits an entry: no endpoint, and the database refuses</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

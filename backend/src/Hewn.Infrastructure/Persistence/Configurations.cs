@@ -26,6 +26,23 @@ internal sealed class RevokedSessionConfiguration : IEntityTypeConfiguration<Rev
     }
 }
 
+internal sealed class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEntry>
+{
+    public void Configure(EntityTypeBuilder<AuditEntry> b)
+    {
+        b.ToTable("audit_entries");
+        b.HasKey(e => e.Id);
+        b.Property(e => e.Id).ValueGeneratedOnAdd();
+        b.Property(e => e.Actor).HasMaxLength(39);
+        b.Property(e => e.Action).HasConversion<string>().HasMaxLength(24);
+        b.Property(e => e.ProjectName).HasMaxLength(Project.MaxNameLength);
+        b.Property(e => e.Target).HasMaxLength(AuditEntry.MaxTargetLength);
+        b.Property(e => e.IpAddress).HasMaxLength(45);
+        b.HasIndex(e => new { e.ProjectId, e.Id });
+        b.HasIndex(e => new { e.Action, e.Id });
+    }
+}
+
 internal sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
 {
     public void Configure(EntityTypeBuilder<Project> b)

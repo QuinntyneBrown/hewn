@@ -13,32 +13,43 @@ title Class structure — Audit log
 
 enum AuditAction {
   SignIn
-  SubmitDirection
+  DirectionSubmitted
   Pause
   Resume
   Cancel
+  Merge
+  TokenCreated
+  TokenRevoked
   StopAll
   StartWorkers
-  CreateWorkerToken
-  RevokeWorkerToken
-  Merge
 }
 class AuditEntry {
   +long Id
   +DateTimeOffset At
   +string Actor
   +AuditAction Action
-  +ProjectId? ProjectId
-  +string Detail
-  +string? Ip
+  +Guid? ProjectId
+  +string? ProjectName
+  +string? Target
+  +string? IpAddress
+}
+interface IRequestOrigin {
+  +string? IpAddress
 }
 class AuditWriter {
-  +WriteAsync(a: AuditAction, actor: string, p: ProjectId?, detail: string): Task
+  +Record(action, actor, project): void
+  +Record(action, actor, target): void
+  +RecordMerge(actor, project, pullRequest): void
+}
+class GetAuditLogHandler {
+  +Handle(GetAuditLogQuery): Task<AuditLogDto>
 }
 class AuditController {
-  +Get(project: ProjectId?, action: AuditAction?, before: long?): Task<AuditEntry[]>
+  +List(project?, action?, before?, limit?): Task<AuditLogDto>
 }
 AuditEntry --> AuditAction
-AuditWriter ..> AuditEntry : inserts
-AuditController ..> AuditEntry : reads
+AuditWriter ..> AuditEntry : adds (caller saves)
+AuditWriter --> IRequestOrigin : IP
+AuditController ..> GetAuditLogHandler : sends
+GetAuditLogHandler ..> AuditEntry : reads
 @enduml
