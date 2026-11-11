@@ -1,3 +1,5 @@
+import { writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { LeasedRun } from '../api.ts';
 import { sleep } from '../sleep.ts';
 import type { RunContext, StageExecutor, StageStep } from './stage-executor.ts';
@@ -19,6 +21,11 @@ export interface ScriptedExecutorOptions {
   failReason?: string;
   /** Stage whose main step opens a pull request on hewn/scaffold first, so Cancel has one to label (L2-029 AC3). */
   pullRequestStage?: number;
+  /**
+   * Stage whose main step writes git and npm credentials into its workspace, as a build's tools might, so the run's
+   * end can be seen deleting them (L2-040 AC3; e2e, videos). The values are fake.
+   */
+  credentialsStage?: number;
 }
 
 /**
@@ -40,8 +47,17 @@ export class ScriptedStageExecutor implements StageExecutor {
       this.step(
         `Run ${run.stageName}`,
         this.failure(run),
-        context && (this.options.logLines || this.options.modelCalls || run.stage === this.options.pullRequestStage)
-          ? { context, label: run.stageName, pullRequest: run.stage === this.options.pullRequestStage }
+        context &&
+          (this.options.logLines ||
+            this.options.modelCalls ||
+            run.stage === this.options.pullRequestStage ||
+            run.stage === this.options.credentialsStage)
+          ? {
+              context,
+              label: run.stageName,
+              pullRequest: run.stage === this.options.pullRequestStage,
+              credentials: run.stage === this.options.credentialsStage,
+            }
           : undefined,
       ),
       this.step('Commit artifacts'),
@@ -62,13 +78,14 @@ export class ScriptedStageExecutor implements StageExecutor {
   private step(
     name: string,
     failure?: () => string | undefined,
-    work?: { context: RunContext; label: string; pullRequest: boolean },
+    work?: { context: RunContext; label: string; pullRequest: boolean; credentials: boolean },
   ): StageStep {
     return {
       name,
       execute: async (signal) => {
         if (work) {
           if (work.pullRequest) await this.openPullRequest(work.context);
+          if (work.credentials) await this.writeCredentials(work.context);
           const actions = this.actions(work.context, work.label);
           const gap = actions.length === 0 ? this.options.stepMs : this.options.stepMs / actions.length;
           if (actions.length === 0) await sleep(gap, signal);
@@ -85,6 +102,16 @@ export class ScriptedStageExecutor implements StageExecutor {
         if (message) throw new Error(message);
       },
     };
+  }
+
+  private async writeCredentials(context: RunContext): Promise<void> {
+    const token = 'ghs_' + 'ScriptedInstallationToken0123456789ab';
+    await writeFile(join(context.workspace, '.git-credentials'), `https://x-access-token:${token}@github.com\n`);
+    await writeFile(
+      join(context.workspace, '.npmrc'),
+      '//registry.npmjs.org/:_authToken=npm_ScriptedToken0123456789\n',
+    );
+    await context.log('info', `Wrote .git-credentials and .npmrc to ${context.workspace}`);
   }
 
   private async openPullRequest(context: RunContext): Promise<void> {

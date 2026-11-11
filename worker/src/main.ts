@@ -62,6 +62,7 @@ if (executorName !== 'scripted' && executorName !== 'stages') {
 
 const failStage = process.env.HEWN_SCRIPTED_FAIL_STAGE;
 const pullRequestStage = process.env.HEWN_SCRIPTED_PULL_REQUEST_STAGE;
+const credentialsStage = process.env.HEWN_SCRIPTED_CREDENTIALS_STAGE;
 const scripted = new ScriptedStageExecutor({
   stepMs: Number(process.env.HEWN_SCRIPTED_STEP_MS ?? 1000),
   logLines: Number(process.env.HEWN_SCRIPTED_LOG_LINES ?? 0),
@@ -72,6 +73,7 @@ const scripted = new ScriptedStageExecutor({
     process.env.HEWN_SCRIPTED_FAIL_TIMES === undefined ? undefined : Number(process.env.HEWN_SCRIPTED_FAIL_TIMES),
   failReason: process.env.HEWN_SCRIPTED_FAIL_REASON,
   pullRequestStage: pullRequestStage === undefined ? undefined : Number(pullRequestStage),
+  credentialsStage: credentialsStage === undefined ? undefined : Number(credentialsStage),
 });
 // Magic Patterns' MCP endpoint and credential; without them the design stages fail as not configured.
 const magicPatternsUrl = process.env.HEWN_MAGIC_PATTERNS_URL;

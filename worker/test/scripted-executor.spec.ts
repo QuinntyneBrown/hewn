@@ -2,6 +2,9 @@
 // Traces to: L2-004
 // Description: The scripted executor replays deterministic stages for tests and demos, failing only the stage it is told to
 
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ScriptedStageExecutor } from '../src/executors/scripted-executor.ts';
 import type { LeasedRun } from '../src/api.ts';
@@ -88,5 +91,25 @@ describe('ScriptedStageExecutor', () => {
       'Scaffold · line 1 of 1',
       'Idea · line 1 of 1',
     ]);
+  });
+
+  it('writes credentials into the configured stage’s workspace, as a build’s tools might, and logs only where', async () => {
+    const workspace = mkdtempSync(join(tmpdir(), 'hewn-scripted-'));
+    const lines: string[] = [];
+    const credentialsContext = {
+      workspace,
+      log: async (_level: string, text: string) => {
+        lines.push(text);
+      },
+    } as unknown as RunContext;
+    const executor = new ScriptedStageExecutor({ stepMs: 0, credentialsStage: 3 });
+
+    const [, main] = executor.plan({ ...run(3), stageName: 'Requirements' }, credentialsContext);
+    await main!.execute(new AbortController().signal);
+
+    expect(readFileSync(join(workspace, '.git-credentials'), 'utf8')).toMatch(/^https:\/\/x-access-token:ghs_/);
+    expect(existsSync(join(workspace, '.npmrc'))).toBe(true);
+    expect(lines).toEqual([`Wrote .git-credentials and .npmrc to ${workspace}`]);
+    rmSync(workspace, { recursive: true });
   });
 });
