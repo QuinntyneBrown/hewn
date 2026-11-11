@@ -16,7 +16,6 @@ import {
 } from '@hewn/api';
 import { IconComponent, StatusComponent, StatusIconComponent, StatusName } from '@hewn/components';
 import {
-  asyncScheduler,
   auditTime,
   catchError,
   combineLatest,
@@ -33,7 +32,6 @@ import {
   shareReplay,
   startWith,
   switchMap,
-  throttleTime,
   timer,
 } from 'rxjs';
 import { SessionStore } from '../../core/session-store';
@@ -47,6 +45,7 @@ import { ArtifactsComponent } from './artifacts.component';
 import { TraceabilityComponent } from './traceability.component';
 import { DecisionsComponent } from './decisions.component';
 import { LiveLogComponent } from './live-log.component';
+import { StatusAnnouncer } from '../../core/status-announcer';
 import { RaiseBudgetDialog, RaiseBudgetData } from './raise-budget.dialog';
 import { suggestedBudget } from './raise-budget';
 import { CancelDirectionData, CancelDirectionDialog } from './cancel-direction.dialog';
@@ -106,9 +105,6 @@ const DETAIL_EVENTS = new Set([
   'RunRetryScheduled',
   'StageBlocked',
 ]);
-
-/** Stage changes are announced at most once every 5 seconds per project (L2-047 AC3). */
-export const ANNOUNCE_EVERY_MS = 5000;
 
 /** A page of a log; the API returns at most this many lines a request. */
 const LOG_PAGE = 5000;
@@ -598,20 +594,20 @@ export class ProjectPage {
     initialValue: Date.now(),
   });
 
-  /** Stage changes for the polite live region, at most one announcement every 5 seconds (the latest wins). */
-  protected readonly announcement = toSignal(
-    this.events$.pipe(
-      filter((event) => event.type === 'StageChanged'),
-      throttleTime(ANNOUNCE_EVERY_MS, asyncScheduler, { leading: true, trailing: true }),
-      map(
-        (event) =>
-          `Stage ${event.payload['stage']}, ${event.payload['name']}, ${event.payload['status']}`,
-      ),
-    ),
-    { initialValue: '' },
-  );
-
   constructor() {
+    // L2-047 AC3: stage changes go to the shell's polite live region, which says at most one a project every 5 s.
+    const announcer = inject(StatusAnnouncer);
+    this.events$
+      .pipe(
+        filter((event) => event.type === 'StageChanged'),
+        takeUntilDestroyed(),
+      )
+      .subscribe((event) =>
+        announcer.announce(
+          event.projectId,
+          `Stage ${event.payload['stage']}, ${event.payload['name']}, ${event.payload['status']}`,
+        ),
+      );
     // L2-053 AC2: the 80% warning, pushed live. The meter keeps showing it after the toast leaves.
     const toasts = inject(Toasts);
     // L2-006 AC2: a stage blocked after its retries; the toast stays until dismissed and offers the way back.

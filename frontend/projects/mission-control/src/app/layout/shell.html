@@ -55,6 +55,10 @@
   </div>
 </div>
 <hw-toast-region />
+<!-- L2-047 AC3: stage changes, at most one a project every 5 seconds. -->
+<div class="visually-hidden" role="status" aria-live="polite" data-testid="status-announcer">
+  {{ announcer.message() }}
+</div>
 
 <!-- The sidebar's content: in the fixed sidebar from 992 px, and in the menu drawer below it (L2-046 AC1, AC3). -->
 <ng-template #sidebar let-inMenu>

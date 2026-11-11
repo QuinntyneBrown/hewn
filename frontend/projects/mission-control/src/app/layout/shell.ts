@@ -17,6 +17,7 @@ import { IconComponent, IconName } from '@hewn/components';
 import { SessionStore } from '../core/session-store';
 import { Toasts } from '../core/toasts';
 import { WorkersStore } from '../core/workers-store';
+import { StatusAnnouncer } from '../core/status-announcer';
 import { stoppedBanner } from '../pages/workers/workers-text';
 import { ConnectionBanner, connectionBanner, connectionState } from './connection-banner';
 import { filter } from 'rxjs';
@@ -52,6 +53,7 @@ export class ShellComponent {
   private readonly workersApi = inject(WORKERS_API);
   private readonly dialog = inject(Dialog);
   private readonly toasts = inject(Toasts);
+  protected readonly announcer = inject(StatusAnnouncer);
   private readonly menu = viewChild.required<TemplateRef<unknown>>('menu');
   private menuRef: DialogRef | null = null;
   protected readonly starting = signal(false);
