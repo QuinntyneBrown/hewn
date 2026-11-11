@@ -3,6 +3,7 @@ using Hewn.Api.Auth;
 using Hewn.Api.Designs;
 using Hewn.Api.Errors;
 using Hewn.Api.Health;
+using Hewn.Api.Logging;
 using Hewn.Api.MissionControl;
 using Hewn.Api.Hubs;
 using Hewn.Api.Pipeline;
@@ -11,6 +12,11 @@ using Hewn.Application.Abstractions;
 using Hewn.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Every log entry is one line of JSON on standard output, with its run's IDs and the trace ID (L2-049 AC1).
+builder.Logging.ClearProviders();
+builder.Services.AddSingleton(new LogSink(Console.Out));
+builder.Logging.Services.AddSingleton<ILoggerProvider, JsonLoggerProvider>();
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);

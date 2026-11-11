@@ -13,6 +13,7 @@ import { ScriptedStageExecutor } from './executors/scripted-executor.ts';
 import { StageRouter, type StageExecutor } from './executors/stage-executor.ts';
 import { HttpHewnApi } from './http-api.ts';
 import { McpMagicPatterns } from './magic-patterns/magic-patterns.ts';
+import { jsonLog } from './json-log.ts';
 import { WorkLoop } from './work-loop.ts';
 
 const VERSION = '0.1.0';
@@ -136,8 +137,8 @@ const isolation: IsolationSettings = {
 const stop = new AbortController();
 for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => stop.abort());
 
-const log = (message: string, fields?: Record<string, unknown>) =>
-  console.log(JSON.stringify({ at: new Date().toISOString(), message, ...fields }));
+// One line of JSON per entry, with the run's IDs while one runs, and credentials redacted (L2-049 AC1).
+const log = jsonLog();
 
 const loop = new WorkLoop({
   api: new HttpHewnApi(apiUrl, token),
