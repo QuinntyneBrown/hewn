@@ -44,6 +44,8 @@ export class SettingsPage {
     threshold: '3',
   });
 
+  /** False until the saved defaults answer (or fail), while the sections show as skeletons. */
+  protected readonly loaded = signal(false);
   protected readonly saving = signal(false);
   protected readonly problem = signal<FieldErrorsProblem | null>(null);
   protected readonly failure = signal<string | null>(null);
@@ -64,11 +66,14 @@ export class SettingsPage {
     this.api.getDirectionDefaults().subscribe({
       next: (defaults) => {
         if (!this.form.dirty) this.show(defaults);
+        this.loaded.set(true);
       },
-      error: () =>
+      error: () => {
         this.failure.set(
           'The saved defaults didn’t load. The value shown is the configured default.',
-        ),
+        );
+        this.loaded.set(true);
+      },
     });
   }
 

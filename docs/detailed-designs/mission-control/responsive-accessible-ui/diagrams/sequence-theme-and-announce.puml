@@ -18,7 +18,8 @@ skinparam sequenceMessageAlign left
 actor "Owner or Viewer" as user
 box "Frontend — Mission Control application" #E0F2FE
   participant "ThemeService" as theme
-  participant "LiveEventsService" as live
+  participant "Project page or Projects" as live
+  participant "AppShell" as shell
   participant "StatusAnnouncer" as ann
 end box
 box "Backend — Hewn API application" #D1FADF
@@ -29,7 +30,10 @@ user -> theme : Choose Dark in Settings
 theme -> theme : localStorage hewn.theme = dark; data-theme=dark
 user -> theme : Reload
 theme -> theme : Apply saved Dark (L2-048 AC2)
-hub -> live : StageStatusChanged x3 within 2 s (Ledgerline)
+hub -> live : StageChanged x3 within 2 s (Ledgerline)
 live -> ann : announce(Ledgerline, msg) each time
-ann -> ann : Emit first now; keep latest; emit again after 5 s (L2-047 AC3)
+ann -> shell : message = first change at once
+ann -> ann : Keep the latest; Tidewater's changes are not held back
+ann -> shell : message = latest change after 5 s (L2-047 AC3)
+shell -> user : Screen reader reads the polite region
 @enduml

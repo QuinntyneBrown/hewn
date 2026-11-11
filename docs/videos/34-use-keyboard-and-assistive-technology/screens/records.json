@@ -1,0 +1,119 @@
+{
+  "projectId": "8b0b4162-812e-46ae-b673-beef20ea5bdc",
+  "focusAfterEscape": "Cancel",
+  "axe": [
+    {
+      "what": "Projects",
+      "rules": 26,
+      "violations": 0,
+      "serious": 0
+    },
+    {
+      "what": "Project, cancelled",
+      "rules": 30,
+      "violations": 0,
+      "serious": 0
+    },
+    {
+      "what": "/projects loading",
+      "rules": 23,
+      "violations": 0,
+      "serious": 0
+    },
+    {
+      "what": "/projects failed",
+      "rules": 22,
+      "violations": 0,
+      "serious": 0
+    },
+    {
+      "what": "/projects/…/backlog loading",
+      "rules": 25,
+      "violations": 0,
+      "serious": 0
+    },
+    {
+      "what": "/projects/…/backlog failed",
+      "rules": 25,
+      "violations": 0,
+      "serious": 0
+    },
+    {
+      "what": "/audit loading",
+      "rules": 26,
+      "violations": 0,
+      "serious": 0
+    },
+    {
+      "what": "/audit failed",
+      "rules": 24,
+      "violations": 0,
+      "serious": 0
+    },
+    {
+      "what": "/settings loading",
+      "rules": 22,
+      "violations": 0,
+      "serious": 0
+    },
+    {
+      "what": "/settings failed",
+      "rules": 27,
+      "violations": 0,
+      "serious": 0
+    }
+  ],
+  "motion": {
+    "full": [
+      "div.cdk-overlay-backdrop.backdrop.cdk-overlay-backdrop-showing: opacity (400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "svg.icon.icon--spin: spin (2400 ms)",
+      "div.drawer: slide-in-start (240 ms)"
+    ],
+    "reduced": []
+  },
+  "announcedProject": "b624aec8-0438-4338-8927-092632a4d41a",
+  "said": [
+    {
+      "at": 1227,
+      "text": "Stage 0, Bootstrap, Running"
+    },
+    {
+      "at": 6224.700000047684,
+      "text": "Stage 1, Idea, Running"
+    },
+    {
+      "at": 11226.399999856949,
+      "text": "Stage 3, Design system, Running"
+    },
+    {
+      "at": 16228,
+      "text": "Stage 5, Requirements, Running"
+    },
+    {
+      "at": 21229.299999952316,
+      "text": "Stage 7, Detailed designs, Running"
+    }
+  ]
+}

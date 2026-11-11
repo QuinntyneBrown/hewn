@@ -14,6 +14,7 @@ import { PROJECT_EVENTS, PROJECTS_API, ProjectSummary } from '@hewn/api';
 import { IconComponent, StatusComponent } from '@hewn/components';
 import { map } from 'rxjs';
 import { ProjectsPrefetch } from '../../core/projects-prefetch';
+import { StatusAnnouncer } from '../../core/status-announcer';
 import { SessionStore } from '../../core/session-store';
 import { Toasts } from '../../core/toasts';
 import { DeleteProjectData, DeleteProjectDialog } from './delete-project.dialog';
@@ -25,6 +26,8 @@ import {
   lastActivityText,
   parseStatusFilter,
   STATUS_FILTERS,
+  stageAnnouncement,
+  stageChanged,
   upsertRow,
   withStatus,
 } from './projects-list';
@@ -77,12 +80,17 @@ export class ProjectsPage {
 
   constructor() {
     const tick = setInterval(() => this.now.set(new Date()), 1_000);
+    // L2-047 AC3: a row's stage changes are said in the shell's polite live region, one a project every 5 s.
+    const announcer = inject(StatusAnnouncer);
     const updates = this.live.followProjects().subscribe({
       next: (update) => {
         if (update.kind === 'resync') this.load();
         else if (update.kind === 'deleted') this.remove(update.projectId);
         else if (this.all()) {
           const row = update.row;
+          const before = this.all()?.find((p) => p.id === row.id);
+          if (before && stageChanged(before, row))
+            announcer.announce(row.id, stageAnnouncement(row));
           this.all.update((rows) => upsertRow(rows ?? [], row));
         }
       },

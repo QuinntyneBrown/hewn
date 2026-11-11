@@ -21,6 +21,16 @@ export function byActivity(rows: readonly ProjectSummary[]): ProjectSummary[] {
   );
 }
 
+/** A live row moved to another stage, or the project's status changed (L2-047 AC3). */
+export function stageChanged(before: ProjectSummary, after: ProjectSummary): boolean {
+  return before.stage.number !== after.stage.number || before.status !== after.status;
+}
+
+/** What the live region says for a row's stage change, e.g. "Kiln Booking, stage 2, Designs, Running". */
+export function stageAnnouncement(row: ProjectSummary): string {
+  return `${row.name}, stage ${row.stage.number}, ${row.stage.name}, ${row.status}`;
+}
+
 /** Applies a live row: replaces the project's row, or adds a project not seen yet (L2-002 AC4). */
 export function upsertRow(rows: readonly ProjectSummary[], row: ProjectSummary): ProjectSummary[] {
   return byActivity([...rows.filter((r) => r.id !== row.id), row]);

@@ -76,7 +76,7 @@ export class ProjectPage {
     this.featureCompleteCallout = page.locator('.callout', { hasText: 'Feature direction complete' });
     this.queuedCallout = page.locator('.callout', { hasText: /direction(s)? queued/ });
     this.directionMeta = page.locator('.phead__meta > span').first();
-    this.announcer = page.locator('[data-testid="pipeline-announcer"]');
+    this.announcer = page.locator('[data-testid="status-announcer"]');
     this.dialogs = page.locator('[role="dialog"], [role="alertdialog"]');
     this.detail = page.locator('section[aria-label^="Stage "][aria-label$=" detail"]');
     this.detailTitle = this.detail.locator('.stage-title h2');

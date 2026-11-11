@@ -1,0 +1,223 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:06.14
+This is journey thirty four of Hewn, the software factory: use keyboard and
+
+00:00:06.14 --> 00:00:07.44
+assistive technology.
+
+00:00:07.44 --> 00:00:11.46
+Someone who works with a keyboard alone, or with a screen reader,
+
+00:00:11.46 --> 00:00:15.11
+has to be able to do everything an Owner does with a mouse.
+
+00:00:15.11 --> 00:00:20.06
+This video shows a direction submitted and cancelled without touching the mouse,
+
+00:00:20.06 --> 00:00:23.16
+what the screen reader hears when a stage changes,
+
+00:00:23.16 --> 00:00:25.69
+and the tests that hold every page to it.
+
+00:00:26.84 --> 00:00:28.90
+The requirement has four parts.
+
+00:00:28.90 --> 00:00:34.28
+Every page, in every state, passes axe core with no serious or critical problems.
+
+00:00:34.28 --> 00:00:37.80
+Everything can be reached and used from the keyboard,
+
+00:00:37.80 --> 00:00:40.72
+with a visible focus indicator and no traps.
+
+00:00:40.72 --> 00:00:44.50
+Stage changes are announced through a polite live region,
+
+00:00:44.50 --> 00:00:47.76
+at most once every five seconds for each project.
+
+00:00:47.76 --> 00:00:51.67
+And when the user prefers reduced motion, nothing animates.
+
+00:00:52.82 --> 00:00:55.73
+Here is the whole journey on the keyboard.
+
+00:00:55.73 --> 00:01:00.24
+The Owner tabs to New direction in the sidebar and presses Enter.
+
+00:01:00.24 --> 00:01:03.15
+They tab into Name and type it, then Idea,
+
+00:01:03.15 --> 00:01:06.20
+then tab to Start direction and press Enter.
+
+00:01:06.20 --> 00:01:08.76
+Every stop shows the blue focus ring.
+
+00:01:09.11 --> 00:01:13.70
+On the project page, they tab to the Idea stage and press Enter,
+
+00:01:13.70 --> 00:01:17.57
+then move along the detail's tabs with the arrow keys.
+
+00:01:17.57 --> 00:01:20.08
+They tab to Cancel and press Enter.
+
+00:01:20.08 --> 00:01:21.73
+The dialog takes focus.
+
+00:01:21.73 --> 00:01:25.17
+Escape closes it, and focus goes back to Cancel.
+
+00:01:25.17 --> 00:01:30.19
+Enter opens it again, Tab reaches Cancel direction, and Enter cancels.
+
+00:01:31.34 --> 00:01:35.20
+When a stage changes, the shell's live region says so, politely,
+
+00:01:35.20 --> 00:01:38.93
+so it waits for the screen reader to finish what it's reading.
+
+00:01:38.93 --> 00:01:42.73
+On the project page it says the stage, its name and its status.
+
+00:01:42.73 --> 00:01:45.51
+On Projects it starts with the project's name.
+
+00:01:45.51 --> 00:01:49.06
+A project gets at most one announcement every five seconds,
+
+00:01:49.06 --> 00:01:53.29
+and when several changes arrive in that time, only the latest is said.
+
+00:01:53.29 --> 00:01:58.35
+The clip shows each announcement on screen as the live region gives it to the screen
+
+00:01:58.35 --> 00:01:58.77
+reader.
+
+00:01:59.92 --> 00:02:05.58
+Axe core runs on every page in every state the app has: loaded, loading, failed,
+
+00:02:05.58 --> 00:02:09.82
+empty, for an Owner and a Viewer, and with its dialogs open.
+
+00:02:09.82 --> 00:02:15.76
+The new sweep holds each page on its loading request, then fails it, and scans both.
+
+00:02:15.76 --> 00:02:20.79
+Across those scans there are no violations at all, not even minor ones.
+
+00:02:21.94 --> 00:02:27.44
+With reduced motion on, the spinners stand still, the dialog appears without fading,
+
+00:02:27.44 --> 00:02:29.47
+and the drawer is simply there.
+
+00:02:29.47 --> 00:02:34.91
+The motion tokens drop to zero, and a test checks that nothing on the page runs for
+
+00:02:34.91 --> 00:02:36.61
+longer than a millisecond.
+
+00:02:37.76 --> 00:02:41.91
+The project page used to keep its own live region, and Projects,
+
+00:02:41.91 --> 00:02:44.70
+which also changes rows live, said nothing.
+
+00:02:44.70 --> 00:02:49.89
+Now one service, the status announcer, sits behind a single region in the shell.
+
+00:02:49.89 --> 00:02:52.61
+A project's first change goes out at once.
+
+00:02:52.61 --> 00:02:57.28
+Later changes wait for that project's five seconds, and the latest wins.
+
+00:02:57.28 --> 00:03:02.28
+Each project has its own clock, so one busy project never holds back another.
+
+00:03:02.63 --> 00:03:05.65
+The project page feeds it each stage change.
+
+00:03:05.65 --> 00:03:09.43
+Projects feeds it when a row's stage or status changes.
+
+00:03:09.78 --> 00:03:13.51
+The class diagram shows the shell rendering the message,
+
+00:03:13.51 --> 00:03:16.04
+with both pages feeding the announcer.
+
+00:03:16.04 --> 00:03:21.51
+The sequence shows three quick changes for one project becoming two announcements,
+
+00:03:21.51 --> 00:03:22.77
+five seconds apart.
+
+00:03:23.92 --> 00:03:28.13
+The announcer's unit tests use a fake clock: first change at once,
+
+00:03:28.13 --> 00:03:31.37
+the next held for five seconds, the latest winning,
+
+00:03:31.37 --> 00:03:33.54
+and each project on its own clock.
+
+00:03:33.54 --> 00:03:36.72
+They failed first, because there was no announcer.
+
+00:03:37.07 --> 00:03:42.39
+The pipeline test runs two projects with workers and records the live region on
+
+00:03:42.39 --> 00:03:42.99
+Projects.
+
+00:03:42.99 --> 00:03:47.10
+Before the change it failed, because the region didn't exist.
+
+00:03:47.10 --> 00:03:51.47
+Now each project's announcements are at least five seconds apart.
+
+00:03:51.82 --> 00:03:56.92
+The keyboard sweep tabs through thirteen pages, about three hundred stops,
+
+00:03:56.92 --> 00:04:01.81
+checking every stop for the focus ring and that focus comes back round.
+
+00:04:01.81 --> 00:04:05.46
+With the focus styles removed, it reports every stop.
+
+00:04:05.46 --> 00:04:06.56
+With them, none.
+
+00:04:06.91 --> 00:04:11.96
+The loading and failure scans found one gap: Settings had no loading state.
+
+00:04:11.96 --> 00:04:16.93
+It showed the configured defaults, editable, until the saved ones arrived.
+
+00:04:16.93 --> 00:04:21.91
+Now it shows the skeletons from its mock, and a visual test compares them.
+
+00:04:23.06 --> 00:04:25.23
+Journey thirty four is complete.
+
+00:04:25.23 --> 00:04:30.71
+Every page works from the keyboard, with a focus ring at every stop and no traps.
+
+00:04:30.71 --> 00:04:34.17
+Stage changes are announced from one polite region,
+
+00:04:34.17 --> 00:04:39.45
+once every five seconds for each project, on the project page and on Projects.
+
+00:04:39.45 --> 00:04:44.32
+Axe core finds nothing in any state, and reduced motion means no motion.
+
+00:04:44.32 --> 00:04:46.42
+Next comes journey thirty five.

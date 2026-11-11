@@ -88,9 +88,12 @@ test.describe('Use Mission Control on mobile', () => {
       await nav.visit('/workers');
       await expect(nav.sidebar).toBeVisible();
       await expect(nav.menuButton).toBeHidden();
-      await page.mouse.wheel(0, 2000);
+      // To the very end, however long the page: a sticky sidebar slips only when the page scrolls past its shell.
+      // Rounding a fractional page height up to whole pixels can leave it under a pixel short, which isn't seen.
+      await page.mouse.wheel(0, 100_000);
       const box = (await nav.sidebar.boundingBox())!;
-      expect(box.y, `the sidebar stays at the top at ${width} px`).toBe(0);
+      expect(box.y, `the sidebar stays at the top at ${width} px`).toBeGreaterThan(-1);
+      expect(box.y).toBeLessThanOrEqual(0);
     }
   });
 

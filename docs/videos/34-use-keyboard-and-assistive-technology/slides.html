@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 34 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="34" data-video-title="Use keyboard and assistive technology" data-parts="Introduction|Goal|By keyboard|Screen reader|Axe|Reduced motion|How it works|Tests|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 34</div>
+  <h1>Use keyboard and assistive technology</h1>
+  <p class="lead">Every page by keyboard, stage changes read aloud, and no motion when it isn't wanted.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video shows a direction submitted and cancelled">
+  <div class="cols">
+    <figure><img src="screens/focus-field.png" alt="New direction with the Name field focused: a blue ring around it"></figure>
+    <figure class="phone"><img src="screens/focus-phone-dark.png" alt="The menu drawer on a phone in dark mode with Audit focused"></figure>
+  </div>
+</section>
+
+<section id="goal" data-part="1" data-cue="The requirement has four parts.">
+  <ul class="bullets">
+    <li>Axe core finds no serious or critical problem on any page, in any state (L2-047 AC1)</li>
+    <li>Everything works from the keyboard, with a visible focus indicator and no traps (AC2)</li>
+    <li>Stage changes are announced politely, at most once every 5 s per project; reduced motion means none (AC3, AC4)</li>
+  </ul>
+</section>
+
+<section id="clip-keyboard" data-part="2" data-cue="Here is the whole journey on the keyboard." data-clip="clips/keyboard.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Tab, type and Enter only: New direction, a stage, its tabs, Cancel, Escape, Cancel direction</aside>
+</section>
+
+<section id="clip-announce" data-part="3" data-cue="When a stage changes, the shell's live region says so" data-clip="clips/announce.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">The caption mirrors the polite live region a screen reader reads; it is not a VoiceOver recording</aside>
+</section>
+
+<section id="axe" data-part="4" data-cue="Axe core runs on every page in every state">
+  <div class="code-file">screens/records.json · axe-core, WCAG 2.2 A and AA</div>
+  <pre class="code tight" data-lang="out">Projects                       26 rules passed   0 violations
+Project, cancelled             30 rules passed   0 violations
+/projects loading              23 rules passed   0 violations
+/projects failed               22 rules passed   0 violations
+/projects/…/backlog loading    25 rules passed   0 violations
+/projects/…/backlog failed     25 rules passed   0 violations
+/audit loading                 26 rules passed   0 violations
+/audit failed                  24 rules passed   0 violations
+/settings loading              22 rules passed   0 violations
+/settings failed               27 rules passed   0 violations</pre>
+  <div class="result green">✔ a11y suite: 77 passed, every violation counted, not only serious and critical</div>
+</section>
+
+<section id="motion" data-part="5" data-cue="With reduced motion on, the spinners stand still">
+  <div class="cols">
+    <figure class="phone"><img src="screens/drawer-motion.png" alt="60 ms after Open menu without the preference: the drawer still fading in"></figure>
+    <figure class="phone"><img src="screens/drawer-reduced.png" alt="60 ms after Open menu with reduced motion: the drawer fully there"></figure>
+  </div>
+</section>
+
+<section id="announcer" data-part="6" data-cue="The project page used to keep its own live region">
+  <div class="code-file">frontend/projects/mission-control/src/app/core/status-announcer.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1-5,8,13-14">if (!slot || now - slot.at &gt;= ANNOUNCE_EVERY_MS) {
+  if (slot?.timer) clearTimeout(slot.timer);
+  this.slots.set(projectId, { at: now, pending: null, timer: null });
+  this.text.set(message);
+  return;
+}
+slot.pending = message;
+slot.timer ??= setTimeout(
+  () =&gt; {
+    slot.timer = null;
+    if (slot.pending === null) return;
+    slot.at = Date.now();
+    this.text.set(slot.pending);
+    slot.pending = null;
+  },
+  slot.at + ANNOUNCE_EVERY_MS - now,</pre>
+</section>
+
+<section id="feeds" data-part="6" data-cue="The project page feeds it each stage change.">
+  <div class="code-file">frontend/projects/mission-control/src/app/layout/shell.html</div>
+  <pre class="code tight" data-lang="html" data-mark="1">&lt;div class="visually-hidden" role="status" aria-live="polite" data-testid="status-announcer"&gt;
+  {{ announcer.message() }}
+&lt;/div&gt;</pre>
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/projects/projects.page.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2-3">const before = this.all()?.find((p) =&gt; p.id === row.id);
+if (before &amp;&amp; stageChanged(before, row))
+  announcer.announce(row.id, stageAnnouncement(row));
+this.all.update((rows) =&gt; upsertRow(rows ?? [], row));</pre>
+</section>
+
+<section id="classes" data-part="6" data-cue="The class diagram shows the shell rendering the message">
+  <figure class="diagram"><img src="../../detailed-designs/mission-control/responsive-accessible-ui/diagrams/class-structure.png" alt="Class structure: AppShell renders StatusAnnouncer's message; ProjectPage and ProjectsPage feed it"></figure>
+</section>
+
+<section id="sequence" data-part="6" data-cue="The sequence shows three quick changes">
+  <figure class="diagram"><img src="../../detailed-designs/mission-control/responsive-accessible-ui/diagrams/sequence-theme-and-announce.png" alt="Sequence: three quick stage changes become two announcements five seconds apart"></figure>
+</section>
+
+<section id="unit" data-part="7" data-cue="The announcer's unit tests use a fake clock">
+  <div class="code-file">frontend/projects/mission-control/src/app/core/status-announcer.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="5-7,11">const announcer = new StatusAnnouncer();
+announcer.announce('a', 'Stage 1, Idea, Running');
+vi.advanceTimersByTime(1_000);
+announcer.announce('a', 'Stage 1, Idea, Complete');
+announcer.announce('a', 'Stage 2, Designs, Running');
+expect(announcer.message()).toBe('Stage 1, Idea, Running');
+
+vi.advanceTimersByTime(ANNOUNCE_EVERY_MS - 1_001);
+expect(announcer.message()).toBe('Stage 1, Idea, Running');
+vi.advanceTimersByTime(1);
+expect(announcer.message()).toBe('Stage 2, Designs, Running');</pre>
+  <div class="result red">✘ Could not resolve "./status-announcer"</div>
+  <div class="result green">✔ 4 passed · mission-control 164 passed</div>
+</section>
+
+<section id="pipeline" data-part="7" data-cue="The pipeline test runs two projects with workers">
+  <div class="code-file">e2e/tests/pipeline/announce-stage-changes.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="4">for (const name of names) {
+  const said = await of(name);
+  for (let i = 1; i &lt; said.length; i++) {
+    expect(said[i]!.at - said[i - 1]!.at, `${name}'s announcements are 5 s apart`).toBeGreaterThanOrEqual(4_900);
+  }
+  expect(said.at(-1)!.text).toMatch(new RegExp(`^${name}, stage \\d+, [A-Za-z ]+, [A-Za-z]+$`));
+}</pre>
+  <div class="result red">✘ locator.evaluate: waiting for locator('[data-testid="status-announcer"]')</div>
+  <div class="result green">✔ 1 passed · monitor-a-direction's announcement test still passes</div>
+</section>
+
+<section id="sweep" data-part="7" data-cue="The keyboard sweep tabs through thirteen pages">
+  <div class="code-file">e2e/pages/keyboard.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="5-8">async walk(limit = 5000): Promise&lt;TabWalk&gt; {
+  await this.page.evaluate(() =&gt; (document.activeElement as HTMLElement | null)?.blur());
+  const stops: TabStop[] = [];
+  for (let i = 0; i &lt; limit; i++) {
+    await this.page.keyboard.press('Tab');
+    const stop = await this.page.evaluate(describeFocus, true);
+    if (stop.seen === 'start') return { stops, wrapped: true };
+    if (stop.seen === 'again') return { stops, wrapped: false };
+    stops.push({ name: stop.name, ring: stop.ring, visible: stop.visible });
+  }
+  return { stops, wrapped: false };
+}</pre>
+  <div class="result red">✘ focus styles removed: 1915 problems in 1917 stops</div>
+  <div class="result green">✔ Keyboard sweep: 13 pages, 306 stops, 0 problems</div>
+</section>
+
+<section id="settings" data-part="7" data-cue="The loading and failure scans found one gap">
+  <div class="cols cols--wide">
+    <figure><img src="screens/settings-loading.png" alt="Settings while the saved defaults load: section skeletons"></figure>
+    <div>
+      <div class="result red">✘ /settings shows that it is loading</div>
+      <div class="result green">✔ loading and failing: 3 passed</div>
+      <div class="result green">✔ visual: matches settings/loading.html</div>
+    </div>
+  </div>
+</section>
+
+<section id="recap" data-part="8" data-cue="Journey thirty four is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Every page works from the keyboard, with a focus ring at every stop and no traps</li>
+    <li>Stage changes come from one polite region, once every 5 s for each project</li>
+    <li>Axe finds nothing in any state; reduced motion means no motion</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

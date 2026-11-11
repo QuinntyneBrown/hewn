@@ -8,6 +8,8 @@ import {
   countByStatus,
   lastActivityText,
   parseStatusFilter,
+  stageAnnouncement,
+  stageChanged,
   upsertRow,
   withStatus,
 } from './projects-list';
@@ -150,5 +152,26 @@ describe('lastActivityText (L2-002 AC1)', () => {
   it('gives the date after a week, as the archived mock does', () => {
     expect(lastActivityText(ago(6 * 86_400_000), now)).toBe('6 days ago');
     expect(lastActivityText('2026-10-12T09:00:00Z', now)).toBe('12 Oct');
+  });
+});
+
+describe('stage announcements (L2-047 AC3)', () => {
+  const at = (status: ProjectSummary['status'], number: number, name: string): ProjectSummary => ({
+    ...row('Kiln Booking', status, 'x'),
+    stage: { number, name },
+  });
+
+  it('counts a new stage or a new status as a change, and nothing else', () => {
+    expect(stageChanged(at('Running', 1, 'Idea'), at('Running', 2, 'Designs'))).toBe(true);
+    expect(stageChanged(at('Running', 1, 'Idea'), at('Paused', 1, 'Idea'))).toBe(true);
+    expect(
+      stageChanged(at('Running', 1, 'Idea'), { ...at('Running', 1, 'Idea'), percentComplete: 20 }),
+    ).toBe(false);
+  });
+
+  it('names the project, the stage and the status', () => {
+    expect(stageAnnouncement(at('Running', 2, 'Designs'))).toBe(
+      'Kiln Booking, stage 2, Designs, Running',
+    );
   });
 });

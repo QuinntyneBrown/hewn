@@ -20,10 +20,10 @@ The slice is a set of shared Angular building blocks plus the tests that hold ev
 
 - **`AppShell`** — layout component. The sidebar's content is one template, shown in the fixed sidebar from 992 px. Below 992 px the top bar shows Open menu, the wordmark and the connection dot, and Open menu shows the same template in a menu drawer, a CDK Dialog labelled "Menu". Focus starts on Close menu, stays in the drawer, and returns to Open menu. The drawer closes on Escape, on Close menu, on a tap beside it, on navigating, and when the window widens to 992 px.
 - **Layout bands** — CSS media queries in the design system on the token breakpoints (36, 48, 62 and 75 rem) set the columns, the pipeline (a list, then a stepper, then a column beside the detail) and control sizes. The shell's one `matchMedia('(min-width: 62rem)')` closes the drawer; nothing else needs to know the band.
-- **`StatusAnnouncer`** — single polite live region. It queues stage status messages per project and emits at most one per project every 5 seconds.
+- **`StatusAnnouncer`** — root service behind the shell's one polite live region (`role="status"`). A project's first stage change is said at once; changes within its next 5 seconds wait, and only the latest is said when the time is up. Each project is throttled on its own. The project page feeds it each `StageChanged` event ("Stage 2, Designs, Running"), and Projects feeds it when a live row's stage or status changes ("Kiln Booking, stage 2, Designs, Running").
 - **`ThemeService`** — reads `localStorage['hewn.theme']` (`light`, `dark` or `system`), applies `data-theme` on `<html>`, and follows `prefers-color-scheme` when the value is `system` or absent.
 - **`Design tokens`** — `tokens.css` with light and dark values; motion tokens resolve to `0ms` under `prefers-reduced-motion: reduce`.
-- **`AccessibilitySuite`** — Playwright e2e suite that visits every route in every mocked state and runs axe-core, and a keyboard walk that tabs through each page and checks for focus visibility and traps.
+- **`AccessibilitySuite`** — Playwright e2e tests that run axe-core on every route in every state the app has (each page's own spec, plus every page while loading and when its data fails), a keyboard walk that tabs through each page checking for a visible focus indicator at every stop and for traps, keyboard-only journeys, and a reduced-motion check that nothing runs longer than 1 ms (the CDK keeps a 1 ms backdrop fade under reduced motion so its `transitionend` fires).
 - **`PerformanceBudget`** — Angular build budget of 500 KB gzipped initial JavaScript with every route lazy-loaded, a Lighthouse mobile run on Projects in CI (LCP 2.5 s or less), a read-API load test at 50 projects and 20 workers (p95 300 ms or less), and an event load test at 200 events per second (p95 1 s or less).
 
 ## Requirements
@@ -82,3 +82,25 @@ The theme follows the OS until chosen, then persists (L2-048 AC1, AC2). Status c
   wider than the viewport in 91 page and width pairs. What was missing below 992 px was any way to navigate.
 - **The drawer's container is the drawer.** The app's CDK dialog container usually covers the viewport; the menu's is
   sized to the drawer (`drawer-pane`), so a tap beside the drawer reaches the backdrop and closes it.
+
+## Decisions made while building keyboard and assistive technology support (journey 34)
+
+- **One announcer, throttled per project.** The project page had its own live region, throttled as a whole, and
+  Projects, which also changes rows live, announced nothing. The shell now renders the one region and
+  `StatusAnnouncer` throttles each project separately. The region holds one message at a time (the latest), so two
+  projects changing in the same instant can replace each other before a screen reader reaches the first; each
+  project's next change is said within 5 seconds, so nothing stays unsaid for long.
+- **Focus indicators are checked after they ease in.** Fields draw their focus ring as an inset shadow that
+  transitions in; the keyboard walk reads each stop's style once its transitions finish, and counts an outline or the
+  `--color-focus-ring` shadow as the indicator.
+- **A trap is a loop that never comes back.** The walk marks each element it lands on. Landing on the first stop
+  again, or on the page itself, means focus came round; landing on another stop already seen is a trap. Modal dialogs
+  and the drawer hold focus on purpose and are left with Escape, which their own tests check.
+- **The sweep reads the mock's projects.** Projects in the shared e2e database grows to hundreds of rows, each a few
+  more stops that add time but no coverage, so the keyboard sweep serves the Projects mock's seven projects.
+- **Settings has a loading state.** It showed the configured defaults, editable, until the saved ones arrived; it now
+  shows the section skeletons of `pages/settings/loading.html`.
+- **What was already there.** Every page's focus indicator, the keyboard paths through New direction and Cancel, the
+  reduced-motion tokens and the axe-clean states were in place; the new tests hold them.
+- **Not built here.** The Dashboard mocks and the sidebar's Dashboard link have no page yet (`/dashboard` shows Page
+  not found), and the `server-error` mock has no page: each page shows its own failure state, which the suite scans.

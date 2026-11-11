@@ -1,4 +1,9 @@
 <a class="skip-link" href="#main">Skip to content</a>
+<!-- L2-047 AC3: stage changes, at most one a project every 5 seconds. First in the shell: placed last, the hidden
+     region sat a pixel below the page and gave it a pixel more to scroll, and the sticky sidebar slipped. -->
+<div class="visually-hidden" role="status" aria-live="polite" data-testid="status-announcer">
+  {{ announcer.message() }}
+</div>
 <div class="shell">
   <aside class="shell__sidebar" aria-label="Sidebar">
     <ng-container *ngTemplateOutlet="sidebar; context: { $implicit: false }" />

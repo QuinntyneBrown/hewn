@@ -12,11 +12,12 @@ skinparam class {
 title Class structure — Responsive, accessible and themed UI
 
 class StatusAnnouncer <<Angular>> {
-  +intervalMs = 5000
+  +message: Signal<string>
   +announce(p: ProjectId, msg: string): void
-  -lastAt: Map<ProjectId, number>
-  -pending: Map<ProjectId, string>
+  -slots: Map<ProjectId, {at, pending, timer}>
 }
+class ProjectPage <<Angular>>
+class ProjectsPage <<Angular>>
 enum ThemeChoice {
   light
   dark
@@ -39,4 +40,7 @@ class "Menu drawer" as MenuDrawer <<CDK Dialog>> {
 ThemeService --> ThemeChoice
 AppShell *-- MenuDrawer : below 992 px
 AppShell ..> ThemeService
+AppShell ..> StatusAnnouncer : renders message\nin role=status, polite
+ProjectPage ..> StatusAnnouncer : StageChanged
+ProjectsPage ..> StatusAnnouncer : row stage or status changed
 @enduml

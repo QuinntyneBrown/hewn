@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Use keyboard and assistive technology (journey 34, L2-047): stage changes are announced from the shell's one polite
+  live region, at most once every 5 seconds per project, on the project page and now on Projects too. Settings shows
+  section skeletons while the saved defaults load. Acceptance tests run axe-core on every page while loading and when
+  its data fails, tab through every page checking the focus indicator at each stop and for traps, complete sign-in
+  and a direction's submission and cancellation by keyboard alone, and check that nothing animates under reduced
+  motion.
 - Use Mission Control on mobile (journey 33, L2-046): below 992 px the top bar's Open menu shows the sidebar as a
   menu drawer that keeps focus, and closes on Escape, a tap beside it, navigating or widening the window. Below
   992 px every button, field and tab is a 44 px touch target; from 992 px controls stay 32 and 40 px (ADR 0034).
