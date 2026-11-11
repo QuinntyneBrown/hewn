@@ -34,7 +34,7 @@ By the end, the viewer can:
 | What happens to changes within 5 seconds? | They wait; only the latest is said when the project's 5 seconds are up. Other projects aren't held back. |
 | What counts as a focus indicator? | An outline, or the `--color-focus-ring` inset shadow fields use, read once its transition finishes. |
 | What is a keyboard trap to the sweep? | Tab landing on a stop it has seen before, other than the first. |
-| What does reduced motion change? | The motion tokens drop to zero; no animation or transition runs longer than 0.01 ms. |
+| What does reduced motion change? | The motion tokens drop to 0.01 ms; nothing runs longer than 1 ms (the CDK backdrop keeps a 1 ms fade). |
 
 ## Code / assets on screen
 

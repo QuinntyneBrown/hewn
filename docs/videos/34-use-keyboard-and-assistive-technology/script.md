@@ -22,7 +22,7 @@ Axe core runs on every page in every state the app has: loaded, loading, failed,
 
 ## Reduced motion
 
-With reduced motion on, the spinners stand still, the dialog appears without fading, and the drawer is simply there. The motion tokens drop to zero, and a test checks that nothing on the page runs for longer than a hundredth of a millisecond.
+With reduced motion on, the spinners stand still, the dialog appears without fading, and the drawer is simply there. The motion tokens drop to zero, and a test checks that nothing on the page runs for longer than a millisecond.
 
 ## How it works
 

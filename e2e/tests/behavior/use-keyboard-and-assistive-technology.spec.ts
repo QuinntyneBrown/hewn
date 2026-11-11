@@ -136,8 +136,9 @@ test.describe('Use keyboard and assistive technology', () => {
     await signIn(page, 'quinntynebrown');
     const id = await aProject(page, newDirection, project);
     const moving: string[] = [];
+    // Up to 1 ms is not motion: the CDK keeps a 1 ms backdrop fade under reduced motion so its transitionend fires.
     const look = async (what: string) => {
-      for (const m of await motion.longerThan(0.01)) moving.push(`${what}: ${m}`);
+      for (const m of await motion.longerThan(1)) moving.push(`${what}: ${m}`);
     };
 
     for (const reduced of [false, true]) {
