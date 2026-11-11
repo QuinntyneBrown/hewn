@@ -23,6 +23,11 @@ export class Navigation {
     this.drawerNav = this.drawer.getByRole('navigation', { name: 'Primary, menu' });
   }
 
+  /** A link in the fixed sidebar: New direction, or one in its primary navigation. */
+  sidebarLink(name: string): Locator {
+    return this.sidebar.getByRole('link', { name, exact: true });
+  }
+
   /** A link in the drawer's primary navigation. */
   drawerLink(name: string): Locator {
     return this.drawerNav.getByRole('link', { name });
