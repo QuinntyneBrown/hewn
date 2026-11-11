@@ -44,6 +44,9 @@ export interface WorkerOptions {
 /** Stops the workers: SIGTERM lets them finish cleanly; SIGKILL is a crash, with no goodbye to the API. */
 export type StopWorkers = (signal?: 'SIGTERM' | 'SIGKILL') => Promise<void>;
 
+/** How long a stopped worker may take to exit before it is killed. */
+const stopGraceMs = 15_000;
+
 export function startWorkers(count: number, stepMs: number, options: WorkerOptions = {}): StopWorkers {
   const src = join(import.meta.dirname, '..', '..', 'worker', 'src');
   const output = process.env['HEWN_E2E_WORKER_LOGS'] ? 'inherit' : 'ignore';
@@ -95,7 +98,16 @@ export function startWorkers(count: number, stepMs: number, options: WorkerOptio
         (worker) =>
           new Promise<void>((resolve) => {
             if (worker.exitCode !== null || worker.signalCode !== null) return resolve();
-            worker.once('exit', () => resolve());
+            // A worker mid-call to a server that is going away can outlive SIGTERM; leftovers would take the next
+            // spec's work, so after a grace period it is killed outright.
+            const kill = setTimeout(() => {
+              console.log(`Process ${worker.pid} ignored ${signal} for ${stopGraceMs} ms; killing it`);
+              worker.kill('SIGKILL');
+            }, stopGraceMs);
+            worker.once('exit', () => {
+              clearTimeout(kill);
+              resolve();
+            });
             worker.kill(worker === magicPatterns ? 'SIGTERM' : signal);
           }),
       ),
