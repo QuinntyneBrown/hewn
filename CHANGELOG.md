@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Configure protected service credentials (journey 37, L2-040, L2-042): the model API key, Magic Patterns token,
+  GitHub App key, OAuth and webhook secrets, worker token and metrics token live in Azure Key Vault in the cloud or
+  the macOS keychain or Linux Secret Service locally (ADR 0037). `hewn secret set <name>` supplies one on standard
+  input; `GET /api/settings/credentials` shows only names and last-updated times. Logs, events and pull request
+  titles and bodies have stored credentials and GitHub, Anthropic and Azure tokens replaced with `***` before they
+  are stored or sent, on the API and the worker. A run's workspace and the credentials in it are deleted when the
+  run ends, even if the run left a folder read-only. Agents' tools come from one catalogue with nothing that reaches
+  Hewn configuration, budgets, secrets or another project.
 - Diagnose platform health (journey 36, L2-049, L2-051): `/health/ready` answers 200 only when the database and the
   SignalR backplane are reachable, and 503 naming the failing check otherwise (ADR 0035). API and worker logs are one
   line of JSON each, with a run's project, direction, stage, run and trace IDs. A direction's runs are one

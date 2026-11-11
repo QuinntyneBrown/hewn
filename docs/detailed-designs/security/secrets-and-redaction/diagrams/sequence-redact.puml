@@ -1,5 +1,5 @@
 @startuml
-title UML sequence behaviour — Store a secret and redact output
+title UML sequence behaviour — Supply a credential and redact output (as built)
 skinparam backgroundColor #FFFFFF
 skinparam shadowing false
 skinparam roundcorner 12
@@ -15,32 +15,41 @@ skinparam package {
   BackgroundColor #F9FAFB
 }
 skinparam sequenceMessageAlign left
-actor "Owner" as owner
-box "Frontend — Mission Control application" #E0F2FE
-  participant "SettingsPage" as spa
+actor "Operator" as op
+box "Operator's machine or cloud shell" #F2F4F7
+  participant "hewn secret" as cli
 end box
 box "Backend — Hewn API application" #D1FADF
-  participant "SettingsController" as ctrl
-  participant "LogLineSink" as logs
+  participant "CredentialsController" as ctrl
+  participant "Worker endpoints" as ingest
 end box
 box "Backend — Hewn Application and Domain" #ECFDF3
-  participant "Redactor" as red
+  participant "SecretRedactor" as red
+  participant "EventAppender" as events
 end box
 box "Backend — Hewn Infrastructure" #FFF4E5
-  participant "Secret store" as vault
+  participant "Secret store\n(Key Vault or OS key store)" as vault
   database "Hewn database" as db
 end box
-box "Backend — Worker application" #D1FADF
-  participant "WorkerHost" as worker
+box "Worker" #E0F2FE
+  participant "WorkLoop" as worker
 end box
-owner -> spa : Paste model API key
-spa -> ctrl : PUT /api/settings/secrets/model-api-key
-ctrl -> vault : SetAsync (encrypted at rest) (L2-040 AC1)
-ctrl -> red : Refresh known values
-ctrl --> spa : SecretRef {name, updatedAt} - no value
-worker -> logs : Log line "using key sk-ant-api03-..."
-logs -> red : Redact(text)
-red --> logs : "using key ***" (L2-040 AC2)
-logs -> db : Store redacted line
-worker -> worker : Run ends: scrub workspace credentials (L2-040 AC3)
+op -> cli : secret set model-api-key\n(value on standard input)
+cli -> vault : SetAsync — encrypted at rest (L2-040 AC1)
+== API and worker start ==
+ctrl -> vault : read each credential into configuration
+ctrl -> red : Remember(value)
+worker -> vault : read worker credentials (HEWN_SECRET_STORE=os)
+op -> ctrl : GET /api/settings/credentials
+ctrl -> vault : ListAsync
+ctrl --> op : [{name, description, updatedAt}] — no value
+== A run ==
+worker -> worker : redact(line) before sending
+worker -> ingest : POST logs "model key ***"
+ingest -> red : Redact(text) (L2-040 AC2)
+ingest -> db : store redacted line
+ingest -> events : Append LogLines
+events -> red : RedactJson(payload)
+events -> db : store and broadcast
+worker -> worker : run ends: removeWorkspace (L2-040 AC3)
 @enduml

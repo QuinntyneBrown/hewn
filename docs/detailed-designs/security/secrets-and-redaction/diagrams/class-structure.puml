@@ -9,28 +9,61 @@ skinparam class {
   FontColor #101828
   BackgroundColor #F9FAFB
 }
-title Class structure — Secrets and redaction
+title Class structure — Secrets and redaction (as built, journey 37)
 
-interface ISecretStore {
-  +GetAsync(name: string): Task<string>
-  +SetAsync(name: string, value: string): Task
+interface ISecretStore <<Application>> {
+  +Changed: event
+  +GetAsync(name): Task<string?>
+  +SetAsync(name, value): Task
+  +ListAsync(): Task<SecretRef[]>
 }
-class KeyVaultSecretStore
-class OsKeyStoreSecretStore
-class SecretRef {
-  +string Name
-  +DateTimeOffset UpdatedAt
+class SecretRef <<record>> {
+  +Name: string
+  +UpdatedAt: DateTimeOffset?
 }
-class Redactor {
-  -knownValues: HashSet<string>
-  -patterns: Regex[]
-  +Redact(text: string): string
-  +Refresh(): Task
+class Credentials <<Application>> {
+  +All: Credential[7]
+  +Check(name, value): Credential
 }
-class WorkspaceCredentialScrubber <<worker>> {
-  +ScrubAsync(ws: Workspace): Task
+class KeyVaultSecretStore <<Infrastructure>> {
+  -client: SecretClient
 }
+class OsKeyStoreSecretStore <<Infrastructure>> {
+  -commands: IKeyStoreCommands
+  -service: "hewn"
+  item = hewn1:{ms}:{base64}
+}
+class InMemorySecretStore <<Infrastructure>>
+class SecretStoreConfigurationSource <<Infrastructure>> {
+  fills ConfigurationKey from the store
+  reloads on Changed
+}
+class SecretRedactor <<Application>> {
+  +Mask = "***"
+  +Remember(value)
+  +Redact(text): string
+  +RedactJson(json): string
+}
+class ListCredentialsHandler <<Application>>
+class CredentialsController <<Api>> {
+  GET /api/settings/credentials
+}
+class "hewn secret set|list" as Cli <<CLI>>
+class "removeWorkspace()" as Remove <<worker>> {
+  rm, make writable, rm again
+  report credential files left
+}
+class "redact() / rememberSecret()" as WorkerRedact <<worker>>
+class "TOOL_CATALOG / STAGE_TOOLS" as Catalog <<worker>>
+
 ISecretStore <|.. KeyVaultSecretStore
 ISecretStore <|.. OsKeyStoreSecretStore
-Redactor ..> ISecretStore : loads values
+ISecretStore <|.. InMemorySecretStore
+ISecretStore ..> SecretRef : lists
+ISecretStore ..> Credentials : only these names
+SecretStoreConfigurationSource --> ISecretStore
+SecretStoreConfigurationSource ..> SecretRedactor : Remember(value)
+ListCredentialsHandler --> ISecretStore
+CredentialsController ..> ListCredentialsHandler
+Cli --> ISecretStore
 @enduml

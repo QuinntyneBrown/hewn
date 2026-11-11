@@ -40,3 +40,4 @@ Read the ADRs that cover an area before changing it. New ADRs take the next numb
 | [0034](0034-touch-targets-are-44-px-below-992-px.md) | Touch targets are 44 px below 992 px | Accepted |
 | [0035](0035-readiness-sends-through-the-backplane.md) | Readiness sends a message through the backplane | Accepted |
 | [0036](0036-telemetry-goes-to-otlp-and-a-token-guarded-scrape.md) | Telemetry goes to OTLP and a token-guarded Prometheus scrape | Accepted |
+| [0037](0037-credentials-live-in-key-vault-or-the-os-key-store.md) | Credentials live in Azure Key Vault or the OS key store, supplied from the command line | Accepted |

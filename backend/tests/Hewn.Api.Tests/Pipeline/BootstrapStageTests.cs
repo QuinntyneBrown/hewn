@@ -232,7 +232,7 @@ public sealed class BootstrapStageTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         var lines = await _factory.QueryAsync(db => db.RunLogLines.Where(l => l.RunId == run.RunId).OrderBy(l => l.Sequence).ToListAsync());
-        Assert.Equal(["Copied 14 skills from greenlit@0e0d25a", "kept existing: .claude/skills/grilling", "[redacted]"], lines.Select(l => l.Text));
+        Assert.Equal(["Copied 14 skills from greenlit@0e0d25a", "kept existing: .claude/skills/grilling", "token=***"], lines.Select(l => l.Text));
         Assert.Equal([1L, 2L, 3L], lines.Select(l => l.Sequence));
     }
 }

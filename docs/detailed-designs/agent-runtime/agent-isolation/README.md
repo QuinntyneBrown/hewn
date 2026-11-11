@@ -63,6 +63,8 @@ Every tool call passes `ToolGate`, every packet passes `EgressProxy`, and every 
 
 As built in journey 23: the run gets its own workspace, and with `HEWN_SANDBOX=docker` its commands get their own containers (L2-042 AC1). Its proxy tunnels only to allowed hosts and logs every block (AC2). Its tool gate denies and logs tools outside the stage's allow list (AC3). It commits through the API, so no git remote or credential is ever in reach, and no tool exists that could change Hewn configuration (AC4).
 
+As built in journey 37: every stage's tools come from one catalogue, `TOOL_CATALOG` in `worker/src/agents/tool-catalog.ts` (files, a shell in the run's container, skills and the Magic Patterns design tools). Acceptance tests hold that it has no tool for Hewn configuration, budgets, secrets, other projects or GitHub, that a stage's gate denies any other, that a run's commands see no credential and can't reach the Hewn API, and that the worker token opens none of the settings, budget, credential or project endpoints and reaches only the run it holds (AC4). A run's workspace, with any credential written into it, is deleted when the run ends ([Secrets and redaction](../../security/secrets-and-redaction/README.md), L2-040 AC3).
+
 ![Sequence diagram: contain a run](diagrams/sequence-contain-a-run.png)
 
 ## Decisions made while building the slice

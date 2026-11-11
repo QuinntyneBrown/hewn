@@ -21,5 +21,8 @@
   "Jaeger": "Yay-ger",
   "JSON": "Jason",
   "traceparent": "trace parent",
-  "OpenTelemetry": "Open Telemetry"
+  "OpenTelemetry": "Open Telemetry",
+  "npm": "N P M",
+  "macOS": "mac O S",
+  "readme": "read me"
 }

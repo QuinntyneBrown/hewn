@@ -7,14 +7,18 @@ Person(owner, "Owner", "Gives direction, watches the work and uses the safety co
 System_Boundary(hewn, "Hewn") {
   Container(spa, "Mission Control", "Angular", "Web frontend: give direction and watch the work")
   Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
-  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
-  Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+  ContainerDb(db, "Hewn database", "SQLite", "Projects, directions, runs, events, spend, audit")
+  Container(worker, "Worker", "Node.js", "Leases runs and executes stages, local or cloud")
+  Container(cli, "hewn CLI", ".NET", "secret set reads a value on standard input")
 }
-System_Ext(vault, "Secret store", "Cloud key vault in the cloud, OS key store locally")
+System_Ext(vault, "Secret store", "Azure Key Vault in the cloud, macOS keychain or Linux Secret Service locally")
 
-Rel(owner, spa, "Enters a credential", "HTTPS")
-Rel(spa, api, "Write-only secret value", "JSON/HTTPS")
+Rel(owner, cli, "Supplies a credential", "standard input")
+Rel(cli, vault, "Stores encrypted", "HTTPS or key store tool")
+Rel(owner, spa, "Sees credential references", "HTTPS")
+Rel(spa, api, "GET /api/settings/credentials", "JSON/HTTPS")
 Rel(api, vault, "Stores and reads secrets", "HTTPS")
 Rel(api, db, "Redacted logs and events", "SQL")
 Rel(worker, api, "Redacted logs", "HTTPS (outbound)")
+Rel(worker, vault, "Reads its credentials", "key store tool or Key Vault references")
 @enduml

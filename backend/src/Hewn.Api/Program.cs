@@ -11,10 +11,16 @@ using Hewn.Application;
 using Hewn.Application.Abstractions;
 using Hewn.Application.Pipeline;
 using Hewn.Infrastructure;
+using Hewn.Infrastructure.Secrets;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Credentials come from the secret store, over environment variables, and settings show only their references (L2-040 AC1).
+var secrets = SecretStores.Create(builder.Configuration);
+((IConfigurationBuilder)builder.Configuration).Add(new SecretStoreConfigurationSource(secrets));
+builder.Services.AddSingleton(secrets);
 
 // Every log entry is one line of JSON on standard output, with its run's IDs and the trace ID (L2-049 AC1).
 builder.Logging.ClearProviders();
@@ -79,6 +85,18 @@ builder.Services
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 var app = builder.Build();
+
+// L2-040 AC2: every credential's value is masked wherever it appears, whether it came from the store or the environment.
+void RememberCredentials()
+{
+    foreach (var credential in Hewn.Application.Secrets.Credentials.All)
+    {
+        Hewn.Application.Common.SecretRedactor.Remember(app.Configuration[credential.ConfigurationKey]);
+    }
+}
+
+RememberCredentials();
+Microsoft.Extensions.Primitives.ChangeToken.OnChange(app.Configuration.GetReloadToken, RememberCredentials);
 
 app.UseForwardedHeaders();
 app.UseHewnMetrics();

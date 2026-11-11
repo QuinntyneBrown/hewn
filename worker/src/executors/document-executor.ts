@@ -37,21 +37,12 @@ import {
   validateRequirements,
   validateStackDecision,
 } from '../validators/document-validators.ts';
+import { STAGE_TOOLS } from '../agents/tool-catalog.ts';
 import { checkOut } from './checkout.ts';
 import type { RunContext, StageExecutor, StageStep } from './stage-executor.ts';
 
 const run = promisify(execFile);
 const COMMIT_STEP = 2;
-/** Document stages read and write files only; no shell, network or git (agent-isolation design). */
-const FILE_TOOLS = ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Skill'] as const;
-const MAGIC_PATTERNS_TOOLS = [
-  'mcp__magic-patterns__create_design',
-  'mcp__magic-patterns__send_prompt',
-  'mcp__magic-patterns__get_design_status',
-  'mcp__magic-patterns__read_artifact_files',
-  'mcp__magic-patterns__write_artifact_files',
-  'mcp__magic-patterns__list_design_systems',
-] as const;
 
 interface StageHookContext {
   directory: string;
@@ -258,12 +249,9 @@ export class DocumentStageExecutor implements StageExecutor {
         directory,
         skill: definition.skill,
         instructions: instructionsFor(leased, definition),
-        allowedTools: definition.magicPatterns === 'required' ? [...FILE_TOOLS, ...MAGIC_PATTERNS_TOOLS] : FILE_TOOLS,
+        allowedTools: definition.magicPatterns === 'required' ? STAGE_TOOLS.design : STAGE_TOOLS.document,
         ...(magicPatterns ? { magicPatterns } : {}),
-        ...isolationFor(
-          context,
-          definition.magicPatterns === 'required' ? [...FILE_TOOLS, ...MAGIC_PATTERNS_TOOLS] : FILE_TOOLS,
-        ),
+        ...isolationFor(context, definition.magicPatterns === 'required' ? STAGE_TOOLS.design : STAGE_TOOLS.document),
       },
       signal,
     );

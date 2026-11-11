@@ -24,13 +24,15 @@ test.describe('Review agent decisions', () => {
 
     await expect(decisions.tab('Decisions')).toHaveAttribute('aria-current', 'page');
     await expect(decisions.stage).toHaveValue('');
-    expect(await decisions.questions()).toEqual([
-      'Which time zone decides whether a card transaction falls on a statement date?',
-      'Should a split transaction keep the original receipt on every part?',
-      'Multi-currency reconciliation is 7 days. Split or defer?',
-      'The direction mentions “works offline on site visits”. Add a PWA layer?',
-      'Who approves a reconciled period: the preparer or a second person?',
-    ]);
+    await expect
+      .poll(() => decisions.questions())
+      .toEqual([
+        'Which time zone decides whether a card transaction falls on a statement date?',
+        'Should a split transaction keep the original receipt on every part?',
+        'Multi-currency reconciliation is 7 days. Split or defer?',
+        'The direction mentions “works offline on site visits”. Add a PWA layer?',
+        'Who approves a reconciled period: the preparer or a second person?',
+      ]);
 
     const pwa = decisions.decision(/Add a PWA layer\?$/);
     await expect(pwa.when).toHaveText('8 Nov, 09:12');
@@ -61,19 +63,21 @@ test.describe('Review agent decisions', () => {
 
     await decisions.filterBy('Increments');
     await expect(page).toHaveURL(/\/decisions\?stage=10$/);
-    expect(await decisions.questions()).toEqual([
-      'Which time zone decides whether a card transaction falls on a statement date?',
-      'Should a split transaction keep the original receipt on every part?',
-    ]);
+    await expect
+      .poll(() => decisions.questions())
+      .toEqual([
+        'Which time zone decides whether a card transaction falls on a statement date?',
+        'Should a split transaction keep the original receipt on every part?',
+      ]);
     await expect(decisions.decisions.locator('.decision__when .text-subtle')).toHaveText(['Increments', 'Increments']);
     expect(asked.at(-1)).toBe('10');
 
     // A link to a stage opens filtered.
     await decisions.open(id, 4);
     await expect(decisions.stage).toHaveValue('4');
-    expect(await decisions.questions()).toEqual([
-      'The direction mentions “works offline on site visits”. Add a PWA layer?',
-    ]);
+    await expect
+      .poll(() => decisions.questions())
+      .toEqual(['The direction mentions “works offline on site visits”. Add a PWA layer?']);
 
     await decisions.filterBy('All stages');
     await expect(page).toHaveURL(/\/decisions$/);

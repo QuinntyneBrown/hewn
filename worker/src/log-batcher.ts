@@ -1,3 +1,4 @@
+import { redact } from './redact.ts';
 import type { LogLevel } from './api.ts';
 
 export type LogLine = { level: LogLevel; text: string };
@@ -28,6 +29,8 @@ export class LogBatcher {
   }
 
   add(line: LogLine): void {
+    // L2-040 AC2: a line leaves the worker redacted.
+    line = { ...line, text: redact(line.text) };
     this.pending.push(line);
     if (this.pending.length >= this.maxBatch) void this.flush();
   }

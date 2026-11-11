@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -11,6 +11,8 @@ import {
   type WorkerRegistration,
 } from './api.ts';
 import type { RunContext, StageExecutor } from './executors/stage-executor.ts';
+import { removeWorkspace } from './isolation/workspace.ts';
+import { redact } from './redact.ts';
 import { LogBatcher } from './log-batcher.ts';
 import { startRunIsolation, type IsolationSettings } from './isolation/run-isolation.ts';
 import { sleep } from './sleep.ts';
@@ -260,7 +262,7 @@ export class WorkLoop {
       this.logRun(run, 'Run failed', { level: 'Warning' });
       await logs.close();
       await this.api
-        .result(workerId, run, { outcome: 'Failed', error: messageOf(error) })
+        .result(workerId, run, { outcome: 'Failed', error: redact(messageOf(error)) })
         .catch((reportError: unknown) =>
           this.logRun(run, 'Could not report the failure', { level: 'Error', error: messageOf(reportError) }),
         );
@@ -270,7 +272,14 @@ export class WorkLoop {
       clearInterval(heartbeat);
       void logs.close();
       stop.removeEventListener('abort', onStop);
-      rmSync(workspace, { recursive: true, force: true });
+      // L2-040 AC3: credentials the run wrote into its workspace go with it.
+      const removed = removeWorkspace(workspace);
+      if (!removed.removed)
+        this.logRun(run, 'Could not delete the run’s workspace', {
+          level: removed.credentialsLeft.length > 0 ? 'Error' : 'Warning',
+          workspace,
+          credentialsLeft: removed.credentialsLeft.join(', '),
+        });
       void isolated?.stop();
     }
   }

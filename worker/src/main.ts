@@ -14,6 +14,8 @@ import { StageRouter, type StageExecutor } from './executors/stage-executor.ts';
 import { HttpHewnApi } from './http-api.ts';
 import { McpMagicPatterns } from './magic-patterns/magic-patterns.ts';
 import { jsonLog } from './json-log.ts';
+import { rememberSecret } from './redact.ts';
+import { loadCredentials, WORKER_CREDENTIALS } from './secret-store.ts';
 import { otlpExporter, Tracer } from './tracing.ts';
 import { WorkLoop } from './work-loop.ts';
 
@@ -27,6 +29,21 @@ function required(name: string): string {
   }
   return value;
 }
+
+// L2-040 AC1: with HEWN_SECRET_STORE=os, credentials come from the OS key store `hewn secret set` wrote them to.
+let fromKeyStore: string[] = [];
+try {
+  fromKeyStore = loadCredentials(process.env, {
+    store: process.env.HEWN_SECRET_STORE,
+    service: process.env.HEWN_KEY_STORE_SERVICE,
+  });
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(2);
+}
+
+// L2-040 AC2: each credential's value is masked wherever it appears, whether it came from the key store or not.
+for (const credential of WORKER_CREDENTIALS) rememberSecret(process.env[credential.env]);
 
 const apiUrl = required('HEWN_API_URL');
 const token = required('HEWN_WORKER_TOKEN');
@@ -45,6 +62,7 @@ if (executorName !== 'scripted' && executorName !== 'stages') {
 
 const failStage = process.env.HEWN_SCRIPTED_FAIL_STAGE;
 const pullRequestStage = process.env.HEWN_SCRIPTED_PULL_REQUEST_STAGE;
+const credentialsStage = process.env.HEWN_SCRIPTED_CREDENTIALS_STAGE;
 const scripted = new ScriptedStageExecutor({
   stepMs: Number(process.env.HEWN_SCRIPTED_STEP_MS ?? 1000),
   logLines: Number(process.env.HEWN_SCRIPTED_LOG_LINES ?? 0),
@@ -55,6 +73,7 @@ const scripted = new ScriptedStageExecutor({
     process.env.HEWN_SCRIPTED_FAIL_TIMES === undefined ? undefined : Number(process.env.HEWN_SCRIPTED_FAIL_TIMES),
   failReason: process.env.HEWN_SCRIPTED_FAIL_REASON,
   pullRequestStage: pullRequestStage === undefined ? undefined : Number(pullRequestStage),
+  credentialsStage: credentialsStage === undefined ? undefined : Number(credentialsStage),
 });
 // Magic Patterns' MCP endpoint and credential; without them the design stages fail as not configured.
 const magicPatternsUrl = process.env.HEWN_MAGIC_PATTERNS_URL;
@@ -140,6 +159,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => st
 
 // One line of JSON per entry, with the run's IDs while one runs, and credentials redacted (L2-049 AC1).
 const log = jsonLog();
+if (fromKeyStore.length > 0) log('Read credentials from the OS key store', { credentials: fromKeyStore.join(', ') });
 
 // Spans for each run and its model calls go to the OTLP endpoint when one is set, as the API's do (L2-049 AC2).
 const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;

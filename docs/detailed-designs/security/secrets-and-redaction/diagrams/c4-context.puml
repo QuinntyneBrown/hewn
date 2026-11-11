@@ -5,8 +5,8 @@ title System Context — Secrets and redaction
 
 Person(owner, "Owner", "Gives direction, watches the work and uses the safety controls")
 System(hewn, "Hewn", "Software factory: carries a direction to merged code through a fixed pipeline")
-System_Ext(vault, "Secret store", "Cloud key vault in the cloud, OS key store locally")
+System_Ext(vault, "Secret store", "Azure Key Vault in the cloud, OS key store locally")
 
-Rel(owner, hewn, "Enters model and Magic Patterns credentials in")
+Rel(owner, hewn, "Supplies credentials with hewn secret set; sees only references")
 Rel(hewn, vault, "Stores and reads encrypted secrets in")
 @enduml

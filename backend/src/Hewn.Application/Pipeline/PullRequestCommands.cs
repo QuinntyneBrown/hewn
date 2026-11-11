@@ -68,7 +68,8 @@ public sealed class OpenPullRequestHandler(IAppDbContext db, LeaseService leases
         CommitPolicy.EnsurePullRequestsAllowed(run.Stage);
         CommitPolicy.EnsureAllowed(run.Stage, command.Head, []);
         var project = await RunProject.RequireRepositoryAsync(db, run, cancellationToken);
-        var pull = await gitHub.OpenPullRequestAsync(project.RepositoryOwner!, project.RepositoryName!, command.Head, command.Title, command.Body, cancellationToken);
+        // L2-040 AC2: a secret an agent wrote into the title or body never reaches GitHub.
+        var pull = await gitHub.OpenPullRequestAsync(project.RepositoryOwner!, project.RepositoryName!, command.Head, SecretRedactor.Redact(command.Title), SecretRedactor.Redact(command.Body), cancellationToken);
         var result = new PullRequestDto(pull.Number, pull.Url);
         await MutationLedger.RecordAsync(db, run, command.IdempotencyKey, "open_pull_request", result, clock, cancellationToken);
         return result;

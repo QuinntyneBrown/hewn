@@ -65,7 +65,8 @@ test.describe('Review agent decisions, live', () => {
     const log = await page.request.get(`/api/fakes/github/${repository}/contents/docs/decisions.md?ref=${sha}`);
     expect(await log.text()).toMatch(/· Stage 4 Stack\n\n\*\*Question:\*\* Which stack should the product use\?/);
 
+    // The filtered list is fetched again, so wait for it rather than reading the list once.
     await decisions.filterBy('Stack');
-    expect(await decisions.questions()).toEqual(['Which stack should the product use?']);
+    await expect.poll(() => decisions.questions()).toEqual(['Which stack should the product use?']);
   });
 });
