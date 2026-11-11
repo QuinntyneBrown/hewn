@@ -79,6 +79,6 @@ The theme follows the OS until chosen, then persists (L2-048 AC1, AC2). Status c
   TypeScript. The drawer is the sidebar's own template, so the two can't drift apart.
 - **What was already there.** The pipeline's three layouts and every page's reflow came with the design system in
   earlier journeys; the new acceptance tests (`use-mission-control-on-mobile.spec.ts`) hold them, and found nothing
-  wider than the viewport in 98 page and width pairs. What was missing below 992 px was any way to navigate.
+  wider than the viewport in 91 page and width pairs. What was missing below 992 px was any way to navigate.
 - **The drawer's container is the drawer.** The app's CDK dialog container usually covers the viewport; the menu's is
   sized to the drawer (`drawer-pane`), so a tap beside the drawer reaches the backdrop and closes it.

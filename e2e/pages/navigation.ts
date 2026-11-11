@@ -10,7 +10,10 @@ export class Navigation {
   readonly topbar: Locator;
   readonly drawerNav: Locator;
 
-  constructor(private readonly page: Page) {
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
     this.heading = page.getByRole('heading', { level: 1 });
     this.sidebar = page.getByRole('complementary', { name: 'Sidebar' });
     this.menuButton = page.getByRole('button', { name: 'Open menu' });
@@ -36,7 +39,15 @@ export class Navigation {
   async openMenu(): Promise<void> {
     await this.menuButton.click();
     await this.drawer.waitFor();
-    await this.page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)));
+    // Spinners loop for ever; wait for the drawer's slide and the backdrop's fade only.
+    await this.page.evaluate(() =>
+      Promise.all(
+        document
+          .getAnimations()
+          .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+          .map((a) => a.finished),
+      ),
+    );
   }
 
   async width(width: number): Promise<void> {
@@ -66,6 +77,16 @@ export class Navigation {
         // A checkbox or radio is one target with its label.
         const target = el.matches('input[type="checkbox"], input[type="radio"]') ? (el.closest('label') ?? el) : el;
         const t = target.getBoundingClientRect();
+        // A control squeezed narrower than its label overlaps its neighbours.
+        if (
+          el.scrollWidth > el.clientWidth + 1 &&
+          !el.matches('input, select, textarea') &&
+          !el.querySelector('.truncate')
+        ) {
+          small.push(
+            `${(el.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 40)} is squeezed (${el.clientWidth} of ${el.scrollWidth})`,
+          );
+        }
         if (t.width < min - 0.5 || t.height < min - 0.5) {
           const name = (el.getAttribute('aria-label') ?? el.textContent ?? el.tagName).trim().replace(/\s+/g, ' ');
           small.push(`${name.slice(0, 40)} (${Math.round(t.width)}×${Math.round(t.height)})`);

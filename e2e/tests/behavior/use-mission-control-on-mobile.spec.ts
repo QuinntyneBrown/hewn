@@ -25,7 +25,6 @@ async function aProject(page: Page, newDirection: NewDirectionPage, project: Pro
 function pages(projectId: string): string[] {
   const p = `/projects/${projectId}`;
   return [
-    '/dashboard',
     '/projects',
     '/projects/new',
     p,
@@ -48,14 +47,14 @@ test.describe('Use Mission Control on mobile', () => {
     const nav = new Navigation(page);
     await signIn(page, 'quinntynebrown');
     await nav.width(375);
-    await page.goto('/dashboard');
+    await nav.visit('/workers');
 
     await expect(nav.sidebar).toBeHidden();
     await expect(nav.menuButton).toBeVisible();
     await nav.menuButton.click();
     await expect(nav.drawer).toBeVisible();
     await expect(nav.closeMenu).toBeFocused();
-    await expect(nav.drawerLink('Dashboard')).toHaveAttribute('aria-current', 'page');
+    await expect(nav.drawerLink('Workers')).toHaveAttribute('aria-current', 'page');
     // Focus stays in the drawer.
     for (let i = 0; i < 12; i++) await page.keyboard.press('Tab');
     expect(await nav.drawer.evaluate((d) => d.contains(document.activeElement))).toBe(true);
@@ -86,7 +85,7 @@ test.describe('Use Mission Control on mobile', () => {
     await signIn(page, 'quinntynebrown');
     for (const width of [992, 1200, 2560]) {
       await nav.width(width);
-      await page.goto('/dashboard');
+      await nav.visit('/workers');
       await expect(nav.sidebar).toBeVisible();
       await expect(nav.menuButton).toBeHidden();
       await page.mouse.wheel(0, 2000);
@@ -190,8 +189,8 @@ test.describe('Use Mission Control on mobile', () => {
       }
       await nav.width(width);
       if (width < 992) {
-        await nav.visit('/dashboard');
-        await nav.menuButton.click();
+        await nav.visit('/workers');
+        await nav.openMenu();
         for (const target of await nav.smallTargets(min)) small.push(`menu at ${width} px: ${target}`);
       }
     }
