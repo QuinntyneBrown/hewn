@@ -89,6 +89,7 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Hewn:Leases:ReaperEnabled", "false");
         builder.UseSetting("Hewn:Checks:PollerEnabled", "false");
         builder.UseSetting("Hewn:Workers:PresenceWatcherEnabled", "false");
+        builder.UseSetting("Hewn:Skills:MergerEnabled", "false");
         builder.UseSetting("ConnectionStrings:Hewn", "DataSource=:memory:");
         foreach (var (key, value) in _settings)
         {
@@ -173,6 +174,13 @@ public sealed class HewnApiFactory : WebApplicationFactory<Program>
         using var scope = Services.CreateScope();
         await scope.ServiceProvider.GetRequiredService<Hewn.Application.Workers.WorkerPresence>().SweepAsync(
             scope.ServiceProvider.GetRequiredService<Hewn.Application.Abstractions.IAppDbContext>(), CancellationToken.None);
+    }
+
+    /// <summary>Runs the sweep the SkillsUpdateMergerService runs every 10 seconds.</summary>
+    public async Task MergeSkillsUpdatesAsync()
+    {
+        using var scope = Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<Hewn.Application.Skills.SkillsUpdateMerger>().SweepAsync(CancellationToken.None);
     }
 
     /// <summary>Runs the expiry sweep the LeaseReaper runs every 10 seconds.</summary>

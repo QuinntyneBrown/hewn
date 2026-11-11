@@ -38,6 +38,8 @@ public sealed class HewnDbContext(DbContextOptions<HewnDbContext> options) : DbC
 
     public DbSet<LeasingSwitch> LeasingSwitches => Set<LeasingSwitch>();
 
+    public DbSet<SkillsUpdate> SkillsUpdates => Set<SkillsUpdate>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(HewnDbContext).Assembly);

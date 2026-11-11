@@ -433,3 +433,28 @@ export interface ProjectDecision {
   /** The ADR the decision also wrote (L2-054 AC2). */
   adr: { path: string; title: string; url: string | null } | null;
 }
+
+/** A Greenlit commit after the project's locked SHA (L2-008 AC1). */
+export interface SkillsCommit {
+  sha: string;
+  message: string;
+}
+
+export interface SkillsUpdatePullRequest {
+  number: number;
+  url: string;
+}
+
+/** How far Greenlit is ahead of the project's `.hewn/skills.lock`, and any update waiting for its checks. */
+export interface SkillsUpdate {
+  available: number;
+  lockedSha: string | null;
+  headSha: string | null;
+  /** Newest first. */
+  commits: SkillsCommit[];
+  pullRequest: SkillsUpdatePullRequest | null;
+}
+
+export interface UpdateSkillsResult {
+  pullRequest: SkillsUpdatePullRequest;
+}

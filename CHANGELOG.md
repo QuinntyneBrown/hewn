@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Update project skills (journey 29, L2-008): when Greenlit's default branch is ahead of `.hewn/skills.lock`, an Owner
+  sees "Skills update available (n commits)" on the project page; Viewers don't. Update skills lists the commits and
+  opens a pull request on `hewn/update-skills-{short-sha}` that updates the skill files and the lock. It merges once
+  its checks pass, rebased if the default branch moved; a failing check leaves it open and the update is offered
+  again. The API reads Greenlit with git (`Hewn:Skills:FetchSeconds`) and merges through `SkillsUpdateMerger`.
 - Configure automatic descoping (journey 28, L2-019): an Owner sets the descope threshold in ideal days (a whole
   number from 1 to 20, default 3) in Settings beside the default budget; Viewers see it read-only. Each direction
   keeps the threshold in force when it was submitted, and stage 9's agent is told the number of days to split

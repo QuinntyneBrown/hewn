@@ -19,7 +19,13 @@ export default defineConfig({
     {
       name: 'chromium',
       testIgnore: '**/perf/**',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } },
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 900 },
+        // Grey text anti-aliasing everywhere: on Linux, Chromium draws text on some layers with coloured (LCD)
+        // fringes and on others in grey, so the same text in the app and its mock could differ only by fringe colour.
+        launchOptions: { args: ['--disable-lcd-text'] },
+      },
     },
     // L2-045: Lighthouse and the read-API load test, only with `npm run test:perf` (HEWN_PERF=1), never in a full run.
     ...(process.env['HEWN_PERF']

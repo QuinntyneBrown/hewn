@@ -33,3 +33,4 @@ Read the ADRs that cover an area before changing it. New ADRs take the next numb
 | [0027](0027-github-writes-and-lease-changes-share-a-run-lock.md) | GitHub writes and lease changes share a run lock | Accepted |
 | [0028](0028-mission-control-runs-its-own-reconnect-schedule.md) | Mission Control runs its own reconnect schedule | Accepted |
 | [0029](0029-a-direction-keeps-the-descope-threshold-it-was-submitted-with.md) | A direction keeps the descope threshold it was submitted with | Accepted |
+| [0030](0030-the-api-updates-a-projects-skills-itself.md) | The API updates a project's skills itself | Accepted |

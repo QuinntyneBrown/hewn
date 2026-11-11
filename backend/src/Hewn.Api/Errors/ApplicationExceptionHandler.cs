@@ -16,6 +16,7 @@ public sealed class ApplicationExceptionHandler(IProblemDetailsService problems)
             FieldValidationException e => FieldProblem(e),
             NotFoundException e => new ProblemDetails { Status = StatusCodes.Status404NotFound, Title = e.Title, Extensions = { ["code"] = e.Code } },
             GitHubException e => new ProblemDetails { Status = StatusCodes.Status502BadGateway, Title = e.Message, Extensions = { ["code"] = "github_failed" } },
+            SkillsSourceException e => new ProblemDetails { Status = StatusCodes.Status502BadGateway, Title = e.Message, Extensions = { ["code"] = "greenlit_unreachable" } },
             ConflictException e => new ProblemDetails { Status = StatusCodes.Status409Conflict, Title = e.Message, Extensions = { ["code"] = e.Code } },
             LeaseLostException => new ProblemDetails { Status = StatusCodes.Status409Conflict, Title = "Lease lost", Extensions = { ["code"] = "lease_lost" } },
             TooManyRequestsException e => TooMany(httpContext, e),

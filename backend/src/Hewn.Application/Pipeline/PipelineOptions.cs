@@ -8,7 +8,7 @@ public sealed class PipelineOptions
     /// <summary>Clone URL of the skill library stage 0 copies from (HEWN_SKILLS_SOURCE).</summary>
     public string SkillsSource { get; set; } = "https://github.com/QuinntyneBrown/greenlit.git";
 
-    /// <summary>Designs estimated above this many ideal days are split or descoped (HEWN_DESCOPE_THRESHOLD_DAYS; Settings later).</summary>
+    /// <summary>The descope threshold until an Owner saves one in Settings (HEWN_DESCOPE_THRESHOLD_DAYS; L2-019 AC1).</summary>
     public decimal DescopeThresholdDays { get; set; } = 3m;
 
     /// <summary>Implement-and-test iterations before an increment is Blocked (HEWN_MAX_ITERATIONS; L2-022 AC2).</summary>

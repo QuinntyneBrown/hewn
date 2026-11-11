@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 29 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="29" data-video-title="Update project skills" data-parts="Introduction|Goal|Updating|How it works|Tests|Screens|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 29</div>
+  <h1>Update project skills</h1>
+  <p class="lead">Greenlit moves on; a pull request brings the project with it.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video shows an Owner seeing that a project's skills are behind">
+  <figure><img src="screens/project-update-available.png" alt="The project header: Skills update available (3 commits), beside the repository"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="When Greenlit's default branch is ahead of a project's skills lock">
+  <ul class="bullets">
+    <li>Owners see "Skills update available (n commits)" (L2-008 AC1)</li>
+    <li>Update skills opens a pull request: skill files and .hewn/skills.lock</li>
+    <li>It merges automatically when checks pass (AC2); Viewers see no link</li>
+  </ul>
+</section>
+
+<section id="clip-update" data-part="2" data-cue="Here a project's lock is three commits behind Greenlit." data-clip="clips/update-skills.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Opened in 0.8 s; merged 8.4 s after the click</aside>
+</section>
+
+<section id="dialog" data-part="2" data-cue="About eight seconds after the click">
+  <div class="cols">
+    <figure><img src="screens/dialog-default.png" alt="Update Ledgerline's skills? Greenlit, 3 commits since the locked one, newest first"></figure>
+    <figure><img src="screens/project-update-opened.png" alt="Skills update opened: Pull request #1 updates the project's skills. It merges automatically when checks pass."></figure>
+  </div>
+</section>
+
+<section id="clip-failed" data-part="2" data-cue="When Greenlit can't be reached" data-clip="clips/update-failed.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">Skills weren't updated: the reason, and Try again</aside>
+</section>
+
+<section id="get" data-part="3" data-cue="The project page asks for the update only for Owners.">
+  <div class="code-file">frontend/projects/mission-control/src/app/pages/project/update-skills.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3">/** L2-008 AC1: the header link, for an Owner only, while Greenlit is ahead and no update waits for its checks. */
+export function skillsUpdateLink(update: SkillsUpdate | null, isOwner: boolean): string | null {
+  if (!update || !isOwner || update.available === 0 || update.pullRequest) return null;
+  return `Skills update available (${update.available} ${update.available === 1 ? 'commit' : 'commits'})`;
+}</pre>
+  <div class="code-file">backend/src/Hewn.Application/Skills/GetSkillsUpdate.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="1">            var commits = await skills.CommitsSinceAsync(locked.Sha, cancellationToken);
+            return new SkillsUpdateDto(commits.Count, locked.Sha, head, commits, open);</pre>
+</section>
+
+<section id="update" data-part="3" data-cue="Update skills commits Greenlit's skill files">
+  <div class="code-file">backend/src/Hewn.Application/Skills/UpdateSkills.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="3,5-6,10">        var files = await SkillsUpdateFiles.BuildAsync(gitHub, skills, owner, name, locked, head, cancellationToken);
+        var shortSha = head[..7];
+        var branch = $"hewn/update-skills-{shortSha}";
+        var title = $"Update skills to greenlit@{shortSha}";
+        await gitHub.CommitToBranchAsync(owner, name, branch, title, files, rebase: false, cancellationToken);
+        var pull = await gitHub.OpenPullRequestAsync(owner, name, branch, title, Body(locked.Sha, head, commits), cancellationToken);
+
+        var update = new SkillsUpdate(project.Id, locked.Sha, head, branch, pull.Number, pull.Url, user.Login, clock.GetUtcNow());
+        db.SkillsUpdates.Add(update);
+        await events.AppendAsync(project.Id, "SkillsUpdateOpened", new { number = pull.Number, url = pull.Url, toSha = head }, cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);</pre>
+</section>
+
+<section id="merger" data-part="3" data-cue="A merger sweeps open updates every ten seconds.">
+  <div class="code-file">backend/src/Hewn.Application/Skills/SkillsUpdateMerger.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="2,7,10">        // A repository with no CI reports no checks; once none has appeared for two minutes there is nothing to wait for.
+        if (checks.Count == 0 ? clock.GetUtcNow() - update.CreatedAt &lt; NoChecksGrace : checks.Any(c =&gt; c.Status != "completed"))
+        {
+            return false;
+        }
+
+        var failed = checks.Where(c =&gt; c.Conclusion is not ("success" or "skipped" or "neutral")).Select(c =&gt; c.Name).ToList();
+        if (failed.Count &gt; 0)
+        {
+            update.ChecksFailed(failed, clock.GetUtcNow());
+            await events.AppendAsync(project.Id, "SkillsUpdateChecksFailed", new { number = update.PullRequestNumber, checks = failed }, cancellationToken);
+            await db.SaveChangesAsync(cancellationToken);</pre>
+  <div class="code-file">backend/src/Hewn.Application/Skills/SkillsUpdateMerger.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="1-2">        catch (GitHubBranchBehindException)
+        {</pre>
+</section>
+
+<section id="sequence" data-part="3" data-cue="This sequence shows the whole path">
+  <figure class="diagram"><img src="../../detailed-designs/stages/bootstrap-skills/diagrams/sequence-update.png" alt="Update a project's skills: the page reads the update, the dialog opens the pull request, the merger merges it when checks pass"></figure>
+</section>
+
+<section id="test-update" data-part="4" data-cue="The backend tests go through the real API">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Skills/UpdateSkillsTests.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="1,9-10">        var response = await owner.PostAsync($"/api/projects/{projectId}/skills-update", new { });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var pullRequest = (await HewnClient.ReadJsonAsync(response)).GetProperty("pullRequest");
+        var number = pullRequest.GetProperty("number").GetInt32();
+        Assert.StartsWith("https://github.com/northwind/ledgerline/pull/", pullRequest.GetProperty("url").GetString());
+        var repository = _factory.GitHub.Repository("northwind", "ledgerline")!;
+        var pull = repository.PullRequests.Single(p =&gt; p.Number == number);
+        Assert.Equal($"hewn/update-skills-{head[..7]}", pull.Head);
+        Assert.Equal($"Update skills to greenlit@{head[..7]}", pull.Title);</pre>
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Skills/UpdateSkillsTests.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="1-3">        // A folder the project had before bootstrap stays its own (L2-007 AC3).
+        Assert.Equal("Ours, kept at bootstrap.", Encoding.UTF8.GetString(branch[".claude/skills/house-style/SKILL.md"]));
+        var lockFile = System.Text.Json.JsonDocument.Parse(branch[".hewn/skills.lock"]).RootElement;</pre>
+</section>
+
+<section id="test-merge" data-part="4" data-cue="The merger tests merge once checks pass">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Skills/MergeSkillsUpdateTests.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="5,8-9,11">    public async Task A_repository_with_no_checks_merges_once_none_appear_for_two_minutes()
+    {
+        var (_, _, number) = await UpdatingAsync(withCi: false);
+
+        await _factory.MergeSkillsUpdatesAsync();
+        Assert.False(Repository.PullRequests.Single(p =&gt; p.Number == number).Merged);
+
+        _factory.Clock.Advance(TimeSpan.FromSeconds(121));
+        await _factory.MergeSkillsUpdatesAsync();
+
+        Assert.True(Repository.PullRequests.Single(p =&gt; p.Number == number).Merged);
+    }</pre>
+  <div class="result red">✘ Assert.True() Failure</div>
+  <div class="result green">✔ backend 318</div>
+</section>
+
+<section id="test-e2e" data-part="4" data-cue="End to end, a behaviour test commits">
+  <div class="code-file">e2e/tests/behavior/update-project-skills.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2,5,10,16">    await project.open(projectId);
+    await expect(skills.link).toHaveText('Skills update available (2 commits)');
+    await skills.open();
+
+    await expect(skills.since).toHaveText(`Greenlit · 2 commits since ${locked.slice(0, 7)}`);
+    await expect(skills.commits).toHaveText([
+      `${head.slice(0, 7)}estimating-designs: 3-day descope threshold by default`,
+      /grilling: answer for the user when running unattended$/,
+    ]);
+    await skills.update.click();
+
+    await expect(skills.dialog).toBeHidden();
+    await expect(skills.openedToast).toContainText('It merges automatically when checks pass.');
+    await expect(skills.link).toHaveCount(0);
+    // The merger sweeps every 10 seconds; the fake's checks pass at once.
+    await expect.poll(() =&gt; lockedSha(page, repository), { timeout: 45_000 }).toBe(head);</pre>
+  <div class="result green">✔ behaviour 3 · visual 3 · a11y 1</div>
+</section>
+
+<section id="viewer" data-part="5" data-cue="A Viewer sees the project with no link.">
+  <figure><img src="screens/project-viewer.png" alt="The project as a Viewer sees it: the repository, and no skills update link"></figure>
+</section>
+
+<section id="screens" data-part="5" data-cue="The dialog reads the same in dark mode">
+  <div class="cols">
+    <figure><img src="screens/dialog-dark.png" alt="Update skills in dark mode"></figure>
+    <figure class="phone"><img src="screens/dialog-phone.png" alt="Update skills on a phone"></figure>
+  </div>
+</section>
+
+<section id="recap" data-part="6" data-cue="Journey twenty nine is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Owners see when Greenlit is ahead of a project's skills</li>
+    <li>Update skills opens a pull request with the new files and lock</li>
+    <li>It merges itself once its checks pass</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

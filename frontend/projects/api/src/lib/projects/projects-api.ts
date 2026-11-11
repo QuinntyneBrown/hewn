@@ -22,6 +22,8 @@ import {
   SubmitFeatureDirectionRequest,
   SubmitProductDirectionRequest,
   SubmitProductDirectionResult,
+  SkillsUpdate,
+  UpdateSkillsResult,
 } from './models';
 
 /** Projects and directions. Pages depend on PROJECTS_API, never on the implementation. */
@@ -72,6 +74,13 @@ export interface ProjectsApi {
   cancel(projectId: string, directionId: string): Observable<CancelDirectionResult>;
   /** L2-006 AC3: a Blocked direction's failed stage runs again from its start with its retry counter reset. */
   retryStage(projectId: string, directionId: string): Observable<DirectionControlResult>;
+  /** L2-008 AC1: Greenlit's commits after the project's skills lock, and any update waiting for its checks. */
+  getSkillsUpdate(projectId: string): Observable<SkillsUpdate>;
+  /**
+   * L2-008 AC2: opens the pull request that updates the skills; it merges when checks pass. Errors with the HTTP
+   * error: 502 `greenlit_unreachable` or `github_failed`, 409 `skills_up_to_date`, 403 for a Viewer.
+   */
+  updateSkills(projectId: string): Observable<UpdateSkillsResult>;
 }
 
 export const PROJECTS_API = new InjectionToken<ProjectsApi>('ProjectsApi');
@@ -204,6 +213,19 @@ export class HttpProjectsApi implements ProjectsApi {
   ): Observable<DirectionControlResult> {
     return this.http.post<DirectionControlResult>(
       `/api/projects/${encodeURIComponent(projectId)}/directions/${encodeURIComponent(directionId)}/${action}`,
+      {},
+    );
+  }
+
+  getSkillsUpdate(projectId: string): Observable<SkillsUpdate> {
+    return this.http.get<SkillsUpdate>(
+      `/api/projects/${encodeURIComponent(projectId)}/skills-update`,
+    );
+  }
+
+  updateSkills(projectId: string): Observable<UpdateSkillsResult> {
+    return this.http.post<UpdateSkillsResult>(
+      `/api/projects/${encodeURIComponent(projectId)}/skills-update`,
       {},
     );
   }

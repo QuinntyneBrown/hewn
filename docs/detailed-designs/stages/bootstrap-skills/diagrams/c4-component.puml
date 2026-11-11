@@ -3,22 +3,25 @@
 LAYOUT_WITH_LEGEND()
 title Components — Bootstrap and update skills
 
-Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
+Container_Boundary(api_b, "Hewn API") {
+  Component(get, "GetSkillsUpdateHandler", "MediatR handler", "Commits after the locked SHA (L2-008 AC1)")
+  Component(upd, "UpdateSkillsHandler", "MediatR handler", "Commits skills and lock to a branch, opens the PR")
+  Component(merge, "SkillsUpdateMerger", "Application service, every 10 s", "Merges once checks pass; rebases; records failures")
+  Component(src, "GitSkillsSource", "Infrastructure", "Bare clone of Greenlit, fetched at most once a minute")
+}
 Container_Boundary(worker_b, "Worker") {
   Component(boot, "BootstrapStageExecutor", "Stage executor", "Stage 0: copy skills, write lock, commit")
-  Component(upd, "UpdateSkillsExecutor", "Run executor", "Refresh skills on a branch and open a PR")
-  Component(copier, "SkillCopier", "Worker service", "Copies folders, keeps existing ones")
-  Component(lock, "SkillsLockWriter", "Worker service", "Writes .hewn/skills.lock")
 }
 System_Ext(greenlit, "Greenlit repository", "github.com/QuinntyneBrown/greenlit, the skill source")
 System_Ext(github, "GitHub", "Target repositories, pull requests, checks, GitHub App and webhooks")
 
-Rel(api, boot, "Leases stage 0 run", "HTTPS")
-Rel(boot, copier, "Uses")
-Rel(boot, lock, "Uses")
-Rel(upd, copier, "Uses")
-Rel(upd, lock, "Uses")
-Rel(copier, greenlit, "Fetches", "Git/HTTPS")
-Rel(boot, github, "Commits", "Git/HTTPS")
-Rel(upd, github, "Pushes branch, opens PR", "HTTPS")
+Rel(boot, greenlit, "Clones", "Git/HTTPS")
+Rel(boot, github, "Commits through the API", "HTTPS")
+Rel(get, src, "Uses")
+Rel(upd, src, "Uses")
+Rel(merge, src, "Uses when rebasing")
+Rel(src, greenlit, "Fetches", "Git/HTTPS")
+Rel(get, github, "Reads .hewn/skills.lock", "HTTPS")
+Rel(upd, github, "Commits branch, opens PR", "HTTPS")
+Rel(merge, github, "Lists checks, merges", "HTTPS")
 @enduml

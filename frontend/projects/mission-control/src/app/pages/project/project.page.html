@@ -29,6 +29,11 @@
                 ><svg hw-icon name="github" class="icon--xs"></svg> {{ p.repository }}</a
               >
             }
+            @if (skillsLink(); as label) {
+              <button class="btn btn--link" type="button" (click)="openUpdateSkills()">
+                <svg hw-icon name="refresh" class="icon--xs"></svg> {{ label }}
+              </button>
+            }
             @if (projectSpend(); as total) {
               <span class="tabular">Project spend {{ total }}</span>
             }

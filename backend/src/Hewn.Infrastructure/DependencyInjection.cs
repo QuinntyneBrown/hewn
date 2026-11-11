@@ -49,6 +49,7 @@ public static class DependencyInjection
             }
         });
 
+        services.AddSingleton<ISkillsSource, Skills.GitSkillsSource>();
         services.Configure<PipelineOptions>(o =>
         {
             o.GitHubOwner = configuration["HEWN_GITHUB_OWNER"];
