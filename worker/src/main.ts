@@ -14,6 +14,7 @@ import { StageRouter, type StageExecutor } from './executors/stage-executor.ts';
 import { HttpHewnApi } from './http-api.ts';
 import { McpMagicPatterns } from './magic-patterns/magic-patterns.ts';
 import { jsonLog } from './json-log.ts';
+import { loadCredentials } from './secret-store.ts';
 import { otlpExporter, Tracer } from './tracing.ts';
 import { WorkLoop } from './work-loop.ts';
 
@@ -26,6 +27,18 @@ function required(name: string): string {
     process.exit(2);
   }
   return value;
+}
+
+// L2-040 AC1: with HEWN_SECRET_STORE=os, credentials come from the OS key store `hewn secret set` wrote them to.
+let fromKeyStore: string[] = [];
+try {
+  fromKeyStore = loadCredentials(process.env, {
+    store: process.env.HEWN_SECRET_STORE,
+    service: process.env.HEWN_KEY_STORE_SERVICE,
+  });
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(2);
 }
 
 const apiUrl = required('HEWN_API_URL');
@@ -140,6 +153,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => st
 
 // One line of JSON per entry, with the run's IDs while one runs, and credentials redacted (L2-049 AC1).
 const log = jsonLog();
+if (fromKeyStore.length > 0) log('Read credentials from the OS key store', { credentials: fromKeyStore.join(', ') });
 
 // Spans for each run and its model calls go to the OTLP endpoint when one is set, as the API's do (L2-049 AC2).
 const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
