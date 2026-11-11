@@ -5,14 +5,16 @@ title Components — Responsive, accessible and themed UI
 
 Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
 Container_Boundary(spa_b, "Mission Control") {
-  Component(shell, "AppShell", "Angular layout component", "Sidebar or menu by band")
-  Component(bp, "BreakpointService", "Angular service", "Current band as a signal")
+  Component(shell, "AppShell", "Angular layout component", "Sidebar from 992 px; menu drawer below")
+  Component(drawer, "Menu drawer", "CDK Dialog", "The sidebar template, focus-trapped")
+  Component(ds, "Design system CSS", "tokens.css, components.css", "Layout bands and control sizes by breakpoint")
   Component(ann, "StatusAnnouncer", "Angular service", "Polite live region, 5 s per project")
   Component(theme, "ThemeService", "Angular service", "Light, Dark, System; persisted")
   Component(live, "LiveEventsService", "Angular service", "Stage status events")
 }
 
-Rel(shell, bp, "Reads band")
+Rel(shell, drawer, "Opens below 992 px")
+Rel(shell, ds, "Styled by")
 Rel(live, ann, "Stage status changes")
 Rel(shell, theme, "Applies theme")
 Rel(live, api, "Subscribes", "SignalR")
