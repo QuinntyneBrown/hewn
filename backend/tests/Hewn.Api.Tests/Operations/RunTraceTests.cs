@@ -19,7 +19,33 @@ namespace Hewn.Api.Tests.Operations;
 
 public sealed class RunTraceTests : IAsyncLifetime
 {
-    private readonly List<Activity> _spans = [];
+    private readonly LockedSpans _spans = new();
+
+    /// <summary>
+    /// The exporter adds spans from every test's host while this test reads them, so each add and each read takes a lock.
+    /// </summary>
+    private sealed class LockedSpans : ICollection<Activity>, IEnumerable<Activity>
+    {
+        private readonly List<Activity> _items = [];
+
+        public int Count { get { lock (_items) { return _items.Count; } } }
+
+        public bool IsReadOnly => false;
+
+        public void Add(Activity item) { lock (_items) { _items.Add(item); } }
+
+        public void Clear() { lock (_items) { _items.Clear(); } }
+
+        public bool Contains(Activity item) { lock (_items) { return _items.Contains(item); } }
+
+        public void CopyTo(Activity[] array, int arrayIndex) { lock (_items) { _items.CopyTo(array, arrayIndex); } }
+
+        public bool Remove(Activity item) { lock (_items) { return _items.Remove(item); } }
+
+        public IEnumerator<Activity> GetEnumerator() { lock (_items) { return _items.ToList().GetEnumerator(); } }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+    }
     private readonly StringWriter _logs = new();
     private readonly HewnApiFactory _factory;
 
