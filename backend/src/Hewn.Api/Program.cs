@@ -11,10 +11,16 @@ using Hewn.Application;
 using Hewn.Application.Abstractions;
 using Hewn.Application.Pipeline;
 using Hewn.Infrastructure;
+using Hewn.Infrastructure.Secrets;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Credentials come from the secret store, over environment variables, and settings show only their references (L2-040 AC1).
+var secrets = SecretStores.Create(builder.Configuration);
+((IConfigurationBuilder)builder.Configuration).Add(new SecretStoreConfigurationSource(secrets));
+builder.Services.AddSingleton(secrets);
 
 // Every log entry is one line of JSON on standard output, with its run's IDs and the trace ID (L2-049 AC1).
 builder.Logging.ClearProviders();
