@@ -606,6 +606,10 @@ namespace Hewn.Infrastructure.Persistence.Migrations
                     b.Property<long?>("StopAcknowledgedAt")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("TraceParent")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("WorkerId")
                         .HasMaxLength(32)
                         .HasColumnType("TEXT");

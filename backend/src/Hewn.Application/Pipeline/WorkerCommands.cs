@@ -65,7 +65,8 @@ public sealed record LeasedRunDto(
     string SkillsSource,
     decimal DescopeThresholdDays,
     int MaxIterations,
-    int Attempt);
+    int Attempt,
+    string? TraceParent = null);
 
 public sealed record LeaseRunCommand(string WorkerId) : IRequest<LeasedRunDto?>;
 
@@ -144,7 +145,9 @@ public sealed class LeaseRunHandler(
             // The threshold the direction was submitted with; older directions use the current default (L2-019 AC1).
             threshold,
             options.Value.MaxIterations,
-            run.Attempt);
+            run.Attempt,
+            // The worker continues the run's trace from the span for its time in the queue (L2-049 AC2).
+            RunTracing.Queued(run, clock.GetUtcNow()));
     }
 
     /// <summary>Creates or adopts the repository; on refusal fails the run with GitHub's reason and returns false.</summary>
@@ -251,6 +254,7 @@ public sealed class ReportResultHandler(
     LeaseService leases,
     PipelineOrchestrator pipeline,
     EventAppender events,
+    HewnMetrics metrics,
     TimeProvider clock) : IRequestHandler<ReportResultCommand>
 {
     public async Task Handle(ReportResultCommand command, CancellationToken cancellationToken)
@@ -274,6 +278,7 @@ public sealed class ReportResultHandler(
 
         (await WorkerLookup.FindAsync(db, command.WorkerId, cancellationToken)).Seen(now, WorkerStatus.Idle);
         await FencedSave.SaveAsync(db, cancellationToken);
+        metrics.RunEnded(run);
         await events.PublishAsync(cancellationToken);
     }
 }

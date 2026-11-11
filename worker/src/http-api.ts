@@ -1,3 +1,4 @@
+import { currentSpan } from './tracing.ts';
 import {
   HewnApiError,
   LeaseLostError,
@@ -221,7 +222,12 @@ export class HttpHewnApi implements HewnApi {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method,
       signal,
-      headers: { authorization: `Bearer ${this.token}`, 'content-type': 'application/json' },
+      headers: {
+        authorization: `Bearer ${this.token}`,
+        'content-type': 'application/json',
+        // Inside a run's span, the API's handling joins the run's trace (L2-049 AC2).
+        ...(currentSpan() ? { traceparent: currentSpan()!.traceParent } : {}),
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
 

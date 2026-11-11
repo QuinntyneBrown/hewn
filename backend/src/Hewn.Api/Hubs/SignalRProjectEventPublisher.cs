@@ -1,11 +1,12 @@
 using Hewn.Application.Abstractions;
+using Hewn.Application.Common;
 using Hewn.Application.Projects;
 using Hewn.Domain;
 using Microsoft.AspNetCore.SignalR;
 
 namespace Hewn.Api.Hubs;
 
-public sealed class SignalRProjectEventPublisher(IHubContext<MissionControlHub> hub, IServiceScopeFactory scopes) : IProjectEventPublisher
+public sealed class SignalRProjectEventPublisher(IHubContext<MissionControlHub> hub, IServiceScopeFactory scopes, HewnMetrics metrics) : IProjectEventPublisher
 {
     /// <summary>Events that never change a project's row: its log and its recorded decisions.</summary>
     private static readonly HashSet<string> RowNeutral = ["LogLines", "DecisionRecorded"];
@@ -23,6 +24,7 @@ public sealed class SignalRProjectEventPublisher(IHubContext<MissionControlHub> 
         {
             await hub.Clients.Group(MissionControlHub.ProjectGroup(stored.ProjectId))
                 .SendAsync("ProjectEvent", GetProjectEventsHandler.ToDto(stored), cancellationToken);
+            metrics.EventSent(stored);
         }
 
         // A stage starting, finishing or stopping changes what a worker is doing: the Workers view reads the list again.

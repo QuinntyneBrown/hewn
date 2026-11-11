@@ -5,15 +5,17 @@ title Containers — Observability and health checks
 
 System_Boundary(hewn, "Hewn") {
   Container(api, "Hewn API", "ASP.NET Core, SignalR", "REST endpoints, the Mission Control hub and orchestration")
-  ContainerDb(db, "Hewn database", "Relational database, engine <TO SUPPLY>", "Projects, directions, runs, events, spend, audit")
-  ContainerQueue(backplane, "SignalR backplane", "<TO SUPPLY>", "Fans hub messages out across API instances")
-  Container(worker, "Worker", "Container image, Claude Agent SDK", "Leases runs and executes stages, local or cloud")
+  ContainerDb(db, "Hewn database", "SQLite", "Projects, directions, runs (with their traceparent), events, spend, audit")
+  ContainerQueue(backplane, "SignalR lifetime manager", "In-process today (ADR 0035)", "Sends hub messages to clients")
+  Container(worker, "Worker", "Node.js", "Leases runs and executes stages, local or cloud")
 }
-System_Ext(telemetry, "Telemetry backend", "Receives OpenTelemetry traces and metrics; product <TO SUPPLY>")
+System_Ext(jaeger, "Trace viewer", "Jaeger locally (Docker Compose)")
+System_Ext(prometheus, "Prometheus", "Docker Compose locally")
 
-Rel(api, telemetry, "Logs, traces, metrics", "OTLP")
-Rel(worker, telemetry, "Logs, traces", "OTLP")
-Rel(worker, api, "Lease carries trace context", "HTTPS (outbound)")
-Rel(api, db, "Readiness check", "SQL")
-Rel(api, backplane, "Readiness check")
+Rel(api, jaeger, "Traces", "OTLP/HTTP")
+Rel(worker, jaeger, "Traces", "OTLP/HTTP JSON")
+Rel(worker, api, "Lease returns traceparent; calls send it", "HTTPS (outbound)")
+Rel(prometheus, api, "Scrapes /metrics", "HTTP, bearer token")
+Rel(api, db, "Readiness: SELECT 1", "SQL")
+Rel(api, backplane, "Readiness: send to an empty group")
 @enduml

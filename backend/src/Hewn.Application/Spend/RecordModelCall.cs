@@ -39,6 +39,7 @@ public sealed class RecordModelCallHandler(
     PriceTable prices,
     PipelineOrchestrator pipeline,
     EventAppender events,
+    HewnMetrics metrics,
     TimeProvider clock) : IRequestHandler<RecordModelCallCommand, ModelCallVerdict>
 {
     public const string SpendUpdated = "SpendUpdated";
@@ -95,6 +96,7 @@ public sealed class RecordModelCallHandler(
         }
 
         await FencedSave.SaveAsync(db, cancellationToken);
+        metrics.ModelCalled(model, call.InputTokens, call.OutputTokens, cost);
         await events.PublishAsync(cancellationToken);
         return new ModelCallVerdict(verdict.ToString(), direction.SpendUsd, direction.BudgetUsd);
     }

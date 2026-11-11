@@ -3,8 +3,13 @@
 LAYOUT_WITH_LEGEND()
 title System Context — Observability and health checks
 
+Person(operator, "Operator", "Checks health, reads logs, follows traces and watches metrics")
 System(hewn, "Hewn", "Software factory: carries a direction to merged code through a fixed pipeline")
-System_Ext(telemetry, "Telemetry backend", "Receives OpenTelemetry traces and metrics; product <TO SUPPLY>")
+System_Ext(jaeger, "Trace viewer", "Jaeger locally; any OTLP/HTTP receiver")
+System_Ext(prometheus, "Prometheus", "Scrapes /metrics with the scrape token")
 
-Rel(hewn, telemetry, "Exports logs, traces and metrics to", "OTLP, Prometheus scrape")
+Rel(operator, hewn, "Probes /health/live and /health/ready", "HTTPS")
+Rel(hewn, jaeger, "Exports traces to", "OTLP/HTTP")
+Rel(prometheus, hewn, "Scrapes metrics from", "HTTP, bearer token")
+Rel(operator, jaeger, "Follows a run's trace in")
 @enduml

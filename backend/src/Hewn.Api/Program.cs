@@ -2,16 +2,42 @@ using System.Text.Json.Serialization;
 using Hewn.Api.Auth;
 using Hewn.Api.Designs;
 using Hewn.Api.Errors;
-using Hewn.Api.MissionControl;
+using Hewn.Api.Health;
 using Hewn.Api.Hubs;
+using Hewn.Api.Logging;
+using Hewn.Api.MissionControl;
 using Hewn.Api.Pipeline;
 using Hewn.Application;
 using Hewn.Application.Abstractions;
+using Hewn.Application.Pipeline;
 using Hewn.Infrastructure;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Every log entry is one line of JSON on standard output, with its run's IDs and the trace ID (L2-049 AC1).
+builder.Logging.ClearProviders();
+builder.Services.AddSingleton(new LogSink(Console.Out));
+builder.Logging.Services.AddSingleton<ILoggerProvider, JsonLoggerProvider>();
+
 builder.Services.AddApplication();
+
+// Traces: HTTP in and out plus Hewn's run spans, exported over OTLP when an endpoint is set (L2-049 AC2).
+var telemetry = builder.Services.AddOpenTelemetry();
+
+// Metrics for a Prometheus scrape at /metrics, when a scrape token is configured (L2-049 AC3).
+telemetry.AddHewnMetrics();
+telemetry
+    .ConfigureResource(resource => resource.AddService("hewn-api"))
+    .WithTracing(tracing =>
+    {
+        tracing.AddSource(RunTracing.SourceName).AddAspNetCoreInstrumentation().AddHttpClientInstrumentation();
+        if (!string.IsNullOrEmpty(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+        {
+            tracing.AddOtlpExporter();
+        }
+    });
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
@@ -25,6 +51,7 @@ builder.Services.AddAntiforgery(o => o.HeaderName = "X-XSRF-TOKEN");
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApplicationExceptionHandler>();
 builder.Services.AddSignalR();
+builder.Services.AddHewnHealthChecks();
 builder.Services.AddSingleton<IProjectEventPublisher, SignalRProjectEventPublisher>();
 builder.Services.AddSingleton<IWorkersNotifier, SignalRWorkersNotifier>();
 if (builder.Configuration.GetValue("Hewn:Leases:ReaperEnabled", true))
@@ -54,6 +81,7 @@ builder.Services
 var app = builder.Build();
 
 app.UseForwardedHeaders();
+app.UseHewnMetrics();
 app.UseSecurityHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
@@ -63,7 +91,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<MissionControlHub>(MissionControlHub.Path);
 app.MapPreview();
-app.MapGet("/health/live", () => Results.Ok(new { status = "Healthy" })).AllowAnonymous();
+app.MapHewnHealthChecks();
 app.MapMissionControl();
 
 if (app.Configuration.GetValue<bool>("Hewn:Fakes:Enabled"))

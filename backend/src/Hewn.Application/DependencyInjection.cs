@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddSingleton<Auth.RevokedSessions>();
         services.AddSingleton<Auth.AllowListAccess>();
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly, includeInternalTypes: true);
+        services.AddSingleton<Common.HewnMetrics>();
         services.AddScoped<EventAppender>();
         services.AddScoped<Audit.AuditWriter>();
         services.AddScoped<Projects.ProjectSummaryReader>();

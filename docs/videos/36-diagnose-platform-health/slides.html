@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 36 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="36" data-video-title="Diagnose platform health" data-parts="Introduction|Goal|Health|Logs|Traces|Metrics|Local stack|Tests|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 36</div>
+  <h1>Diagnose platform health</h1>
+  <p class="lead">Health checks, correlated logs, one trace per run, and metrics.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video shows each one working">
+  <div class="cols">
+    <figure><img src="screens/jaeger-search.png" alt="Jaeger listing traces that span hewn-api and hewn-worker"></figure>
+    <figure><img src="screens/prometheus-runs.png" alt="Prometheus showing stage runs by stage and outcome"></figure>
+  </div>
+</section>
+
+<section id="goal" data-part="1" data-cue="The requirements come in two parts.">
+  <ul class="bullets">
+    <li>/health/live 200 while running; /health/ready 200 only with database and backplane, else 503 (L2-051)</li>
+    <li>JSON logs with project, direction, stage, run and trace IDs; one trace per run (L2-049 AC1, AC2)</li>
+    <li>Scraped metrics: stage duration and success rate, queue, workers, event latency, tokens, spend (AC3)</li>
+  </ul>
+</section>
+
+<section id="health-up" data-part="2" data-cue="Here are both endpoints with the database in place.">
+  <div class="code-file">Database in place · screens/records.json</div>
+  <pre class="code" data-lang="sh" data-mark="6-7">$ curl -i /health/live
+HTTP/1.1 200 OK
+{&quot;status&quot;:&quot;Healthy&quot;,&quot;checks&quot;:[]}
+
+$ curl -i /health/ready
+HTTP/1.1 200 OK
+{&quot;status&quot;:&quot;Healthy&quot;,&quot;checks&quot;:[{&quot;name&quot;:&quot;database&quot;,&quot;status&quot;:&quot;Healthy&quot;},{&quot;name&quot;:&quot;backplane&quot;,&quot;status&quot;:&quot;Healthy&quot;}]}</pre>
+</section>
+
+<section id="health-down" data-part="2" data-cue="Then the database file is moved away.">
+  <div class="code-file">$ mv backend/obs-video.db backend/obs-video.db.away</div>
+  <pre class="code tight" data-lang="sh" data-mark="6-7">$ curl -i /health/live
+HTTP/1.1 200 OK
+{&quot;status&quot;:&quot;Healthy&quot;,&quot;checks&quot;:[]}
+
+$ curl -i /health/ready
+HTTP/1.1 503 Service Unavailable
+{&quot;status&quot;:&quot;Unhealthy&quot;,&quot;checks&quot;:[{&quot;name&quot;:&quot;database&quot;,&quot;status&quot;:&quot;Unhealthy&quot;},{&quot;name&quot;:&quot;backplane&quot;,&quot;status&quot;:&quot;Healthy&quot;}]}</pre>
+  <div class="result red">✘ ready 503: database Unhealthy, backplane Healthy, no error text</div>
+  <div class="result green">✔ file back: ready 200 again; live 200 throughout</div>
+</section>
+
+<section id="health-code" data-part="2" data-cue="The database check opens a new connection outside the pool">
+  <div class="code-file">backend/src/Hewn.Api/Health/HealthEndpoints.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="1-2,6">builder.Mode = SqliteOpenMode.ReadWrite;
+builder.Pooling = false;
+await using var connection = new SqliteConnection(builder.ToString());
+await connection.OpenAsync(cancellationToken);
+await using var command = connection.CreateCommand();
+command.CommandText = &quot;SELECT 1&quot;;
+await command.ExecuteScalarAsync(cancellationToken);
+return HealthCheckResult.Healthy();</pre>
+  <div class="code-file">backend/src/Hewn.Api/Health/HealthEndpoints.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="3">try
+{
+    await hub.Clients.Group(&quot;health-probe&quot;).SendAsync(&quot;Probe&quot;, cancellationToken);
+    return HealthCheckResult.Healthy();
+}</pre>
+</section>
+
+<section id="logs" data-part="3" data-cue="Every log entry is now one line of JSON.">
+  <div class="code-file">worker standard output · one run</div>
+  <pre class="code tight" data-lang="json">{&quot;timestamp&quot;:&quot;2026-11-11T05:21:14.719Z&quot;,&quot;level&quot;:&quot;Information&quot;,&quot;message&quot;:&quot;Leased run&quot;,&quot;projectId&quot;:&quot;c153a3f6-d12d-42c3-917e-6f6eee3ea297&quot;,&quot;directionId&quot;:&quot;e6dfad59-9d6e-42bd-9843-c9cd9281f3a8&quot;,&quot;stage&quot;:5,&quot;runId&quot;:&quot;00bad23c-f63a-4d00-9e6e-9fd453a622ae&quot;,&quot;traceId&quot;:&quot;4d5df93c99c6b01f8920cd43cf7b8f11&quot;}
+{&quot;timestamp&quot;:&quot;2026-11-11T05:21:16.570Z&quot;,&quot;level&quot;:&quot;Information&quot;,&quot;message&quot;:&quot;Run succeeded&quot;,&quot;projectId&quot;:&quot;c153a3f6-d12d-42c3-917e-6f6eee3ea297&quot;,&quot;directionId&quot;:&quot;e6dfad59-9d6e-42bd-9843-c9cd9281f3a8&quot;,&quot;stage&quot;:5,&quot;runId&quot;:&quot;00bad23c-f63a-4d00-9e6e-9fd453a622ae&quot;,&quot;traceId&quot;:&quot;4d5df93c99c6b01f8920cd43cf7b8f11&quot;}</pre>
+  <div class="code-file">API standard output · the same run</div>
+  <pre class="code tight" data-lang="json">{&quot;timestamp&quot;:&quot;2026-11-11T05:21:14.7192240Z&quot;,&quot;level&quot;:&quot;Information&quot;,&quot;message&quot;:&quot;Leased run 00bad23c-f63a-4d00-9e6e-9fd453a622ae at stage 5 to worker wkr_1814cca42a24, attempt 1&quot;,&quot;projectId&quot;:&quot;c153a3f6-d12d-42c3-917e-6f6eee3ea297&quot;,&quot;directionId&quot;:&quot;e6dfad59-9d6e-42bd-9843-c9cd9281f3a8&quot;,&quot;stage&quot;:5,&quot;runId&quot;:&quot;00bad23c-f63a-4d00-9e6e-9fd453a622ae&quot;,&quot;traceId&quot;:&quot;4d5df93c99c6b01f8920cd43cf7b8f11&quot;}
+{&quot;timestamp&quot;:&quot;2026-11-11T05:21:16.5698710Z&quot;,&quot;level&quot;:&quot;Information&quot;,&quot;message&quot;:&quot;Run succeeded&quot;,&quot;projectId&quot;:&quot;c153a3f6-d12d-42c3-917e-6f6eee3ea297&quot;,&quot;directionId&quot;:&quot;e6dfad59-9d6e-42bd-9843-c9cd9281f3a8&quot;,&quot;stage&quot;:5,&quot;runId&quot;:&quot;00bad23c-f63a-4d00-9e6e-9fd453a622ae&quot;,&quot;traceId&quot;:&quot;4d5df93c99c6b01f8920cd43cf7b8f11&quot;}</pre>
+</section>
+
+<section id="logger" data-part="3" data-cue="In the API, a JSON logger provider">
+  <div class="code-file">backend/src/Hewn.Api/Logging/JsonLogging.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="2,13,14-17">var fields = new Dictionary&lt;string, object?&gt;();
+scopes().ForEachScope((scope, f) =&gt; Collect(scope, f), fields);
+Collect(state, fields);
+
+using var buffer = new MemoryStream();
+// Relaxed escaping keeps quotes and + readable; these lines are never put into HTML.
+using (var json = new Utf8JsonWriter(buffer, new JsonWriterOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }))
+{
+    json.WriteStartObject();
+    json.WriteString(&quot;timestamp&quot;, DateTime.UtcNow.ToString(&quot;O&quot;));
+    json.WriteString(&quot;level&quot;, logLevel.ToString());
+    json.WriteString(&quot;category&quot;, category);
+    json.WriteString(&quot;message&quot;, SecretRedactor.Redact(formatter(state, exception)));
+    if (Activity.Current is { } activity)
+    {
+        json.WriteString(&quot;traceId&quot;, activity.TraceId.ToHexString());
+        json.WriteString(&quot;spanId&quot;, activity.SpanId.ToHexString());
+    }</pre>
+</section>
+
+<section id="clip-trace" data-part="4" data-cue="Here is the trace in Jaeger." data-clip="clips/trace.mp4">
+  <video class="clip" muted></video>
+  <aside class="clip-notes">One direction's trace: queued, leased, run by the worker, a model call's tags, then both services' span counts</aside>
+</section>
+
+<section id="queued" data-part="4" data-cue="A run keeps the traceparent of the work that queued it.">
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/RunTracing.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="1,4-8">ActivityContext.TryParse(run.TraceParent, null, out var parent);
+var end = DateTimeOffset.UtcNow;
+var waited = now - run.CreatedAt;
+using var activity = Source.StartActivity(
+    &quot;Run queued&quot;,
+    ActivityKind.Internal,
+    parent,
+    startTime: end - (waited &gt; TimeSpan.Zero ? waited : TimeSpan.Zero));</pre>
+  <div class="code-file">backend/src/Hewn.Application/Pipeline/RunTracing.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="2">activity.SetEndTime(end.UtcDateTime);
+return activity.Id;</pre>
+</section>
+
+<section id="worker-trace" data-part="4" data-cue="Every call back to the API sends traceparent">
+  <div class="code-file">worker/src/work-loop.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2-3,13">private async execute(workerId: string, run: LeasedRun, stop: AbortSignal): Promise&lt;void&gt; {
+  const span = this.tracer.start(`Run stage ${run.stage}`, {
+    traceParent: run.traceParent,
+    attributes: {
+      &#x27;hewn.project.id&#x27;: run.projectId,
+      &#x27;hewn.direction.id&#x27;: run.directionId,
+      &#x27;hewn.stage&#x27;: run.stage,
+      &#x27;hewn.run.id&#x27;: run.runId,
+      &#x27;hewn.run.epoch&#x27;: run.epoch,
+    },
+  });
+  try {
+    await withTrace(span, () =&gt; this.executeRun(workerId, run, stop));
+  } finally {
+    span.end();
+  }
+}</pre>
+  <div class="code-file">worker/src/http-api.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="2">// Inside a run&#x27;s span, the API&#x27;s handling joins the run&#x27;s trace (L2-049 AC2).
+...(currentSpan() ? { traceparent: currentSpan()!.traceParent } : {}),</pre>
+</section>
+
+<section id="sequence" data-part="4" data-cue="The sequence diagram shows the path">
+  <figure class="diagram"><img src="../../detailed-designs/operations/observability-and-health/diagrams/sequence-trace-a-run.png" alt="Sequence: the submit request queues a run with its traceparent; the lease returns the queued span; the worker spans the run and its model calls; the result queues the next stage"></figure>
+</section>
+
+<section id="metrics" data-part="5" data-cue="A scrape of slash metrics, with the scrape token, exports the meter Hewn.">
+  <div class="code-file">$ curl -H "Authorization: Bearer $HEWN_METRICS_TOKEN" /metrics   (hewn_ lines, stage 5 shown)</div>
+  <pre class="code tight" data-lang="txt">hewn_event_latency_seconds_sum 0.9959639999999993
+hewn_event_latency_seconds_count 728
+hewn_model_tokens_total{kind=&quot;input&quot;,model=&quot;claude-opus-5-5&quot;} 1848000
+hewn_model_tokens_total{kind=&quot;output&quot;,model=&quot;claude-opus-5-5&quot;} 184800
+hewn_queue_depth 0
+hewn_spend_usd_total{model=&quot;claude-opus-5-5&quot;} 11.08799999999997
+hewn_stage_duration_seconds_sum{outcome=&quot;Succeeded&quot;,stage=&quot;5&quot;} 12.959612
+hewn_stage_duration_seconds_count{outcome=&quot;Succeeded&quot;,stage=&quot;5&quot;} 7
+hewn_stage_runs_total{outcome=&quot;Succeeded&quot;,stage=&quot;5&quot;} 7
+hewn_workers_active 1</pre>
+  <div class="result red">✘ no token: 401 Unauthorized</div>
+</section>
+
+<section id="prometheus" data-part="5" data-cue="Prometheus, from the same Compose stack, scrapes it every five seconds.">
+  <div class="cols">
+    <figure><img src="screens/prometheus-runs.png" alt="sum by (stage, outcome) (hewn_stage_runs_total)"></figure>
+    <figure><img src="screens/prometheus-tokens.png" alt="hewn_model_tokens_total by kind and model"></figure>
+  </div>
+</section>
+
+<section id="meter" data-part="5" data-cue="The meter records a stage">
+  <div class="code-file">backend/src/Hewn.Application/Common/HewnMetrics.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="4,7,12,16-18">public void RunEnded(Run run)
+{
+    var tags = new TagList { { &quot;stage&quot;, run.Stage }, { &quot;outcome&quot;, run.Status.ToString() } };
+    _stageRuns.Add(1, tags);
+    if (run.StartedAt is { } started &amp;&amp; run.EndedAt is { } ended)
+    {
+        _stageDuration.Record((ended - started).TotalSeconds, tags);
+    }
+}
+
+public void EventSent(StoredEvent stored) =&gt;
+    _eventLatency.Record(Math.Max(0, (_clock.GetUtcNow() - stored.OccurredAt).TotalSeconds));
+
+public void ModelCalled(string model, long inputTokens, long outputTokens, decimal costUsd)
+{
+    _tokens.Add(inputTokens, new KeyValuePair&lt;string, object?&gt;(&quot;model&quot;, model), new KeyValuePair&lt;string, object?&gt;(&quot;kind&quot;, &quot;input&quot;));
+    _tokens.Add(outputTokens, new KeyValuePair&lt;string, object?&gt;(&quot;model&quot;, model), new KeyValuePair&lt;string, object?&gt;(&quot;kind&quot;, &quot;output&quot;));
+    _spend.Add((double)costUsd, new KeyValuePair&lt;string, object?&gt;(&quot;model&quot;, model));
+}</pre>
+</section>
+
+<section id="compose" data-part="6" data-cue="Start Observability brings up Jaeger and Prometheus">
+  <div class="code-file">eng/observability/compose.yaml</div>
+  <pre class="code tight" data-lang="yaml" data-mark="3,5,8">services:
+  jaeger:
+    image: jaegertracing/jaeger:2.5.0
+    ports:
+      - &quot;16686:16686&quot; # UI
+      - &quot;4318:4318&quot; # OTLP/HTTP
+  prometheus:
+    image: prom/prometheus:v3.4.0</pre>
+  <div class="code-file">eng/Start-Api.ps1</div>
+  <pre class="code tight" data-lang="sh" data-mark="2,5">if ($Observability) {
+    $env:OTEL_EXPORTER_OTLP_ENDPOINT = &#x27;http://localhost:4318&#x27;
+    $env:OTEL_EXPORTER_OTLP_PROTOCOL = &#x27;http/protobuf&#x27;
+    # The token eng/observability/compose.yaml&#x27;s Prometheus scrapes with; a local value, not a secret.
+    $env:HEWN_METRICS_TOKEN = &#x27;local-metrics-token-not-a-secret&#x27;
+}</pre>
+</section>
+
+<section id="components" data-part="6" data-cue="The components diagram shows how the pieces connect.">
+  <figure class="diagram"><img src="../../detailed-designs/operations/observability-and-health/diagrams/c4-component.png" alt="Components: JsonLoggerProvider, RunLogScopeFilter, RunTracing, HewnMetrics, MetricsEndpoint and the health checks, with Jaeger and Prometheus"></figure>
+</section>
+
+<section id="t-health" data-part="7" data-cue="Each slice started with a failing test.">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Operations/HealthTests.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="3-4,6-7">var response = await Anonymous(factory).GetAsync(&quot;/health/ready&quot;);
+
+Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+Assert.Equal(new Dictionary&lt;string, string&gt; { [&quot;database&quot;] = &quot;Unhealthy&quot;, [&quot;backplane&quot;] = &quot;Healthy&quot; }, await ChecksOf(response));
+var text = await response.Content.ReadAsStringAsync();
+Assert.DoesNotContain(missing, text);
+Assert.DoesNotContain(&quot;SQLite&quot;, text, StringComparison.OrdinalIgnoreCase);</pre>
+  <div class="result green">✔ Operations/HealthTests: 4 passed</div>
+</section>
+
+<section id="t-logs" data-part="7" data-cue="The structured log test runs a project">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Operations/StructuredLogTests.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="1-4,7-8">    Assert.Equal(run.ProjectId.ToString(), entry.GetProperty(&quot;projectId&quot;).GetString());
+    Assert.Equal(directionId.ToString(), entry.GetProperty(&quot;directionId&quot;).GetString());
+    Assert.Equal(0, entry.GetProperty(&quot;stage&quot;).GetInt32());
+    Assert.Matches(&quot;^[0-9a-f]{32}$&quot;, entry.GetProperty(&quot;traceId&quot;).GetString());
+}
+
+Assert.DoesNotContain(Token, _output.ToString());
+Assert.Contains(&quot;[redacted]&quot;, lines.Single(l =&gt; l.GetProperty(&quot;message&quot;).GetString()!.StartsWith(&quot;Run failed&quot;)).GetProperty(&quot;message&quot;).GetString());</pre>
+  <div class="result red">✘ Hewn.Api.Logging did not exist; worker: Cannot find module &#x27;../src/json-log.ts&#x27;</div>
+  <div class="result green">✔ StructuredLogTests 1 passed · worker structured-log 2 passed</div>
+</section>
+
+<section id="t-trace" data-part="7" data-cue="The trace test sends a traceparent with the submission.">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Operations/RunTraceTests.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="2-3,7-8">// The lease hands the worker the trace to continue.
+var leaseParent = run.Body.GetProperty(&quot;traceParent&quot;).GetString()!;
+Assert.Matches($&quot;^00-{traceId}-[0-9a-f]{{16}}-01$&quot;, leaseParent);
+// Listeners are process-wide, so other tests&#x27; spans arrive here too: look only at this trace.
+var queued = Assert.Single(_spans, s =&gt; s.DisplayName == &quot;Run queued&quot; &amp;&amp; s.TraceId.ToHexString() == traceId);
+Assert.Equal(traceId, queued.TraceId.ToHexString());
+Assert.Equal(leaseParent.Split(&#x27;-&#x27;)[2], queued.SpanId.ToHexString());
+Assert.InRange(queued.Duration.TotalSeconds, 2.5, 3.5);
+Assert.Equal(run.RunId.ToString(), queued.GetTagItem(&quot;hewn.run.id&quot;));</pre>
+  <div class="result red">✘ KeyNotFoundException: the lease had no traceParent; worker: Cannot find module &#x27;../src/tracing.ts&#x27;</div>
+  <div class="result green">✔ RunTraceTests 1 passed · worker run-trace 4 passed</div>
+</section>
+
+<section id="t-metrics" data-part="7" data-cue="The metrics tests scrape after a run and a model call">
+  <div class="code-file">backend/tests/Hewn.Api.Tests/Operations/MetricsTests.cs</div>
+  <pre class="code tight" data-lang="cs" data-mark="1,3-5,7">Assert.Equal(1, Value(scrape, &quot;hewn_stage_duration_seconds_count&quot;, &quot;stage=\&quot;0\&quot;&quot;, &quot;outcome=\&quot;Succeeded\&quot;&quot;));
+Assert.Equal(42, Value(scrape, &quot;hewn_stage_duration_seconds_sum&quot;, &quot;stage=\&quot;0\&quot;&quot;), 1);
+Assert.Equal(1, Value(scrape, &quot;hewn_stage_runs_total&quot;, &quot;stage=\&quot;0\&quot;&quot;, &quot;outcome=\&quot;Succeeded\&quot;&quot;));
+Assert.Equal(1, Value(scrape, &quot;hewn_queue_depth&quot;));
+Assert.Equal(1, Value(scrape, &quot;hewn_workers_active&quot;));
+Assert.True(Value(scrape, &quot;hewn_event_latency_seconds_count&quot;) &gt; 0);
+Assert.Equal(1200, Value(scrape, &quot;hewn_model_tokens_total&quot;, &quot;kind=\&quot;input\&quot;&quot;, &quot;model=\&quot;claude-opus-5-5\&quot;&quot;));
+Assert.Equal(300, Value(scrape, &quot;hewn_model_tokens_total&quot;, &quot;kind=\&quot;output\&quot;&quot;, &quot;model=\&quot;claude-opus-5-5\&quot;&quot;));
+Assert.True(Value(scrape, &quot;hewn_spend_usd_total&quot;, &quot;model=\&quot;claude-opus-5-5\&quot;&quot;) &gt; 0);</pre>
+  <div class="result red">✘ Expected: Unauthorized · Actual: NotFound</div>
+  <div class="result green">✔ MetricsTests 3 passed</div>
+</section>
+
+<section id="totals" data-part="7" data-cue="In all, the backend has">
+  <div class="cols">
+    <figure><img src="../../detailed-designs/operations/observability-and-health/diagrams/sequence-health.png" alt="Sequence: live answers 200; ready checks the database and the backplane, 200 or 503"></figure>
+  </div>
+  <div class="result green">✔ pwsh eng/Test-Backend.ps1: 343 passed</div>
+  <div class="result green">✔ worker npm test: 163 passed · format and type check clean</div>
+</section>
+
+<section id="recap" data-part="8" data-cue="Journey thirty six is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>/health/ready says when the database or backplane is gone</li>
+    <li>One trace and correlated logs from the queuing request to the model calls</li>
+    <li>Metrics for Prometheus; Jaeger and Prometheus in one Compose stack</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

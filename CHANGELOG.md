@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Diagnose platform health (journey 36, L2-049, L2-051): `/health/ready` answers 200 only when the database and the
+  SignalR backplane are reachable, and 503 naming the failing check otherwise (ADR 0035). API and worker logs are one
+  line of JSON each, with a run's project, direction, stage, run and trace IDs. A direction's runs are one
+  OpenTelemetry trace from the request that queued them, through the queue, the worker and its model calls, exported
+  over OTLP. `/metrics` exports stage duration and outcomes, queue depth, active workers, event latency, tokens and
+  spend to a Prometheus scrape holding `HEWN_METRICS_TOKEN` (ADR 0036). `eng/Start-Observability.ps1` starts Jaeger
+  and Prometheus locally with Docker Compose.
 - Choose a theme (journey 35, L2-048): Settings has an Appearance section where anyone signed in picks Light, Dark
   or System for this device. The choice is kept across reloads and applied before the first paint; System, and no
   choice, follow the operating system live. Every page is scanned with axe-core in both themes.

@@ -1,4 +1,5 @@
 using Hewn.Api.Auth;
+using Hewn.Api.Logging;
 using Hewn.Application.Pipeline;
 using Hewn.Application.Spend;
 using Hewn.Domain;
@@ -13,7 +14,8 @@ namespace Hewn.Api.Controllers;
 [Route("api/worker")]
 [Authorize(AuthenticationSchemes = WorkerTokenAuthenticationHandler.SchemeName)]
 [IgnoreAntiforgeryToken]
-public sealed class WorkerController(IMediator mediator) : ControllerBase
+[TypeFilter<RunLogScopeFilter>]
+public sealed class WorkerController(IMediator mediator, ILogger<WorkerController> logger) : ControllerBase
 {
     public sealed record RegisterRequest(string Name, string Location, string Host, string Version);
 
@@ -84,7 +86,19 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> Lease(WorkerRequest request, [FromQuery] int waitSeconds, [FromServices] HeldLease held, CancellationToken cancellationToken)
     {
         var run = await held.LeaseAsync(request.WorkerId, waitSeconds, cancellationToken);
-        return run is null ? NoContent() : Ok(run);
+        if (run is null)
+        {
+            return NoContent();
+        }
+
+        // Logged in the run's trace, not the idle worker's poll (L2-049 AC1).
+        using (RunTracing.Start("Run leased", run.TraceParent))
+        using (logger.BeginRunScope(new RunCorrelation(run.ProjectId, run.DirectionId, run.Stage, run.RunId)))
+        {
+            logger.LogInformation("Leased run {RunId} at stage {Stage} to worker {WorkerId}, attempt {Attempt}", run.RunId, run.Stage, request.WorkerId, run.Attempt);
+        }
+
+        return Ok(run);
     }
 
     [HttpPost("runs/{runId:guid}/heartbeat")]
@@ -112,6 +126,15 @@ public sealed class WorkerController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> Result(Guid runId, ResultRequest request, CancellationToken cancellationToken)
     {
         await mediator.Send(new ReportResultCommand(runId, request.WorkerId, request.Epoch, request.Outcome, request.Error), cancellationToken);
+        if (request.Outcome == "Succeeded")
+        {
+            logger.LogInformation("Run succeeded");
+        }
+        else
+        {
+            logger.LogWarning("Run failed: {Error}", request.Error);
+        }
+
         return NoContent();
     }
 

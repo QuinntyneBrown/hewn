@@ -25,6 +25,8 @@ export interface LeasedRun {
   direction?: LeasedDirection;
   /** Clone URL of the skill library stage 0 copies from. */
   skillsSource: string;
+  /** W3C traceparent of the run's span in the queue, for the worker to continue (L2-049 AC2); none when untraced. */
+  traceParent?: string | null;
   /** Designs estimated above this many ideal days are split or descoped (stage 9). */
   descopeThresholdDays: number;
   /** Implement-and-test iterations before an increment is Blocked (stage 10). */

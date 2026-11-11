@@ -14,6 +14,7 @@ import type { RunContext, StageExecutor } from './executors/stage-executor.ts';
 import { LogBatcher } from './log-batcher.ts';
 import { startRunIsolation, type IsolationSettings } from './isolation/run-isolation.ts';
 import { sleep } from './sleep.ts';
+import { currentSpan, Tracer, withTrace } from './tracing.ts';
 
 export type Log = (message: string, fields?: Record<string, unknown>) => void;
 
@@ -31,6 +32,8 @@ export interface WorkLoopOptions {
   controlWaitSeconds?: number;
   /** Each run's egress proxy, command sandbox and tool gates (L2-042); none when absent. */
   isolation?: IsolationSettings;
+  /** Spans for each run and its model calls, in the trace the lease hands over (L2-049 AC2); dropped when absent. */
+  tracer?: Tracer;
 }
 
 /**
@@ -42,6 +45,7 @@ export class WorkLoop {
   private readonly executor: StageExecutor;
   private readonly registration: WorkerRegistration;
   private readonly log: Log;
+  private readonly tracer: Tracer;
   private readonly pollIntervalMs: number;
   private readonly heartbeatIntervalMs: number;
   private readonly leaseWaitSeconds: number;
@@ -50,6 +54,7 @@ export class WorkLoop {
 
   constructor(options: WorkLoopOptions) {
     this.api = options.api;
+    this.tracer = options.tracer ?? new Tracer();
     this.executor = options.executor;
     this.registration = options.registration;
     this.log = options.log;
@@ -77,7 +82,7 @@ export class WorkLoop {
       } catch (error) {
         if (signal.aborted) break;
         if (error instanceof TokenRefusedError) this.refused = true;
-        else this.log('Lease request failed', { error: messageOf(error) });
+        else this.log('Lease request failed', { level: 'Warning', error: messageOf(error) });
       }
 
       if (this.refused) break;
@@ -100,8 +105,39 @@ export class WorkLoop {
     return this.refused;
   }
 
+  /** Logs with the run's project, direction, stage and run IDs on the entry (L2-049 AC1). */
+  private logRun(run: LeasedRun, message: string, fields?: Record<string, unknown>): void {
+    this.log(message, {
+      projectId: run.projectId,
+      directionId: run.directionId,
+      stage: run.stage,
+      runId: run.runId,
+      ...(currentSpan() ? { traceId: currentSpan()!.traceId } : {}),
+      ...fields,
+    });
+  }
+
+  /** Runs the leased run inside its span, under the lease's span for the run's time in the queue. */
   private async execute(workerId: string, run: LeasedRun, stop: AbortSignal): Promise<void> {
-    this.log('Leased run', {
+    const span = this.tracer.start(`Run stage ${run.stage}`, {
+      traceParent: run.traceParent,
+      attributes: {
+        'hewn.project.id': run.projectId,
+        'hewn.direction.id': run.directionId,
+        'hewn.stage': run.stage,
+        'hewn.run.id': run.runId,
+        'hewn.run.epoch': run.epoch,
+      },
+    });
+    try {
+      await withTrace(span, () => this.executeRun(workerId, run, stop));
+    } finally {
+      span.end();
+    }
+  }
+
+  private async executeRun(workerId: string, run: LeasedRun, stop: AbortSignal): Promise<void> {
+    this.logRun(run, 'Leased run', {
       runId: run.runId,
       stage: run.stage,
       epoch: run.epoch,
@@ -121,10 +157,10 @@ export class WorkLoop {
           this.refused = true;
           lease.abort(error);
         } else if (error instanceof LeaseLostError) {
-          this.log('Lease lost', { runId: run.runId });
+          this.logRun(run, 'Lease lost', { runId: run.runId });
           lease.abort(error);
         } else if (++missed >= 2) {
-          this.log('Two heartbeats missed; stopping the run', { runId: run.runId });
+          this.logRun(run, 'Two heartbeats missed; stopping the run', { level: 'Warning' });
           lease.abort(new LeaseLostError('Two heartbeats missed.'));
         }
       }
@@ -134,7 +170,7 @@ export class WorkLoop {
 
     const logs = new LogBatcher(
       (lines) => this.api.log(workerId, run, lines),
-      (error) => this.log('Could not send log lines', { runId: run.runId, error: messageOf(error) }),
+      (error) => this.logRun(run, 'Could not send log lines', { level: 'Warning', error: messageOf(error) }),
     );
 
     // Synchronous on purpose: one small directory per run, and no I/O race with the heartbeat timer.
@@ -155,16 +191,25 @@ export class WorkLoop {
       reportBacklog: (report) => this.api.reportBacklog(workerId, run, report),
       reportScope: (report) => this.api.reportScope(workerId, run, report),
       recordDecisions: (decisions) => this.api.recordDecisions(workerId, run, decisions),
-      recordModelCall: async (call) => {
-        const { verdict, directionSpendUsd, budgetUsd } = await this.api.recordModelCall(workerId, run, {
-          callId: randomUUID(),
-          ...call,
+      recordModelCall: async ({ startedAt, ...call }) => {
+        const span = this.tracer.start('Model call', {
+          parent: currentSpan(),
+          kind: 'client',
+          startMs: startedAt,
+          attributes: {
+            'gen_ai.request.model': call.model,
+            'gen_ai.usage.input_tokens': call.inputTokens,
+            'gen_ai.usage.output_tokens': call.outputTokens,
+          },
         });
+        const { verdict, directionSpendUsd, budgetUsd } = await withTrace(span, () =>
+          this.api.recordModelCall(workerId, run, { callId: randomUUID(), ...call }),
+        ).finally(() => span.end());
         const spend = `${dollars(directionSpendUsd)} of ${dollars(budgetUsd)}`;
         if (verdict === 'Warn') logs.add({ level: 'warn', text: `Spend at 80% of budget (${spend})` });
         if (verdict === 'Stop') {
           // Hewn has paused the direction and released the lease; nothing more of this run may reach it.
-          this.log('Budget reached; the direction is Paused', { runId: run.runId, spend });
+          this.logRun(run, 'Budget reached; the direction is Paused', { runId: run.runId, spend });
           const reached = new BudgetReachedError(`Budget reached (${spend}).`);
           lease.abort(reached);
           throw reached;
@@ -188,10 +233,10 @@ export class WorkLoop {
         if (lease.signal.aborted) return;
         await logs.flush();
         const verdict = await this.api.checkpoint(workerId, run, index + 1);
-        this.log('Checkpoint', { runId: run.runId, step: index + 1 });
+        this.logRun(run, 'Checkpoint', { runId: run.runId, step: index + 1 });
         if (verdict === 'Pause') {
           // An Owner pressed Pause: Hewn has paused the direction at this checkpoint and released the lease.
-          this.log('Paused at a checkpoint; the run stops here', { runId: run.runId, step: index + 1 });
+          this.logRun(run, 'Paused at a checkpoint; the run stops here', { runId: run.runId, step: index + 1 });
           lease.abort(new Error('Paused at a checkpoint.'));
           return;
         }
@@ -200,7 +245,7 @@ export class WorkLoop {
       if (lease.signal.aborted) return;
       await logs.close();
       await this.api.result(workerId, run, { outcome: 'Succeeded' });
-      this.log('Run succeeded', { runId: run.runId, stage: run.stage });
+      this.logRun(run, 'Run succeeded', { runId: run.runId, stage: run.stage });
     } catch (error) {
       if (error instanceof TokenRefusedError) this.refused = true;
       if (error instanceof LeaseLostError && !lease.signal.aborted) {
@@ -211,11 +256,14 @@ export class WorkLoop {
         return;
       }
       if (lease.signal.aborted || error instanceof LeaseLostError || error instanceof TokenRefusedError) return;
-      this.log('Run failed', { runId: run.runId, stage: run.stage });
+      currentSpan()?.fail(messageOf(error));
+      this.logRun(run, 'Run failed', { level: 'Warning' });
       await logs.close();
       await this.api
         .result(workerId, run, { outcome: 'Failed', error: messageOf(error) })
-        .catch((reportError: unknown) => this.log('Could not report the failure', { error: messageOf(reportError) }));
+        .catch((reportError: unknown) =>
+          this.logRun(run, 'Could not report the failure', { level: 'Error', error: messageOf(reportError) }),
+        );
     } finally {
       // Ends the control poll as well.
       if (!lease.signal.aborted) lease.abort(new Error('The run ended.'));
@@ -231,12 +279,12 @@ export class WorkLoop {
   private async confirmStop(workerId: string, run: LeasedRun): Promise<void> {
     try {
       const control = await this.api.control(workerId, run, 0, AbortSignal.timeout(5_000));
-      if (control === 'Cancel') this.log('Cancelled; the run stops now', { runId: run.runId });
+      if (control === 'Cancel') this.logRun(run, 'Cancelled; the run stops now', { runId: run.runId });
       else if (control === 'Halt')
-        this.log('Halted: all workers stopped; the run waits at its checkpoint', { runId: run.runId });
-      else this.log('Lease lost', { runId: run.runId });
+        this.logRun(run, 'Halted: all workers stopped; the run waits at its checkpoint', { runId: run.runId });
+      else this.logRun(run, 'Lease lost', { runId: run.runId });
     } catch {
-      this.log('Lease lost', { runId: run.runId });
+      this.logRun(run, 'Lease lost', { runId: run.runId });
     }
   }
 
@@ -250,12 +298,12 @@ export class WorkLoop {
       try {
         const control = await this.api.control(workerId, run, this.controlWaitSeconds, lease.signal);
         if (control === 'Cancel') {
-          this.log('Cancelled; the run stops now', { runId: run.runId });
+          this.logRun(run, 'Cancelled; the run stops now', { runId: run.runId });
           lease.abort(new Error('Cancelled by an Owner.'));
           return;
         }
         if (control === 'Halt') {
-          this.log('Halted: all workers stopped; the run waits at its checkpoint', { runId: run.runId });
+          this.logRun(run, 'Halted: all workers stopped; the run waits at its checkpoint', { runId: run.runId });
           lease.abort(new Error('All workers stopped by an Owner.'));
           return;
         }
@@ -264,7 +312,7 @@ export class WorkLoop {
         // The API took the run back (a revoked token, L2-041 AC2): stop now rather than at the next heartbeat.
         if (error instanceof LeaseLostError || error instanceof TokenRefusedError) {
           if (error instanceof TokenRefusedError) this.refused = true;
-          else this.log('Lease lost', { runId: run.runId });
+          else this.logRun(run, 'Lease lost', { runId: run.runId });
           lease.abort(error);
           return;
         }
