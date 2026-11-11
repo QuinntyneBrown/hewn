@@ -21,7 +21,7 @@ The slice is a set of shared Angular building blocks plus the tests that hold ev
 - **`AppShell`** — layout component. The sidebar's content is one template, shown in the fixed sidebar from 992 px. Below 992 px the top bar shows Open menu, the wordmark and the connection dot, and Open menu shows the same template in a menu drawer, a CDK Dialog labelled "Menu". Focus starts on Close menu, stays in the drawer, and returns to Open menu. The drawer closes on Escape, on Close menu, on a tap beside it, on navigating, and when the window widens to 992 px.
 - **Layout bands** — CSS media queries in the design system on the token breakpoints (36, 48, 62 and 75 rem) set the columns, the pipeline (a list, then a stepper, then a column beside the detail) and control sizes. The shell's one `matchMedia('(min-width: 62rem)')` closes the drawer; nothing else needs to know the band.
 - **`StatusAnnouncer`** — root service behind the shell's one polite live region (`role="status"`). A project's first stage change is said at once; changes within its next 5 seconds wait, and only the latest is said when the time is up. Each project is throttled on its own. The project page feeds it each `StageChanged` event ("Stage 2, Designs, Running"), and Projects feeds it when a live row's stage or status changes ("Kiln Booking, stage 2, Designs, Running").
-- **`ThemeService`** — reads `localStorage['hewn.theme']` (`light`, `dark` or `system`), applies `data-theme` on `<html>`, and follows `prefers-color-scheme` when the value is `system` or absent.
+- **`ThemeService`** — root service created when the app starts. It reads `localStorage['hewn.theme']` (`light`, `dark` or `system`; anything else, or storage that can't be read, is `system`), sets `data-theme="light"` or `"dark"` on `<html>`, and removes it for System so `prefers-color-scheme` decides, live as the OS setting changes. Settings' Appearance section (`choose()`) is open to Owners and Viewers alike, since the choice is per device. A small script in `index.html` applies a saved Light or Dark before the first paint.
 - **`Design tokens`** — `tokens.css` with light and dark values; motion tokens resolve to `0ms` under `prefers-reduced-motion: reduce`.
 - **`AccessibilitySuite`** — Playwright e2e tests that run axe-core on every route in every state the app has (each page's own spec, plus every page while loading and when its data fails), a keyboard walk that tabs through each page checking for a visible focus indicator at every stop and for traps, keyboard-only journeys, and a reduced-motion check that nothing runs longer than 1 ms (the CDK keeps a 1 ms backdrop fade under reduced motion so its `transitionend` fires).
 - **`PerformanceBudget`** — Angular build budget of 500 KB gzipped initial JavaScript with every route lazy-loaded, a Lighthouse mobile run on Projects in CI (LCP 2.5 s or less), a read-API load test at 50 projects and 20 workers (p95 300 ms or less), and an event load test at 200 events per second (p95 1 s or less).
@@ -59,7 +59,7 @@ Status announcements come from the same live events as the screen, throttled per
 
 ### Class structure
 
-`ThemeService` exposes the choice as a signal that `AppShell` reads, and `AppShell` opens its menu template in a CDK Dialog below 992 px; `StatusAnnouncer` keeps one pending message per project.
+`ThemeService` exposes the choice as a signal that Settings' Appearance radios read and set, and `AppShell` opens its menu template in a CDK Dialog below 992 px; `StatusAnnouncer` keeps one pending message per project.
 
 ![Class diagram for the responsive, accessible and themed UI](diagrams/class-structure.png)
 
@@ -104,3 +104,16 @@ The theme follows the OS until chosen, then persists (L2-048 AC1, AC2). Status c
   reduced-motion tokens and the axe-clean states were in place; the new tests hold them.
 - **Not built here.** The Dashboard mocks and the sidebar's Dashboard link have no page yet (`/dashboard` shows Page
   not found), and the `server-error` mock has no page: each page shows its own failure state, which the suite scans.
+
+## Decisions made while building themes (journey 35)
+
+- **The tokens already switched.** `tokens.css` defines dark values under `[data-theme="dark"]` and under
+  `prefers-color-scheme: dark` unless the root is `[data-theme="light"]`, so following the OS needed no code. The
+  service only sets or removes the attribute.
+- **System is saved as `system`**, not as a missing key, so the stored value always says what was chosen.
+- **A saved theme applies before Angular starts.** Without the `index.html` script, a reload under a light OS with
+  Dark saved would draw a light page until the app booted. The script and the service read the same key; the
+  service is the one that writes it.
+- **Appearance shows once Settings has loaded,** with the other sections, as the loading mock shows only skeletons.
+- **The contrast scans wait for the switch to finish.** Links and buttons ease their colours over 120 ms; axe read
+  mid-fade colours as failures right after a switch, so the suite waits for running transitions before scanning.
