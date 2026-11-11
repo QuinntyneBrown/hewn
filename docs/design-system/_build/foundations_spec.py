@@ -356,12 +356,12 @@ SPECS["spacing"] = {
             ["Between groups on a page", "<code>--space-6</code> – <code>--space-8</code>", "Page sections (24px block padding); settings sections (32px)."],
             ["Around whole states", "<code>--space-10</code> – <code>--space-16</code>", "Empty states pad 64px (40px when tight); sign-in centres with 64px."]])
          + "<p>Rule of thumb: a component pads itself with ≤ <code>--space-6</code>; layout separates components with ≥ <code>--space-6</code>. If two things need more space between them than inside them, they are probably two groups and need a heading.</p>"),
-        ("control-heights", "Control heights", f"""<p>Interactive parts take one of four heights; padding grows with height so labels stay optically centred. Below lg, nav links, tabs and icon actions grow to <code>--target-comfortable</code> (44px; see {page('foundations/accessibility#targets', 'Accessibility')}).</p>
+        ("control-heights", "Control heights", f"""<p>Interactive parts take one of four heights; padding grows with height so labels stay optically centred. Below lg the small and medium heights are 44px, the same as <code>--target-comfortable</code>, so every control is a touch target (L2-046 AC4; see {page('foundations/accessibility#targets', 'Accessibility')}).</p>
 {ex(_CH_EX, "Tile link 28px, then small, medium and large buttons.")}
 {table(["Size", "Height", "Inline padding", "Label", "Used by"], [
     ["xs", code("--control-height-xs") + " · 28px", code("--space-2"), code("--text-caption"), "Tile <i>Open</i> links, toast close, avatars."],
-    ["sm", code("--control-height-sm") + " · 32px", code("--space-3"), code("--font-size-xs"), "Buttons in rows and tile headers, compact inputs, segmented options; nav sub-links from lg."],
-    ["md", code("--control-height-md") + " · 40px", code("--space-4"), code("--font-size-sm"), "Default buttons, inputs, selects, tabs, nav links from lg."],
+    ["sm", code("--control-height-sm") + " · 32px from lg, 44px below", code("--space-3"), code("--font-size-xs"), "Buttons in rows and tile headers, compact inputs, segmented options; nav sub-links from lg."],
+    ["md", code("--control-height-md") + " · 40px from lg, 44px below", code("--space-4"), code("--font-size-sm"), "Default buttons, inputs, selects, tabs, nav links from lg."],
     ["lg", code("--control-height-lg") + " · 48px", code("--space-6"), code("--font-size-md"), "Sign-in, empty-state calls to action, large inputs."]])}
 <p>The mocks had 36px side-project links, small tabs and state links between these heights; they now map to sm/md on desktop and 44px below lg.</p>
 {_plain_table([(n, _CH_USE[n]) for n in _CH])}"""),
@@ -768,7 +768,7 @@ SPECS["theming"] = {
         ("angular", "Using tokens in Angular", f"""<p>Mission Control is Angular. It ships the two stylesheets as global styles and reads tokens in component styles as plain <code>var(--…)</code>; it never redeclares a token value.</p>
 <pre><code>{_ANGULAR_JSON.replace("&", "&amp;").replace("<", "&lt;")}</code></pre>
 <pre><code>{_THEME_TS.replace("&", "&amp;").replace("<", "&lt;")}</code></pre>
-<p>For values TypeScript needs (breakpoints for <code>BreakpointService</code>'s <code>matchMedia</code> queries, durations for timers, chart colours), generate constants from <a href="../tokens/tokens.json">tokens/tokens.json</a>, the W3C DTCG export. Aliases are <code>{{group.token}}</code>; each token carries its CSS name and its dark value under <code>$extensions</code>:</p>
+<p>For values TypeScript needs (breakpoints for a <code>matchMedia</code> query such as the shell's, which closes the menu drawer at lg, durations for timers, chart colours), generate constants from <a href="../tokens/tokens.json">tokens/tokens.json</a>, the W3C DTCG export. Aliases are <code>{{group.token}}</code>; each token carries its CSS name and its dark value under <code>$extensions</code>:</p>
 <pre><code>{_JSON_SNIPPET.replace("&", "&amp;").replace("<", "&lt;")}</code></pre>
 {ul(["Generate at build time (a small Node script or Style Dictionary) into <code>src/app/core/tokens.ts</code>; do not hand-copy values.",
      "Read colours at runtime with <code>getComputedStyle(root)</code> + <code>.getPropertyValue('--color-accent')</code> when a canvas or chart needs them, and re-read on theme change; generated constants hold only the light value.",
@@ -829,7 +829,7 @@ SPECS["responsive"] = {
             ["L and XL", "≥ 992px", "Fixed sidebar; the project page shows pipeline and stage detail side by side."]])),
         ("components", "By component", "<p>What changes at each breakpoint. A dash means no change from the column to its left.</p>" + _RESP_TABLE),
         ("touch", "Touch and pointer", ul([
-            "Below lg, every main phone target is ≥ 44×44px (<code>--target-comfortable</code>): nav links, tabs, icon actions, menu items, state links and the top bar's menu button.",
+            "Below lg, every control is ≥ 44×44px: small and medium control heights are 44px, tabs are at least 44px wide, and nav links, icon actions, menu items, state links and the top bar's menu button use <code>--target-comfortable</code>.",
             "From lg, controls use their control height (32–40px), which still clears WCAG 2.5.8's 24px minimum; small targets in rows keep ≥ 8px between them.",
             "<code>(hover: none)</code> reveals anything that is hover-only on desktop (row actions, the tile <i>Open</i> link); nothing is reachable by hover alone.",
             "<code>(pointer: coarse)</code> is not used to grow targets; they are already large enough below lg.",
@@ -931,7 +931,7 @@ SPECS["accessibility"] = {
 {_plain_table([t for t in _A11Y_TOKENS if t[0].startswith("--focus-ring-")])}"""),
         ("targets", "Target sizes", f"""{ex(_TARGETS, "24px is the floor for any target; 44px for main targets below lg.", False)}
 {_plain_table([t for t in _A11Y_TOKENS if t[0].startswith("--target-")])}
-<p>L2-046 AC4 asks for 44×44px touch targets. Below lg (where people use touch) every main target meets it; from lg, buttons and rows use 32–40px control heights, which meet WCAG 2.5.8 (24px) for pointer use. Control heights are on {page('foundations/spacing#control-heights', 'Spacing')}.</p>"""),
+<p>L2-046 AC4 asks for touch targets of at least 44×44px below 992px and 24×24px from 992px (ADR 0034). Below lg every control is 44px; from lg, buttons and rows use 32–40px control heights, which meet WCAG 2.5.8 (24px) for pointer use. Control heights are on {page('foundations/spacing#control-heights', 'Spacing')}.</p>"""),
         ("testing", "Testing procedure", table(["Step", "Tool", "Passes when"], [
             ["1. Contrast", "<code>check_contrast.py tokens/tokens.css</code>", "Every pair in <code>contrast-pairs.json</code> passes in light and dark."],
             ["2. Structure", "<code>check_design_system.py</code> / <code>check_mocks.py</code>", "Labels, names, alt text, landmarks, one h1, valid links and fragments, no raw colours."],

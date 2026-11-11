@@ -74,7 +74,7 @@ def tokens_css():
     out = [HEADER, block(":root", root, indent="")]
     out.append("\n/* Grid steps up at md and lg. Custom properties cannot be used in @media, so the breakpoints are repeated. */\n")
     out.append("@media (min-width: 48rem) {\n" + block(":root", ["--layout-columns: 8;", "--layout-gutter: var(--space-6);"]) + "}\n")
-    out.append("@media (min-width: 62rem) {\n" + block(":root", ["--layout-columns: 12;", "--layout-gutter: var(--space-8);", "--layout-margin: var(--space-8);"]) + "}\n")
+    out.append("@media (min-width: 62rem) {\n" + block(":root", ["--layout-columns: 12;", "--layout-gutter: var(--space-8);", "--layout-margin: var(--space-8);", "--control-height-sm: 2rem;", "--control-height-md: 2.5rem;"]) + "}\n")
     out.append("\n/* ---------- Light restated, so a [data-theme=\"light\"] island inside a dark page is light ---------- */\n")
     out.append(block('[data-theme="light"]', theme_lines("light"), indent=""))
     out.append("\n/* ---------- Dark theme: the prototype's own palette. Keep both dark blocks identical. ---------- */\n")

@@ -165,6 +165,7 @@ DRIFT = [
     ("all callouts, pages/sign-in/expired", "Callout content sits in an unclassed div; title-less bodies reset margin inline.", "`.callout__body-wrap`."),
     ("pages/audit/forbidden, pages/new-direction/forbidden", "One uses plain `.empty`, the other a hand-built stack with inline styles.", "`.empty--forbidden` for both."),
     ("dialogs/mobile-nav (overlays.py)", "Description says the drawer is used below 1024 px.", "The switch is 992px (`--layout-breakpoint-lg`)."),
+    ("tokens, assets/components.css", "Buttons, inputs and selects were 32 and 40 px at every width, under the 44 px touch target L2-046 AC4 asks for below 992 px.", "Below lg `--control-height-sm` and `-md` are 44 px and a tab is at least 44 px wide; from lg they stay 32 and 40 px (ADR 0034)."),
 ]
 
 

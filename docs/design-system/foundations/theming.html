@@ -74,7 +74,7 @@ export class ThemeService {
     try { return (localStorage.getItem(this.key) as ThemeChoice) ?? 'system'; } catch { return 'system'; }
   }
 }</code></pre>
-<p>For values TypeScript needs (breakpoints for <code>BreakpointService</code>'s <code>matchMedia</code> queries, durations for timers, chart colours), generate constants from <a href="../tokens/tokens.json">tokens/tokens.json</a>, the W3C DTCG export. Aliases are <code>{group.token}</code>; each token carries its CSS name and its dark value under <code>$extensions</code>:</p>
+<p>For values TypeScript needs (breakpoints for a <code>matchMedia</code> query such as the shell's, which closes the menu drawer at lg, durations for timers, chart colours), generate constants from <a href="../tokens/tokens.json">tokens/tokens.json</a>, the W3C DTCG export. Aliases are <code>{group.token}</code>; each token carries its CSS name and its dark value under <code>$extensions</code>:</p>
 <pre><code>{
   "color": { "bg": { "canvas": {
     "$type": "color",
