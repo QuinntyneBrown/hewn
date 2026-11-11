@@ -49,6 +49,7 @@ app by `tools/video-audio` and `tools/video-build` (see the `creating-videos` sk
 | 33 | [Use Mission Control on mobile](33-use-mission-control-on-mobile/README.md) | ~4:37 | Journey 33 |
 | 34 | [Use keyboard and assistive technology](34-use-keyboard-and-assistive-technology/README.md) | ~4:51 | Journey 34 |
 | 35 | [Choose a theme](35-choose-a-theme/README.md) | ~4:17 | Journey 35 |
+| 36 | [Diagnose platform health](36-diagnose-platform-health/README.md) | ~6:46 | Journey 36 |
 
 ## Voice
 

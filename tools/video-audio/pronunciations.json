@@ -15,5 +15,11 @@
   "CI": "C I",
   "PR": "P R",
   "PRs": "P Rs",
-  "MCP": "M C P"
+  "MCP": "M C P",
+  "OTLP": "O T L P",
+  "SQLite": "S Q Lite",
+  "Jaeger": "Yay-ger",
+  "JSON": "Jason",
+  "traceparent": "trace parent",
+  "OpenTelemetry": "Open Telemetry"
 }

@@ -1,0 +1,307 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:07.11
+This is journey thirty six of Hewn, the software factory: diagnose platform health.
+
+00:00:07.11 --> 00:00:09.61
+It is for the operator who runs Hewn.
+
+00:00:09.61 --> 00:00:12.31
+There is no new page in Mission Control.
+
+00:00:12.31 --> 00:00:17.45
+Instead there are two health endpoints, structured logs, traces and metrics.
+
+00:00:17.45 --> 00:00:21.77
+This video shows each one working against a real API and worker,
+
+00:00:21.77 --> 00:00:25.35
+with Jaeger and Prometheus running in Docker Compose.
+
+00:00:26.50 --> 00:00:29.14
+The requirements come in two parts.
+
+00:00:29.14 --> 00:00:33.28
+Health checks: live answers 200 while the process runs,
+
+00:00:33.28 --> 00:00:39.68
+and ready answers 200 only when the database and the SignalR backplane are reachable,
+
+00:00:39.68 --> 00:00:41.04
+and 503 otherwise.
+
+00:00:41.04 --> 00:00:46.91
+And logs, traces and metrics: every log entry is JSON with the IDs that apply,
+
+00:00:46.91 --> 00:00:53.16
+one trace follows a run through the API, the queue, the worker and its model calls,
+
+00:00:53.16 --> 00:00:59.11
+and a scrape exports stage duration, success rate, queue depth, active workers,
+
+00:00:59.11 --> 00:01:01.52
+event latency, tokens and spend.
+
+00:01:02.67 --> 00:01:06.35
+Here are both endpoints with the database in place.
+
+00:01:06.35 --> 00:01:08.66
+Live is healthy, with no checks.
+
+00:01:08.66 --> 00:01:14.22
+Ready names its two checks, database and backplane, both healthy, with a 200.
+
+00:01:14.57 --> 00:01:17.28
+Then the database file is moved away.
+
+00:01:17.28 --> 00:01:21.33
+Live still answers 200, because the process is running.
+
+00:01:21.33 --> 00:01:25.37
+Ready answers 503, and names the database as unhealthy.
+
+00:01:25.37 --> 00:01:30.59
+It never writes the error itself, which could hold a connection string.
+
+00:01:30.59 --> 00:01:33.89
+When the file comes back, ready is 200 again.
+
+00:01:34.24 --> 00:01:39.45
+The database check opens a new connection outside the pool, in read write mode,
+
+00:01:39.45 --> 00:01:43.41
+so SQLite never creates a missing file, and runs select one.
+
+00:01:43.41 --> 00:01:47.56
+The backplane check sends a message to a group no client joins,
+
+00:01:47.56 --> 00:01:51.45
+through the same hub context that publishes project events.
+
+00:01:51.45 --> 00:01:54.88
+Today that is SignalR's in process lifetime manager.
+
+00:01:54.88 --> 00:01:59.82
+When a scale out backplane replaces it, the check covers it with no change.
+
+00:02:00.97 --> 00:02:03.97
+Every log entry is now one line of JSON.
+
+00:02:03.97 --> 00:02:08.31
+Here are one run's lines from the worker and from the API.
+
+00:02:08.31 --> 00:02:14.16
+Each carries the project, direction, stage and run IDs, and the same trace ID,
+
+00:02:14.16 --> 00:02:16.48
+so one search finds both sides.
+
+00:02:16.83 --> 00:02:22.06
+In the API, a JSON logger provider writes each entry with its timestamp, level,
+
+00:02:22.06 --> 00:02:27.62
+category and message, the current trace and span IDs, and every field of its scopes.
+
+00:02:27.62 --> 00:02:33.04
+An action filter opens a scope with the run's IDs on each worker call that names a
+
+00:02:33.04 --> 00:02:33.30
+run.
+
+00:02:33.30 --> 00:02:38.73
+Text passes through the redactor, so a token quoted in a failure never reaches the
+
+00:02:38.73 --> 00:02:38.99
+log.
+
+00:02:38.99 --> 00:02:44.35
+The worker writes the same shape, and adds the run's IDs and trace ID while a run
+
+00:02:44.35 --> 00:02:44.95
+executes.
+
+00:02:46.10 --> 00:02:47.96
+Here is the trace in Jaeger.
+
+00:02:47.96 --> 00:02:52.22
+It starts with the Owner's request that submitted the direction.
+
+00:02:52.22 --> 00:02:56.75
+The first run waits in the queue, is leased, and runs in the worker.
+
+00:02:56.75 --> 00:03:01.34
+The worker's model call opens to show the model and its token counts.
+
+00:03:01.34 --> 00:03:06.73
+The trace's statistics show both services in one trace: thirty three worker spans
+
+00:03:06.73 --> 00:03:09.52
+and a hundred and fifty five from the API.
+
+00:03:09.87 --> 00:03:13.58
+A run keeps the traceparent of the work that queued it.
+
+00:03:13.58 --> 00:03:18.77
+When a worker leases it, the API records a run queued span covering the wait,
+
+00:03:18.77 --> 00:03:21.81
+and hands the worker that span's traceparent.
+
+00:03:21.81 --> 00:03:24.97
+The worker opens a span for the run beneath it,
+
+00:03:24.97 --> 00:03:27.54
+and a client span for each model call.
+
+00:03:27.89 --> 00:03:33.22
+Every call back to the API sends traceparent, carried by async local storage,
+
+00:03:33.22 --> 00:03:35.93
+so the API's spans join the same trace.
+
+00:03:35.93 --> 00:03:41.19
+Because each next stage is queued while the previous one reports its result,
+
+00:03:41.19 --> 00:03:43.48
+the whole direction is one trace.
+
+00:03:43.83 --> 00:03:48.59
+The sequence diagram shows the path, from the submit request through the queue to
+
+00:03:48.59 --> 00:03:49.76
+the worker and back.
+
+00:03:50.91 --> 00:03:55.92
+A scrape of slash metrics, with the scrape token, exports the meter Hewn.
+
+00:03:55.92 --> 00:03:57.98
+Stage duration is a histogram.
+
+00:03:57.98 --> 00:04:01.82
+Stage runs are counted by outcome, for the success rate.
+
+00:04:01.82 --> 00:04:06.83
+Queue depth and active workers are read from the database at each scrape.
+
+00:04:06.83 --> 00:04:10.26
+Then event latency, and tokens and spend by model.
+
+00:04:10.26 --> 00:04:13.76
+Without the token the scrape is refused with a 401,
+
+00:04:13.76 --> 00:04:17.19
+and with no token configured there is no endpoint.
+
+00:04:17.54 --> 00:04:22.50
+Prometheus, from the same Compose stack, scrapes it every five seconds.
+
+00:04:22.50 --> 00:04:26.89
+Here are the runs by stage and outcome, and the tokens by kind.
+
+00:04:27.24 --> 00:04:32.59
+The meter records a stage's duration and outcome when its result is reported,
+
+00:04:32.59 --> 00:04:35.93
+tokens and spend after each model call is saved,
+
+00:04:35.93 --> 00:04:40.10
+and event latency as each event goes out to Mission Control.
+
+00:04:41.25 --> 00:04:46.57
+Start Observability brings up Jaeger and Prometheus with Docker Compose.
+
+00:04:46.57 --> 00:04:50.77
+Start the API and a worker with the observability switch,
+
+00:04:50.77 --> 00:04:56.38
+and they send traces to Jaeger over OTLP, and the API opens slash metrics to
+
+00:04:56.38 --> 00:04:58.60
+Prometheus with a local token.
+
+00:04:58.95 --> 00:05:02.08
+The components diagram shows how the pieces connect.
+
+00:05:03.23 --> 00:05:05.94
+Each slice started with a failing test.
+
+00:05:05.94 --> 00:05:10.60
+The health tests check ready is healthy with both checks reachable,
+
+00:05:10.60 --> 00:05:14.84
+and 503 with the database file gone or the backplane failing,
+
+00:05:14.84 --> 00:05:16.99
+with no error text in the body.
+
+00:05:17.34 --> 00:05:22.53
+The structured log test runs a project through a failed run and its retry,
+
+00:05:22.53 --> 00:05:24.36
+and reads back every line.
+
+00:05:24.36 --> 00:05:27.66
+Each is JSON with timestamp, level and message,
+
+00:05:27.66 --> 00:05:30.67
+the run's lines carry its IDs and trace ID,
+
+00:05:30.67 --> 00:05:33.55
+and the token in the failure is redacted.
+
+00:05:33.55 --> 00:05:36.92
+It failed first because the logger didn't exist.
+
+00:05:36.92 --> 00:05:39.72
+The worker has the same test of its own.
+
+00:05:40.07 --> 00:05:43.70
+The trace test sends a traceparent with the submission.
+
+00:05:43.70 --> 00:05:47.72
+It checks the queued span, the traceparent the lease returns,
+
+00:05:47.72 --> 00:05:53.20
+and that the worker's model call and result join the trace under the worker's span.
+
+00:05:53.20 --> 00:05:56.69
+It failed first because the lease had no traceparent.
+
+00:05:56.69 --> 00:06:00.65
+The worker's trace tests check its run and model call spans,
+
+00:06:00.65 --> 00:06:03.88
+traceparent on its HTTP calls, and the OTLP body.
+
+00:06:04.23 --> 00:06:10.11
+The metrics tests scrape after a run and a model call, and check each metric's value,
+
+00:06:10.11 --> 00:06:13.36
+and that a scrape without the token is refused.
+
+00:06:13.36 --> 00:06:15.37
+They failed first with a 404.
+
+00:06:15.72 --> 00:06:19.71
+In all, the backend has three hundred and forty three passing tests,
+
+00:06:19.71 --> 00:06:22.24
+and the worker one hundred and sixty three.
+
+00:06:23.39 --> 00:06:25.51
+Journey thirty six is complete.
+
+00:06:25.51 --> 00:06:30.37
+Ready tells an orchestrator when the database or the backplane is gone.
+
+00:06:30.37 --> 00:06:36.11
+Logs, traces and metrics let an operator follow one run from the request that queued
+
+00:06:36.11 --> 00:06:37.62
+it to its model calls.
+
+00:06:37.62 --> 00:06:40.83
+And it all runs locally with one Compose stack.
+
+00:06:40.83 --> 00:06:43.02
+Next comes journey thirty seven.
