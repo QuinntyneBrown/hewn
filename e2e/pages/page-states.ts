@@ -21,22 +21,22 @@ export class PageStates {
     this.notFound = page.getByRole('heading', { level: 1, name: 'Page not found' });
   }
 
-  /** Leaves GETs of `path` (exactly, without a query) unanswered, so the page stays loading. */
-  async hold(path: string): Promise<void> {
+  /** Leaves requests of `path` (exactly, without a query) unanswered, so the page stays loading or busy. */
+  async hold(path: string, method = 'GET'): Promise<void> {
     await this.page.unrouteAll({ behavior: 'ignoreErrors' });
     await this.page.route(
       (url) => url.pathname === path,
-      (route) => (route.request().method() === 'GET' ? undefined : route.fallback()),
+      (route) => (route.request().method() === method ? undefined : route.fallback()),
     );
   }
 
-  /** Answers GETs of `path` with a ProblemDetails failure of `status`. */
-  async fail(path: string, status = 503): Promise<void> {
+  /** Answers requests of `path` with a ProblemDetails failure of `status`. */
+  async fail(path: string, status = 503, method = 'GET'): Promise<void> {
     await this.page.unrouteAll({ behavior: 'ignoreErrors' });
     await this.page.route(
       (url) => url.pathname === path,
       (route) =>
-        route.request().method() === 'GET'
+        route.request().method() === method
           ? route.fulfill({
               status,
               contentType: 'application/problem+json',
