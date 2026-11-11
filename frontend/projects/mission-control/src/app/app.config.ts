@@ -26,6 +26,7 @@ import { routes } from './app.routes';
 import { ProjectsPrefetch } from './core/projects-prefetch';
 import { sessionExpiryInterceptor } from './core/session-expiry';
 import { SessionStore } from './core/session-store';
+import { ThemeService } from './core/theme';
 
 /** Composition root: every API contract is bound to its implementation here. */
 export const appConfig: ApplicationConfig = {
@@ -44,6 +45,8 @@ export const appConfig: ApplicationConfig = {
     { provide: AUDIT_API, useClass: HttpAuditApi },
     { provide: PROJECT_EVENTS, useClass: SignalRProjectEvents },
     provideAppInitializer(() => {
+      // The saved theme, or the OS's (L2-048). index.html has already set it before the first paint.
+      inject(ThemeService);
       // Opening on Projects, its list is requested alongside the session, not after it (L2-045 AC1).
       if (location.pathname === '/projects') inject(ProjectsPrefetch).start();
       return inject(SessionStore).load();

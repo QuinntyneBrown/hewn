@@ -6,6 +6,14 @@
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <!-- L2-048: a saved Light or Dark applies before the first paint, so a reload never flashes the other theme. -->
+    <script>
+      try {
+        var theme = localStorage.getItem('hewn.theme');
+        if (theme === 'light' || theme === 'dark')
+          document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <hw-root></hw-root>

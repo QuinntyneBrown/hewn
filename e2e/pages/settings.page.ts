@@ -9,11 +9,14 @@ export interface AccessRow {
 }
 
 /**
- * Settings (/settings): Who can sign in, its Add a GitHub login dialog, and Direction defaults (the default budget and
+ * Settings (/settings): Appearance, Who can sign in, its Add a GitHub login dialog, and Direction defaults (the default budget and
  * the descope threshold). Owns every selector.
  */
 export class SettingsPage {
   readonly heading: Locator;
+  /** Appearance: the Theme radio group, which saves on this device as soon as it changes (L2-048). */
+  readonly appearance: Locator;
+  readonly theme: Locator;
   readonly defaults: Locator;
   readonly defaultBudget: Locator;
   readonly defaultBudgetField: Locator;
@@ -48,6 +51,8 @@ export class SettingsPage {
   constructor(page: Page) {
     this.page = page;
     this.heading = page.getByRole('heading', { level: 1 });
+    this.appearance = page.getByRole('region', { name: 'Appearance' });
+    this.theme = this.appearance.getByRole('group', { name: 'Theme' });
     this.defaults = page.getByRole('form', { name: 'Direction defaults' });
     this.defaultBudget = page.getByLabel('Default budget per direction');
     this.defaultBudgetField = this.defaults.locator('.field').first();
@@ -75,6 +80,11 @@ export class SettingsPage {
     this.adding = this.addDialog.getByRole('button', { name: 'Adding…' });
     this.addCancel = this.addDialog.getByRole('button', { name: 'Cancel' });
     this.addFailure = this.addDialog.getByRole('alert');
+  }
+
+  /** The Light, Dark or System radio in Appearance. */
+  themeChoice(name: 'Light' | 'Dark' | 'System'): Locator {
+    return this.theme.getByRole('radio', { name: new RegExp(`^${name}`) });
   }
 
   /** The row for `login` in Who can sign in. */

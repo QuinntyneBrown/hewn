@@ -10,6 +10,7 @@ import { TraceabilityPage } from '../pages/traceability.page';
 import { DecisionsPage } from '../pages/decisions.page';
 import { ProjectsPage } from '../pages/projects.page';
 import { SettingsPage } from '../pages/settings.page';
+import { Theme } from '../pages/theme';
 import { SignInPage } from '../pages/sign-in.page';
 
 /** Owners quinntynebrown and grace (grace only for the rate-limit test), and the Viewer ada (eng/Start-E2eApi.ps1). */
@@ -38,6 +39,7 @@ interface Pages {
   traceability: TraceabilityPage;
   decisions: DecisionsPage;
   settings: SettingsPage;
+  theme: Theme;
   signInPage: SignInPage;
 }
 
@@ -53,6 +55,7 @@ export const test = base.extend<Pages>({
   traceability: async ({ page }, use) => use(new TraceabilityPage(page)),
   decisions: async ({ page }, use) => use(new DecisionsPage(page)),
   settings: async ({ page }, use) => use(new SettingsPage(page)),
+  theme: async ({ page }, use) => use(new Theme(page)),
   signInPage: async ({ page }, use) => use(new SignInPage(page)),
 });
 

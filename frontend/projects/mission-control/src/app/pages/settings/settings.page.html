@@ -34,6 +34,32 @@
       </div>
     </div>
   } @else {
+    <section class="settings-section" aria-labelledby="s-appearance">
+      <div class="settings-section__intro">
+        <h2 id="s-appearance" style="font: var(--text-h3)">Appearance</h2>
+        <p>Only on this device. Saved immediately.</p>
+      </div>
+      <div class="settings-section__body">
+        <fieldset style="border: 0; margin: 0; padding: 0">
+          <legend class="visually-hidden">Theme</legend>
+          @for (option of themes; track option.value) {
+            <label class="choice">
+              <input
+                type="radio"
+                name="theme"
+                [value]="option.value"
+                [checked]="theme.choice() === option.value"
+                (change)="theme.choose(option.value)"
+              />
+              <span><svg hw-icon [name]="option.icon" class="icon--sm"></svg></span>
+              <span
+                >{{ option.label }}<small>{{ option.hint }}</small></span
+              >
+            </label>
+          }
+        </fieldset>
+      </div>
+    </section>
     <hw-allow-list />
     <form
       class="settings-section"
