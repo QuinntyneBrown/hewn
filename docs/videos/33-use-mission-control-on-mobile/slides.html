@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video 33 Slides</title>
+<link rel="stylesheet" href="../assets/slides.css">
+</head>
+<body data-video-number="33" data-video-title="Use Mission Control on mobile" data-parts="Introduction|Goal|Three widths|On a phone|Touch targets|How it works|Tests|Recap">
+
+<section id="title" class="title" data-part="0">
+  <div class="kicker">Hewn · Journey 33</div>
+  <h1>Use Mission Control on mobile</h1>
+  <p class="lead">Every page from 320 to 2560 px, with a menu drawer on phones and tablets.</p>
+</section>
+
+<section id="intro" data-part="0" data-cue="This video shows the same pages at phone">
+  <figure class="phone"><img src="screens/drawer-light.png" alt="The menu drawer open on a phone, over the Projects page"></figure>
+</section>
+
+<section id="goal" data-part="1" data-cue="Every page works from three hundred and twenty">
+  <ul class="bullets">
+    <li>Below 576 px: one column, a menu drawer, the pipeline as a list (L2-046 AC1)</li>
+    <li>576 and 768 px: a scrollable stepper above the stage detail; from 992 px a fixed sidebar and the pipeline beside the detail (AC2, AC3)</li>
+    <li>No sideways scroll from 320 to 2560 px (AC4)</li>
+  </ul>
+</section>
+
+<section id="widths" data-part="2" data-cue="Here is one project at three widths.">
+  <div class="cols cols--3">
+    <figure><img src="screens/project-desktop.png" alt="The project page at 1280 px: sidebar, pipeline beside the stage detail"></figure>
+    <figure><img src="screens/project-tablet.png" alt="The project page at 768 px: the stages as a stepper above the detail"></figure>
+    <figure class="phone"><img src="screens/project-phone.png" alt="The project page at 390 px: the stages as a list"></figure>
+  </div>
+</section>
+
+<section id="before" data-part="3" data-cue="Before this journey, a phone showed only the wordmark">
+  <div class="cols">
+    <figure class="phone"><img src="screens/phone-before.png" alt="Before: Projects at 375 px with only the wordmark in the top bar"></figure>
+    <figure class="phone"><img src="screens/topbar-phone.png" alt="After: Projects at 390 px with Open menu, the wordmark and the connection dot"></figure>
+  </div>
+</section>
+
+<section id="clip-menu" data-part="3" data-cue="The Owner taps the menu." data-clip="clips/menu.mp4">
+  <video class="clip phone" muted></video>
+  <aside class="clip-notes">Open menu, Tab, Escape, then Projects and a project</aside>
+</section>
+
+<section id="dark" data-part="3" data-cue="The drawer reads the same in dark mode.">
+  <div class="cols">
+    <figure class="phone"><img src="screens/drawer-light.png" alt="The drawer in light mode"></figure>
+    <figure class="phone"><img src="screens/drawer-dark.png" alt="The drawer in dark mode"></figure>
+  </div>
+</section>
+
+<section id="decision" data-part="4" data-cue="The requirement asked for forty four pixel touch targets">
+  <div class="code-file">docs/specs/L2.md · L2-046 AC4</div>
+  <pre class="code" data-lang="md" data-mark="3-4">- …then there is no horizontal page scroll, and
+-   touch targets are at least 44×44 px.
++ …then there is no horizontal page scroll, and touch targets are
++   at least 44×44 px below 992 px and at least 24×24 px from 992 px.</pre>
+  <aside class="clip-notes">ADR 0034: touch targets are 44 px below 992 px</aside>
+</section>
+
+<section id="touch" data-part="4" data-cue="On a phone, small and medium buttons, fields and tabs">
+  <div class="code-file">docs/design-system/tokens/tokens.css</div>
+  <div class="cols cols--wide">
+    <div>
+      <pre class="code tight" data-lang="css" data-mark="1-2,9-10">  --control-height-sm: 2.75rem;
+  --control-height-md: 2.75rem;
+  --control-height-lg: 3rem;
+…
+@media (min-width: 62rem) {
+  :root {
+    --layout-columns: 12;
+    --layout-margin: var(--space-8);
+    --control-height-sm: 2rem;
+    --control-height-md: 2.5rem;
+  }
+}</pre>
+    </div>
+    <figure><img src="screens/touch-phone.png" alt="New direction on a phone: fields and buttons 44 px tall"></figure>
+  </div>
+</section>
+
+<section id="template" data-part="5" data-cue="The shell keeps the sidebar's content in one template.">
+  <div class="code-file">frontend/projects/mission-control/src/app/layout/shell.html</div>
+  <pre class="code tight" data-lang="html" data-mark="2">&lt;aside class="shell__sidebar" aria-label="Sidebar"&gt;
+  &lt;ng-container *ngTemplateOutlet="sidebar; context: { $implicit: false }" /&gt;
+&lt;/aside&gt;</pre>
+  <pre class="code tight" data-lang="html" data-mark="1,11">&lt;ng-template #menu&gt;
+  &lt;div class="drawer"&gt;
+    &lt;button
+      class="btn btn--ghost btn--icon btn--touch drawer__close"
+      type="button"
+      aria-label="Close menu"
+      (click)="closeMenu()"
+    &gt;
+      &lt;svg hw-icon name="close" class="icon--lg"&gt;&lt;/svg&gt;
+    &lt;/button&gt;
+    &lt;ng-container *ngTemplateOutlet="sidebar; context: { $implicit: true }" /&gt;
+  &lt;/div&gt;
+&lt;/ng-template&gt;</pre>
+</section>
+
+<section id="open" data-part="5" data-cue="Below that, the menu button opens the same template">
+  <div class="code-file">frontend/projects/mission-control/src/app/layout/shell.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="3-4,8">protected openMenu(): void {
+  if (this.menuRef) return;
+  this.menuRef = this.dialog.open(this.menu(), {
+    ariaLabel: 'Menu',
+    ariaModal: true,
+    panelClass: 'drawer-pane',
+    backdropClass: 'backdrop',
+    autoFocus: 'first-tabbable',
+  });
+  this.menuRef.closed.subscribe(() =&gt; (this.menuRef = null));
+}</pre>
+  <pre class="code tight" data-lang="ts" data-mark="2-3">// The sidebar replaces the drawer from 992 px (L2-046 AC3).
+const wide = matchMedia('(min-width: 62rem)');
+const onWide = (e: MediaQueryListEvent) =&gt; e.matches &amp;&amp; this.closeMenu();
+wide.addEventListener('change', onWide);</pre>
+</section>
+
+<section id="tokens" data-part="5" data-cue="The tokens set small and medium controls">
+  <figure class="diagram"><img src="../../detailed-designs/mission-control/responsive-accessible-ui/diagrams/c4-component.png" alt="Components: AppShell opens the menu drawer below 992 px and is styled by the design system's CSS"></figure>
+</section>
+
+<section id="classes" data-part="5" data-cue="The class diagram shows the shell owning the drawer.">
+  <figure class="diagram"><img src="../../detailed-designs/mission-control/responsive-accessible-ui/diagrams/class-structure.png" alt="Class structure: AppShell owns the menu drawer, a CDK Dialog; no breakpoint service"></figure>
+</section>
+
+<section id="test-drawer" data-part="6" data-cue="A behaviour test opens the drawer">
+  <div class="code-file">e2e/tests/behavior/use-mission-control-on-mobile.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="1-2,4,9-10">await expect(nav.sidebar).toBeHidden();
+await expect(nav.menuButton).toBeVisible();
+await nav.menuButton.click();
+await expect(nav.closeMenu).toBeFocused();
+// Focus stays in the drawer.
+for (let i = 0; i &lt; 12; i++) await page.keyboard.press('Tab');
+expect(await nav.drawer.evaluate((d) =&gt; d.contains(document.activeElement))).toBe(true);
+
+await page.keyboard.press('Escape');
+await expect(nav.menuButton).toBeFocused();</pre>
+  <div class="result red">✘ getByRole('button', { name: 'Open menu' }) · element(s) not found</div>
+  <div class="result green">✔ 6 passed</div>
+</section>
+
+<section id="sweep" data-part="6" data-cue="The sweep visits every page at seven widths">
+  <div class="code-file">e2e/tests/behavior/use-mission-control-on-mobile.spec.ts</div>
+  <pre class="code tight" data-lang="ts" data-mark="4-5">for (const width of widths) {
+  await nav.width(width);
+  for (const path of pages(id)) {
+    await nav.visit(path);
+    const scroll = await nav.horizontalScroll();
+    if (scroll &gt; 0) overflowing.push(`${path} at ${width} px scrolls ${scroll} px`);
+  }
+}</pre>
+  <pre class="code tight" data-lang="out">[5/6] … no page scrolls sideways at any width from 320 to 2560 px
+Width sweep: 91 pages and widths, 0 scroll
+  6 passed (1.3m)</pre>
+</section>
+
+<section id="test-touch" data-part="6" data-cue="The touch target test measures every visible control.">
+  <pre class="code tight" data-lang="out">- Array []
++ Array [
++   "/projects at 375 px: All (41×44)",
++   "/projects/new at 375 px: Start direction (151×40)",
++   "/workers at 375 px: New worker token (150×32)",
++   "/settings at 375 px: Remove grace (70×32)",
+…   (66 in all)
++   "/projects at 375 px: Running 7 is squeezed (44 of 55)",</pre>
+  <div class="result green">✔ 0 small targets · visual 2 · a11y 1</div>
+</section>
+
+<section id="recap" data-part="7" data-cue="Journey thirty three is complete.">
+  <h2>Recap</h2>
+  <ul class="bullets recap">
+    <li>Phones and tablets get a menu drawer; every page fits from 320 to 2560 px</li>
+    <li>The pipeline is a list, a stepper or a column beside the detail</li>
+    <li>Below 992 px every control is a 44 px touch target</li>
+  </ul>
+</section>
+
+<script src="../assets/slides.js"></script>
+</body>
+</html>

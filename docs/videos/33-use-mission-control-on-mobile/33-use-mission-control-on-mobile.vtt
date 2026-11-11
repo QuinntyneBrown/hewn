@@ -1,0 +1,217 @@
+WEBVTT
+
+00:00:01.50 --> 00:00:07.12
+This is journey thirty three of Hewn, the software factory: use Mission Control on
+
+00:00:07.12 --> 00:00:07.60
+mobile.
+
+00:00:07.60 --> 00:00:13.22
+An Owner checking on a direction from a phone or a tablet needs every page to work
+
+00:00:13.22 --> 00:00:13.90
+there too.
+
+00:00:13.90 --> 00:00:18.56
+This video shows the same pages at phone, tablet and desktop widths,
+
+00:00:18.56 --> 00:00:20.21
+and the new menu drawer.
+
+00:00:21.36 --> 00:00:26.46
+Every page works from three hundred and twenty to two thousand five hundred and
+
+00:00:26.46 --> 00:00:27.62
+sixty pixels wide.
+
+00:00:27.62 --> 00:00:31.69
+On a phone, content is one column, navigation is a menu drawer,
+
+00:00:31.69 --> 00:00:34.02
+and the pipeline is a vertical list.
+
+00:00:34.02 --> 00:00:39.05
+On a tablet, the pipeline becomes a scrollable stepper above the stage detail.
+
+00:00:39.05 --> 00:00:43.64
+From nine hundred and ninety two pixels, navigation is a fixed sidebar,
+
+00:00:43.64 --> 00:00:45.96
+with the pipeline beside the detail.
+
+00:00:45.96 --> 00:00:47.90
+And no width scrolls sideways.
+
+00:00:49.05 --> 00:00:51.50
+Here is one project at three widths.
+
+00:00:51.50 --> 00:00:54.84
+On the desktop, the sidebar is fixed on the left,
+
+00:00:54.84 --> 00:00:57.98
+and the pipeline sits beside the stage detail.
+
+00:00:57.98 --> 00:01:03.57
+On a tablet, the sidebar goes, and the eleven stages become a stepper that scrolls
+
+00:01:03.57 --> 00:01:05.41
+sideways, above the detail.
+
+00:01:05.41 --> 00:01:10.04
+On a phone, the stages stack into a list, and the detail follows it.
+
+00:01:11.19 --> 00:01:15.31
+Before this journey, a phone showed only the wordmark at the top.
+
+00:01:15.31 --> 00:01:17.78
+There was no way to reach another page.
+
+00:01:17.78 --> 00:01:22.28
+Now the top bar has a menu button, the wordmark and the connection dot.
+
+00:01:22.63 --> 00:01:24.21
+The Owner taps the menu.
+
+00:01:24.21 --> 00:01:29.45
+The drawer slides in, with the sidebar's own links, the workers and the account.
+
+00:01:29.45 --> 00:01:32.80
+Focus starts on Close, and stays inside the drawer.
+
+00:01:32.80 --> 00:01:36.54
+Escape closes it, and focus goes back to the menu button.
+
+00:01:36.54 --> 00:01:39.36
+The Owner opens it again and taps Projects.
+
+00:01:39.36 --> 00:01:42.64
+The page changes, and the drawer closes by itself.
+
+00:01:42.64 --> 00:01:46.51
+Then the Owner opens a project, and its pipeline is a list.
+
+00:01:46.86 --> 00:01:49.14
+The drawer reads the same in dark mode.
+
+00:01:50.29 --> 00:01:54.94
+The requirement asked for forty four pixel touch targets at every width.
+
+00:01:54.94 --> 00:01:59.98
+But the design system draws thirty two and forty pixel buttons on the desktop,
+
+00:01:59.98 --> 00:02:01.85
+where a mouse is the pointer.
+
+00:02:01.85 --> 00:02:07.28
+So the requirement now asks for forty four pixels below nine hundred and ninety two,
+
+00:02:07.28 --> 00:02:11.02
+and twenty four, the accessibility minimum, from there up.
+
+00:02:11.02 --> 00:02:13.29
+A new decision record explains why.
+
+00:02:13.64 --> 00:02:19.19
+On a phone, small and medium buttons, fields and tabs are now forty four pixels.
+
+00:02:19.19 --> 00:02:23.43
+The mocks read the same tokens, so they changed with the app,
+
+00:02:23.43 --> 00:02:25.03
+and no mock was edited.
+
+00:02:26.18 --> 00:02:29.93
+The shell keeps the sidebar's content in one template.
+
+00:02:29.93 --> 00:02:34.58
+From nine hundred and ninety two pixels it fills the fixed sidebar.
+
+00:02:34.58 --> 00:02:40.00
+Below that, the menu button opens the same template in a dialog labelled Menu.
+
+00:02:40.00 --> 00:02:45.48
+Navigating closes it, and so does widening the window, through one media query.
+
+00:02:45.83 --> 00:02:50.09
+The tokens set small and medium controls to forty four pixels,
+
+00:02:50.09 --> 00:02:54.14
+and restore thirty two and forty from the large breakpoint.
+
+00:02:54.14 --> 00:02:59.29
+The rest of the layout was already in the design system's CSS: the columns,
+
+00:02:59.29 --> 00:03:01.49
+and the pipeline's three shapes.
+
+00:03:01.84 --> 00:03:05.11
+The class diagram shows the shell owning the drawer.
+
+00:03:05.11 --> 00:03:09.95
+There's no breakpoint service any more, so the band never reaches TypeScript.
+
+00:03:11.10 --> 00:03:16.04
+A behaviour test opens the drawer at three hundred and seventy five pixels.
+
+00:03:16.04 --> 00:03:19.59
+It checks that focus starts on Close and stays inside,
+
+00:03:19.59 --> 00:03:23.68
+then closes the drawer with Escape, with Close, by navigating,
+
+00:03:23.68 --> 00:03:25.32
+and with a tap beside it.
+
+00:03:25.32 --> 00:03:29.40
+Before the change it failed, because there was no menu button.
+
+00:03:29.75 --> 00:03:32.66
+The sweep visits every page at seven widths,
+
+00:03:32.66 --> 00:03:37.21
+from three hundred and twenty to two thousand five hundred and sixty.
+
+00:03:37.21 --> 00:03:41.31
+That's ninety one pages and widths, and none scrolls sideways.
+
+00:03:41.31 --> 00:03:45.07
+Another test measures the pipeline's shape at each width.
+
+00:03:45.42 --> 00:03:48.83
+The touch target test measures every visible control.
+
+00:03:48.83 --> 00:03:53.59
+At first it found sixty six under forty four pixels on phones and tablets.
+
+00:03:53.59 --> 00:03:58.34
+After the token change, it found tabs squeezed narrower than their labels,
+
+00:03:58.34 --> 00:04:01.94
+so each tab now keeps its width, and then it found none.
+
+00:04:01.94 --> 00:04:06.12
+Visual tests compare the top bar and the drawer with their mocks,
+
+00:04:06.12 --> 00:04:09.27
+and an accessibility test checks the open drawer.
+
+00:04:10.42 --> 00:04:12.57
+Journey thirty three is complete.
+
+00:04:12.57 --> 00:04:17.80
+Phones and tablets get a menu drawer, and every page fits from three hundred and
+
+00:04:17.80 --> 00:04:21.25
+twenty to two thousand five hundred and sixty pixels.
+
+00:04:21.25 --> 00:04:25.50
+The pipeline is a list, a stepper, or a column beside the detail.
+
+00:04:25.50 --> 00:04:28.43
+And below nine hundred and ninety two pixels,
+
+00:04:28.43 --> 00:04:31.63
+every control is a forty four pixel touch target.
+
+00:04:31.63 --> 00:04:33.65
+Next comes journey thirty four.
