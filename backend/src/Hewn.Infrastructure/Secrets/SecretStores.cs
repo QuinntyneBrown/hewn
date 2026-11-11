@@ -1,6 +1,7 @@
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using Hewn.Application.Abstractions;
+using Hewn.Application.Common;
 using Hewn.Application.Secrets;
 using Microsoft.Extensions.Configuration;
 
@@ -56,6 +57,7 @@ public sealed class SecretStoreConfigurationSource(ISecretStore store) : IConfig
                 if (value is not null)
                 {
                     data[credential.ConfigurationKey] = value;
+                    SecretRedactor.Remember(value);
                 }
             }
 

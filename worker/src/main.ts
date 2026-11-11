@@ -14,7 +14,8 @@ import { StageRouter, type StageExecutor } from './executors/stage-executor.ts';
 import { HttpHewnApi } from './http-api.ts';
 import { McpMagicPatterns } from './magic-patterns/magic-patterns.ts';
 import { jsonLog } from './json-log.ts';
-import { loadCredentials } from './secret-store.ts';
+import { rememberSecret } from './redact.ts';
+import { loadCredentials, WORKER_CREDENTIALS } from './secret-store.ts';
 import { otlpExporter, Tracer } from './tracing.ts';
 import { WorkLoop } from './work-loop.ts';
 
@@ -40,6 +41,9 @@ try {
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(2);
 }
+
+// L2-040 AC2: each credential's value is masked wherever it appears, whether it came from the key store or not.
+for (const credential of WORKER_CREDENTIALS) rememberSecret(process.env[credential.env]);
 
 const apiUrl = required('HEWN_API_URL');
 const token = required('HEWN_WORKER_TOKEN');

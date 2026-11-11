@@ -75,6 +75,6 @@ public sealed class StructuredLogTests : IAsyncLifetime
         }
 
         Assert.DoesNotContain(Token, _output.ToString());
-        Assert.Contains("[redacted]", lines.Single(l => l.GetProperty("message").GetString()!.StartsWith("Run failed")).GetProperty("message").GetString());
+        Assert.Contains("***", lines.Single(l => l.GetProperty("message").GetString()!.StartsWith("Run failed")).GetProperty("message").GetString());
     }
 }

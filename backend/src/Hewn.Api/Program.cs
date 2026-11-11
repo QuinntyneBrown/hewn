@@ -86,6 +86,18 @@ builder.Services
 
 var app = builder.Build();
 
+// L2-040 AC2: every credential's value is masked wherever it appears, whether it came from the store or the environment.
+void RememberCredentials()
+{
+    foreach (var credential in Hewn.Application.Secrets.Credentials.All)
+    {
+        Hewn.Application.Common.SecretRedactor.Remember(app.Configuration[credential.ConfigurationKey]);
+    }
+}
+
+RememberCredentials();
+Microsoft.Extensions.Primitives.ChangeToken.OnChange(app.Configuration.GetReloadToken, RememberCredentials);
+
 app.UseForwardedHeaders();
 app.UseHewnMetrics();
 app.UseSecurityHeaders();

@@ -29,7 +29,7 @@ describe('structured worker logs', () => {
     expect(first).toMatchObject({ level: 'Warning', message: 'Could not push', runId: 'run-1' });
     expect(second).toMatchObject({ level: 'Information' });
     expect(lines.join('\n')).not.toContain(token);
-    expect(first!['error']).toContain('[redacted]');
+    expect(first!['error']).toContain('***');
   });
 
   it('puts a run’s project, direction, stage and run IDs on every entry logged while it runs', async () => {

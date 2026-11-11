@@ -104,7 +104,7 @@ public sealed class MonitorDirectionTests : IAsyncLifetime
         var lines = first.GetProperty("lines").EnumerateArray().ToList();
         Assert.Equal([1L, 2L], lines.Select(l => l.GetProperty("line").GetInt64()));
         Assert.Equal(["info", "warn"], lines.Select(l => l.GetProperty("level").GetString()));
-        Assert.Equal(["Copied 14 skills", "[redacted]"], lines.Select(l => l.GetProperty("text").GetString()));
+        Assert.Equal(["Copied 14 skills", "token=***"], lines.Select(l => l.GetProperty("text").GetString()));
         Assert.Equal(3L, batches[1].GetProperty("payload").GetProperty("lines")[0].GetProperty("line").GetInt64());
         Assert.Equal("Committed 5a1fe37", (await StageAsync(owner, projectId, 0)).GetProperty("latestLine").GetString());
     }
@@ -247,7 +247,7 @@ public sealed class MonitorDirectionTests : IAsyncLifetime
         Assert.Equal("Which skills does the product need?", decision.GetProperty("question").GetString());
         Assert.Equal("All fourteen from Greenlit.", decision.GetProperty("answer").GetString());
         Assert.DoesNotContain("ghp_", decision.GetProperty("rationale").GetString());
-        Assert.Contains("[redacted]", decision.GetProperty("rationale").GetString());
+        Assert.Contains("***", decision.GetProperty("rationale").GetString());
         var recorded = (await EventsAsync(owner, projectId)).Single(e => e.GetProperty("type").GetString() == "DecisionRecorded").GetProperty("payload");
         Assert.Equal(0, recorded.GetProperty("stage").GetInt32());
         Assert.Equal("Which skills does the product need?", recorded.GetProperty("question").GetString());

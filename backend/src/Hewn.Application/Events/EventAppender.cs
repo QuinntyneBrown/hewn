@@ -32,7 +32,8 @@ public sealed class EventAppender(IAppDbContext db, IProjectEventPublisher publi
                 .MaxAsync(cancellationToken) ?? 0;
         }
 
-        var stored = new StoredEvent(projectId, last + 1, type, JsonSerializer.Serialize(payload, Json), clock.GetUtcNow());
+        // L2-040 AC2: no event is stored or sent with a secret in it.
+        var stored = new StoredEvent(projectId, last + 1, type, Common.SecretRedactor.RedactJson(JsonSerializer.Serialize(payload, Json)), clock.GetUtcNow());
         _pending[projectId] = stored.Sequence;
         db.Events.Add(stored);
         _unpublished.Add(stored);

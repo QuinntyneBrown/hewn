@@ -11,6 +11,7 @@ import {
   type WorkerRegistration,
 } from './api.ts';
 import type { RunContext, StageExecutor } from './executors/stage-executor.ts';
+import { redact } from './redact.ts';
 import { LogBatcher } from './log-batcher.ts';
 import { startRunIsolation, type IsolationSettings } from './isolation/run-isolation.ts';
 import { sleep } from './sleep.ts';
@@ -260,7 +261,7 @@ export class WorkLoop {
       this.logRun(run, 'Run failed', { level: 'Warning' });
       await logs.close();
       await this.api
-        .result(workerId, run, { outcome: 'Failed', error: messageOf(error) })
+        .result(workerId, run, { outcome: 'Failed', error: redact(messageOf(error)) })
         .catch((reportError: unknown) =>
           this.logRun(run, 'Could not report the failure', { level: 'Error', error: messageOf(reportError) }),
         );
