@@ -1,4 +1,5 @@
-import { Dialog } from '@angular/cdk/dialog';
+import { Dialog, DialogRef } from '@angular/cdk/dialog';
+import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -6,6 +7,8 @@ import {
   DestroyRef,
   inject,
   signal,
+  TemplateRef,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -32,6 +35,7 @@ interface NavItem {
 @Component({
   selector: 'hw-shell',
   imports: [
+    NgTemplateOutlet,
     RouterOutlet,
     RouterLink,
     RouterLinkActive,
@@ -48,6 +52,8 @@ export class ShellComponent {
   private readonly workersApi = inject(WORKERS_API);
   private readonly dialog = inject(Dialog);
   private readonly toasts = inject(Toasts);
+  private readonly menu = viewChild.required<TemplateRef<unknown>>('menu');
+  private menuRef: DialogRef | null = null;
   protected readonly starting = signal(false);
   protected readonly signingOut = signal(false);
   private readonly events = inject(PROJECT_EVENTS);
@@ -105,7 +111,15 @@ export class ShellComponent {
         filter((e) => e instanceof NavigationEnd),
         takeUntilDestroyed(),
       )
-      .subscribe(() => void this.workers.refresh());
+      .subscribe(() => {
+        void this.workers.refresh();
+        this.closeMenu();
+      });
+    // The sidebar replaces the drawer from 992 px (L2-046 AC3).
+    const wide = matchMedia('(min-width: 62rem)');
+    const onWide = (e: MediaQueryListEvent) => e.matches && this.closeMenu();
+    wide.addEventListener('change', onWide);
+    inject(DestroyRef).onDestroy(() => wide.removeEventListener('change', onWide));
     const timer = setInterval(() => void this.workers.refresh(), 5_000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
     // A worker registering, leasing or finishing shows at once (L2-026 AC1); the timer covers heartbeats.
@@ -113,6 +127,23 @@ export class ShellComponent {
       .followWorkers()
       .pipe(takeUntilDestroyed())
       .subscribe({ next: () => void this.workers.refresh(), error: () => undefined });
+  }
+
+  /** Below 992 px the sidebar opens as a drawer: focus starts on Close, stays inside, and returns to Menu (L2-046 AC1). */
+  protected openMenu(): void {
+    if (this.menuRef) return;
+    this.menuRef = this.dialog.open(this.menu(), {
+      ariaLabel: 'Menu',
+      ariaModal: true,
+      panelClass: 'drawer-pane',
+      backdropClass: 'backdrop',
+      autoFocus: 'first-tabbable',
+    });
+    this.menuRef.closed.subscribe(() => (this.menuRef = null));
+  }
+
+  protected closeMenu(): void {
+    this.menuRef?.close();
   }
 
   protected retryNow(): void {

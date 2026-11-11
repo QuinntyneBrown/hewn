@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Use Mission Control on mobile (journey 33, L2-046): below 992 px the top bar's Open menu shows the sidebar as a
+  menu drawer that keeps focus, and closes on Escape, a tap beside it, navigating or widening the window. Below
+  992 px every button, field and tab is a 44 px touch target; from 992 px controls stay 32 and 40 px (ADR 0034).
+  Acceptance tests hold every page at 320 to 2560 px without sideways scroll, and the pipeline as a list, a stepper
+  and a column at each breakpoint.
 - Review the audit log (journey 32, L2-044): sign-ins, direction submissions, pause, resume, cancel, stop all, start
   workers, worker token creation and revocation, and merges each record who, what, when, the target and the IP.
   Owners open Audit to see entries newest first and filter them by project and action; Viewers see the forbidden

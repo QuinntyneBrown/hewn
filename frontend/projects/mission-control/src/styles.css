@@ -13,6 +13,13 @@
   outline: none;
 }
 
+/* The menu drawer's container is the drawer's box, so a click beside it reaches the backdrop and closes it. */
+.drawer-pane > .cdk-dialog-container {
+  right: auto;
+  width: var(--layout-drawer-width);
+  max-width: 85vw;
+}
+
 /*
  * The increment video (L2-023 AC2): the design system's .video player with a real <video> under its captions and
  * controls. The mock draws the frame; the app plays the recorded MP4 in its place.

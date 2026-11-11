@@ -1,90 +1,26 @@
 <a class="skip-link" href="#main">Skip to content</a>
 <div class="shell">
   <aside class="shell__sidebar" aria-label="Sidebar">
-    <div class="sidebar">
-      <div class="sidebar__brand"><hw-wordmark /></div>
-      @if (session.isOwner()) {
-        <div class="sidebar__cta">
-          <a class="btn btn--primary" routerLink="/projects/new" style="width: 100%"
-            ><svg hw-icon name="plus"></svg>New direction</a
-          >
-        </div>
-      }
-      <nav class="sidebar__nav" aria-label="Primary">
-        @for (item of nav(); track item.link) {
-          <a
-            class="nav-link"
-            [routerLink]="item.link"
-            routerLinkActive
-            #rla="routerLinkActive"
-            [routerLinkActiveOptions]="{ exact: false }"
-            [attr.aria-current]="rla.isActive ? 'page' : null"
-            ><svg hw-icon [name]="item.icon" class="icon--lg"></svg>{{ item.label }}</a
-          >
-        }
-      </nav>
-      <div class="sidebar__foot">
-        @if (connection(); as conn) {
-          <div class="conn">
-            <span class="conn__state"
-              ><span class="dot {{ conn.dot }}"></span>{{ conn.label }}</span
-            >
-            @if (workerCount(); as count) {
-              <span class="tabular text-subtle">{{ count }}</span>
-            }
-          </div>
-        }
-        @if (session.isOwner() && workers.view()) {
-          @if (workers.stopped()) {
-            <button
-              class="btn btn--sm"
-              type="button"
-              style="width: 100%; margin-top: var(--space-3)"
-              [disabled]="starting()"
-              [attr.aria-busy]="starting() || null"
-              (click)="startWorkers()"
-            >
-              <svg hw-icon [name]="starting() ? 'spinner' : 'play'" class="icon--sm"></svg
-              >{{ starting() ? 'Starting workers…' : 'Start workers' }}
-            </button>
-          } @else {
-            <button
-              class="btn btn--danger btn--sm"
-              type="button"
-              style="width: 100%; margin-top: var(--space-3)"
-              (click)="openStopWorkers()"
-            >
-              <svg hw-icon name="octagonX" class="icon--sm"></svg>Stop all workers
-            </button>
-          }
-        }
-        @if (session.me(); as me) {
-          <div class="user">
-            <span class="avatar" aria-hidden="true">{{ initials() }}</span>
-            <div class="truncate">
-              <div class="user__name truncate">{{ me.login }}</div>
-              <div class="user__role">{{ me.role }}</div>
-            </div>
-            <button
-              class="btn btn--ghost btn--icon btn--sm"
-              type="button"
-              aria-label="Sign out"
-              title="Sign out"
-              style="margin-left: auto"
-              [disabled]="signingOut()"
-              [attr.aria-busy]="signingOut() || null"
-              (click)="signOut()"
-            >
-              <svg hw-icon [name]="signingOut() ? 'spinner' : 'logOut'" class="icon--sm"></svg>
-            </button>
-          </div>
-        }
-      </div>
-    </div>
+    <ng-container *ngTemplateOutlet="sidebar; context: { $implicit: false }" />
   </aside>
   <div class="shell__body">
     <header class="topbar">
+      <button
+        class="btn btn--ghost btn--icon btn--touch"
+        type="button"
+        aria-label="Open menu"
+        (click)="openMenu()"
+      >
+        <svg hw-icon name="menu" class="icon--lg"></svg>
+      </button>
       <hw-wordmark [small]="true" />
+      @if (connection(); as conn) {
+        <span class="topbar__slot" role="img" [attr.aria-label]="'Connection: ' + conn.label"
+          ><span class="dot {{ conn.dot }}"></span
+        ></span>
+      } @else {
+        <span class="topbar__slot"></span>
+      }
     </header>
     @if (workers.leasing(); as leasing) {
       @if (leasing.stopped) {
@@ -119,3 +55,99 @@
   </div>
 </div>
 <hw-toast-region />
+
+<!-- The sidebar's content: in the fixed sidebar from 992 px, and in the menu drawer below it (L2-046 AC1, AC3). -->
+<ng-template #sidebar let-inMenu>
+  <div class="sidebar">
+    <div class="sidebar__brand"><hw-wordmark /></div>
+    @if (session.isOwner()) {
+      <div class="sidebar__cta">
+        <a class="btn btn--primary" routerLink="/projects/new" style="width: 100%"
+          ><svg hw-icon name="plus"></svg>New direction</a
+        >
+      </div>
+    }
+    <nav class="sidebar__nav" [attr.aria-label]="inMenu ? 'Primary, menu' : 'Primary'">
+      @for (item of nav(); track item.link) {
+        <a
+          class="nav-link"
+          [routerLink]="item.link"
+          routerLinkActive
+          #rla="routerLinkActive"
+          [routerLinkActiveOptions]="{ exact: false }"
+          [attr.aria-current]="rla.isActive ? 'page' : null"
+          ><svg hw-icon [name]="item.icon" class="icon--lg"></svg>{{ item.label }}</a
+        >
+      }
+    </nav>
+    <div class="sidebar__foot">
+      @if (connection(); as conn) {
+        <div class="conn">
+          <span class="conn__state"><span class="dot {{ conn.dot }}"></span>{{ conn.label }}</span>
+          @if (workerCount(); as count) {
+            <span class="tabular text-subtle">{{ count }}</span>
+          }
+        </div>
+      }
+      @if (session.isOwner() && workers.view()) {
+        @if (workers.stopped()) {
+          <button
+            class="btn btn--sm"
+            type="button"
+            style="width: 100%; margin-top: var(--space-3)"
+            [disabled]="starting()"
+            [attr.aria-busy]="starting() || null"
+            (click)="startWorkers()"
+          >
+            <svg hw-icon [name]="starting() ? 'spinner' : 'play'" class="icon--sm"></svg
+            >{{ starting() ? 'Starting workers…' : 'Start workers' }}
+          </button>
+        } @else {
+          <button
+            class="btn btn--danger btn--sm"
+            type="button"
+            style="width: 100%; margin-top: var(--space-3)"
+            (click)="openStopWorkers()"
+          >
+            <svg hw-icon name="octagonX" class="icon--sm"></svg>Stop all workers
+          </button>
+        }
+      }
+      @if (session.me(); as me) {
+        <div class="user">
+          <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+          <div class="truncate">
+            <div class="user__name truncate">{{ me.login }}</div>
+            <div class="user__role">{{ me.role }}</div>
+          </div>
+          <button
+            class="btn btn--ghost btn--icon btn--sm"
+            type="button"
+            aria-label="Sign out"
+            title="Sign out"
+            style="margin-left: auto"
+            [disabled]="signingOut()"
+            [attr.aria-busy]="signingOut() || null"
+            (click)="signOut()"
+          >
+            <svg hw-icon [name]="signingOut() ? 'spinner' : 'logOut'" class="icon--sm"></svg>
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #menu>
+  <div class="drawer">
+    <button
+      class="btn btn--ghost btn--icon btn--touch drawer__close"
+      type="button"
+      aria-label="Close menu"
+      (click)="closeMenu()"
+    >
+      <svg hw-icon name="close" class="icon--lg"></svg>
+    </button>
+    <ng-container *ngTemplateOutlet="sidebar; context: { $implicit: true }" />
+  </div>
+</ng-template>
